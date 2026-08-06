@@ -145,9 +145,8 @@ def validate() -> list[str]:
     if 'package/unique_name="music.virya.synesthesia"' not in export_presets:
         fail("unexpected Android package identifier", failures)
 
-    repo_root = ROOT.parent
     for relative in ('.github/workflows/ci.yml', '.github/workflows/build.yml'):
-        if not (repo_root / relative).is_file():
+        if not (ROOT / relative).is_file():
             fail(f"missing repository workflow: {relative}", failures)
 
     project_config = (ROOT / "project.godot").read_text()
