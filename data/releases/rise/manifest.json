@@ -20,7 +20,22 @@
       "#FFF3CA"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "luminous",
+      "min_width": 26,
+      "max_width": 62,
+      "opacity": 0.78,
+      "texture": 0.48,
+      "outline": 0.58,
+      "spacing": 0.66
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "WYJDŹ DO ŚWIATŁA",
+      "ink_strength": 0.68,
+      "halftone_strength": 0.22
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -29,7 +44,14 @@
     "visual_snow_full": 0.036,
     "haptics_calm": 0.13,
     "haptics_full": 0.27,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#FFF3B8",
+    "scanline_strength": 0.22,
+    "roll_strength": 0.16,
+    "sparkle_density": 0.34,
+    "horizontal_jitter": 0.06,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
   },
   "audio": {
     "mode": "procedural_then_excerpt",

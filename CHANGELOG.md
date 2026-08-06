@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 — Art Direction Pass
+
+- replaces the circular debug-like stroke with an eleven-profile procedural comic brush engine;
+- adds speed-sensitive width, deterministic stamp rotation, bristles, ink outlines and room-specific marks;
+- upgrades Visual Snow into bounded CRT/cosmic static with scanlines, rolling bands and sparse stars;
+- adds per-room static profiles, tinting and Technophobia-specific horizontal jitter;
+- adds comic framing, halftone patches, chapter captions and room-specific graphic-novel accents;
+- preserves the 99% cinematic reveal, reduced-motion mode and mobile rendering budgets.
+
 ## 0.7.0 — Polish, performance and resilience
 
 - Added adaptive redraw scheduling: 60 Hz while painting or opening doors, 24–36 Hz while idle and 10 Hz in reduced-motion mode.

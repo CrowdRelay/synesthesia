@@ -20,7 +20,22 @@
       "#62C6D4"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "dry_ink",
+      "min_width": 18,
+      "max_width": 50,
+      "opacity": 0.88,
+      "texture": 0.78,
+      "outline": 0.94,
+      "spacing": 0.48
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "OSTATNI POJEDYNEK",
+      "ink_strength": 0.9,
+      "halftone_strength": 0.34
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -29,7 +44,14 @@
     "visual_snow_full": 0.06,
     "haptics_calm": 0.18,
     "haptics_full": 0.38,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#FFD39A",
+    "scanline_strength": 0.34,
+    "roll_strength": 0.24,
+    "sparkle_density": 0.22,
+    "horizontal_jitter": 0.15,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
   },
   "audio": {
     "mode": "procedural_then_excerpt",

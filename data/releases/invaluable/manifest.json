@@ -20,7 +20,22 @@
       "#79DAD2"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "glass",
+      "min_width": 18,
+      "max_width": 48,
+      "opacity": 0.76,
+      "texture": 0.42,
+      "outline": 0.88,
+      "spacing": 0.52
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "ROZBIJ CUDZĄ MIARĘ",
+      "ink_strength": 0.86,
+      "halftone_strength": 0.3
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -29,7 +44,14 @@
     "visual_snow_full": 0.055,
     "haptics_calm": 0.17,
     "haptics_full": 0.35,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#EAF5FF",
+    "scanline_strength": 0.38,
+    "roll_strength": 0.24,
+    "sparkle_density": 0.3,
+    "horizontal_jitter": 0.14,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
   },
   "audio": {
     "mode": "procedural_then_excerpt",

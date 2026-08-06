@@ -20,7 +20,22 @@
       "#F5D9B4"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "ember",
+      "min_width": 22,
+      "max_width": 58,
+      "opacity": 0.84,
+      "texture": 0.66,
+      "outline": 0.76,
+      "spacing": 0.54
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "ŻAR PAMIĘTA KSZTAŁT",
+      "ink_strength": 0.78,
+      "halftone_strength": 0.26
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -29,7 +44,14 @@
     "visual_snow_full": 0.06,
     "haptics_calm": 0.16,
     "haptics_full": 0.34,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#FFD7A8",
+    "scanline_strength": 0.32,
+    "roll_strength": 0.22,
+    "sparkle_density": 0.28,
+    "horizontal_jitter": 0.09,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
   },
   "audio": {
     "mode": "procedural_then_excerpt",

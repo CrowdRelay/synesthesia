@@ -20,7 +20,22 @@
       "#A40F2D"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "wine",
+      "min_width": 18,
+      "max_width": 50,
+      "opacity": 0.78,
+      "texture": 0.46,
+      "outline": 0.74,
+      "spacing": 0.48
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "JESZCZE JEDEN TOAST",
+      "ink_strength": 0.72,
+      "halftone_strength": 0.22
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -29,7 +44,14 @@
     "visual_snow_full": 0.044,
     "haptics_calm": 0.12,
     "haptics_full": 0.25,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#FFF2E6",
+    "scanline_strength": 0.28,
+    "roll_strength": 0.16,
+    "sparkle_density": 0.18,
+    "horizontal_jitter": 0.07,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
   },
   "audio": {
     "mode": "procedural_then_excerpt",

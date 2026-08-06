@@ -20,7 +20,22 @@
       "#6BC9A6"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "organic",
+      "min_width": 22,
+      "max_width": 56,
+      "opacity": 0.8,
+      "texture": 0.58,
+      "outline": 0.72,
+      "spacing": 0.58
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "ZACZNIJ OD ZIARNA",
+      "ink_strength": 0.66,
+      "halftone_strength": 0.26
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -29,7 +44,14 @@
     "visual_snow_full": 0.05,
     "haptics_calm": 0.13,
     "haptics_full": 0.28,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#C9FFD6",
+    "scanline_strength": 0.26,
+    "roll_strength": 0.14,
+    "sparkle_density": 0.24,
+    "horizontal_jitter": 0.07,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
   },
   "audio": {
     "mode": "procedural_then_excerpt",

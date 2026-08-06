@@ -21,7 +21,22 @@
       "#72F0AA"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "confetti",
+      "min_width": 24,
+      "max_width": 58,
+      "opacity": 0.84,
+      "texture": 0.72,
+      "outline": 0.66,
+      "spacing": 0.76
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "NIE PYTAJ — PRZEBIJ",
+      "ink_strength": 0.64,
+      "halftone_strength": 0.3
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -30,7 +45,14 @@
     "visual_snow_full": 0.036,
     "haptics_calm": 0.18,
     "haptics_full": 0.36,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#FFF2A6",
+    "scanline_strength": 0.2,
+    "roll_strength": 0.1,
+    "sparkle_density": 0.34,
+    "horizontal_jitter": 0.08,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
   },
   "audio": {
     "mode": "procedural_then_excerpt",

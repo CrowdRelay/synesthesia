@@ -24,8 +24,8 @@ calm_hz = constant("CALM_IDLE_REDRAW_HZ")
 reduced_hz = constant("REDUCED_MOTION_REDRAW_HZ")
 
 failures: list[str] = []
-if max_segments > 800:
-    failures.append(f"MAX_SEGMENTS={max_segments} exceeds mobile budget 800")
+if max_segments > 600:
+    failures.append(f"MAX_SEGMENTS={max_segments} exceeds mobile budget 600")
 if active_hz > 60.0:
     failures.append(f"ACTIVE_REDRAW_HZ={active_hz} exceeds 60")
 if calm_hz > 30.0:
@@ -34,6 +34,8 @@ if reduced_hz > 12.0:
     failures.append(f"REDUCED_MOTION_REDRAW_HZ={reduced_hz} exceeds 12")
 if "for x in range(GRID_WIDTH + 1)" not in SOURCE:
     failures.append("VSS cells are not run-length merged")
+if "MAX_BRUSH_STAMPS_PER_SEGMENT: int = 3" not in SOURCE:
+    failures.append("brush stamp budget must remain capped at 3")
 if "coverage_changed_now" not in SOURCE:
     failures.append("coverage updates are not batched per stroke")
 
@@ -45,7 +47,7 @@ if failures:
 legacy_vss_draws = grid_width * grid_height
 optimized_empty_room_draws = grid_height * 2
 legacy_stroke_draws = 1500 * 4
-optimized_stroke_draws = max_segments * 3
+optimized_stroke_draws = max_segments * 9
 print(
     "SYNESTHESIA_PERF_BUDGET=PASS "
     f"vss_empty_draws={legacy_vss_draws}->{optimized_empty_room_draws} "

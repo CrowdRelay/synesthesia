@@ -1,0 +1,77 @@
+{
+  "schema_version": 3,
+  "release_id": "invaluable",
+  "story_order": 7,
+  "artist": "Virya",
+  "title": "VIRYA: Invaluable",
+  "subtitle": "Odbicie potrafi wyceniać człowieka bez końca. Tafla nie ma jednak ostatniego słowa.",
+  "room": {
+    "name": "Sala bez ceny",
+    "visual_style": "invaluable",
+    "interaction": "crack_mirrors",
+    "base_color": "#181B31",
+    "floor_color": "#090A15",
+    "accent_color": "#BDD9FF",
+    "secondary_color": "#DFAAFF",
+    "paint_palette": [
+      "#BDD9FF",
+      "#F5F9FF",
+      "#DFAAFF",
+      "#79DAD2"
+    ],
+    "completion_coverage": 0.44,
+    "cinematic_reveal_at": 0.99
+  },
+  "sensory": {
+    "default_mode": "calm",
+    "sound_profile": "invaluable",
+    "visual_snow_calm": 0.03,
+    "visual_snow_full": 0.055,
+    "haptics_calm": 0.17,
+    "haptics_full": 0.35,
+    "safe_audio_ceiling_db": -8.0
+  },
+  "audio": {
+    "mode": "procedural_then_excerpt",
+    "title": "Invaluable",
+    "completion_excerpt": "res://assets/audio/invaluable-room-outro.mp3",
+    "completion_volume_db": -13.0,
+    "source": "VIRYA — Echoes Of The Modern Mind",
+    "note": "Short offline room completion excerpt with gentle fades."
+  },
+  "collectibles": [
+    {
+      "id": "measure",
+      "title": "Miara",
+      "message": "Nie wszystko, co można porównać, warto porównywać.",
+      "position": [
+        0.25,
+        0.45
+      ],
+      "symbol": "◇"
+    },
+    {
+      "id": "reflection",
+      "title": "Odbicie",
+      "message": "Tafla pokazuje powierzchnię, nie wartość.",
+      "position": [
+        0.72,
+        0.39
+      ],
+      "symbol": "▱"
+    },
+    {
+      "id": "voice",
+      "title": "Bez ceny",
+      "message": "Nie jesteś wynikiem własnej oceny.",
+      "position": [
+        0.51,
+        0.69
+      ],
+      "symbol": "∞"
+    }
+  ],
+  "intro": "Dotykaj luster, żeby trzaskały. Każda pęknięta tafla odsłania kolor zamiast kolejnej oceny.",
+  "completion_title": "Lustra straciły władzę",
+  "completion_message": "Odłamki zostały na podłodze. Odbicie nie określa już drogi."
+}

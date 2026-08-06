@@ -72,3 +72,9 @@ The Web build is static and single-threaded. `synesthesia.virya.music` may be de
 The renderer keeps interaction at 60 Hz but lowers idle redraw frequency. Untouched VSS cells are merged into horizontal strips, paint history is bounded, progress events are emitted once per gesture batch, and procedural audio catch-up is capped per frame. Resize events rebuild room hit geometry without resetting interaction state.
 
 The Web build is post-processed into a small PWA. Navigation and runtime assets are network-first; media uses stale-while-revalidate; reward routes and private responses are never cached.
+
+## Art direction and brush engine
+
+The v0.8 renderer treats every room as a graphic-novel panel rather than a recoloured prototype. Manifest-owned `art_direction` values control ink and halftone intensity, while `brush` selects one of eleven deterministic procedural profiles. The stroke still reveals the fixed grid, but its visible mark is made from bounded textured stamps, bristles and outlines whose width follows gesture speed. No external brush texture is required, which keeps the Web build small and makes restored strokes deterministic.
+
+Visual Snow is a separate bounded shader layer combining fine CRT static, scanlines, a slow rolling band and sparse cosmic sparks. Per-room manifests tune it; calm and reduced-motion modes keep amplitude and motion below the full profile. Untouched reveal strips also carry a local negative/static treatment, so painting visibly repairs the scene instead of merely drawing on top of it.

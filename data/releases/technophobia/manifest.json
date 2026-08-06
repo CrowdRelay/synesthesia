@@ -20,7 +20,22 @@
       "#FF5F7C"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "glitch",
+      "min_width": 20,
+      "max_width": 52,
+      "opacity": 0.84,
+      "texture": 0.76,
+      "outline": 0.9,
+      "spacing": 0.5
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "NAPRAW SYGNAŁ",
+      "ink_strength": 0.94,
+      "halftone_strength": 0.38
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -29,7 +44,14 @@
     "visual_snow_full": 0.094,
     "haptics_calm": 0.16,
     "haptics_full": 0.34,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#B9FFF3",
+    "scanline_strength": 0.68,
+    "roll_strength": 0.46,
+    "sparkle_density": 0.34,
+    "horizontal_jitter": 0.52,
+    "static_motion_calm": 0.24,
+    "static_motion_full": 0.72
   },
   "audio": {
     "mode": "procedural_then_excerpt",

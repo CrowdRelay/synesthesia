@@ -118,6 +118,25 @@ def validate_manifest(path: Path, expected_id: str, expected_order: int, failure
         value = sensory.get(key)
         if not isinstance(value, (int, float)) or not 0.0 <= float(value) <= 0.12:
             fail(f"{expected_id}: {key} outside 0..0.12", failures)
+    for key in ("scanline_strength", "roll_strength", "sparkle_density", "horizontal_jitter", "static_motion_calm", "static_motion_full"):
+        value = sensory.get(key)
+        if not isinstance(value, (int, float)) or not 0.0 <= float(value) <= 1.0:
+            fail(f"{expected_id}: {key} outside 0..1", failures)
+    tint = sensory.get("visual_snow_tint")
+    if not isinstance(tint, str) or not re.fullmatch(r"#[0-9A-Fa-f]{6}", tint):
+        fail(f"{expected_id}: visual_snow_tint must be #RRGGBB", failures)
+
+    brush = room.get("brush")
+    if not isinstance(brush, dict):
+        fail(f"{expected_id}: brush must be an object", failures)
+    else:
+        for key in ("profile", "min_width", "max_width", "opacity", "texture", "outline", "spacing"):
+            if key not in brush:
+                fail(f"{expected_id}: brush missing {key}", failures)
+    art = room.get("art_direction")
+    if not isinstance(art, dict) or art.get("style") != "dark_comic":
+        fail(f"{expected_id}: dark_comic art direction required", failures)
+
     for key in ("haptics_calm", "haptics_full"):
         value = sensory.get(key)
         if not isinstance(value, (int, float)) or not 0.0 <= float(value) <= 0.65:
@@ -165,11 +184,11 @@ def validate() -> list[str]:
             fail(f"missing file: {relative}", failures)
 
     version = (ROOT / "VERSION").read_text().strip() if (ROOT / "VERSION").is_file() else ""
-    if version != "0.7.0":
-        fail("VERSION must equal 0.7.0", failures)
+    if version != "0.8.0":
+        fail("VERSION must equal 0.8.0", failures)
     project = (ROOT / "project.godot").read_text()
-    if 'config/version="0.7.0"' not in project:
-        fail("project.godot version must equal 0.7.0", failures)
+    if 'config/version="0.8.0"' not in project:
+        fail("project.godot version must equal 0.8.0", failures)
 
     index = load_json(ROOT / "data/release_index.json", failures)
     releases = index.get("releases") if index else None
@@ -258,7 +277,8 @@ def validate() -> list[str]:
 
     paint_source = scripts.get("paint_room.gd", "")
     for performance_contract in (
-        "MAX_SEGMENTS: int = 720",
+        "MAX_SEGMENTS: int = 520",
+        "MAX_BRUSH_STAMPS_PER_SEGMENT: int = 3",
         "ACTIVE_REDRAW_HZ: float = 60.0",
         "REDUCED_MOTION_REDRAW_HZ: float = 10.0",
         "func _on_resized() -> void:",
@@ -285,9 +305,20 @@ def validate() -> list[str]:
     ):
         if visual_contract not in paint_source:
             fail(f"missing room renderer: {visual_contract}", failures)
-    for text_contract in ("ZZZ", "_draw_venetian_mask", "pop_balloons", "crack_mirrors", "western_duel"):
+    for text_contract in (
+        "ZZZ", "_draw_venetian_mask", "pop_balloons", "crack_mirrors", "western_duel",
+        "_render_brush_segment", "_render_brush_stamp", "_brush_shape", "_render_comic_finish",
+        "cached_brush_profile", "cached_halftone_strength",
+    ):
         if text_contract not in paint_source:
             fail(f"missing interaction contract: {text_contract}", failures)
+
+    shader_source = (ROOT / "shaders/visual_snow.gdshader").read_text()
+    for contract in ("scanline_strength", "roll_strength", "sparkle_density", "horizontal_jitter", "rolling_center"):
+        if contract not in shader_source:
+            fail(f"cosmic static shader missing: {contract}", failures)
+    if "draw_circle(to, width * 0.5, color)" in paint_source:
+        fail("legacy circular brush cap must remain removed", failures)
 
     haptics_source = scripts.get("haptics.gd", "")
     for method in ("special", "cinematic_reveal", "door_open"):
@@ -345,6 +376,9 @@ def validate() -> list[str]:
     scaffold = (ROOT / "tools/new_release_pack.py").read_text()
     if '"schema_version": 3' not in scaffold or '"cinematic_reveal_at": 0.99' not in scaffold:
         fail("new room scaffold must use schema v3 and the 99% reveal", failures)
+    for contract in ('"brush": {', '"art_direction": {', '"style": "dark_comic"', '"scanline_strength": 0.32'):
+        if contract not in scaffold:
+            fail(f"new room scaffold missing v0.8 art contract: {contract}", failures)
 
     reward_page = (ROOT / "web/reward/index.html").read_text()
     if "signal-api.virya.music/v1/public/synesthesia/reward-claims/confirm" not in reward_page:

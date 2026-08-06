@@ -43,6 +43,7 @@ var progress_label: Label
 var discovery_label: Label
 var album_progress_bar: ProgressBar
 var palette_preview: HBoxContainer
+var brush_label: Label
 var mode_button: Button
 var quiet_button: Button
 var haptics_button: Button
@@ -106,10 +107,10 @@ func _load_json(path: String) -> Dictionary:
 
 func _read_version() -> String:
     if not FileAccess.file_exists(VERSION_PATH):
-        return "0.7.0"
+        return "0.8.0"
     var file: FileAccess = FileAccess.open(VERSION_PATH, FileAccess.READ)
     if file == null:
-        return "0.7.0"
+        return "0.8.0"
     return file.get_as_text().strip_edges()
 
 func _build_application_shell() -> void:
@@ -224,6 +225,12 @@ func _build_bottom_ui() -> void:
     palette_preview.alignment = BoxContainer.ALIGNMENT_CENTER
     palette_preview.add_theme_constant_override("separation", 6)
     content.add_child(palette_preview)
+
+    brush_label = Label.new()
+    brush_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    brush_label.add_theme_font_size_override("font_size", 11)
+    brush_label.add_theme_color_override("font_color", Color("9eb8d8"))
+    content.add_child(brush_label)
 
     var buttons: GridContainer = GridContainer.new()
     buttons.columns = 2
@@ -872,20 +879,29 @@ func _apply_sensory_mode() -> void:
     quiet_button.text = "Przywróć" if quiet_mode else "Uspokój"
     haptics_button.text = "Haptyka ✓" if haptics_enabled else "Haptyka —"
 
-    if completion_announced or quiet_mode:
-        snow_material.set_shader_parameter("intensity", 0.0)
-    else:
-        var base_snow: float = float(sensory.get("visual_snow_calm", 0.022)) if calm_mode else float(sensory.get("visual_snow_full", 0.055))
-        snow_material.set_shader_parameter("intensity", base_snow * (1.0 - normalized * 0.72))
-    snow_material.set_shader_parameter("motion", 0.10 if calm_mode else 0.28)
+    _apply_cosmic_static_profile(sensory, normalized)
 
 func _update_global_snow(normalized: float) -> void:
+    var sensory_value: Variant = manifest.get("sensory", {})
+    var sensory: Dictionary = sensory_value if sensory_value is Dictionary else {}
+    _apply_cosmic_static_profile(sensory, normalized)
+
+func _apply_cosmic_static_profile(sensory: Dictionary, normalized: float) -> void:
+    if snow_material == null:
+        return
     if quiet_mode or completion_announced:
         snow_material.set_shader_parameter("intensity", 0.0)
         return
-    var sensory: Dictionary = manifest.get("sensory", {})
-    var base_snow: float = float(sensory.get("visual_snow_calm", 0.022)) if calm_mode else float(sensory.get("visual_snow_full", 0.055))
-    snow_material.set_shader_parameter("intensity", base_snow * (1.0 - clampf(normalized, 0.0, 1.0) * 0.72))
+    var base_snow: float = float(sensory.get("visual_snow_calm", 0.030)) if calm_mode else float(sensory.get("visual_snow_full", 0.068))
+    var reveal: float = 1.0 - clampf(normalized, 0.0, 1.0) * 0.78
+    snow_material.set_shader_parameter("intensity", base_snow * reveal)
+    snow_material.set_shader_parameter("motion", float(sensory.get("static_motion_calm", 0.18)) if calm_mode else float(sensory.get("static_motion_full", 0.46)))
+    snow_material.set_shader_parameter("scanline_strength", float(sensory.get("scanline_strength", 0.42)))
+    snow_material.set_shader_parameter("roll_strength", float(sensory.get("roll_strength", 0.22)))
+    snow_material.set_shader_parameter("sparkle_density", float(sensory.get("sparkle_density", 0.24)))
+    snow_material.set_shader_parameter("horizontal_jitter", float(sensory.get("horizontal_jitter", 0.12)))
+    var tint: Color = Color.from_string(str(sensory.get("visual_snow_tint", "#C6DEFF")), Color("c6deff"))
+    snow_material.set_shader_parameter("tint_color", tint)
 
 func _reset_room() -> void:
     if room == null:
@@ -996,6 +1012,36 @@ func _update_palette_preview() -> void:
         swatch.custom_minimum_size = Vector2(28.0, 7.0)
         swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
         palette_preview.add_child(swatch)
+    if brush_label != null:
+        var brush_value: Variant = room_data.get("brush", {})
+        var brush: Dictionary = brush_value if brush_value is Dictionary else {}
+        var profile: String = str(brush.get("profile", "soft"))
+        brush_label.text = "Pędzel: %s · gest zmienia szerokość i fakturę" % _brush_profile_name(profile)
+
+func _brush_profile_name(profile: String) -> String:
+    match profile:
+        "water":
+            return "wodny"
+        "confetti":
+            return "konfetti"
+        "ink":
+            return "atramentowy"
+        "wine":
+            return "kaligraficzny"
+        "organic":
+            return "organiczny"
+        "dry_ink":
+            return "suchy tusz"
+        "glitch":
+            return "glitch"
+        "glass":
+            return "szklisty"
+        "ember":
+            return "żarowy"
+        "luminous":
+            return "świetlny"
+        _:
+            return "miękki"
 
 func _current_room_elapsed_ms() -> int:
     if room_started_ms <= 0 or not room_timer_running:

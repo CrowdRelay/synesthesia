@@ -65,3 +65,29 @@ python3 tools/new_release_pack.py new-room \
 ```
 
 The scaffold creates schema v3 data and an empty excerpt placeholder path. A new visual style must also be implemented and added to static contracts before CI can pass.
+
+## v0.8 art-direction fields
+
+Every room now owns two additional data-only objects inside `room`:
+
+```json
+{
+  "brush": {
+    "profile": "ink",
+    "min_width": 20,
+    "max_width": 52,
+    "opacity": 0.86,
+    "texture": 0.64,
+    "outline": 0.86,
+    "spacing": 0.54
+  },
+  "art_direction": {
+    "style": "dark_comic",
+    "caption": "MASKI NIE MÓWIĄ PRAWDY",
+    "ink_strength": 0.82,
+    "halftone_strength": 0.30
+  }
+}
+```
+
+The sensory object also controls bounded CRT/cosmic static through `visual_snow_tint`, `scanline_strength`, `roll_strength`, `sparkle_density`, `horizontal_jitter`, `static_motion_calm` and `static_motion_full`. These values are data only and are clamped by the runtime and static validator.

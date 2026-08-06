@@ -101,3 +101,7 @@ synesthesia/
 ## Rights
 
 Project source follows the repository licence. VIRYA names, logos, recordings, excerpts, lyrics and artwork remain the property of their respective rights holders and are not relicensed by the source-code licence.
+
+## v0.8 visual language
+
+Every room now uses a thematic comic brush and a room-owned art-direction profile. The hidden image sits beneath animated CRT/cosmic static; the gesture behaves like a compact Photoshop-style textured stamp rather than a circular cursor. At 99% the static drops, the complete panel resolves and the doors open.

@@ -20,7 +20,22 @@
       "#A58AFF"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "ink",
+      "min_width": 20,
+      "max_width": 52,
+      "opacity": 0.86,
+      "texture": 0.64,
+      "outline": 0.86,
+      "spacing": 0.54
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "MASKI NIE MÓWIĄ PRAWDY",
+      "ink_strength": 0.82,
+      "halftone_strength": 0.3
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -29,7 +44,14 @@
     "visual_snow_full": 0.048,
     "haptics_calm": 0.14,
     "haptics_full": 0.29,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#FFD7B8",
+    "scanline_strength": 0.34,
+    "roll_strength": 0.22,
+    "sparkle_density": 0.22,
+    "horizontal_jitter": 0.08,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
   },
   "audio": {
     "mode": "procedural_then_excerpt",

@@ -20,7 +20,22 @@
       "#6E8DAA"
     ],
     "completion_coverage": 0.44,
-    "cinematic_reveal_at": 0.99
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "soft",
+      "min_width": 30,
+      "max_width": 66,
+      "opacity": 0.7,
+      "texture": 0.42,
+      "outline": 0.46,
+      "spacing": 0.72
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "ZOSTAŃ W PÓŁMROKU",
+      "ink_strength": 0.58,
+      "halftone_strength": 0.15
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -29,7 +44,14 @@
     "visual_snow_full": 0.04,
     "haptics_calm": 0.09,
     "haptics_full": 0.2,
-    "safe_audio_ceiling_db": -8.0
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#E4D7FF",
+    "scanline_strength": 0.18,
+    "roll_strength": 0.1,
+    "sparkle_density": 0.16,
+    "horizontal_jitter": 0.05,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
   },
   "audio": {
     "mode": "procedural_then_excerpt",

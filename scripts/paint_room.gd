@@ -9,7 +9,9 @@ signal special_interaction(kind: String, index: int)
 const GRID_WIDTH: int = 24
 const GRID_HEIGHT: int = 36
 const GRID_CELL_COUNT: int = GRID_WIDTH * GRID_HEIGHT
-const MAX_SEGMENTS: int = 720
+const MAX_SEGMENTS: int = 520
+const MAX_BRUSH_STAMPS_PER_SEGMENT: int = 3
+const COMIC_FRAME_WIDTH: float = 5.0
 const MIN_STROKE_DISTANCE: float = 1.5
 const ACTIVE_REDRAW_HZ: float = 60.0
 const FULL_IDLE_REDRAW_HZ: float = 36.0
@@ -46,6 +48,17 @@ var cached_secondary_color: Color = Color("ff6680")
 var cached_visual_style: String = "uncertainty"
 var cached_interaction: String = "paint"
 var cached_completion_threshold: float = 0.44
+var cached_brush_profile: String = "soft"
+var cached_brush_min_width: float = 24.0
+var cached_brush_max_width: float = 56.0
+var cached_brush_opacity: float = 0.80
+var cached_brush_texture: float = 0.48
+var cached_brush_outline: float = 0.70
+var cached_brush_spacing: float = 0.62
+var cached_ink_strength: float = 0.72
+var cached_halftone_strength: float = 0.24
+var cached_caption: String = ""
+var stroke_serial: int = 0
 var special_last_hit_ms: Dictionary = {}
 
 func _ready() -> void:
@@ -87,6 +100,20 @@ func configure(room_data: Dictionary, collectible_data: Array) -> void:
     cached_visual_style = str(room_data.get("visual_style", "uncertainty"))
     cached_interaction = str(room_data.get("interaction", "paint"))
     cached_completion_threshold = maxf(0.1, float(room_data.get("completion_coverage", 0.44)))
+    var brush_value: Variant = room_data.get("brush", {})
+    var brush: Dictionary = brush_value if brush_value is Dictionary else {}
+    cached_brush_profile = str(brush.get("profile", "soft"))
+    cached_brush_min_width = clampf(float(brush.get("min_width", 24.0)), 12.0, 72.0)
+    cached_brush_max_width = clampf(float(brush.get("max_width", 56.0)), cached_brush_min_width, 104.0)
+    cached_brush_opacity = clampf(float(brush.get("opacity", 0.80)), 0.35, 1.0)
+    cached_brush_texture = clampf(float(brush.get("texture", 0.48)), 0.0, 1.0)
+    cached_brush_outline = clampf(float(brush.get("outline", 0.70)), 0.0, 1.0)
+    cached_brush_spacing = clampf(float(brush.get("spacing", 0.62)), 0.30, 1.20)
+    var art_value: Variant = room_data.get("art_direction", {})
+    var art: Dictionary = art_value if art_value is Dictionary else {}
+    cached_ink_strength = clampf(float(art.get("ink_strength", 0.72)), 0.0, 1.0)
+    cached_halftone_strength = clampf(float(art.get("halftone_strength", 0.24)), 0.0, 0.75)
+    cached_caption = str(art.get("caption", room_data.get("name", "")))
     palette.clear()
     var raw_palette: Variant = room_data.get("paint_palette", ["#72AFFF"])
     if raw_palette is Array:
@@ -107,6 +134,7 @@ func configure(room_data: Dictionary, collectible_data: Array) -> void:
     mirrors = _build_mirrors()
     special_state = {}
     special_last_hit_ms = {}
+    stroke_serial = 0
     cinematic_revealed = false
     door_target_open = false
     door_open_amount = 0.0
@@ -165,6 +193,7 @@ func reset_room() -> void:
     mirrors = _build_mirrors()
     special_state = {}
     special_last_hit_ms = {}
+    stroke_serial = 0
     for item in collectibles:
         item["found"] = false
     coverage_changed.emit(0.0)
@@ -204,6 +233,9 @@ func export_state() -> Dictionary:
                 "to": [to.x / size.x, to.y / size.y],
                 "width": float(segment.get("width", 40.0)) / reference,
                 "color": color.to_html(true),
+                "profile": str(segment.get("profile", cached_brush_profile)),
+                "seed": int(segment.get("seed", 0)),
+                "speed": clampf(float(segment.get("speed", 0.0)), 0.0, 1.0),
             })
 
     var found_ids: Array[String] = []
@@ -265,8 +297,11 @@ func restore_state(state: Dictionary) -> bool:
             segments.append({
                 "from": Vector2(float(raw_from[0]) * size.x, float(raw_from[1]) * size.y),
                 "to": Vector2(float(raw_to[0]) * size.x, float(raw_to[1]) * size.y),
-                "width": clampf(float(saved.get("width", 0.05)) * reference, 8.0, 96.0),
+                "width": clampf(float(saved.get("width", 0.05)) * reference, 8.0, 104.0),
                 "color": Color.from_string(str(saved.get("color", "72afffb8")), Color("72afffb8")),
+                "profile": str(saved.get("profile", cached_brush_profile)),
+                "seed": int(saved.get("seed", segments.size())),
+                "speed": clampf(float(saved.get("speed", 0.0)), 0.0, 1.0),
             })
 
     var found_lookup: Dictionary = {}
@@ -297,6 +332,7 @@ func restore_state(state: Dictionary) -> bool:
     var raw_special: Variant = state.get("special_state", {})
     special_state = raw_special.duplicate(true) if raw_special is Dictionary else {}
     special_last_hit_ms = {}
+    stroke_serial = segments.size()
     visual_progress = get_coverage()
     coverage_changed.emit(visual_progress)
     queue_redraw()
@@ -342,12 +378,21 @@ func _paint_line(from: Vector2, to: Vector2) -> void:
     if distance < MIN_STROKE_DISTANCE:
         return
     var speed_normalized: float = clampf(distance / 90.0, 0.0, 1.0)
-    var width: float = lerpf(54.0, 24.0, speed_normalized)
+    var width: float = lerpf(cached_brush_max_width, cached_brush_min_width, speed_normalized)
     if calm_mode:
-        width *= 1.08
+        width *= 1.06
     var color: Color = palette[paint_color_index]
-    color.a = 0.72 if calm_mode else 0.82
-    segments.append({"from": from, "to": to, "width": width, "color": color})
+    color.a = cached_brush_opacity * (0.92 if calm_mode else 1.0)
+    stroke_serial += 1
+    segments.append({
+        "from": from,
+        "to": to,
+        "width": width,
+        "color": color,
+        "profile": cached_brush_profile,
+        "seed": stroke_serial,
+        "speed": speed_normalized,
+    })
     if segments.size() > MAX_SEGMENTS:
         segments.pop_front()
 
@@ -367,10 +412,19 @@ func _paint_line(from: Vector2, to: Vector2) -> void:
     queue_redraw()
 
 func _paint_point(point: Vector2, speed_normalized: float) -> void:
-    var width: float = 48.0 if calm_mode else 40.0
+    var width: float = cached_brush_max_width * (1.02 if calm_mode else 0.92)
     var color: Color = palette[paint_color_index]
-    color.a = 0.74
-    segments.append({"from": point, "to": point, "width": width, "color": color})
+    color.a = cached_brush_opacity * 0.94
+    stroke_serial += 1
+    segments.append({
+        "from": point,
+        "to": point,
+        "width": width,
+        "color": color,
+        "profile": cached_brush_profile,
+        "seed": stroke_serial,
+        "speed": speed_normalized,
+    })
     if segments.size() > MAX_SEGMENTS:
         segments.pop_front()
     var coverage_changed_now: bool = _mark_coverage(point, width * 0.52)
@@ -486,9 +540,11 @@ func _draw() -> void:
         _:
             _draw_uncertainty_scene(base, accent, secondary)
 
+    _render_comic_finish(base, accent, secondary, style)
     _draw_door(base, accent, door_rect)
     _draw_unrevealed_vss(base, accent, secondary, style)
     _draw_paint_segments()
+    _render_brush_cursor(accent)
     _draw_collectibles(base, accent)
 
 func _draw_gradient_background(base: Color) -> void:
@@ -520,7 +576,16 @@ func _draw_room_shell(base: Color, floor: Color, accent: Color) -> void:
         Vector2(0.0, size.y), Vector2(size.x, size.y),
         Vector2(back_right, horizon_y), Vector2(back_left, horizon_y)
     ]), floor)
-    draw_line(Vector2(back_left, horizon_y), Vector2(back_right, horizon_y), Color(accent, 0.10), 2.0, true)
+    var shell_ink: Color = Color(0.008, 0.012, 0.022, 0.52 + cached_ink_strength * 0.28)
+    draw_line(Vector2(back_left, ceiling_y), Vector2(back_left, horizon_y), shell_ink, 3.0, true)
+    draw_line(Vector2(back_right, ceiling_y), Vector2(back_right, horizon_y), shell_ink, 3.0, true)
+    draw_line(Vector2(back_left, horizon_y), Vector2(back_right, horizon_y), Color(accent, 0.18), 3.0, true)
+    draw_line(Vector2(0.0, size.y), Vector2(back_left, horizon_y), shell_ink, 3.0, true)
+    draw_line(Vector2(size.x, size.y), Vector2(back_right, horizon_y), shell_ink, 3.0, true)
+    for perspective in range(1, 5):
+        var ratio: float = float(perspective) / 5.0
+        var floor_y: float = lerpf(horizon_y, size.y, ratio)
+        draw_line(Vector2(size.x * (0.12 - ratio * 0.10), floor_y), Vector2(size.x * (0.88 + ratio * 0.10), floor_y), Color(accent, 0.025 + ratio * 0.018), 1.5, true)
 
 func _door_rect() -> Rect2:
     var door_width: float = size.x * 0.22
@@ -533,10 +598,17 @@ func _draw_door(base: Color, accent: Color, rect: Rect2) -> void:
     var travel: float = half_width * 0.92 * door_open_amount
     var left_rect: Rect2 = Rect2(rect.position.x - travel, rect.position.y, half_width, rect.size.y)
     var right_rect: Rect2 = Rect2(rect.position.x + half_width + travel, rect.position.y, half_width, rect.size.y)
+    var door_ink: Color = Color(0.006, 0.010, 0.020, 0.78)
     draw_rect(left_rect, base.darkened(0.25))
     draw_rect(right_rect, base.darkened(0.29))
-    draw_line(Vector2(left_rect.end.x, rect.position.y), Vector2(left_rect.end.x, rect.end.y), Color(accent, 0.35), 2.0)
-    draw_line(Vector2(right_rect.position.x, rect.position.y), Vector2(right_rect.position.x, rect.end.y), Color(accent, 0.35), 2.0)
+    draw_rect(left_rect, door_ink, false, 4.0)
+    draw_rect(right_rect, door_ink, false, 4.0)
+    draw_line(Vector2(left_rect.end.x, rect.position.y), Vector2(left_rect.end.x, rect.end.y), Color(accent, 0.52), 2.5)
+    draw_line(Vector2(right_rect.position.x, rect.position.y), Vector2(right_rect.position.x, rect.end.y), Color(accent, 0.52), 2.5)
+    for hatch in range(4):
+        var hatch_y: float = rect.position.y + rect.size.y * (0.18 + float(hatch) * 0.18)
+        draw_line(Vector2(left_rect.position.x + 8.0, hatch_y), Vector2(left_rect.end.x - 8.0, hatch_y - 16.0), Color(accent, 0.055), 2.0, true)
+        draw_line(Vector2(right_rect.position.x + 8.0, hatch_y - 16.0), Vector2(right_rect.end.x - 8.0, hatch_y), Color(accent, 0.055), 2.0, true)
     if door_open_amount > 0.04:
         var opening: Rect2 = Rect2(rect.position.x + half_width * (1.0 - door_open_amount), rect.position.y, rect.size.x * door_open_amount, rect.size.y)
         draw_rect(opening, Color("020306"))
@@ -804,6 +876,66 @@ func _draw_rise_scene(base: Color, accent: Color, secondary: Color) -> void:
         draw_arc(light_center,size.x*(0.05+float(ring)*0.035),PI*0.15,PI*0.85,48,Color(accent if ring%2==0 else secondary,0.05+progress*0.025),3.0,true)
     draw_colored_polygon(PackedVector2Array([Vector2(size.x*0.36,size.y*0.66),Vector2(size.x*0.64,size.y*0.66),Vector2(size.x*0.54,size.y*0.22),Vector2(size.x*0.46,size.y*0.22)]),Color(accent,0.035+progress*0.08))
 
+func _render_comic_finish(base: Color, accent: Color, secondary: Color, style: String) -> void:
+    var frame_color: Color = Color(0.008, 0.012, 0.024, 0.72 + cached_ink_strength * 0.20)
+    draw_rect(Rect2(3.0, 3.0, maxf(0.0, size.x - 6.0), maxf(0.0, size.y - 6.0)), frame_color, false, COMIC_FRAME_WIDTH)
+    draw_line(Vector2(size.x * 0.12, size.y * 0.16), Vector2(size.x * 0.88, size.y * 0.16), Color(accent, 0.18 + cached_ink_strength * 0.16), 2.0, true)
+
+    var patch_alpha: float = cached_halftone_strength * (0.34 if calm_mode else 0.52)
+    _render_halftone_patch(Vector2(size.x * 0.055, size.y * 0.205), 8, 5, maxf(8.0, size.x * 0.016), Color(accent, patch_alpha), 113)
+    _render_halftone_patch(Vector2(size.x * 0.76, size.y * 0.69), 7, 5, maxf(8.0, size.x * 0.017), Color(secondary, patch_alpha * 0.78), 127)
+
+    var caption_rect: Rect2 = Rect2(size.x * 0.055, size.y * 0.175, minf(size.x * 0.52, 360.0), 38.0)
+    draw_rect(caption_rect.grow(3.0), frame_color)
+    draw_rect(caption_rect, Color(accent.darkened(0.42), 0.90))
+    draw_rect(Rect2(caption_rect.position, Vector2(7.0, caption_rect.size.y)), Color(accent, 0.92))
+    var font: Font = ThemeDB.fallback_font
+    draw_string(font, caption_rect.position + Vector2(18.0, 25.0), cached_caption.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, int(caption_rect.size.x - 24.0), 14, Color(0.95, 0.97, 1.0, 0.94))
+
+    match style:
+        "party":
+            var party_center: Vector2 = Vector2(size.x * 0.50, size.y * 0.48)
+            for ray in range(12):
+                var ray_angle: float = TAU * float(ray) / 12.0
+                draw_line(party_center + Vector2.from_angle(ray_angle) * size.x * 0.16, party_center + Vector2.from_angle(ray_angle) * size.x * 0.39, Color(accent if ray % 2 == 0 else secondary, 0.055), 3.0, true)
+        "hybrid":
+            var duel_target: Vector2 = Vector2(size.x * 0.72, size.y * 0.45)
+            for speed_line in range(8):
+                var edge: Vector2 = Vector2(0.0 if speed_line % 2 == 0 else size.x, size.y * (0.27 + float(speed_line) * 0.055))
+                draw_line(edge, duel_target, Color(secondary, 0.035 + cached_ink_strength * 0.025), 2.0, true)
+        "technophobia":
+            for misregister in range(5):
+                var y: float = size.y * (0.27 + float(misregister) * 0.095)
+                var shift: float = sin(motion_phase * 7.0 + float(misregister)) * 12.0
+                draw_line(Vector2(size.x * 0.10 + shift, y), Vector2(size.x * 0.90 + shift, y), Color(secondary, 0.055 + cached_ink_strength * 0.04), 2.0, true)
+        "ashes", "rise":
+            var radiant: Vector2 = Vector2(size.x * 0.50, size.y * 0.44)
+            for ray in range(10):
+                var ray_angle: float = TAU * float(ray) / 10.0 + motion_phase * 0.08
+                draw_line(radiant + Vector2.from_angle(ray_angle) * size.x * 0.15, radiant + Vector2.from_angle(ray_angle) * size.x * 0.42, Color(accent, 0.035 + get_normalized_progress() * 0.035), 2.0, true)
+        "waves", "uncertainty":
+            for panel_wave in range(4):
+                var wave_points: PackedVector2Array = PackedVector2Array()
+                for step in range(15):
+                    var x: float = size.x * float(step) / 14.0
+                    var y: float = size.y * (0.78 + float(panel_wave) * 0.025) + sin(float(step) * 0.72 + motion_phase * 2.0 + float(panel_wave)) * 5.0
+                    wave_points.append(Vector2(x, y))
+                draw_polyline(wave_points, Color(accent if panel_wave % 2 == 0 else secondary, 0.05), 2.0, true)
+        _:
+            pass
+
+func _render_halftone_patch(origin: Vector2, columns: int, rows: int, spacing: float, color: Color, seed: int) -> void:
+    if cached_halftone_strength <= 0.01:
+        return
+    for row in range(rows):
+        for column in range(columns):
+            var visibility: float = _hash01(column, row, seed)
+            if visibility < 0.24:
+                continue
+            var offset: Vector2 = Vector2(float(column) * spacing + float(row % 2) * spacing * 0.5, float(row) * spacing)
+            var radius: float = maxf(1.0, spacing * (0.08 + visibility * 0.08))
+            draw_circle(origin + offset, radius, Color(color, color.a * (0.56 + visibility * 0.44)))
+
 func _draw_unrevealed_vss(base: Color, accent: Color, secondary: Color, style: String) -> void:
     if cinematic_revealed:
         return
@@ -811,9 +943,11 @@ func _draw_unrevealed_vss(base: Color, accent: Color, secondary: Color, style: S
     var cell_height: float = size.y / float(GRID_HEIGHT)
     var normalized: float = get_normalized_progress()
     var negative: Color = Color(1.0-base.r,1.0-base.g,1.0-base.b)
-    var base_alpha: float = 0.26 if calm_mode else 0.36
+    var base_alpha: float = 0.30 if calm_mode else 0.43
     if style == "technophobia":
-        base_alpha += 0.09
+        base_alpha += 0.12
+    elif style == "party":
+        base_alpha -= 0.07
 
     # Merge adjacent covered cells into horizontal strips. The full-screen shader
     # still supplies fine grain, while CanvasItem draw calls drop dramatically.
@@ -838,22 +972,147 @@ func _draw_unrevealed_vss(base: Color, accent: Color, secondary: Color, style: S
                     cell_height + 1.0,
                 )
                 draw_rect(rect, Color(tint, alpha))
-                if noise > 0.74:
-                    draw_rect(Rect2(rect.position.x, rect.position.y + cell_height * 0.48, rect.size.x, 1.0), Color(1.0, 1.0, 1.0, 0.07))
+                var static_band: float = _hash01(y, int(motion_phase * 11.0), 137)
+                if noise > 0.60:
+                    draw_rect(Rect2(rect.position.x, rect.position.y + cell_height * static_band, rect.size.x, 1.0 + float(y % 2)), Color(1.0, 1.0, 1.0, 0.08 + noise * 0.05))
+                if static_band > 0.84:
+                    var spark_x: float = rect.position.x + rect.size.x * _hash01(run_start, y, 139)
+                    draw_circle(Vector2(spark_x, rect.position.y + cell_height * 0.50), 1.4 + noise * 1.8, Color(accent.lightened(0.42), 0.16))
                 run_start = -1
 
 func _draw_paint_segments() -> void:
-    for segment in segments:
-        var from_value: Variant = segment.get("from", Vector2.ZERO)
-        var to_value: Variant = segment.get("to", Vector2.ZERO)
-        var color_value: Variant = segment.get("color", Color("72afff"))
-        var from: Vector2 = from_value if from_value is Vector2 else Vector2.ZERO
-        var to: Vector2 = to_value if to_value is Vector2 else Vector2.ZERO
-        var width: float = float(segment.get("width", 40.0))
-        var color: Color = color_value if color_value is Color else Color("72afff")
-        draw_line(from, to, color, width, true)
-        draw_circle(to, width * 0.5, color)
-        draw_line(from, to, color.lightened(0.18), maxf(2.0, width * 0.10), true)
+    for index in range(segments.size()):
+        _render_brush_segment(segments[index], index)
+
+func _render_brush_segment(segment: Dictionary, segment_index: int) -> void:
+    var from_value: Variant = segment.get("from", Vector2.ZERO)
+    var to_value: Variant = segment.get("to", Vector2.ZERO)
+    var color_value: Variant = segment.get("color", Color("72afff"))
+    var from: Vector2 = from_value if from_value is Vector2 else Vector2.ZERO
+    var to: Vector2 = to_value if to_value is Vector2 else Vector2.ZERO
+    var width: float = float(segment.get("width", 40.0))
+    var color: Color = color_value if color_value is Color else Color("72afff")
+    var profile: String = str(segment.get("profile", cached_brush_profile))
+    var seed: int = int(segment.get("seed", segment_index))
+    var speed: float = clampf(float(segment.get("speed", 0.0)), 0.0, 1.0)
+    var delta: Vector2 = to - from
+    var distance: float = delta.length()
+    var angle: float = delta.angle() if distance > 0.5 else float(seed % 31) * 0.11
+    var ink: Color = Color(0.012, 0.018, 0.03, color.a * cached_brush_outline * 0.72)
+
+    if distance > 0.5:
+        draw_line(from, to, ink, width * 1.10, true)
+        draw_line(from, to, color, width * 0.88, true)
+        var tangent: Vector2 = delta.normalized()
+        var normal: Vector2 = Vector2(-tangent.y, tangent.x)
+        var bristle_count: int = 2 if calm_mode else 3
+        for bristle in range(bristle_count):
+            var jitter: float = (_hash01(seed, bristle, 41) - 0.5) * width * cached_brush_texture * 0.72
+            var taper: float = 0.08 + _hash01(seed, bristle, 57) * 0.10
+            var streak_color: Color = color.lightened(0.12 + float(bristle) * 0.04)
+            streak_color.a = color.a * (0.16 + cached_brush_texture * 0.22)
+            draw_line(from + normal * jitter, to + normal * jitter * 0.55, streak_color, maxf(1.0, width * taper), true)
+
+    var stamp_count: int = 1
+    if distance > 0.5:
+        stamp_count = clampi(int(ceil(distance / maxf(width * cached_brush_spacing, 10.0))) + 1, 2, MAX_BRUSH_STAMPS_PER_SEGMENT)
+    for stamp_index in range(stamp_count):
+        var ratio: float = 1.0 if stamp_count == 1 else float(stamp_index) / float(stamp_count - 1)
+        var center: Vector2 = from.lerp(to, ratio)
+        var stamp_seed: int = seed * 17 + stamp_index * 31
+        var rotation_jitter: float = (_hash01(stamp_seed, 3, 71) - 0.5) * 0.34 * cached_brush_texture
+        var scale_jitter: float = 0.88 + _hash01(stamp_seed, 5, 73) * 0.24
+        _render_brush_stamp(center, width * scale_jitter, color, angle + rotation_jitter, profile, stamp_seed, speed)
+
+func _render_brush_stamp(center: Vector2, width: float, color: Color, angle: float, profile: String, seed: int, speed: float) -> void:
+    var outline_color: Color = Color(0.01, 0.015, 0.028, color.a * cached_brush_outline * 0.82)
+    if profile == "glitch":
+        var block_width: float = width * (0.72 + speed * 0.34)
+        var block_height: float = maxf(4.0, width * 0.22)
+        for block in range(3):
+            var offset: Vector2 = Vector2(
+                (_hash01(seed, block, 81) - 0.5) * width * 0.74,
+                (_hash01(seed, block, 83) - 0.5) * width * 0.50,
+            )
+            var rect: Rect2 = Rect2(center + offset - Vector2(block_width, block_height) * 0.5, Vector2(block_width, block_height))
+            draw_rect(rect.grow(maxf(1.0, width * 0.035)), outline_color)
+            draw_rect(rect, Color(color, color.a * (0.60 + float(block) * 0.10)))
+        return
+
+    var points: PackedVector2Array = _brush_shape(center, width, angle, profile, seed)
+    if points.size() < 3:
+        draw_circle(center, width * 0.45, color)
+        return
+    draw_colored_polygon(points, outline_color)
+    var inner: PackedVector2Array = PackedVector2Array()
+    for point in points:
+        inner.append(center + (point - center) * 0.86)
+    draw_colored_polygon(inner, color)
+
+    if profile == "confetti":
+        for fleck in range(3):
+            var fleck_angle: float = angle + float(fleck) * 2.1 + _hash01(seed, fleck, 89)
+            var fleck_center: Vector2 = center + Vector2.from_angle(fleck_angle) * width * (0.38 + float(fleck) * 0.12)
+            draw_rect(Rect2(fleck_center - Vector2(width * 0.06, width * 0.03), Vector2(width * 0.12, width * 0.06)), Color(color.lightened(0.18), color.a * 0.78))
+    elif profile == "organic":
+        var stem: Vector2 = Vector2.from_angle(angle) * width * 0.46
+        for branch in range(2):
+            var branch_angle: float = angle + (-0.65 if branch == 0 else 0.65)
+            draw_line(center, center + stem * 0.45 + Vector2.from_angle(branch_angle) * width * 0.23, Color(color.lightened(0.14), color.a * 0.54), maxf(1.0, width * 0.045), true)
+    elif profile == "ember":
+        draw_circle(center - Vector2.from_angle(angle) * width * 0.08, width * 0.13, Color(color.lightened(0.34), color.a * 0.82))
+    elif profile == "glass":
+        draw_line(center - Vector2.from_angle(angle) * width * 0.35, center + Vector2.from_angle(angle) * width * 0.35, Color.WHITE, maxf(1.0, width * 0.035), true)
+    elif profile == "water" or profile == "soft" or profile == "luminous":
+        draw_arc(center, width * 0.43, angle - 1.35, angle + 1.35, 18, Color(color.lightened(0.28), color.a * 0.30), maxf(1.0, width * 0.045), true)
+
+func _brush_shape(center: Vector2, width: float, angle: float, profile: String, seed: int) -> PackedVector2Array:
+    var points: PackedVector2Array = PackedVector2Array()
+    var point_count: int = 10
+    var stretch: Vector2 = Vector2(0.52, 0.42)
+    if profile == "ink" or profile == "dry_ink" or profile == "wine":
+        point_count = 8
+        stretch = Vector2(0.56, 0.26 if profile == "wine" else 0.34)
+    elif profile == "confetti":
+        point_count = 12
+        stretch = Vector2(0.50, 0.50)
+    elif profile == "organic":
+        point_count = 9
+        stretch = Vector2(0.58, 0.34)
+    elif profile == "glass":
+        point_count = 6
+        stretch = Vector2(0.60, 0.30)
+    elif profile == "ember":
+        point_count = 9
+        stretch = Vector2(0.64, 0.33)
+    elif profile == "luminous":
+        point_count = 12
+        stretch = Vector2(0.48, 0.48)
+
+    for index in range(point_count):
+        var theta: float = TAU * float(index) / float(point_count)
+        var radial: float = 0.84 + (_hash01(seed, index, 97) - 0.5) * cached_brush_texture * 0.44
+        if profile == "confetti" and index % 2 == 1:
+            radial *= 0.46
+        if profile == "glass" and index % 2 == 1:
+            radial *= 0.54
+        if profile == "ember" and index == 0:
+            radial *= 1.44
+        var local: Vector2 = Vector2(cos(theta) * width * stretch.x, sin(theta) * width * stretch.y) * radial
+        points.append(center + local.rotated(angle))
+    return points
+
+func _render_brush_cursor(accent: Color) -> void:
+    if not drawing or not interaction_enabled:
+        return
+    var radius: float = cached_brush_max_width * 0.52
+    var points: PackedVector2Array = PackedVector2Array()
+    for index in range(14):
+        var theta: float = TAU * float(index) / 14.0
+        var jitter: float = 0.90 + (_hash01(stroke_serial, index, 103) - 0.5) * 0.16
+        points.append(previous_point + Vector2.from_angle(theta) * radius * jitter)
+    points.append(points[0])
+    draw_polyline(points, Color(accent.lightened(0.30), 0.48), 1.5, true)
 
 func _draw_collectibles(base: Color, accent: Color) -> void:
     var font: Font = ThemeDB.fallback_font

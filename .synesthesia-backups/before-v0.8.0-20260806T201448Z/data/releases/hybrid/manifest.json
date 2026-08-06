@@ -1,0 +1,77 @@
+{
+  "schema_version": 3,
+  "release_id": "hybrid",
+  "story_order": 5,
+  "artist": "Virya",
+  "title": "VIRYA: Hybrid",
+  "subtitle": "Cudze marzenie nie musi stać się losem dziecka. Pojedynek zaczyna się tam, gdzie kończy się posłuszeństwo.",
+  "room": {
+    "name": "Ulica ostatniego pojedynku",
+    "visual_style": "hybrid",
+    "interaction": "western_duel",
+    "base_color": "#402418",
+    "floor_color": "#1B0F0A",
+    "accent_color": "#F2B35D",
+    "secondary_color": "#D34B42",
+    "paint_palette": [
+      "#F2B35D",
+      "#FFE0A3",
+      "#D34B42",
+      "#62C6D4"
+    ],
+    "completion_coverage": 0.44,
+    "cinematic_reveal_at": 0.99
+  },
+  "sensory": {
+    "default_mode": "calm",
+    "sound_profile": "hybrid",
+    "visual_snow_calm": 0.03,
+    "visual_snow_full": 0.06,
+    "haptics_calm": 0.18,
+    "haptics_full": 0.38,
+    "safe_audio_ceiling_db": -8.0
+  },
+  "audio": {
+    "mode": "procedural_then_excerpt",
+    "title": "Hybrid",
+    "completion_excerpt": "res://assets/audio/hybrid-room-outro.mp3",
+    "completion_volume_db": -13.0,
+    "source": "VIRYA — Echoes Of The Modern Mind",
+    "note": "Short offline room completion excerpt with gentle fades."
+  },
+  "collectibles": [
+    {
+      "id": "shadow",
+      "title": "Cień",
+      "message": "Autorytet jest większy, dopóki stoi pod światło.",
+      "position": [
+        0.72,
+        0.42
+      ],
+      "symbol": "♠"
+    },
+    {
+      "id": "name",
+      "title": "Własne imię",
+      "message": "Nie jesteś przedłużeniem czyjegoś planu.",
+      "position": [
+        0.28,
+        0.62
+      ],
+      "symbol": "I"
+    },
+    {
+      "id": "stand",
+      "title": "Ostatni opór",
+      "message": "Kilka minut wystarczy, żeby nie oddać całego życia.",
+      "position": [
+        0.52,
+        0.7
+      ],
+      "symbol": "✦"
+    }
+  ],
+  "intro": "Stoisz na środku pustej ulicy jak w westernie. Zamalowuj i glitchuj przeciwnika — jedynego boga, którego dotąd znałeś.",
+  "completion_title": "Przeciwnik stracił kształt",
+  "completion_message": "Nie przejąłeś jego marzenia. Została droga, na której możesz wybrać własne."
+}
