@@ -65,6 +65,7 @@ def main() -> int:
     manifest = {
         "schema_version": 3,
         "release_id": args.release_id,
+        "story_order": 0,
         "artist": "VIRYA",
         "title": args.title,
         "subtitle": "Odkrywaj bez pośpiechu. Możesz uspokoić pokój w każdej chwili.",
@@ -78,7 +79,7 @@ def main() -> int:
             "paint_palette": ["#72AFFF", "#B99CFF", "#7FD8C9", "#F3A7C3"],
             "completion_coverage": 0.48,
             "cinematic_reveal_at": 0.99,
-            "special_interaction": "paint",
+            "interaction": "paint",
         },
         "sensory": {
             "default_mode": "calm",
@@ -89,8 +90,11 @@ def main() -> int:
             "safe_audio_ceiling_db": -7.0,
         },
         "audio": {
+            "mode": "procedural_then_excerpt",
+            "title": args.title,
             "completion_excerpt": excerpt,
-            "completion_volume_db": -8.0,
+            "completion_volume_db": -12.0,
+            "source": "VIRYA — Echoes Of The Modern Mind",
         },
         "collectibles": [
             {
@@ -115,9 +119,10 @@ def main() -> int:
                 "symbol": "◇",
             },
         ],
+        "intro": "Maluj bez pośpiechu. Pokój odpowie kolorem, ruchem i dźwiękiem.",
+        "completion_title": "Pokój został odsłonięty",
+        "completion_message": "Filtr ustąpił. Posłuchaj finału i przejdź dalej, gdy będziesz gotowy.",
     }
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
-
     entry = {
         "id": args.release_id,
         "manifest": f"res://data/releases/{args.release_id}/manifest.json",
@@ -127,11 +132,29 @@ def main() -> int:
         releases.append(entry)
     elif not 0 <= args.position <= len(releases):
         print("--position is outside the current album range", file=sys.stderr)
-        manifest_path.unlink(missing_ok=True)
         pack_dir.rmdir()
         return 6
     else:
         releases.insert(args.position, entry)
+
+    for position, indexed_entry in enumerate(releases):
+        if not isinstance(indexed_entry, dict):
+            continue
+        indexed_manifest = indexed_entry.get("manifest")
+        if not isinstance(indexed_manifest, str) or not indexed_manifest.startswith("res://"):
+            continue
+        indexed_path = root / indexed_manifest.removeprefix("res://")
+        if indexed_path == manifest_path:
+            manifest["story_order"] = position
+            indexed_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+            continue
+        if not indexed_path.is_file():
+            continue
+        indexed_data = json.loads(indexed_path.read_text())
+        if isinstance(indexed_data, dict):
+            indexed_data["story_order"] = position
+            indexed_path.write_text(json.dumps(indexed_data, ensure_ascii=False, indent=2) + "\n")
+
     if args.activate:
         index["active_release"] = args.release_id
     index_path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n")

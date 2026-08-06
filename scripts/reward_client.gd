@@ -6,6 +6,12 @@ signal room_recorded(room_id: String, next_room_index: int)
 signal album_recorded()
 signal reward_claimed(status: String, message: String)
 signal request_failed(operation: String, message: String)
+signal retry_scheduled(operation: String, attempt: int)
+signal run_invalidated()
+
+const MAX_QUEUE_SIZE: int = 32
+const MAX_RETRY_ATTEMPTS: int = 3
+const RETRY_BASE_SECONDS: float = 1.2
 
 var _api_url: String = ""
 var _campaign_slug: String = ""
@@ -18,6 +24,8 @@ var _http: HTTPRequest
 var _queue: Array[Dictionary] = []
 var _active: Dictionary = {}
 var _busy: bool = false
+var _retry_timer: Timer
+var _retry_request: Dictionary = {}
 
 func _ready() -> void:
     _http = HTTPRequest.new()
@@ -25,6 +33,12 @@ func _ready() -> void:
     _http.timeout = 15.0
     _http.request_completed.connect(_on_request_completed)
     add_child(_http)
+
+    _retry_timer = Timer.new()
+    _retry_timer.name = "SynesthesiaRewardRetry"
+    _retry_timer.one_shot = true
+    _retry_timer.timeout.connect(_on_retry_timeout)
+    add_child(_retry_timer)
 
 func configure(api_url: String, campaign_slug: String, app_version: String, install_id: String) -> void:
     _api_url = api_url.trim_suffix("/")
@@ -117,8 +131,26 @@ func claim_reward(email: String, city_slug: String, marketing_consent: bool, pol
     })
 
 func _enqueue(request_data: Dictionary) -> void:
-    _queue.append(request_data.duplicate(true))
+    var candidate: Dictionary = request_data.duplicate(true)
+    candidate["attempt"] = maxi(0, int(candidate.get("attempt", 0)))
+    var idempotency_key: String = str(candidate.get("idempotency_key", ""))
+    if not idempotency_key.is_empty() and _contains_idempotency_key(idempotency_key):
+        return
+    if _queue.size() >= MAX_QUEUE_SIZE:
+        request_failed.emit(str(candidate.get("operation", "request")), "Kolejka Sygnału jest pełna. Postęp pozostał zapisany lokalnie.")
+        return
+    _queue.append(candidate)
     _pump()
+
+func _contains_idempotency_key(idempotency_key: String) -> bool:
+    if str(_active.get("idempotency_key", "")) == idempotency_key:
+        return true
+    if str(_retry_request.get("idempotency_key", "")) == idempotency_key:
+        return true
+    for request_data in _queue:
+        if str(request_data.get("idempotency_key", "")) == idempotency_key:
+            return true
+    return false
 
 func _pump() -> void:
     if _busy or _queue.is_empty():
@@ -136,11 +168,10 @@ func _pump() -> void:
     var url: String = "%s%s" % [_api_url, str(_active.get("path", ""))]
     var error: Error = _http.request(url, headers, HTTPClient.METHOD_POST, body)
     if error != OK:
-        var operation: String = str(_active.get("operation", "request"))
+        var active_copy: Dictionary = _active.duplicate(true)
         _busy = false
         _active = {}
-        request_failed.emit(operation, "Nie udało się rozpocząć połączenia z Sygnałem.")
-        call_deferred("_pump")
+        _handle_failure(active_copy, 0, "Nie udało się rozpocząć połączenia z Sygnałem.")
 
 func _on_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
     var operation: String = str(_active.get("operation", "request"))
@@ -156,8 +187,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
         var message: String = str(parsed.get("message", "Sygnał jest chwilowo niedostępny. Postęp pozostał zapisany lokalnie."))
-        request_failed.emit(operation, message)
-        call_deferred("_pump")
+        _handle_failure(active_copy, response_code, message)
         return
 
     match operation:
@@ -182,3 +212,37 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
         _:
             request_failed.emit(operation, "Nieznana odpowiedź Sygnału.")
     call_deferred("_pump")
+
+func _handle_failure(request_data: Dictionary, response_code: int, message: String) -> void:
+    if bool(request_data.get("authorized", false)) and (response_code == 401 or response_code == 404):
+        _run_id = ""
+        _run_token = ""
+        _server_next_room_index = 0
+        _queue.clear()
+        _retry_request = {}
+        run_invalidated.emit()
+        call_deferred("start_run")
+        return
+    var attempt: int = maxi(0, int(request_data.get("attempt", 0)))
+    if _is_transient_failure(response_code) and attempt < MAX_RETRY_ATTEMPTS:
+        attempt += 1
+        request_data["attempt"] = attempt
+        _retry_request = request_data.duplicate(true)
+        _busy = true
+        var delay_seconds: float = RETRY_BASE_SECONDS * pow(2.0, float(attempt - 1))
+        _retry_timer.start(delay_seconds)
+        retry_scheduled.emit(str(request_data.get("operation", "request")), attempt)
+        return
+    request_failed.emit(str(request_data.get("operation", "request")), message)
+    call_deferred("_pump")
+
+func _is_transient_failure(response_code: int) -> bool:
+    return response_code == 0 or response_code == 408 or response_code == 425 or response_code == 429 or response_code >= 500
+
+func _on_retry_timeout() -> void:
+    var request_data: Dictionary = _retry_request.duplicate(true)
+    _retry_request = {}
+    _busy = false
+    if not request_data.is_empty():
+        _queue.push_front(request_data)
+    _pump()

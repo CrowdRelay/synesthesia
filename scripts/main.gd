@@ -19,6 +19,8 @@ var album_state: Dictionary = {}
 var current_room_index: int = 0
 var current_coverage: float = 0.0
 var room_started_ms: int = 0
+var room_elapsed_before_start_ms: int = 0
+var room_timer_running: bool = false
 var completion_announced: bool = false
 var restoring_progress: bool = false
 var transition_running: bool = false
@@ -39,6 +41,8 @@ var top_subtitle: Label
 var room_counter: Label
 var progress_label: Label
 var discovery_label: Label
+var album_progress_bar: ProgressBar
+var palette_preview: HBoxContainer
 var mode_button: Button
 var quiet_button: Button
 var haptics_button: Button
@@ -80,7 +84,11 @@ func _ready() -> void:
 
     _build_application_shell()
     _configure_reward_client()
-    _load_room(current_room_index, true)
+    if bool(album_state.get("album_completed", false)):
+        room_layer.visible = false
+        call_deferred("_show_reward_panel")
+    else:
+        _load_room(current_room_index, true)
 
 func _load_json(path: String) -> Dictionary:
     if not FileAccess.file_exists(path):
@@ -98,10 +106,10 @@ func _load_json(path: String) -> Dictionary:
 
 func _read_version() -> String:
     if not FileAccess.file_exists(VERSION_PATH):
-        return "0.6.1"
+        return "0.7.0"
     var file: FileAccess = FileAccess.open(VERSION_PATH, FileAccess.READ)
     if file == null:
-        return "0.6.1"
+        return "0.7.0"
     return file.get_as_text().strip_edges()
 
 func _build_application_shell() -> void:
@@ -174,6 +182,15 @@ func _build_top_ui() -> void:
     top_subtitle.add_theme_color_override("font_color", Color("b8c7dc"))
     content.add_child(top_subtitle)
 
+    album_progress_bar = ProgressBar.new()
+    album_progress_bar.min_value = 0.0
+    album_progress_bar.max_value = 1.0
+    album_progress_bar.value = 0.0
+    album_progress_bar.show_percentage = false
+    album_progress_bar.custom_minimum_size = Vector2(0.0, 6.0)
+    album_progress_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    content.add_child(album_progress_bar)
+
     progress_label = Label.new()
     progress_label.text = "Pokój pozostaje cichy. Dotknij obrazu."
     progress_label.add_theme_font_size_override("font_size", 12)
@@ -203,9 +220,15 @@ func _build_bottom_ui() -> void:
     discovery_label.add_theme_color_override("font_color", Color("d6e7ff"))
     content.add_child(discovery_label)
 
-    var buttons: HBoxContainer = HBoxContainer.new()
-    buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-    buttons.add_theme_constant_override("separation", 7)
+    palette_preview = HBoxContainer.new()
+    palette_preview.alignment = BoxContainer.ALIGNMENT_CENTER
+    palette_preview.add_theme_constant_override("separation", 6)
+    content.add_child(palette_preview)
+
+    var buttons: GridContainer = GridContainer.new()
+    buttons.columns = 2
+    buttons.add_theme_constant_override("h_separation", 7)
+    buttons.add_theme_constant_override("v_separation", 7)
     content.add_child(buttons)
 
     mode_button = _make_button("")
@@ -255,6 +278,8 @@ func _configure_reward_client() -> void:
     reward_client.album_recorded.connect(_on_album_recorded)
     reward_client.reward_claimed.connect(_on_reward_claimed)
     reward_client.request_failed.connect(_on_reward_request_failed)
+    reward_client.retry_scheduled.connect(_on_reward_retry_scheduled)
+    reward_client.run_invalidated.connect(_on_reward_run_invalidated)
     reward_client.start_run()
 
 func _load_room(index: int, show_intro: bool) -> void:
@@ -312,7 +337,11 @@ func _load_room(index: int, show_intro: bool) -> void:
 
     completion_announced = false
     current_coverage = 0.0
+    var elapsed_by_room_value: Variant = album_state.get("room_elapsed_ms", {})
+    var elapsed_by_room: Dictionary = elapsed_by_room_value if elapsed_by_room_value is Dictionary else {}
+    room_elapsed_before_start_ms = maxi(0, int(elapsed_by_room.get(str(manifest.get("release_id", "")), 0)))
     room_started_ms = Time.get_ticks_msec()
+    room_timer_running = true
     _update_room_copy()
     _apply_sensory_mode()
     call_deferred("_restore_room_after_layout", show_intro)
@@ -343,6 +372,7 @@ func _restore_room_after_layout(show_intro: bool) -> void:
         if room_state_value is Dictionary:
             restored = bool(room.restore_state(room_state_value))
         completion_announced = bool(saved.get("completed", false))
+        room_elapsed_before_start_ms = maxi(room_elapsed_before_start_ms, int(saved.get("elapsed_ms", 0)))
 
     room.set_calm_mode(calm_mode)
     room.set_interaction_enabled(not completion_announced)
@@ -360,6 +390,7 @@ func _restore_room_after_layout(show_intro: bool) -> void:
         progress_label.text = "%d%% obrazu odsłonięte" % mini(99, int(floor(normalized * 100.0)))
         audio_director.set_progress(normalized, found)
 
+    room_timer_running = not completion_announced
     if completion_announced:
         room.set_cinematic_reveal(true)
         room.set_door_open(true)
@@ -377,8 +408,10 @@ func _update_room_copy() -> void:
     top_title.text = str(manifest.get("title", "VIRYA: Synestezja"))
     top_subtitle.text = str(manifest.get("subtitle", ""))
     room_counter.text = "%02d / %02d" % [current_room_index + 1, release_entries.size()]
+    album_progress_bar.value = float(current_room_index) / float(maxi(1, release_entries.size() - 1))
     progress_label.text = "0% obrazu odsłonięte · maluj bez pośpiechu"
     discovery_label.text = "0/%d ślady · odkrywaj obraz spod śniegu" % _collectible_total()
+    _update_palette_preview()
 
 func _collectible_total() -> int:
     var entries_value: Variant = manifest.get("collectibles", [])
@@ -392,10 +425,7 @@ func _show_intro() -> void:
     room.set_interaction_enabled(false)
     intro_panel = _modal_panel(Vector2(560.0, 350.0))
 
-    var content: VBoxContainer = VBoxContainer.new()
-    content.alignment = BoxContainer.ALIGNMENT_CENTER
-    content.add_theme_constant_override("separation", 14)
-    intro_panel.add_child(content)
+    var content: VBoxContainer = _modal_content(intro_panel, 14)
 
     var heading: Label = _modal_heading(str(manifest.get("room", {}).get("name", "Pokój")))
     content.add_child(heading)
@@ -472,7 +502,9 @@ func _on_special_interaction(kind: String, _index: int) -> void:
 func _complete_current_room() -> void:
     if completion_announced or room == null:
         return
+    var room_elapsed_at_completion: int = _current_room_elapsed_ms()
     completion_announced = true
+    room_timer_running = false
     room.set_interaction_enabled(false)
     room.set_cinematic_reveal(true)
     room.reveal_remaining_collectibles()
@@ -494,12 +526,14 @@ func _complete_current_room() -> void:
         completed_ids.append(release_id)
     album_state["completed_room_ids"] = completed_ids
     album_state["current_room_index"] = current_room_index
-    var room_elapsed: int = maxi(0, Time.get_ticks_msec() - room_started_ms)
+    var room_elapsed: int = room_elapsed_at_completion
     var elapsed_by_room_value: Variant = album_state.get("room_elapsed_ms", {})
     var elapsed_by_room: Dictionary = elapsed_by_room_value if elapsed_by_room_value is Dictionary else {}
     elapsed_by_room[release_id] = maxi(int(elapsed_by_room.get(release_id, 0)), room_elapsed)
     album_state["room_elapsed_ms"] = elapsed_by_room
-    album_state["total_elapsed_ms"] = int(album_state.get("total_elapsed_ms", 0)) + room_elapsed
+    album_state["total_elapsed_ms"] = _sum_elapsed_ms(elapsed_by_room)
+    room_elapsed_before_start_ms = room_elapsed
+    room_started_ms = Time.get_ticks_msec()
     if current_room_index == release_entries.size() - 1:
         album_state["album_completed"] = true
     _save_album_state()
@@ -518,10 +552,7 @@ func _show_completion_panel() -> void:
         return
     completion_panel = _modal_panel(Vector2(570.0, 330.0))
 
-    var content: VBoxContainer = VBoxContainer.new()
-    content.alignment = BoxContainer.ALIGNMENT_CENTER
-    content.add_theme_constant_override("separation", 13)
-    completion_panel.add_child(content)
+    var content: VBoxContainer = _modal_content(completion_panel, 13)
 
     content.add_child(_modal_heading(str(manifest.get("completion_title", "Pokój się otworzył"))))
     content.add_child(_modal_text(str(manifest.get("completion_message", "Obraz i muzyka zostały odsłonięte."))))
@@ -606,10 +637,7 @@ func _show_reward_panel() -> void:
     snow_material.set_shader_parameter("intensity", 0.0)
 
     reward_panel = _modal_panel(Vector2(620.0, 650.0))
-    var content: VBoxContainer = VBoxContainer.new()
-    content.alignment = BoxContainer.ALIGNMENT_CENTER
-    content.add_theme_constant_override("separation", 11)
-    reward_panel.add_child(content)
+    var content: VBoxContainer = _modal_content(reward_panel, 11)
 
     content.add_child(_modal_heading("Twój Sygnał dotarł"))
     var message: Label = _modal_text(
@@ -649,7 +677,10 @@ func _show_reward_panel() -> void:
 
     reward_claim_button = _make_button("Odbierz płytę")
     reward_claim_button.pressed.connect(_submit_reward_claim)
+    reward_claim_button.disabled = not bool(album_state.get("server_album_completed", false))
     content.add_child(reward_claim_button)
+    if reward_claim_button.disabled:
+        reward_status.text = "Synchronizuję ukończenie z Sygnałem. Postęp jest bezpieczny lokalnie."
 
     var replay_button: Button = _make_button("Wróć do pierwszego pokoju")
     replay_button.pressed.connect(_restart_album_view)
@@ -663,6 +694,11 @@ func _show_reward_panel() -> void:
 func _submit_reward_claim() -> void:
     if reward_client == null:
         reward_status.text = "Sygnał jest chwilowo niedostępny. Ukończenie pozostało zapisane lokalnie."
+        return
+    if not bool(album_state.get("server_album_completed", false)):
+        reward_status.text = "Najpierw kończę synchronizację jedenastu pokojów."
+        reward_claim_button.disabled = true
+        _sync_completed_rooms_to_server(int(reward_client.get_run_state().get("next_room_index", 0)))
         return
     var email: String = reward_email.text.strip_edges()
     if not _looks_like_email(email):
@@ -723,6 +759,10 @@ func _sync_completed_rooms_to_server(next_room_index: int) -> void:
         return
     var completed_ids: Array = _array_value(album_state.get("completed_room_ids", []))
     var recorded_ids: Array = _array_value(album_state.get("server_recorded_room_ids", []))
+    if next_room_index >= release_entries.size():
+        if bool(album_state.get("album_completed", false)) and not bool(album_state.get("server_album_completed", false)):
+            reward_client.complete_album(int(album_state.get("total_elapsed_ms", 0)))
+        return
     for index in range(next_room_index, release_entries.size()):
         var entry_value: Variant = release_entries[index]
         if not entry_value is Dictionary:
@@ -751,6 +791,10 @@ func _on_album_recorded() -> void:
     album_state["server_album_completed"] = true
     _save_album_state()
     ProgressStoreScript.save_run(reward_client.get_run_state())
+    if reward_status != null:
+        reward_status.text = "Ukończenie potwierdzone. Możesz odebrać płytę."
+    if reward_claim_button != null:
+        reward_claim_button.disabled = false
 
 func _on_reward_claimed(status: String, message: String) -> void:
     ProgressStoreScript.save_reward({
@@ -768,6 +812,25 @@ func _on_reward_request_failed(operation: String, message: String) -> void:
         reward_status.text = message
         if reward_claim_button != null:
             reward_claim_button.disabled = false
+    elif progress_label != null:
+        progress_label.text = "Postęp jest bezpieczny lokalnie · synchronizacja wróci później"
+
+func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
+    var retry_text: String = "Ponawiam połączenie z Sygnałem · próba %d/3" % attempt
+    if operation == "claim_reward" and reward_status != null:
+        reward_status.text = retry_text
+    elif progress_label != null:
+        progress_label.text = retry_text
+
+func _on_reward_run_invalidated() -> void:
+    ProgressStoreScript.clear_run()
+    album_state["server_recorded_room_ids"] = []
+    album_state["server_album_completed"] = false
+    _save_album_state()
+    if reward_status != null:
+        reward_status.text = "Odnawiam bezpieczne połączenie z Sygnałem…"
+    if reward_claim_button != null:
+        reward_claim_button.disabled = true
 
 func _toggle_mode() -> void:
     calm_mode = not calm_mode
@@ -797,6 +860,7 @@ func _apply_sensory_mode() -> void:
     if room != null and is_instance_valid(room):
         normalized = float(room.get_normalized_progress())
         room.set_calm_mode(calm_mode)
+        room.set_reduced_motion(quiet_mode)
     if audio_director != null:
         audio_director.set_calm_mode(calm_mode)
         audio_director.set_quiet(quiet_mode)
@@ -832,6 +896,13 @@ func _reset_room() -> void:
     completed_ids.erase(release_id)
     album_state["completed_room_ids"] = completed_ids
     completion_announced = false
+    var elapsed_by_room_value: Variant = album_state.get("room_elapsed_ms", {})
+    var elapsed_by_room: Dictionary = elapsed_by_room_value if elapsed_by_room_value is Dictionary else {}
+    elapsed_by_room[release_id] = 0
+    album_state["room_elapsed_ms"] = elapsed_by_room
+    album_state["total_elapsed_ms"] = _sum_elapsed_ms(elapsed_by_room)
+    room_elapsed_before_start_ms = 0
+    room_timer_running = true
     _remove_modal(completion_panel)
     completion_panel = null
     room.reset_room()
@@ -857,11 +928,16 @@ func _save_progress() -> void:
     var release_id: String = str(manifest.get("release_id", ""))
     var elapsed_by_room_value: Variant = album_state.get("room_elapsed_ms", {})
     var elapsed_by_room: Dictionary = elapsed_by_room_value if elapsed_by_room_value is Dictionary else {}
+    var elapsed_ms: int = _current_room_elapsed_ms()
+    elapsed_by_room[release_id] = maxi(int(elapsed_by_room.get(release_id, 0)), elapsed_ms)
+    album_state["room_elapsed_ms"] = elapsed_by_room
+    album_state["total_elapsed_ms"] = _sum_elapsed_ms(elapsed_by_room)
     ProgressStoreScript.save_release(release_id, {
         "completed": completion_announced,
-        "elapsed_ms": maxi(0, int(elapsed_by_room.get(release_id, 0))),
+        "elapsed_ms": elapsed_ms,
         "room": room.export_state(),
     })
+    _save_album_state()
 
 func _save_album_state() -> void:
     album_state["current_room_index"] = current_room_index
@@ -879,11 +955,58 @@ func _modal_panel(size_value: Vector2) -> PanelContainer:
     panel.add_theme_stylebox_override("panel", _panel_style(PRIVATE_PANEL_COLOR, 28))
     add_child(panel)
     panel.set_anchors_preset(Control.PRESET_CENTER)
-    panel.offset_left = -size_value.x * 0.5
-    panel.offset_top = -size_value.y * 0.5
-    panel.offset_right = size_value.x * 0.5
-    panel.offset_bottom = size_value.y * 0.5
+    var viewport_size: Vector2 = get_viewport_rect().size
+    var effective_size: Vector2 = Vector2(
+        minf(size_value.x, maxf(280.0, viewport_size.x - 24.0)),
+        minf(size_value.y, maxf(260.0, viewport_size.y - 24.0)),
+    )
+    panel.offset_left = -effective_size.x * 0.5
+    panel.offset_top = -effective_size.y * 0.5
+    panel.offset_right = effective_size.x * 0.5
+    panel.offset_bottom = effective_size.y * 0.5
     return panel
+
+func _modal_content(panel: PanelContainer, separation: int) -> VBoxContainer:
+    var scroll: ScrollContainer = ScrollContainer.new()
+    scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    panel.add_child(scroll)
+    var content: VBoxContainer = VBoxContainer.new()
+    content.alignment = BoxContainer.ALIGNMENT_CENTER
+    content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    content.add_theme_constant_override("separation", separation)
+    scroll.add_child(content)
+    return content
+
+func _update_palette_preview() -> void:
+    if palette_preview == null:
+        return
+    for child in palette_preview.get_children():
+        child.queue_free()
+    var room_value: Variant = manifest.get("room", {})
+    if not room_value is Dictionary:
+        return
+    var room_data: Dictionary = room_value
+    var palette_value: Variant = room_data.get("paint_palette", [])
+    if not palette_value is Array:
+        return
+    for raw_color in palette_value:
+        var swatch: ColorRect = ColorRect.new()
+        swatch.color = Color.from_string(str(raw_color), Color("72afff"))
+        swatch.custom_minimum_size = Vector2(28.0, 7.0)
+        swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        palette_preview.add_child(swatch)
+
+func _current_room_elapsed_ms() -> int:
+    if room_started_ms <= 0 or not room_timer_running:
+        return room_elapsed_before_start_ms
+    return room_elapsed_before_start_ms + maxi(0, Time.get_ticks_msec() - room_started_ms)
+
+func _sum_elapsed_ms(elapsed_by_room: Dictionary) -> int:
+    var total: int = 0
+    for value in elapsed_by_room.values():
+        total += maxi(0, int(value))
+    return total
 
 func _modal_heading(text: String) -> Label:
     var label: Label = Label.new()
@@ -924,7 +1047,8 @@ func _panel_style(color: Color, radius: int) -> StyleBoxFlat:
 func _make_button(text: String) -> Button:
     var button: Button = Button.new()
     button.text = text
-    button.custom_minimum_size = Vector2(0.0, 46.0)
+    button.custom_minimum_size = Vector2(120.0, 46.0)
+    button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     button.add_theme_font_size_override("font_size", 12)
     button.add_theme_color_override("font_color", Color("e7f2ff"))
     button.add_theme_stylebox_override("normal", _panel_style(Color("18243aeb"), 14))

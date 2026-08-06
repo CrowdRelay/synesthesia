@@ -2,7 +2,7 @@
 
 A playable sensory edition of VIRYA's **Echoes Of The Modern Mind**, built with Godot 4.7.1.
 
-The album becomes eleven rooms. The player paints through Visual Snow, muted negative colour and room-specific distortions. Every gesture repairs or reveals part of the scene; at **99%** the remaining filter releases at once, the song excerpt enters, and the next door opens.
+The album becomes eleven rooms. The player paints through Visual Snow, muted negative colour and room-specific distortions. Every gesture repairs or reveals part of the scene; at **99%** the remaining filter releases at once, the song excerpt enters and the next door opens.
 
 ## Album route
 
@@ -11,7 +11,7 @@ The album becomes eleven rooms. The player paints through Visual Snow, muted neg
 3. **Unmasked** — a Venetian dressing room where masks leave the walls.
 4. **The Calling** — an elegant monochrome dinner with a red-wine toast.
 5. **Seed of Doubt** — a seed growing into a full tree.
-6. **Hybrid** — a Western street duel against an inherited authority figure.
+6. **Hybrid** — a Western street duel against inherited authority.
 7. **Technophobia** — screens, cables, ZZZ scan jitter and glitches repaired by paint.
 8. **Invaluable** — a mirror gallery whose panes can be cracked.
 9. **From the Ashes** — falling ash and a phoenix forming from embers.
@@ -20,24 +20,35 @@ The album becomes eleven rooms. The player paints through Visual Snow, muted neg
 
 Each room has its own palette, architecture, interaction, haptic profile and gently faded local music excerpt.
 
+## v0.7 performance and polish
+
+- adaptive rendering: full responsiveness while painting, lower idle redraw rates and a 10 Hz reduced-motion path;
+- horizontally merged VSS mask strips and a bounded retained-stroke budget;
+- batched progress events and protected repeatable interactions;
+- responsive touch geometry after phone rotation or browser resize;
+- compact mobile controls, album progress, palette preview and scrollable modals;
+- atomic progress saves with backup recovery and schema migration;
+- offline-safe reward synchronisation with bounded retries and expired-run recovery;
+- installable Web preview with a versioned service worker and cache-safe deploy headers;
+- bounded procedural audio work, Master hard limiter and room-safe delayed haptics.
+
 ## Interaction and accessibility
 
 - touch and mouse painting;
-- local reveal mask instead of a global progress bar trick;
 - restrained haptics for painting, discoveries, balloons, mirrors, duel, reveal and doors;
 - calm and full sensory modes;
 - independent haptics toggle;
-- immediate **Uspokój** control disabling music intensity, Visual Snow and vibration;
-- no strobe, jumpscares, artificial streaks, analytics, ads or forced sharing;
-- local, versioned progress for every room and the complete album route.
+- immediate **Uspokój** control reducing motion, Visual Snow, sound intensity and vibration;
+- no strobe, jumpscares, analytics, ads or forced sharing;
+- local progress for every room and the complete album route.
 
 Gameplay remains usable offline. Network access is used only for the optional completion reward.
 
 ## Completion reward
 
-After all eleven rooms, the player may claim one physical VIRYA album. The client only submits the verified run, e-mail, optional Signal consent and city. Shipping details are collected later through a separate no-store page and remain outside Signal and webhook payloads.
+After all eleven rooms, the player may claim one physical VIRYA album. The client sends the verified run, e-mail, optional Signal consent and city. Shipping details are collected later through a separate no-store page and remain outside Signal and webhook payloads.
 
-The matching CrowdRelay overlay is distributed separately. Until that backend is deployed, completion remains saved locally and the game reports the reward service as unavailable without losing progress.
+When connectivity returns, locally completed rooms are submitted in order and the album completion is finalised automatically. An expired run is replaced without deleting local gameplay progress.
 
 ## Run on macOS
 
@@ -53,7 +64,7 @@ The script uses `/Applications/Godot.app/Contents/MacOS/Godot`, `GODOT_BIN`, or 
 ./validate.sh
 ```
 
-The runtime gate fails on Godot's exit code **and** on `SCRIPT ERROR:`, `Parse Error:` or `ERROR:` in the engine log.
+The gate checks content contracts, explicit mobile performance budgets and the real Godot import/runtime. It fails on the process exit code and fatal diagnostics in the engine log.
 
 ## Web preview
 
@@ -62,19 +73,13 @@ The runtime gate fails on Godot's exit code **and** on `SCRIPT ERROR:`, `Parse E
 python3 -m http.server 8080 --directory build/web
 ```
 
-The generated static site is prepared for `https://synesthesia.virya.music`. The Web preset is single-threaded to avoid a SharedArrayBuffer dependency. The reward page is available at `/reward/`.
+The generated PWA is prepared for `https://synesthesia.virya.music`. The reward page is available at `/reward/`. The service worker uses network-first navigation/runtime assets and stale-while-revalidate for media, preventing stale deploys while keeping repeat visits fast.
 
-GitHub workflow `Web preview` builds the exact same directory and deploys it only when `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` are configured.
+GitHub workflow `Web preview` builds the same directory and deploys it only when `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` are configured.
 
 ## Build artifacts
 
-The `Build` workflow produces:
-
-- Linux x86_64 archive;
-- single-threaded Web export;
-- Android arm64 debug APK with `INTERNET` and `VIBRATE` permissions.
-
-Run it through **Actions → Build → Run workflow → all**. Tagged `v*` commits publish the artifacts as a GitHub Release.
+The `Build` workflow produces Linux x86_64, single-threaded Web and Android arm64 debug artifacts. Tagged `v*` commits publish them as a GitHub Release.
 
 ## Repository structure
 

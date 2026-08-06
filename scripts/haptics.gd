@@ -8,8 +8,10 @@ var full_amplitude: float = 0.34
 var room_style: String = "paint"
 var _last_tick_ms: int = 0
 var _last_tech_buzz_ms: int = 0
+var _pulse_generation: int = 0
 
 func configure(sensory: Dictionary, style: String = "paint") -> void:
+    _pulse_generation += 1
     calm_amplitude = float(sensory.get("haptics_calm", 0.16))
     full_amplitude = float(sensory.get("haptics_full", 0.34))
     room_style = style
@@ -18,7 +20,10 @@ func set_calm_mode(value: bool) -> void:
     calm_mode = value
 
 func set_enabled(value: bool) -> void:
+    if enabled == value:
+        return
     enabled = value
+    _pulse_generation += 1
 
 func paint_tick(speed_normalized: float) -> void:
     if not enabled:
@@ -86,6 +91,7 @@ func _pulse_after_delay(delay_ms: int, duration_ms: int, amplitude: float) -> vo
     var tree: SceneTree = get_tree()
     if tree == null:
         return
+    var generation: int = _pulse_generation
     await tree.create_timer(float(delay_ms) / 1000.0).timeout
-    if enabled:
+    if enabled and generation == _pulse_generation and is_inside_tree():
         Input.vibrate_handheld(duration_ms, amplitude)

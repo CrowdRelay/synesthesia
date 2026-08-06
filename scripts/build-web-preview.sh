@@ -37,7 +37,7 @@ run_godot_checked() {
     rm -f "$log"
     return 1
   fi
-  if grep -Eiq '(^|[[:space:]])(SCRIPT ERROR:|ERROR:|Parse Error:|Failed loading resource:)' "$log"; then
+  if grep -Eiq '(^|[[:space:]])(SCRIPT ERROR:|ERROR:|Parse Error:|Compile Error:|Failed loading resource:|Warning treated as error)' "$log"; then
     printf 'ERROR: Godot emitted a fatal diagnostic: %s\n' "$label" >&2
     rm -f "$log"
     return 1
@@ -90,5 +90,9 @@ run_godot_checked import --headless --editor --path "$ROOT" --quit
 run_godot_checked runtime-validation --headless --path "$ROOT" --script res://tests/validate_project.gd
 run_godot_checked web-export --headless --path "$ROOT" --export-release Web build/web/index.html
 cp -R web/. build/web/
+cp assets/icon.svg build/web/icon.svg
+python3 tools/postprocess_web.py
 test -s build/web/index.html
+test -s build/web/manifest.webmanifest
+test -s build/web/service-worker.js
 printf 'SYNESTHESIA_WEB_BUILD=PASS output=%s\n' "$ROOT/build/web"

@@ -46,6 +46,7 @@ jobs:
           set -euo pipefail
           python3 -m compileall -q tests tools
           python3 tests/static_validate.py
+          python3 tools/perf_budget.py
 
       - name: Install verified Godot editor
         shell: bash
@@ -86,7 +87,7 @@ jobs:
           if (( status != 0 )); then
             exit "${status}"
           fi
-          if grep -E '(^|[[:space:]])(SCRIPT ERROR:|ERROR:|Parse Error:)' "${log_file}" >/dev/null; then
+          if grep -E '(^|[[:space:]])(SCRIPT ERROR:|ERROR:|Parse Error:|Compile Error:|Failed loading resource:|Warning treated as error)' "${log_file}" >/dev/null; then
             echo "Godot import emitted an error" >&2
             exit 1
           fi

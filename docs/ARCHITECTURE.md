@@ -42,7 +42,7 @@ This deliberately removes the frustrating final-pixel hunt.
 - server run token and server acknowledgement index;
 - reward status, but never shipping details.
 
-Writes use a temporary file followed by an atomic rename. A previous single-room save is migrated when present.
+Writes use a temporary file, a short-lived backup and an atomic rename. Schema-v2 and legacy single-room saves are migrated when present; an interrupted commit can recover from the backup on the next start.
 
 ## Reward boundary
 
@@ -60,8 +60,15 @@ The server:
 - emits no address or phone in outbox payloads;
 - records optional marketing consent separately.
 
-If the network is unavailable, the application keeps playing and resynchronises already completed rooms in order when a run becomes available.
+If the network is unavailable, the application keeps playing and resynchronises completed rooms in order when a run becomes available. Once all rooms are acknowledged, it also submits the final album completion. Transient calls use bounded exponential backoff and an expired run is recreated without clearing local progress.
 
 ## Deployment boundary
 
 The Web build is static and single-threaded. `synesthesia.virya.music` may be deployed independently of `virya.music`; this prevents Godot assets, caching and security headers from affecting the Astro site.
+
+
+## Performance model
+
+The renderer keeps interaction at 60 Hz but lowers idle redraw frequency. Untouched VSS cells are merged into horizontal strips, paint history is bounded, progress events are emitted once per gesture batch, and procedural audio catch-up is capped per frame. Resize events rebuild room hit geometry without resetting interaction state.
+
+The Web build is post-processed into a small PWA. Navigation and runtime assets are network-first; media uses stale-while-revalidate; reward routes and private responses are never cached.

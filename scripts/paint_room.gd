@@ -8,7 +8,13 @@ signal special_interaction(kind: String, index: int)
 
 const GRID_WIDTH: int = 24
 const GRID_HEIGHT: int = 36
-const MAX_SEGMENTS: int = 1500
+const GRID_CELL_COUNT: int = GRID_WIDTH * GRID_HEIGHT
+const MAX_SEGMENTS: int = 720
+const MIN_STROKE_DISTANCE: float = 1.5
+const ACTIVE_REDRAW_HZ: float = 60.0
+const FULL_IDLE_REDRAW_HZ: float = 36.0
+const CALM_IDLE_REDRAW_HZ: float = 24.0
+const REDUCED_MOTION_REDRAW_HZ: float = 10.0
 const BALLOON_COUNT: int = 18
 const MIRROR_COUNT: int = 7
 
@@ -31,24 +37,56 @@ var door_open_amount: float = 0.0
 var balloons: Array[Dictionary] = []
 var mirrors: Array[Dictionary] = []
 var special_state: Dictionary = {}
+var reduced_motion: bool = false
+var redraw_accumulator: float = 0.0
+var cached_base_color: Color = Color("101827")
+var cached_floor_color: Color = Color("080c14")
+var cached_accent_color: Color = Color("71afff")
+var cached_secondary_color: Color = Color("ff6680")
+var cached_visual_style: String = "uncertainty"
+var cached_interaction: String = "paint"
+var cached_completion_threshold: float = 0.44
+var special_last_hit_ms: Dictionary = {}
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
     clip_contents = true
-    occupied.resize(GRID_WIDTH * GRID_HEIGHT)
+    occupied.resize(GRID_CELL_COUNT)
     occupied.fill(0)
-    resized.connect(queue_redraw)
+    resized.connect(_on_resized)
     set_process(true)
 
 func _process(delta: float) -> void:
-    var motion_speed: float = 0.12 if calm_mode else 0.24
-    motion_phase = fmod(motion_phase + delta * motion_speed, 1000.0)
     var target: float = 1.0 if door_target_open else 0.0
+    var door_moving: bool = not is_equal_approx(door_open_amount, target)
     door_open_amount = move_toward(door_open_amount, target, delta * 0.72)
+
+    var redraw_hz: float = CALM_IDLE_REDRAW_HZ if calm_mode else FULL_IDLE_REDRAW_HZ
+    if drawing or door_moving:
+        redraw_hz = ACTIVE_REDRAW_HZ
+    elif reduced_motion:
+        redraw_hz = REDUCED_MOTION_REDRAW_HZ
+
+    redraw_accumulator += delta
+    var redraw_interval: float = 1.0 / redraw_hz
+    if redraw_accumulator < redraw_interval:
+        return
+    var motion_speed: float = 0.12 if calm_mode else 0.24
+    if reduced_motion:
+        motion_speed *= 0.35
+    motion_phase = fmod(motion_phase + redraw_accumulator * motion_speed, 1000.0)
+    redraw_accumulator = 0.0
     queue_redraw()
 
 func configure(room_data: Dictionary, collectible_data: Array) -> void:
     manifest_room = room_data.duplicate(true)
+    cached_base_color = Color.from_string(str(room_data.get("base_color", "#101827")), Color("101827"))
+    cached_floor_color = Color.from_string(str(room_data.get("floor_color", "#080c14")), Color("080c14"))
+    cached_accent_color = Color.from_string(str(room_data.get("accent_color", "#71AFFF")), Color("71afff"))
+    cached_secondary_color = Color.from_string(str(room_data.get("secondary_color", "#FF6680")), Color("ff6680"))
+    cached_visual_style = str(room_data.get("visual_style", "uncertainty"))
+    cached_interaction = str(room_data.get("interaction", "paint"))
+    cached_completion_threshold = maxf(0.1, float(room_data.get("completion_coverage", 0.44)))
     palette.clear()
     var raw_palette: Variant = room_data.get("paint_palette", ["#72AFFF"])
     if raw_palette is Array:
@@ -68,13 +106,24 @@ func configure(room_data: Dictionary, collectible_data: Array) -> void:
     balloons = _build_balloons()
     mirrors = _build_mirrors()
     special_state = {}
+    special_last_hit_ms = {}
     cinematic_revealed = false
     door_target_open = false
     door_open_amount = 0.0
     queue_redraw()
 
 func set_calm_mode(value: bool) -> void:
+    if calm_mode == value:
+        return
     calm_mode = value
+    queue_redraw()
+
+func set_reduced_motion(value: bool) -> void:
+    if reduced_motion == value:
+        return
+    reduced_motion = value
+    redraw_accumulator = 0.0
+    queue_redraw()
 
 func set_interaction_enabled(value: bool) -> void:
     interaction_enabled = value
@@ -115,6 +164,7 @@ func reset_room() -> void:
     balloons = _build_balloons()
     mirrors = _build_mirrors()
     special_state = {}
+    special_last_hit_ms = {}
     for item in collectibles:
         item["found"] = false
     coverage_changed.emit(0.0)
@@ -128,11 +178,10 @@ func get_found_count() -> int:
     return count
 
 func get_coverage() -> float:
-    return float(occupied_count) / float(GRID_WIDTH * GRID_HEIGHT)
+    return float(occupied_count) / float(GRID_CELL_COUNT)
 
 func get_normalized_progress() -> float:
-    var threshold: float = maxf(0.1, float(manifest_room.get("completion_coverage", 0.44)))
-    return clampf(get_coverage() / threshold, 0.0, 1.0)
+    return clampf(get_coverage() / cached_completion_threshold, 0.0, 1.0)
 
 func export_state() -> Dictionary:
     var occupied_cells: Array[int] = []
@@ -247,6 +296,7 @@ func restore_state(state: Dictionary) -> bool:
     door_open_amount = 1.0 if door_target_open else 0.0
     var raw_special: Variant = state.get("special_state", {})
     special_state = raw_special.duplicate(true) if raw_special is Dictionary else {}
+    special_last_hit_ms = {}
     visual_progress = get_coverage()
     coverage_changed.emit(visual_progress)
     queue_redraw()
@@ -282,13 +332,15 @@ func _gui_input(event: InputEvent) -> void:
         accept_event()
         return
 
-    if event is InputEventScreenDrag:
+    if event is InputEventScreenDrag and drawing:
         _paint_line(previous_point, event.position)
         previous_point = event.position
         accept_event()
 
 func _paint_line(from: Vector2, to: Vector2) -> void:
     var distance: float = from.distance_to(to)
+    if distance < MIN_STROKE_DISTANCE:
+        return
     var speed_normalized: float = clampf(distance / 90.0, 0.0, 1.0)
     var width: float = lerpf(54.0, 24.0, speed_normalized)
     if calm_mode:
@@ -299,13 +351,18 @@ func _paint_line(from: Vector2, to: Vector2) -> void:
     if segments.size() > MAX_SEGMENTS:
         segments.pop_front()
 
+    var coverage_changed_now: bool = false
     var steps: int = maxi(1, int(ceil(distance / maxf(width * 0.35, 8.0))))
     for index in range(steps + 1):
         var point: Vector2 = from.lerp(to, float(index) / float(steps))
-        _mark_coverage(point, width * 0.52)
+        if _mark_coverage(point, width * 0.52):
+            coverage_changed_now = true
         _check_collectibles(point, width * 0.76)
         _check_special_interactions(point, width * 0.72)
 
+    if coverage_changed_now:
+        visual_progress = get_coverage()
+        coverage_changed.emit(visual_progress)
     paint_pulse.emit(speed_normalized)
     queue_redraw()
 
@@ -316,15 +373,19 @@ func _paint_point(point: Vector2, speed_normalized: float) -> void:
     segments.append({"from": point, "to": point, "width": width, "color": color})
     if segments.size() > MAX_SEGMENTS:
         segments.pop_front()
-    _mark_coverage(point, width * 0.52)
+    var coverage_changed_now: bool = _mark_coverage(point, width * 0.52)
     _check_collectibles(point, width)
     _check_special_interactions(point, width)
+    if coverage_changed_now:
+        visual_progress = get_coverage()
+        coverage_changed.emit(visual_progress)
     paint_pulse.emit(speed_normalized)
     queue_redraw()
 
-func _mark_coverage(point: Vector2, radius: float) -> void:
+func _mark_coverage(point: Vector2, radius: float) -> bool:
     if size.x <= 1.0 or size.y <= 1.0:
-        return
+        return false
+    var changed: bool = false
     var center_x: int = int(clampf(point.x / size.x, 0.0, 0.999) * GRID_WIDTH)
     var center_y: int = int(clampf(point.y / size.y, 0.0, 0.999) * GRID_HEIGHT)
     var radius_x: int = maxi(1, int(ceil(radius / size.x * GRID_WIDTH)))
@@ -340,9 +401,8 @@ func _mark_coverage(point: Vector2, radius: float) -> void:
             if occupied[cell_index] == 0:
                 occupied[cell_index] = 1
                 occupied_count += 1
-
-    visual_progress = get_coverage()
-    coverage_changed.emit(visual_progress)
+                changed = true
+    return changed
 
 func _check_collectibles(point: Vector2, radius: float) -> void:
     for item in collectibles:
@@ -357,8 +417,7 @@ func _check_collectibles(point: Vector2, radius: float) -> void:
             collectible_found.emit(item.duplicate(true))
 
 func _check_special_interactions(point: Vector2, radius: float) -> void:
-    var interaction: String = str(manifest_room.get("interaction", "paint"))
-    if interaction == "pop_balloons":
+    if cached_interaction == "pop_balloons":
         for index in range(balloons.size()):
             var balloon: Dictionary = balloons[index]
             if bool(balloon.get("popped", false)):
@@ -368,34 +427,34 @@ func _check_special_interactions(point: Vector2, radius: float) -> void:
             if point.distance_to(position) <= radius + balloon_radius:
                 balloons[index]["popped"] = true
                 special_interaction.emit("balloon", index)
-    elif interaction == "crack_mirrors":
+    elif cached_interaction == "crack_mirrors":
         for index in range(mirrors.size()):
             var mirror: Dictionary = mirrors[index]
             var rect: Rect2 = mirror.get("rect", Rect2())
-            if rect.grow(radius).has_point(point):
+            if rect.grow(radius).has_point(point) and _special_hit_allowed("mirror-%d" % index, 95):
                 var old_crack: float = float(mirror.get("crack", 0.0))
                 var new_crack: float = minf(1.0, old_crack + 0.34)
                 mirrors[index]["crack"] = new_crack
                 if old_crack < 0.99 and new_crack >= 0.99:
                     special_interaction.emit("mirror", index)
-    elif interaction == "toast_table":
+    elif cached_interaction == "toast_table":
         if point.distance_to(Vector2(size.x * 0.5, size.y * 0.64)) <= radius + size.x * 0.12:
             if not bool(special_state.get("toast", false)):
                 special_state["toast"] = true
                 special_interaction.emit("toast", 0)
-    elif interaction == "western_duel":
-        if point.distance_to(Vector2(size.x * 0.72, size.y * 0.45)) <= radius + size.x * 0.12:
+    elif cached_interaction == "western_duel":
+        if point.distance_to(Vector2(size.x * 0.72, size.y * 0.45)) <= radius + size.x * 0.12 and _special_hit_allowed("duel", 140):
             var duel_hits: int = int(special_state.get("duel_hits", 0)) + 1
             special_state["duel_hits"] = duel_hits
             if duel_hits == 4:
                 special_interaction.emit("duel", 0)
 
 func _draw() -> void:
-    var base: Color = Color.from_string(str(manifest_room.get("base_color", "#101827")), Color("101827"))
-    var floor: Color = Color.from_string(str(manifest_room.get("floor_color", "#080c14")), Color("080c14"))
-    var accent: Color = Color.from_string(str(manifest_room.get("accent_color", "#71AFFF")), Color("71afff"))
-    var secondary: Color = Color.from_string(str(manifest_room.get("secondary_color", "#FF6680")), Color("ff6680"))
-    var style: String = str(manifest_room.get("visual_style", "uncertainty"))
+    var base: Color = cached_base_color
+    var floor: Color = cached_floor_color
+    var accent: Color = cached_accent_color
+    var secondary: Color = cached_secondary_color
+    var style: String = cached_visual_style
 
     _draw_gradient_background(base)
     _draw_room_shell(base, floor, accent)
@@ -555,7 +614,7 @@ func _draw_venetian_mask(center: Vector2, radius: float, color: Color, alpha: fl
         draw_circle(jp, 2.3 + float((seed+jewel)%2), Color(color.lightened(0.45),0.62*alpha))
 
 func base_color_for_mask() -> Color:
-    return Color.from_string(str(manifest_room.get("base_color", "#101827")), Color("101827")).darkened(0.35)
+    return cached_base_color.darkened(0.35)
 
 func _draw_calling_scene(base: Color, accent: Color, secondary: Color) -> void:
     var table: Rect2 = Rect2(size.x*0.17,size.y*0.54,size.x*0.66,size.y*0.18)
@@ -755,32 +814,46 @@ func _draw_unrevealed_vss(base: Color, accent: Color, secondary: Color, style: S
     var base_alpha: float = 0.26 if calm_mode else 0.36
     if style == "technophobia":
         base_alpha += 0.09
+
+    # Merge adjacent covered cells into horizontal strips. The full-screen shader
+    # still supplies fine grain, while CanvasItem draw calls drop dramatically.
     for y in range(GRID_HEIGHT):
-        for x in range(GRID_WIDTH):
-            var index: int = y*GRID_WIDTH+x
-            if occupied[index] != 0:
-                continue
-            var noise: float = _hash01(x,y,int(motion_phase*3.0))
-            var slow: float = 0.82+sin(motion_phase*3.0+float(x)*0.31+float(y)*0.17)*0.10
-            var tint: Color = negative.lerp(accent if (x+y)%5==0 else secondary,0.12+noise*0.10)
-            var alpha: float = base_alpha*slow*(0.86+noise*0.18)*(1.0-normalized*0.18)
-            draw_rect(Rect2(float(x)*cell_width,float(y)*cell_height,cell_width+1.0,cell_height+1.0),Color(tint,alpha))
-            if noise > 0.86:
-                draw_rect(Rect2(float(x)*cell_width,float(y)*cell_height+cell_height*0.48,cell_width+1.0,1.0),Color.WHITE*Color(1,1,1,0.08))
+        var run_start: int = -1
+        for x in range(GRID_WIDTH + 1):
+            var is_hidden: bool = false
+            if x < GRID_WIDTH:
+                is_hidden = occupied[y * GRID_WIDTH + x] == 0
+            if is_hidden and run_start < 0:
+                run_start = x
+            elif not is_hidden and run_start >= 0:
+                var run_length: int = x - run_start
+                var noise: float = _hash01(run_start, y, int(motion_phase * 3.0))
+                var slow: float = 0.84 + sin(motion_phase * 3.0 + float(y) * 0.19) * 0.09
+                var tint: Color = negative.lerp(accent if y % 5 == 0 else secondary, 0.12 + noise * 0.08)
+                var alpha: float = base_alpha * slow * (0.88 + noise * 0.14) * (1.0 - normalized * 0.18)
+                var rect: Rect2 = Rect2(
+                    float(run_start) * cell_width,
+                    float(y) * cell_height,
+                    float(run_length) * cell_width + 1.0,
+                    cell_height + 1.0,
+                )
+                draw_rect(rect, Color(tint, alpha))
+                if noise > 0.74:
+                    draw_rect(Rect2(rect.position.x, rect.position.y + cell_height * 0.48, rect.size.x, 1.0), Color(1.0, 1.0, 1.0, 0.07))
+                run_start = -1
 
 func _draw_paint_segments() -> void:
     for segment in segments:
-        var from_value: Variant = segment.get("from",Vector2.ZERO)
-        var to_value: Variant = segment.get("to",Vector2.ZERO)
-        var color_value: Variant = segment.get("color",Color("72afff"))
+        var from_value: Variant = segment.get("from", Vector2.ZERO)
+        var to_value: Variant = segment.get("to", Vector2.ZERO)
+        var color_value: Variant = segment.get("color", Color("72afff"))
         var from: Vector2 = from_value if from_value is Vector2 else Vector2.ZERO
         var to: Vector2 = to_value if to_value is Vector2 else Vector2.ZERO
-        var width: float = float(segment.get("width",40.0))
+        var width: float = float(segment.get("width", 40.0))
         var color: Color = color_value if color_value is Color else Color("72afff")
-        draw_line(from,to,color,width,true)
-        draw_circle(from,width*0.5,color)
-        draw_circle(to,width*0.5,color)
-        draw_line(from,to,color.lightened(0.18),maxf(2.0,width*0.11),true)
+        draw_line(from, to, color, width, true)
+        draw_circle(to, width * 0.5, color)
+        draw_line(from, to, color.lightened(0.18), maxf(2.0, width * 0.10), true)
 
 func _draw_collectibles(base: Color, accent: Color) -> void:
     var font: Font = ThemeDB.fallback_font
@@ -817,6 +890,35 @@ func _build_mirrors() -> Array[Dictionary]:
         var rect: Rect2 = Rect2(width*(0.10+float(col)*0.205),height*(0.22+float(row)*0.25),width*0.145,height*0.19)
         result.append({"rect":rect,"crack":0.0})
     return result
+
+func _on_resized() -> void:
+    if size.x <= 1.0 or size.y <= 1.0:
+        return
+    var popped_lookup: Dictionary = {}
+    for index in range(balloons.size()):
+        if bool(balloons[index].get("popped", false)):
+            popped_lookup[index] = true
+    var crack_lookup: Dictionary = {}
+    for index in range(mirrors.size()):
+        crack_lookup[index] = float(mirrors[index].get("crack", 0.0))
+
+    balloons = _build_balloons()
+    for index in range(balloons.size()):
+        if popped_lookup.has(index):
+            balloons[index]["popped"] = true
+    mirrors = _build_mirrors()
+    for index in range(mirrors.size()):
+        if crack_lookup.has(index):
+            mirrors[index]["crack"] = float(crack_lookup[index])
+    queue_redraw()
+
+func _special_hit_allowed(key: String, cooldown_ms: int) -> bool:
+    var now: int = Time.get_ticks_msec()
+    var previous: int = int(special_last_hit_ms.get(key, -cooldown_ms))
+    if now - previous < cooldown_ms:
+        return false
+    special_last_hit_ms[key] = now
+    return true
 
 func _hash01(x: int, y: int, seed: int) -> float:
     var value: int = x*73856093

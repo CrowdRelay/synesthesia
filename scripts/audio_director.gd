@@ -1,8 +1,9 @@
 extends Node
 class_name SynesthesiaAudioDirector
 
-const MIX_RATE := 22050
-const TAU_F := TAU
+const MIX_RATE: int = 22050
+const MAX_GENERATED_FRAMES_PER_TICK: int = 2048
+const TAU_F: float = TAU
 
 var _player: AudioStreamPlayer
 var _release_player: AudioStreamPlayer
@@ -95,7 +96,7 @@ func get_release_title() -> String:
 
 func _process(delta: float) -> void:
     if _playback != null:
-        var frames: int = _playback.get_frames_available()
+        var frames: int = mini(_playback.get_frames_available(), MAX_GENERATED_FRAMES_PER_TICK)
         for _frame in range(frames):
             _push_audio_frame()
 

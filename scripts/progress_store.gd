@@ -1,9 +1,11 @@
 extends RefCounted
 class_name SynesthesiaProgressStore
 
-const SAVE_PATH: String = "user://synesthesia-progress-v2.json"
+const SAVE_PATH: String = "user://synesthesia-progress-v3.json"
+const PREVIOUS_SAVE_PATH: String = "user://synesthesia-progress-v2.json"
 const LEGACY_SAVE_PATH: String = "user://synesthesia-progress-v1.json"
-const SCHEMA_VERSION: int = 2
+const BACKUP_PATH: String = "user://synesthesia-progress-v3.backup.json"
+const SCHEMA_VERSION: int = 3
 
 static func load_release(release_id: String) -> Dictionary:
     if release_id.is_empty():
@@ -122,8 +124,9 @@ static func _blank_document() -> Dictionary:
     }
 
 static func _load_document() -> Dictionary:
+    _recover_backup_if_needed()
     if not FileAccess.file_exists(SAVE_PATH):
-        return _migrate_legacy()
+        return _migrate_previous()
     var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.READ)
     if file == null:
         return _blank_document()
@@ -143,38 +146,65 @@ static func _load_document() -> Dictionary:
         document["reward"] = {}
     return document
 
-static func _migrate_legacy() -> Dictionary:
+static func _migrate_previous() -> Dictionary:
     var document: Dictionary = _blank_document()
-    if not FileAccess.file_exists(LEGACY_SAVE_PATH):
-        return document
-    var file: FileAccess = FileAccess.open(LEGACY_SAVE_PATH, FileAccess.READ)
-    if file == null:
-        return document
-    var parsed: Variant = JSON.parse_string(file.get_as_text())
-    if parsed is Dictionary:
+    for source_path in [PREVIOUS_SAVE_PATH, LEGACY_SAVE_PATH]:
+        if not FileAccess.file_exists(source_path):
+            continue
+        var file: FileAccess = FileAccess.open(source_path, FileAccess.READ)
+        if file == null:
+            continue
+        var parsed: Variant = JSON.parse_string(file.get_as_text())
+        if not parsed is Dictionary:
+            continue
         var old_document: Dictionary = parsed
-        var releases_value: Variant = old_document.get("releases", {})
-        if releases_value is Dictionary:
-            document["releases"] = releases_value.duplicate(true)
-    _write_document(document)
+        for key in ["install_id", "releases", "album", "run", "reward"]:
+            var value: Variant = old_document.get(key)
+            if value == null:
+                continue
+            if value is Dictionary or value is Array:
+                document[key] = value.duplicate(true)
+            else:
+                document[key] = value
+        _write_document(document)
+        return document
     return document
+
+static func _recover_backup_if_needed() -> void:
+    if FileAccess.file_exists(SAVE_PATH) or not FileAccess.file_exists(BACKUP_PATH):
+        return
+    var recovery_error: Error = DirAccess.rename_absolute(BACKUP_PATH, SAVE_PATH)
+    if recovery_error != OK:
+        push_warning("Could not recover Synestezja progress backup")
 
 static func _write_document(document: Dictionary) -> bool:
     document["schema_version"] = SCHEMA_VERSION
+    document["updated_at_unix"] = int(Time.get_unix_time_from_system())
     var temporary_path: String = "%s.tmp" % SAVE_PATH
+    if FileAccess.file_exists(temporary_path):
+        DirAccess.remove_absolute(temporary_path)
     var file: FileAccess = FileAccess.open(temporary_path, FileAccess.WRITE)
     if file == null:
         push_warning("Could not write local Synestezja progress")
         return false
-    file.store_string(JSON.stringify(document, "  "))
+    file.store_string(JSON.stringify(document))
     file.close()
+
+    if FileAccess.file_exists(BACKUP_PATH):
+        DirAccess.remove_absolute(BACKUP_PATH)
     if FileAccess.file_exists(SAVE_PATH):
-        var remove_error: Error = DirAccess.remove_absolute(SAVE_PATH)
-        if remove_error != OK:
-            push_warning("Could not replace local Synestezja progress")
+        var backup_error: Error = DirAccess.rename_absolute(SAVE_PATH, BACKUP_PATH)
+        if backup_error != OK:
+            push_warning("Could not create Synestezja progress backup")
+            DirAccess.remove_absolute(temporary_path)
             return false
+
     var rename_error: Error = DirAccess.rename_absolute(temporary_path, SAVE_PATH)
     if rename_error != OK:
         push_warning("Could not commit local Synestezja progress")
+        if FileAccess.file_exists(BACKUP_PATH):
+            DirAccess.rename_absolute(BACKUP_PATH, SAVE_PATH)
         return false
+    if FileAccess.file_exists(BACKUP_PATH):
+        DirAccess.remove_absolute(BACKUP_PATH)
     return true

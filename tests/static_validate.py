@@ -51,11 +51,17 @@ REQUIRED_FILES = [
     "data/release_index.json",
     "web/reward/index.html",
     "web/_headers",
+    "web/register-sw.js",
+    "web/service-worker.js",
+    "web/manifest.webmanifest",
+    "tools/postprocess_web.py",
+    "tools/perf_budget.py",
+    "tools/new_release_pack.py",
     ".github/workflows/ci.yml",
     ".github/workflows/build.yml",
     ".github/workflows/deploy-web.yml",
 ]
-MANIFEST_KEYS = {"schema_version", "release_id", "room", "sensory", "collectibles", "audio"}
+MANIFEST_KEYS = {"schema_version", "release_id", "story_order", "artist", "title", "subtitle", "room", "sensory", "collectibles", "audio", "intro", "completion_title", "completion_message"}
 
 
 def fail(message: str, failures: list[str]) -> None:
@@ -74,7 +80,7 @@ def load_json(path: Path, failures: list[str]) -> dict:
     return value
 
 
-def validate_manifest(path: Path, expected_id: str, failures: list[str]) -> None:
+def validate_manifest(path: Path, expected_id: str, expected_order: int, failures: list[str]) -> None:
     manifest = load_json(path, failures)
     if not manifest:
         return
@@ -85,6 +91,8 @@ def validate_manifest(path: Path, expected_id: str, failures: list[str]) -> None
         fail(f"{expected_id}: schema_version must equal 3", failures)
     if manifest.get("release_id") != expected_id:
         fail(f"{expected_id}: release_id mismatch", failures)
+    if manifest.get("story_order") != expected_order:
+        fail(f"{expected_id}: story_order must equal {expected_order}", failures)
 
     room = manifest.get("room")
     if not isinstance(room, dict):
@@ -157,11 +165,11 @@ def validate() -> list[str]:
             fail(f"missing file: {relative}", failures)
 
     version = (ROOT / "VERSION").read_text().strip() if (ROOT / "VERSION").is_file() else ""
-    if version != "0.6.1":
-        fail("VERSION must equal 0.6.1", failures)
+    if version != "0.7.0":
+        fail("VERSION must equal 0.7.0", failures)
     project = (ROOT / "project.godot").read_text()
-    if 'config/version="0.6.1"' not in project:
-        fail("project.godot version must equal 0.6.1", failures)
+    if 'config/version="0.7.0"' not in project:
+        fail("project.godot version must equal 0.7.0", failures)
 
     index = load_json(ROOT / "data/release_index.json", failures)
     releases = index.get("releases") if index else None
@@ -179,7 +187,7 @@ def validate() -> list[str]:
     elif reward.get("api_url") != "https://signal-api.virya.music":
         fail("reward API must use signal-api.virya.music", failures)
 
-    for entry in releases:
+    for expected_order, entry in enumerate(releases):
         if not isinstance(entry, dict):
             fail("release index entry must be an object", failures)
             continue
@@ -194,7 +202,7 @@ def validate() -> list[str]:
         if not path.is_file():
             fail(f"{release_id}: indexed manifest missing", failures)
             continue
-        validate_manifest(path, release_id, failures)
+        validate_manifest(path, release_id, expected_order, failures)
 
     export_presets = (ROOT / "export_presets.cfg").read_text()
     for preset_name in ('name="Linux"', 'name="Web"', 'name="Android Debug"'):
@@ -209,11 +217,15 @@ def validate() -> list[str]:
         fail("Web preview must remain single-threaded", failures)
 
     bus_layout = (ROOT / "default_bus_layout.tres").read_text()
-    if '[gd_resource type="AudioBusLayout" format=3]' not in bus_layout:
+    if not re.search(r'^\[gd_resource type=\"AudioBusLayout\"(?: load_steps=\d+)? format=3\]$', bus_layout, re.MULTILINE):
         fail("audio bus layout must declare AudioBusLayout", failures)
     for bus_name in ("Music", "Room", "Sensory", "UI"):
         if f'&"{bus_name}"' not in bus_layout:
             fail(f"missing audio bus: {bus_name}", failures)
+    if 'type="AudioEffectHardLimiter"' not in bus_layout:
+        fail("Master bus must include AudioEffectHardLimiter", failures)
+    if 'bus/0/effect/0/enabled = true' not in bus_layout:
+        fail("Master hard limiter must be enabled", failures)
 
     scripts = {path.name: path.read_text(errors="replace") for path in (ROOT / "scripts").glob("*.gd")}
     all_source = "\n".join(scripts.values()) + (ROOT / "shaders/visual_snow.gdshader").read_text()
@@ -232,6 +244,10 @@ def validate() -> list[str]:
         fail("room restoration must use explicit bool typing", failures)
     if 'album_state.get("room_elapsed_ms", {})' not in main_source:
         fail("offline room completion sync must preserve elapsed time", failures)
+    if "if next_room_index >= release_entries.size():" not in main_source or "reward_client.complete_album" not in main_source:
+        fail("offline album completion must finalize after reconnect", failures)
+    if "func _on_reward_run_invalidated()" not in main_source:
+        fail("expired reward runs must recover without losing local progress", failures)
     for forbidden in (
         "var room: SynesthesiaPaintRoom",
         "var audio_director: SynesthesiaAudioDirector",
@@ -241,6 +257,20 @@ def validate() -> list[str]:
             fail(f"main scene must not depend on editor class cache: {forbidden}", failures)
 
     paint_source = scripts.get("paint_room.gd", "")
+    for performance_contract in (
+        "MAX_SEGMENTS: int = 720",
+        "ACTIVE_REDRAW_HZ: float = 60.0",
+        "REDUCED_MOTION_REDRAW_HZ: float = 10.0",
+        "func _on_resized() -> void:",
+        "func _special_hit_allowed",
+        "for x in range(GRID_WIDTH + 1)",
+    ):
+        if performance_contract not in paint_source:
+            fail(f"paint performance contract missing: {performance_contract}", failures)
+    if "coverage_changed.emit(visual_progress)" not in paint_source:
+        fail("paint coverage must emit progress after batched cell updates", failures)
+    if "if event is InputEventScreenDrag and drawing:" not in paint_source:
+        fail("touch drags must require an active touch", failures)
     custom_draw_helpers = re.findall(r"(?m)^func (draw_[A-Za-z0-9_]+)\(", paint_source)
     if custom_draw_helpers:
         fail(
@@ -263,6 +293,33 @@ def validate() -> list[str]:
     for method in ("special", "cinematic_reveal", "door_open"):
         if f"func {method}" not in haptics_source:
             fail(f"missing haptic pattern: {method}", failures)
+    if "_pulse_generation" not in haptics_source:
+        fail("delayed haptics must be cancelled when rooms change", failures)
+
+    reward_source = scripts.get("reward_client.gd", "")
+    for contract in ("MAX_RETRY_ATTEMPTS: int = 3", "_contains_idempotency_key", "_is_transient_failure"):
+        if contract not in reward_source:
+            fail(f"reward resilience contract missing: {contract}", failures)
+
+    progress_source = scripts.get("progress_store.gd", "")
+    if 'value.duplicate(true) if value is Dictionary or value is Array else value' in progress_source:
+        fail("progress migration must avoid compound Variant inference", failures)
+    for contract in ("synesthesia-progress-v3.json", "SCHEMA_VERSION: int = 3", "BACKUP_PATH", "_recover_backup_if_needed"):
+        if contract not in progress_source:
+            fail(f"progress durability contract missing: {contract}", failures)
+
+    generator_source = (ROOT / "tools/new_release_pack.py").read_text()
+    for contract in ('"story_order": 0', '"interaction": "paint"', 'indexed_data["story_order"] = position'):
+        if contract not in generator_source:
+            fail(f"room scaffold contract missing: {contract}", failures)
+
+    ci_source = (ROOT / ".github/workflows/ci.yml").read_text()
+    for diagnostic in ("Compile Error:", "Failed loading resource:", "Warning treated as error"):
+        if diagnostic not in ci_source:
+            fail(f"CI fatal diagnostic gate missing: {diagnostic}", failures)
+
+    if "MAX_GENERATED_FRAMES_PER_TICK: int = 2048" not in scripts.get("audio_director.gd", ""):
+        fail("procedural audio must cap catch-up work per frame", failures)
 
     web_build = (ROOT / "scripts/build-web-preview.sh").read_text()
     for contract in (
@@ -272,6 +329,16 @@ def validate() -> list[str]:
     ):
         if contract not in web_build:
             fail(f"verified web build contract missing: {contract}", failures)
+    for contract in ("tools/postprocess_web.py", "build/web/manifest.webmanifest", "build/web/service-worker.js"):
+        if contract not in web_build:
+            fail(f"PWA build contract missing: {contract}", failures)
+    service_worker = (ROOT / "web/service-worker.js").read_text()
+    if "networkFirst" not in service_worker or "CACHE_NAME" not in service_worker:
+        fail("service worker must use versioned network-first caching", failures)
+    headers = (ROOT / "web/_headers").read_text()
+    if "/index.html" not in headers or "no-cache, no-store" not in headers:
+        fail("web entrypoint must not be cached across deploys", failures)
+
     deploy_workflow = (ROOT / ".github/workflows/deploy-web.yml").read_text()
     if "netlify-cli@27.0.1" not in deploy_workflow:
         fail("Netlify CLI must remain version-pinned", failures)

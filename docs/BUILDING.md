@@ -23,7 +23,7 @@ GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot ./validate.sh
 ./validate.sh
 ```
 
-Static validation checks all eleven manifests, their exact order, excerpts, sensory bounds, renderers, permissions, Web deployment files and reward contracts. Runtime validation asks Godot to load every script, every manifest, every excerpt and the main scene. The shell gate also rejects engine error text even when Godot exits with code zero.
+Static validation checks all eleven manifests, their exact order, excerpts, sensory bounds, renderers, permissions, Web deployment files, reward contracts and explicit mobile performance budgets. Runtime validation asks Godot to load every script, every manifest, every excerpt and the main scene. The shell gate also rejects engine error text even when Godot exits with code zero.
 
 ## Web preview
 
@@ -39,7 +39,9 @@ The build script:
 3. installs matching export templates when necessary;
 4. runs static and runtime import gates;
 5. exports the single-threaded Web preset;
-6. copies the static reward page and Netlify headers.
+6. copies the static reward page and Netlify headers;
+7. injects the PWA manifest and service-worker registration;
+8. writes `asset-report.txt` for deploy inspection.
 
 Output: `build/web/`.
 
@@ -70,3 +72,12 @@ No CrowdRelay secret is needed in the client. The API is public, while run opera
 ## Domain
 
 Create a separate Netlify site from this repository, use `build/web` as the publish directory, then attach `synesthesia.virya.music`. Add `https://synesthesia.virya.music` to CrowdRelay's allowed CORS origins before enabling real reward claims.
+
+
+## Performance budget
+
+```bash
+python3 tools/perf_budget.py
+```
+
+The budget prevents accidental regressions in retained paint segments, idle redraw frequency, reduced-motion frequency and VSS strip merging.

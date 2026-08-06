@@ -1,11 +1,23 @@
 # Changelog
 
+## 0.7.0 — Polish, performance and resilience
+
+- Added adaptive redraw scheduling: 60 Hz while painting or opening doors, 24–36 Hz while idle and 10 Hz in reduced-motion mode.
+- Merged untouched VSS cells into horizontal strips and reduced the retained stroke budget, cutting the dominant CanvasItem draw-call load.
+- Batched coverage notifications per gesture and rate-limited repeatable room interactions.
+- Rebuilt balloon and mirror hit geometry after viewport resize or orientation changes.
+- Added a compact two-column mobile control layout, album progress indicator, palette preview and scrollable responsive modals.
+- Added durable per-room elapsed time, atomic schema-v3 progress writes and recovery from a previous save backup.
+- Added bounded, deduplicated CrowdRelay requests with retry/backoff, expired-run recovery and automatic album finalisation after reconnect.
+- Added a versioned PWA service worker, install manifest, cache-safe Netlify headers and a post-build asset report.
+- Capped procedural audio catch-up work, added a Master hard limiter and cancelled delayed haptic pulses when sensory state changes.
+- Added explicit mobile performance budgets and regression contracts to CI.
+
 ## 0.6.1 — Godot 4.7.1 renderer hotfix
 
 - Removed the custom `draw_ellipse` helper that collided with the native `CanvasItem.draw_ellipse` introduced in Godot 4.7.
 - Switched mask eyes and The Calling table to the native major/minor ellipse signature.
 - Added a static regression gate forbidding custom `draw_*` helpers in the room renderer.
-- Kept all eleven rooms, audio excerpts, reward flow, haptics and web deployment contracts unchanged.
 
 ## 0.6.0 — Echoes Of The Modern Mind
 
@@ -19,7 +31,6 @@
 - Added differentiated mobile haptic patterns and a persistent haptics toggle.
 - Added a single-threaded Web export and Netlify-ready preview for `synesthesia.virya.music`.
 - Added the optional CrowdRelay completion reward client and a separate no-store shipping form.
-- Added static contracts for room order, renderers, audio, reward flow, permissions, domain and offline recovery.
 
 ## 0.3.1 — Parser hotfix
 
