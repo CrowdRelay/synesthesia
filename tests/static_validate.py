@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_FILES = [
     "project.godot",
+    "export_presets.cfg",
     "scenes/main.tscn",
     "scripts/main.gd",
     "scripts/paint_room.gd",
@@ -132,6 +133,22 @@ def validate() -> list[str]:
     )
     if "Input.vibrate_handheld" not in source_text:
         fail("haptics contract is missing", failures)
+
+    export_presets = (ROOT / "export_presets.cfg").read_text()
+    for preset_name in ('name="Linux"', 'name="Web"', 'name="Android Debug"'):
+        if preset_name not in export_presets:
+            fail(f"missing export preset: {preset_name}", failures)
+    if 'permissions/vibrate=true' not in export_presets:
+        fail("Android export must declare the VIBRATE permission", failures)
+    if 'permissions/internet=true' in export_presets:
+        fail("offline prototype must not request Android INTERNET permission", failures)
+    if 'package/unique_name="music.virya.synesthesia"' not in export_presets:
+        fail("unexpected Android package identifier", failures)
+
+    repo_root = ROOT.parent
+    for relative in ('.github/workflows/ci.yml', '.github/workflows/build.yml'):
+        if not (repo_root / relative).is_file():
+            fail(f"missing repository workflow: {relative}", failures)
 
     project_config = (ROOT / "project.godot").read_text()
     if "pointing/emulate_touch_from_mouse=true" in project_config or "pointing/emulate_mouse_from_touch=true" in project_config:
