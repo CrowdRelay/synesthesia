@@ -1,4 +1,0 @@
-assets/audio/README.md
-assets/audio/technophobia-room-outro.mp3
-run-macos.sh
-scripts/progress_store.gd

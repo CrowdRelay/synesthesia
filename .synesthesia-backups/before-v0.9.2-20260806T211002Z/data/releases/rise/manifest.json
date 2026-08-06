@@ -1,0 +1,99 @@
+{
+  "schema_version": 3,
+  "release_id": "rise",
+  "story_order": 10,
+  "artist": "Virya",
+  "title": "VIRYA: Rise",
+  "subtitle": "Nie każdy powrót jest triumfem. Czasem wystarczy odrobinę więcej światła.",
+  "room": {
+    "name": "Atrium światła",
+    "visual_style": "rise",
+    "interaction": "rise_atrium",
+    "base_color": "#23183D",
+    "floor_color": "#0E0A19",
+    "accent_color": "#FFD56D",
+    "secondary_color": "#FF7E6D",
+    "paint_palette": [
+      "#FFD56D",
+      "#FF9E6D",
+      "#D9A0FF",
+      "#FFF3CA"
+    ],
+    "completion_coverage": 0.44,
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "luminous",
+      "min_width": 26,
+      "max_width": 62,
+      "opacity": 0.78,
+      "texture": 0.48,
+      "outline": 0.58,
+      "spacing": 0.66
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "WYJDŹ DO ŚWIATŁA",
+      "ink_strength": 0.68,
+      "halftone_strength": 0.22
+    }
+  },
+  "sensory": {
+    "default_mode": "calm",
+    "sound_profile": "rise",
+    "visual_snow_calm": 0.018,
+    "visual_snow_full": 0.036,
+    "haptics_calm": 0.13,
+    "haptics_full": 0.27,
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#FFF3B8",
+    "scanline_strength": 0.22,
+    "roll_strength": 0.16,
+    "sparkle_density": 0.34,
+    "horizontal_jitter": 0.06,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
+  },
+  "audio": {
+    "mode": "procedural_then_excerpt",
+    "title": "Rise",
+    "completion_excerpt": "res://assets/audio/rise-room-outro.mp3",
+    "completion_volume_db": -13.0,
+    "source": "VIRYA — Echoes Of The Modern Mind",
+    "note": "Short offline room completion excerpt with gentle fades."
+  },
+  "collectibles": [
+    {
+      "id": "weight",
+      "title": "Ciężar",
+      "message": "To, co trzymało przy ziemi, mówiło też: nadal tu jesteś.",
+      "position": [
+        0.27,
+        0.65
+      ],
+      "symbol": "◇"
+    },
+    {
+      "id": "spark",
+      "title": "Iskra",
+      "message": "Nie musi wystarczyć na zawsze. Wystarczy na następny krok.",
+      "position": [
+        0.68,
+        0.44
+      ],
+      "symbol": "✦"
+    },
+    {
+      "id": "opening",
+      "title": "Otwarcie",
+      "message": "Światło nie naprawia wszystkiego. Pokazuje drogę dalej.",
+      "position": [
+        0.5,
+        0.25
+      ],
+      "symbol": "△"
+    }
+  ],
+  "intro": "Maluj od dołu ku światłu albo odwrotnie. To ostatni pokój, ale nie egzamin.",
+  "completion_title": "Atrium się otworzyło",
+  "completion_message": "Cała ścieżka została odsłonięta. Twój Sygnał dotarł."
+}

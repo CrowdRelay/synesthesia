@@ -1,0 +1,99 @@
+{
+  "schema_version": 3,
+  "release_id": "unmasked",
+  "story_order": 2,
+  "artist": "Virya",
+  "title": "VIRYA: Unmasked",
+  "subtitle": "Maski chronią. Czasem trzeba je jednak odłożyć, zanim zaczną mówić za nas.",
+  "room": {
+    "name": "Garderoba wenecka",
+    "visual_style": "unmasked",
+    "interaction": "venetian_masks",
+    "base_color": "#2B1421",
+    "floor_color": "#12080F",
+    "accent_color": "#FFB970",
+    "secondary_color": "#E85D95",
+    "paint_palette": [
+      "#FFB970",
+      "#F8E8D6",
+      "#E85D95",
+      "#A58AFF"
+    ],
+    "completion_coverage": 0.44,
+    "cinematic_reveal_at": 0.99,
+    "brush": {
+      "profile": "ink",
+      "min_width": 20,
+      "max_width": 52,
+      "opacity": 0.86,
+      "texture": 0.64,
+      "outline": 0.86,
+      "spacing": 0.54
+    },
+    "art_direction": {
+      "style": "dark_comic",
+      "caption": "MASKI NIE MÓWIĄ PRAWDY",
+      "ink_strength": 0.82,
+      "halftone_strength": 0.3
+    }
+  },
+  "sensory": {
+    "default_mode": "calm",
+    "sound_profile": "unmasked",
+    "visual_snow_calm": 0.025,
+    "visual_snow_full": 0.048,
+    "haptics_calm": 0.14,
+    "haptics_full": 0.29,
+    "safe_audio_ceiling_db": -8.0,
+    "visual_snow_tint": "#FFD7B8",
+    "scanline_strength": 0.34,
+    "roll_strength": 0.22,
+    "sparkle_density": 0.22,
+    "horizontal_jitter": 0.08,
+    "static_motion_calm": 0.16,
+    "static_motion_full": 0.42
+  },
+  "audio": {
+    "mode": "procedural_then_excerpt",
+    "title": "Unmasked",
+    "completion_excerpt": "res://assets/audio/unmasked-room-outro.mp3",
+    "completion_volume_db": -13.0,
+    "source": "VIRYA — Echoes Of The Modern Mind",
+    "note": "Short offline room completion excerpt with gentle fades."
+  },
+  "collectibles": [
+    {
+      "id": "role",
+      "title": "Rola",
+      "message": "Maska chroniła długo po tym, gdy przestała być potrzebna.",
+      "position": [
+        0.26,
+        0.4
+      ],
+      "symbol": "◐"
+    },
+    {
+      "id": "crack",
+      "title": "Szczelina",
+      "message": "Pierwsza rysa wpuszcza światło.",
+      "position": [
+        0.73,
+        0.34
+      ],
+      "symbol": "⌁"
+    },
+    {
+      "id": "voice",
+      "title": "Własny głos",
+      "message": "Nie brzmi idealnie. Dlatego brzmi prawdziwie.",
+      "position": [
+        0.52,
+        0.68
+      ],
+      "symbol": "◌"
+    }
+  ],
+  "intro": "Na ścianach wiszą weneckie maski. Odsłaniaj je, krusz zdobienia i pozwól ścianom zostać bez roli.",
+  "completion_title": "Maski opadły",
+  "completion_message": "Nie została jedna poprawna twarz. Została obecność i kolejne drzwi."
+}
