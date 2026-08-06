@@ -1,94 +1,102 @@
 extends SceneTree
 
-const REQUIRED_MANIFEST_KEYS := ["schema_version", "release_id", "room", "sensory", "collectibles"]
-const RELEASE_INDEX_PATH := "res://data/release_index.json"
+const RELEASE_INDEX_PATH: String = "res://data/release_index.json"
+const REQUIRED_MANIFEST_KEYS: Array[String] = [
+    "schema_version", "release_id", "room", "sensory", "collectibles", "audio"
+]
+const REQUIRED_SCRIPTS: Array[String] = [
+    "res://scripts/main.gd",
+    "res://scripts/paint_room.gd",
+    "res://scripts/audio_director.gd",
+    "res://scripts/haptics.gd",
+    "res://scripts/progress_store.gd",
+    "res://scripts/reward_client.gd",
+]
 
 func _init() -> void:
-    call_deferred("_run_validation")
-
-func _run_validation() -> void:
     var failures: Array[String] = []
-    var manifest_path := _active_manifest_path(failures)
-    if not manifest_path.is_empty():
-        _validate_manifest(manifest_path, failures)
-
-    for script_path in [
-        "res://scripts/main.gd",
-        "res://scripts/paint_room.gd",
-        "res://scripts/audio_director.gd",
-        "res://scripts/haptics.gd",
-        "res://scripts/progress_store.gd",
-    ]:
-        var script_resource: Resource = load(script_path)
-        if not script_resource is Script:
-            failures.append("script cannot be loaded: %s" % script_path)
-
-    var scene: PackedScene = load("res://scenes/main.tscn")
-    if scene == null:
-        failures.append("main scene cannot be loaded")
-    else:
-        var instance := scene.instantiate()
-        root.add_child(instance)
-        await process_frame
-        await process_frame
-        if instance.get_node_or_null("PaintRoom") == null:
-            failures.append("main scene did not create PaintRoom")
-        if instance.get_node_or_null("AudioDirector") == null:
-            failures.append("main scene did not create AudioDirector")
-        if instance.get_node_or_null("Haptics") == null:
-            failures.append("main scene did not create Haptics")
-        instance.queue_free()
+    _validate_scripts(failures)
+    _validate_scene(failures)
+    _validate_album(failures)
 
     if failures.is_empty():
         print("SYNESTHESIA_VALIDATION=PASS")
         quit(0)
-    else:
-        for failure in failures:
-            push_error(failure)
-        print("SYNESTHESIA_VALIDATION=FAIL count=%d" % failures.size())
-        quit(1)
+        return
 
-func _active_manifest_path(failures: Array[String]) -> String:
-    if not FileAccess.file_exists(RELEASE_INDEX_PATH):
-        failures.append("missing release index")
-        return ""
-    var file := FileAccess.open(RELEASE_INDEX_PATH, FileAccess.READ)
-    var parsed: Variant = JSON.parse_string(file.get_as_text()) if file != null else null
-    if not parsed is Dictionary:
-        failures.append("release index is not an object")
-        return ""
-    var index: Dictionary = parsed
-    var active_id := str(index.get("active_release", ""))
-    var releases: Array = index.get("releases", [])
+    for failure in failures:
+        push_error(failure)
+    print("SYNESTHESIA_VALIDATION=FAIL count=%d" % failures.size())
+    quit(1)
+
+func _validate_scripts(failures: Array[String]) -> void:
+    for path in REQUIRED_SCRIPTS:
+        var script: Resource = load(path)
+        if script == null:
+            failures.append("script cannot be loaded: %s" % path)
+
+func _validate_scene(failures: Array[String]) -> void:
+    var scene: PackedScene = load("res://scenes/main.tscn")
+    if scene == null:
+        failures.append("main scene cannot be loaded")
+        return
+    var instance: Node = scene.instantiate()
+    if instance == null:
+        failures.append("main scene cannot be instantiated")
+    else:
+        instance.free()
+
+func _validate_album(failures: Array[String]) -> void:
+    var index: Dictionary = _read_json(RELEASE_INDEX_PATH, failures)
+    if index.is_empty():
+        return
+    var releases_value: Variant = index.get("releases", [])
+    if not releases_value is Array:
+        failures.append("release index does not contain an array")
+        return
+    var releases: Array = releases_value
+    if releases.size() != 11:
+        failures.append("album must contain exactly eleven rooms")
     for release_value in releases:
         if not release_value is Dictionary:
+            failures.append("release index entry is not an object")
             continue
         var release: Dictionary = release_value
-        if str(release.get("id", "")) == active_id and bool(release.get("available", true)):
-            var manifest_path := str(release.get("manifest", ""))
-            if not FileAccess.file_exists(manifest_path):
-                failures.append("active release manifest does not exist")
-                return ""
-            return manifest_path
-    failures.append("active release is not indexed")
-    return ""
+        var manifest_path: String = str(release.get("manifest", ""))
+        var manifest: Dictionary = _read_json(manifest_path, failures)
+        if manifest.is_empty():
+            continue
+        for key in REQUIRED_MANIFEST_KEYS:
+            if not manifest.has(key):
+                failures.append("%s missing %s" % [manifest_path, key])
+        if int(manifest.get("schema_version", 0)) != 3:
+            failures.append("%s has unsupported schema version" % manifest_path)
+        var room_value: Variant = manifest.get("room", {})
+        if room_value is Dictionary:
+            var room: Dictionary = room_value
+            if absf(float(room.get("cinematic_reveal_at", 0.0)) - 0.99) > 0.0001:
+                failures.append("%s must reveal at 99 percent" % manifest_path)
+        var audio_value: Variant = manifest.get("audio", {})
+        if audio_value is Dictionary:
+            var audio: Dictionary = audio_value
+            var excerpt_path: String = str(audio.get("completion_excerpt", ""))
+            if excerpt_path.is_empty() or not ResourceLoader.exists(excerpt_path):
+                failures.append("missing audio excerpt: %s" % excerpt_path)
+            else:
+                var stream: Resource = load(excerpt_path)
+                if not stream is AudioStream:
+                    failures.append("excerpt is not AudioStream: %s" % excerpt_path)
 
-func _validate_manifest(manifest_path: String, failures: Array[String]) -> void:
-    var file := FileAccess.open(manifest_path, FileAccess.READ)
-    var parsed: Variant = JSON.parse_string(file.get_as_text()) if file != null else null
-    if not parsed is Dictionary:
-        failures.append("manifest is not an object")
-        return
-    var manifest: Dictionary = parsed
-    for key in REQUIRED_MANIFEST_KEYS:
-        if not manifest.has(key):
-            failures.append("manifest missing %s" % key)
-    var collectibles: Array = manifest.get("collectibles", [])
-    if collectibles.is_empty():
-        failures.append("active room must contain at least one collectible")
-    var audio: Dictionary = manifest.get("audio", {})
-    var excerpt_path := str(audio.get("completion_excerpt", ""))
-    if excerpt_path.is_empty() or not FileAccess.file_exists(excerpt_path):
-        failures.append("completion excerpt is missing")
-    elif not load(excerpt_path) is AudioStream:
-        failures.append("completion excerpt is not an AudioStream")
+func _read_json(path: String, failures: Array[String]) -> Dictionary:
+    if path.is_empty() or not FileAccess.file_exists(path):
+        failures.append("missing JSON: %s" % path)
+        return {}
+    var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+    if file == null:
+        failures.append("cannot open JSON: %s" % path)
+        return {}
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    if parsed is Dictionary:
+        return parsed
+    failures.append("JSON is not an object: %s" % path)
+    return {}

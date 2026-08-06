@@ -1,47 +1,67 @@
-# Release pack v1
+# Release pack schema v3
 
-`data/release_index.json` wskazuje aktywny lokalny rozdział. Każdy wpis prowadzi do `data/releases/<id>/manifest.json`.
+`data/release_index.json` defines one ordered album route. Each entry points to `data/releases/<id>/manifest.json`.
 
-Manifest zawiera:
+## Required manifest fields
 
-- identyfikator wydania i wersję schematu;
-- charakter pokoju i paletę;
-- bezpieczne poziomy efektów sensorycznych;
-- próg miękkiego ukończenia;
-- znajdźki zapisane jako pozycje znormalizowane 0–1;
-- deklarację źródła audio.
+- `schema_version`: exactly `3`;
+- `release_id`: lower-case hyphenated identifier;
+- `story_order`: zero-based route position;
+- `artist`, `title`, `subtitle`;
+- `room`: visual and interaction configuration;
+- `sensory`: safe visual, audio and haptic bounds;
+- `audio`: local completion excerpt;
+- `collectibles`: exactly three narrative traces;
+- `intro`, `completion_title`, `completion_message`.
 
-Docelowe rozszerzenie stemów, bez zmiany core:
-
-```json
-{
-  "audio": {
-    "mode": "stems",
-    "stems": [
-      {"id": "ambient", "path": "audio/ambient.ogg", "reveal": [0.0, 0.2]},
-      {"id": "guitars", "path": "audio/guitars.ogg", "reveal": [0.2, 0.6]},
-      {"id": "full_mix", "path": "audio/full_mix.ogg", "unlock": "completion"}
-    ]
-  },
-  "content_signature": "ed25519:..."
-}
-```
-
-Sieć i podpisy dochodzą dopiero wtedy, gdy lokalny release pack jest przyjemny, dostępny sensorycznie i stabilny.
-
-## Completion excerpt
-
-A room may keep its procedural bed during exploration and reveal a short local excerpt only after completion:
+## Room contract
 
 ```json
 {
-  "audio": {
-    "mode": "procedural_then_excerpt",
-    "title": "Technophobia",
-    "completion_excerpt": "res://assets/audio/technophobia-room-outro.mp3",
-    "completion_volume_db": -12.0
-  }
+  "name": "Visible room name",
+  "visual_style": "renderer-key",
+  "interaction": "interaction-key",
+  "base_color": "#101827",
+  "floor_color": "#080c14",
+  "accent_color": "#71afff",
+  "secondary_color": "#ff5f7c",
+  "paint_palette": ["#71afff", "#ffffff"],
+  "completion_coverage": 0.44,
+  "cinematic_reveal_at": 0.99
 }
 ```
 
-The path must remain local (`res://`), the excerpt should be compact, and the completion gain must remain below the configured sensory ceiling.
+`completion_coverage` is the physical grid coverage required for a practical completion. `cinematic_reveal_at` remains `0.99` so the runtime releases the last one percent automatically.
+
+## Audio contract
+
+```json
+{
+  "mode": "procedural_then_excerpt",
+  "title": "Track title",
+  "completion_excerpt": "res://assets/audio/example-room-outro.mp3",
+  "completion_volume_db": -13.0,
+  "source": "VIRYA — Echoes Of The Modern Mind"
+}
+```
+
+Excerpts are local, short, gently faded and statically limited to 50 KB–2 MB. `safe_audio_ceiling_db` in `sensory` must be at most `-6 dB`.
+
+## Sensory contract
+
+- Visual Snow: `0.0..0.12`;
+- haptic amplitude: `0.0..0.65`;
+- calm mode is the default;
+- every effect must remain meaningful when haptics are unavailable;
+- no strobe or sudden loudness spike.
+
+## Adding a room
+
+```bash
+python3 tools/new_release_pack.py new-room \
+  --title "VIRYA: New Room" \
+  --room "Room name" \
+  --style custom-style
+```
+
+The scaffold creates schema v3 data and an empty excerpt placeholder path. A new visual style must also be implemented and added to static contracts before CI can pass.

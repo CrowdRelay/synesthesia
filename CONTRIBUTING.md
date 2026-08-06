@@ -1,29 +1,22 @@
 # Contributing
 
-VIRYA: Synestezja is currently an exploratory artistic prototype. Contributions should preserve the project's calm, opt-in character and its separation from Virya's production systems.
+Keep changes evolutionary and room-focused.
 
-## Development setup
+Before submitting:
 
-1. Install Godot 4.7.1.
-2. Open the root `project.godot`.
-3. Run `./validate.sh` from the repository root before submitting changes.
-4. Test touch-related changes on a real mobile device when possible.
+```bash
+python3 tests/static_validate.py
+./validate.sh
+```
 
-## Pull request expectations
+A room change should preserve:
 
-A focused pull request should explain:
+- exact album order unless the product decision explicitly changes it;
+- calm defaults and the immediate quiet control;
+- 99% cinematic reveal;
+- bounded audio and haptic intensity;
+- local progress compatibility;
+- no analytics, ads or engagement pressure;
+- no secrets or unreleased full-length source recordings.
 
-- the player-facing change;
-- the sensory impact;
-- how the calm mode behaves;
-- which devices or targets were tested;
-- whether a release-pack schema changed;
-- why the change does not introduce tracking, pressure mechanics, or production-system coupling.
-
-Do not commit private music stems, signing keys, secrets, analytics identifiers, exported binaries, or `.godot/` import data.
-
-## Creative and safety constraints
-
-Changes must not introduce strobing, jumpscares, forced loudness, high-frequency tinnitus simulation, compulsory engagement loops, or irreversible sensory sequences.
-
-Every stronger effect needs a clear opt-out and a restrained fallback.
+Never reintroduce a nested Godot application directory. The repository root is the project root.

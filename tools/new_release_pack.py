@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a local Synestezja release pack without touching the game core."""
+"""Scaffold one local Synestezja room pack using the schema v3 contract."""
 from __future__ import annotations
 
 import argparse
@@ -9,14 +9,30 @@ import sys
 from pathlib import Path
 
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+STYLE_CHOICES = (
+    "uncertainty",
+    "party",
+    "unmasked",
+    "calling",
+    "seed",
+    "hybrid",
+    "technophobia",
+    "invaluable",
+    "ashes",
+    "waves",
+    "rise",
+)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Scaffold a Synestezja release pack")
+    parser = argparse.ArgumentParser(description="Scaffold a Synestezja room pack")
     parser.add_argument("release_id", help="lowercase slug, e.g. brak-sygnalu")
     parser.add_argument("--title", required=True, help="visible release title")
     parser.add_argument("--room", default="Nowy pokój", help="room name")
-    parser.add_argument("--activate", action="store_true", help="make it the active local release")
+    parser.add_argument("--style", choices=STYLE_CHOICES, default="uncertainty")
+    parser.add_argument("--excerpt", default="", help="res:// path to a completion MP3")
+    parser.add_argument("--position", type=int, help="0-based insertion position in the album")
+    parser.add_argument("--activate", action="store_true", help="make it the active local room")
     return parser.parse_args()
 
 
@@ -35,52 +51,66 @@ def main() -> int:
         print(f"release pack already exists: {manifest_path}", file=sys.stderr)
         return 3
 
-    pack_dir.mkdir(parents=True)
-    (pack_dir / "audio").mkdir()
-    (pack_dir / "textures").mkdir()
+    index = json.loads(index_path.read_text())
+    releases = index.get("releases")
+    if not isinstance(releases, list):
+        print("release index has no releases array", file=sys.stderr)
+        return 4
+    if any(isinstance(item, dict) and item.get("id") == args.release_id for item in releases):
+        print("release_id already exists in the index", file=sys.stderr)
+        return 5
 
+    pack_dir.mkdir(parents=True)
+    excerpt = args.excerpt.strip() or f"res://assets/audio/{args.release_id}-room-outro.mp3"
     manifest = {
-        "schema_version": 1,
+        "schema_version": 3,
         "release_id": args.release_id,
-        "artist": "Virya",
+        "artist": "VIRYA",
         "title": args.title,
-        "subtitle": "Wejdź na chwilę. Możesz wyjść w dowolnym momencie.",
+        "subtitle": "Odkrywaj bez pośpiechu. Możesz uspokoić pokój w każdej chwili.",
         "room": {
             "name": args.room,
+            "visual_style": args.style,
             "base_color": "#101827",
             "floor_color": "#080C14",
             "accent_color": "#71AFFF",
+            "secondary_color": "#B99CFF",
             "paint_palette": ["#72AFFF", "#B99CFF", "#7FD8C9", "#F3A7C3"],
-            "completion_coverage": 0.44,
+            "completion_coverage": 0.48,
+            "cinematic_reveal_at": 0.99,
+            "special_interaction": "paint",
         },
         "sensory": {
             "default_mode": "calm",
-            "visual_snow_calm": 0.02,
-            "visual_snow_full": 0.05,
+            "visual_snow_calm": 0.022,
+            "visual_snow_full": 0.055,
             "haptics_calm": 0.16,
             "haptics_full": 0.34,
             "safe_audio_ceiling_db": -7.0,
         },
-        "audio": {"mode": "procedural", "stems": []},
+        "audio": {
+            "completion_excerpt": excerpt,
+            "completion_volume_db": -8.0,
+        },
         "collectibles": [
             {
                 "id": "trace-1",
                 "title": "Ślad pierwszy",
-                "message": "Tu pojawi się fragment historii wydania.",
+                "message": "Pierwsza warstwa historii pokoju.",
                 "position": [0.25, 0.36],
                 "symbol": "○",
             },
             {
                 "id": "trace-2",
                 "title": "Ślad drugi",
-                "message": "Tu pojawi się kolejna warstwa.",
+                "message": "Druga warstwa historii pokoju.",
                 "position": [0.73, 0.48],
                 "symbol": "⌁",
             },
             {
                 "id": "trace-3",
                 "title": "Ślad trzeci",
-                "message": "Tu pojawi się domknięcie pokoju.",
+                "message": "Domknięcie pokoju.",
                 "position": [0.48, 0.69],
                 "symbol": "◇",
             },
@@ -88,23 +118,26 @@ def main() -> int:
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
 
-    index = json.loads(index_path.read_text())
-    index["releases"].append(
-        {
-            "id": args.release_id,
-            "manifest": f"res://data/releases/{args.release_id}/manifest.json",
-            "available": True,
-        }
-    )
+    entry = {
+        "id": args.release_id,
+        "manifest": f"res://data/releases/{args.release_id}/manifest.json",
+        "available": True,
+    }
+    if args.position is None:
+        releases.append(entry)
+    elif not 0 <= args.position <= len(releases):
+        print("--position is outside the current album range", file=sys.stderr)
+        manifest_path.unlink(missing_ok=True)
+        pack_dir.rmdir()
+        return 6
+    else:
+        releases.insert(args.position, entry)
     if args.activate:
         index["active_release"] = args.release_id
     index_path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n")
 
-    (pack_dir / "README.md").write_text(
-        f"# {args.title}\n\n"
-        "Włóż stemy do `audio/`, tekstury do `textures/` i uzupełnij `manifest.json`.\n"
-    )
     print(f"created={manifest_path.relative_to(root)}")
+    print(f"excerpt={excerpt}")
     print(f"active={str(args.activate).lower()}")
     return 0
 

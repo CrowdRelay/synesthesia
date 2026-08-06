@@ -1,0 +1,9 @@
+.DS_Store
+**/.godot/
+**/.android/
+**/build/
+**/builds/
+**/exports/
+**/*.apk
+**/*.aab
+**/*.ipa

@@ -1,57 +1,51 @@
 # VIRYA: Synestezja
 
-An interactive sensory album and exploratory game built with Godot 4.7.1.
+A playable sensory edition of VIRYA's **Echoes Of The Modern Mind**, built with Godot 4.7.1.
 
-Synestezja turns VIRYA releases into small playable spaces. Each song or release can become a room that the player enters, paints, listens to, and gradually uncovers through touch, image, sound, and restrained haptic feedback.
+The album becomes eleven rooms. The player paints through Visual Snow, muted negative colour and room-specific distortions. Every gesture repairs or reveals part of the scene; at **99%** the remaining filter releases at once, the song excerpt enters, and the next door opens.
 
-The project is designed as a calm alternative to attention-driven social media promotion. Music is discovered through interaction rather than interrupted by banners, timers, streaks, or forced calls to action.
+## Album route
 
-## Current prototype
+1. **Wave of Uncertainty** — a calm tidal chamber.
+2. **Party Time** — balloons, popping, colour and confetti.
+3. **Unmasked** — a Venetian dressing room where masks leave the walls.
+4. **The Calling** — an elegant monochrome dinner with a red-wine toast.
+5. **Seed of Doubt** — a seed growing into a full tree.
+6. **Hybrid** — a Western street duel against an inherited authority figure.
+7. **Technophobia** — screens, cables, ZZZ scan jitter and glitches repaired by paint.
+8. **Invaluable** — a mirror gallery whose panes can be cracked.
+9. **From the Ashes** — falling ash and a phoenix forming from embers.
+10. **Waves** — an intimate bedroom in warm half-light.
+11. **Rise** — a bright atrium and the album finale.
 
-The first vertical slice includes:
+Each room has its own palette, architecture, interaction, haptic profile and gently faded local music excerpt.
 
-- mouse and touch painting;
-- brush behaviour reacting to gesture speed;
-- hidden narrative traces and collectibles;
-- layered procedural audio leading into a real VIRYA excerpt;
-- subtle visual-noise treatment;
-- optional restrained haptics;
+## Interaction and accessibility
+
+- touch and mouse painting;
+- local reveal mask instead of a global progress bar trick;
+- restrained haptics for painting, discoveries, balloons, mirrors, duel, reveal and doors;
 - calm and full sensory modes;
-- an immediate **Calm the room** action;
-- local, versioned room memory;
-- data-driven release manifests for future singles and albums.
+- independent haptics toggle;
+- immediate **Uspokój** control disabling music intensity, Visual Snow and vibration;
+- no strobe, jumpscares, artificial streaks, analytics, ads or forced sharing;
+- local, versioned progress for every room and the complete album route.
 
-The prototype is offline-first and currently contains no accounts, analytics, advertisements, backend dependency, or coercive engagement mechanics.
+Gameplay remains usable offline. Network access is used only for the optional completion reward.
 
-## Design principles
+## Completion reward
 
-- Experience before promotion.
-- Calm by default.
-- Every sensory effect remains optional and adjustable.
-- No sudden volume jumps or aggressive flashing.
-- No streaks, leaderboards, artificial scarcity, or forced sharing.
-- New releases should add a meaningful room, interaction, or sensory texture—not only another menu item.
+After all eleven rooms, the player may claim one physical VIRYA album. The client only submits the verified run, e-mail, optional Signal consent and city. Shipping details are collected later through a separate no-store page and remain outside Signal and webhook payloads.
 
-## Technology
+The matching CrowdRelay overlay is distributed separately. Until that backend is deployed, completion remains saved locally and the game reports the reward service as unavailable without losing progress.
 
-- Godot 4.7.1
-- GDScript
-- JSON release manifests
-- Android first
-- Linux and Web builds for development and review
-
-The Godot project lives directly at the repository root. There is intentionally no nested application directory.
-
-## Run locally
-
-Open `project.godot` in Godot 4.7.1 and run the main scene.
-
-From the command line:
+## Run on macOS
 
 ```bash
-./run-macos.sh   # macOS
-godot --path .  # other platforms with Godot on PATH
+./run-macos.sh
 ```
+
+The script uses `/Applications/Godot.app/Contents/MacOS/Godot`, `GODOT_BIN`, or a `godot` executable on `PATH`.
 
 ## Validate
 
@@ -59,47 +53,46 @@ godot --path .  # other platforms with Godot on PATH
 ./validate.sh
 ```
 
-CI additionally rejects any `ERROR:` or `SCRIPT ERROR:` emitted by Godot, even when the engine exits with status code zero.
+The runtime gate fails on Godot's exit code **and** on `SCRIPT ERROR:`, `Parse Error:` or `ERROR:` in the engine log.
 
-## Build
+## Web preview
 
-GitHub Actions provides:
+```bash
+./scripts/build-web-preview.sh
+python3 -m http.server 8080 --directory build/web
+```
 
-- **CI** on pushes and pull requests;
-- **Build** for Linux, Web, and Android debug APK artifacts.
+The generated static site is prepared for `https://synesthesia.virya.music`. The Web preset is single-threaded to avoid a SharedArrayBuffer dependency. The reward page is available at `/reward/`.
 
-Run a build through:
+GitHub workflow `Web preview` builds the exact same directory and deploys it only when `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` are configured.
+
+## Build artifacts
+
+The `Build` workflow produces:
+
+- Linux x86_64 archive;
+- single-threaded Web export;
+- Android arm64 debug APK with `INTERNET` and `VIBRATE` permissions.
+
+Run it through **Actions → Build → Run workflow → all**. Tagged `v*` commits publish the artifacts as a GitHub Release.
+
+## Repository structure
+
+The Godot project is the repository root. Do not restore a nested application folder.
 
 ```text
-Actions → Build → Run workflow → all
+synesthesia/
+├── project.godot
+├── scenes/
+├── scripts/
+├── shaders/
+├── assets/audio/
+├── data/release_index.json
+├── data/releases/<room>/manifest.json
+├── web/reward/
+└── .github/workflows/
 ```
 
-Pushing a tag matching `v*` builds all platforms and creates a GitHub Release.
+## Rights
 
-```bash
-git tag v0.3.1
-git push origin v0.3.1
-```
-
-## Add another release pack
-
-```bash
-python3 tools/new_release_pack.py brak-sygnalu \
-  --title "VIRYA: Brak sygnału" \
-  --room "Transmission Room" \
-  --activate
-```
-
-See `docs/RELEASE_PACK_SCHEMA.md` for the content contract and `docs/BUILDING.md` for platform build details.
-
-## Status
-
-Early experimental prototype. The first goal is to validate whether painting, audio layers, and restrained haptics feel enjoyable on a physical Android device before expanding the world.
-
-## License
-
-Source code is available under the repository license. VIRYA names, logos, music, recordings, stems, lyrics, and artwork remain the property of their respective rights holders.
-
-## Current room: Technophobia
-
-The first room is a restrained technological-anxiety space. Painting destabilizes a clinical transmission interface through slow scan lines, displaced fragments, and low-contrast warning traces. Completing the room reveals a short, gently faded excerpt of VIRYA's **Technophobia**. The music is bundled locally; the experience remains offline and free of telemetry.
+Project source follows the repository licence. VIRYA names, logos, recordings, excerpts, lyrics and artwork remain the property of their respective rights holders and are not relicensed by the source-code licence.

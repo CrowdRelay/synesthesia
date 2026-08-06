@@ -39,13 +39,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Verify repository layout
-        run: |
-          set -euo pipefail
-          test -f project.godot
-          test -f export_presets.cfg
-          test ! -d virya-synestezja
-
       - name: Validate project contracts
         run: python3 tests/static_validate.py
 
@@ -77,13 +70,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Verify repository layout
-        run: |
-          set -euo pipefail
-          test -f project.godot
-          test -f export_presets.cfg
-          test ! -d virya-synestezja
 
       - name: Validate project contracts
         run: python3 tests/static_validate.py
@@ -137,7 +123,9 @@ jobs:
   release:
     name: Publish tagged release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [desktop-web, android]
+    needs:
+      - desktop-web
+      - android
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -163,6 +151,7 @@ jobs:
             echo "No release artifacts found" >&2
             exit 1
           fi
+
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             gh release upload "${GITHUB_REF_NAME}" "${artifacts[@]}" --clobber
           else

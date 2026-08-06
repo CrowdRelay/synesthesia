@@ -1,0 +1,77 @@
+{
+  "schema_version": 3,
+  "release_id": "the-calling",
+  "story_order": 3,
+  "artist": "Virya",
+  "title": "VIRYA: The Calling",
+  "subtitle": "Każdy koniec czeka gdzieś pod ziemią. To jednak nie jest jeszcze mój czas.",
+  "room": {
+    "name": "Stół ostatniego toastu",
+    "visual_style": "calling",
+    "interaction": "toast_table",
+    "base_color": "#272725",
+    "floor_color": "#10100F",
+    "accent_color": "#D8D4C8",
+    "secondary_color": "#A40F2D",
+    "paint_palette": [
+      "#D8D4C8",
+      "#F1EEE5",
+      "#9F9B91",
+      "#A40F2D"
+    ],
+    "completion_coverage": 0.44,
+    "cinematic_reveal_at": 0.99
+  },
+  "sensory": {
+    "default_mode": "calm",
+    "sound_profile": "calling",
+    "visual_snow_calm": 0.022,
+    "visual_snow_full": 0.044,
+    "haptics_calm": 0.12,
+    "haptics_full": 0.25,
+    "safe_audio_ceiling_db": -8.0
+  },
+  "audio": {
+    "mode": "procedural_then_excerpt",
+    "title": "The Calling",
+    "completion_excerpt": "res://assets/audio/the-calling-room-outro.mp3",
+    "completion_volume_db": -13.0,
+    "source": "VIRYA — Echoes Of The Modern Mind",
+    "note": "Short offline room completion excerpt with gentle fades."
+  },
+  "collectibles": [
+    {
+      "id": "guest",
+      "title": "Gość",
+      "message": "Losowe miejsce przy stole może stać się częścią historii.",
+      "position": [
+        0.24,
+        0.48
+      ],
+      "symbol": "♙"
+    },
+    {
+      "id": "memory",
+      "title": "Wspomnienie",
+      "message": "To, co było wspólne, wraca w cudzym śmiechu.",
+      "position": [
+        0.7,
+        0.46
+      ],
+      "symbol": "◌"
+    },
+    {
+      "id": "toast",
+      "title": "Toast",
+      "message": "Czerwone wino zachowuje jedyny mocny kolor.",
+      "position": [
+        0.5,
+        0.66
+      ],
+      "symbol": "Y"
+    }
+  ],
+  "intro": "Wykwintna kuchnia prawie straciła kolor. Maluj ludzi przy stole; czerwień pozostaje tylko w winie i toaście.",
+  "completion_title": "Toast wybrzmiał",
+  "completion_message": "Przyjaciele unieśli kieliszki. Pamięć nie zatrzymała czasu, ale dała mu jeszcze jedną noc."
+}

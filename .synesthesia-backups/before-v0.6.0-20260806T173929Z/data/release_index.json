@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "active_release": "prototype",
+  "releases": [
+    {
+      "id": "prototype",
+      "manifest": "res://data/releases/prototype/manifest.json",
+      "available": true
+    }
+  ]
+}

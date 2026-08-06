@@ -1,0 +1,77 @@
+{
+  "schema_version": 3,
+  "release_id": "wave-of-uncertainty",
+  "story_order": 0,
+  "artist": "Virya",
+  "title": "VIRYA: Wave of Uncertainty",
+  "subtitle": "Niepewność nie znika. Można nauczyć się poruszać razem z nią.",
+  "room": {
+    "name": "Komora przypływu",
+    "visual_style": "uncertainty",
+    "interaction": "paint",
+    "base_color": "#082B34",
+    "floor_color": "#03151A",
+    "accent_color": "#64E8D9",
+    "secondary_color": "#6685FF",
+    "paint_palette": [
+      "#64E8D9",
+      "#8FD6FF",
+      "#D8FFF7",
+      "#8375FF"
+    ],
+    "completion_coverage": 0.44,
+    "cinematic_reveal_at": 0.99
+  },
+  "sensory": {
+    "default_mode": "calm",
+    "sound_profile": "uncertainty",
+    "visual_snow_calm": 0.032,
+    "visual_snow_full": 0.058,
+    "haptics_calm": 0.11,
+    "haptics_full": 0.24,
+    "safe_audio_ceiling_db": -8.0
+  },
+  "audio": {
+    "mode": "procedural_then_excerpt",
+    "title": "Wave of Uncertainty",
+    "completion_excerpt": "res://assets/audio/wave-of-uncertainty-room-outro.mp3",
+    "completion_volume_db": -13.0,
+    "source": "VIRYA — Echoes Of The Modern Mind",
+    "note": "Short offline room completion excerpt with gentle fades."
+  },
+  "collectibles": [
+    {
+      "id": "current",
+      "title": "Prąd",
+      "message": "Nie wszystko, co przesuwa, prowadzi w złą stronę.",
+      "position": [
+        0.23,
+        0.54
+      ],
+      "symbol": "≈"
+    },
+    {
+      "id": "breath",
+      "title": "Oddech",
+      "message": "Fala nie prosi o kontrolę. Prosi o rytm.",
+      "position": [
+        0.72,
+        0.4
+      ],
+      "symbol": "∿"
+    },
+    {
+      "id": "shore",
+      "title": "Brzeg",
+      "message": "Pewność bywa krótką chwilą oparcia.",
+      "position": [
+        0.5,
+        0.72
+      ],
+      "symbol": "⌒"
+    }
+  ],
+  "intro": "Prowadź kolor przez spokojne fale i odsłaniaj pokój spod śniegu. Nie ma czasu ani jednej poprawnej drogi.",
+  "completion_title": "Fala ustąpiła",
+  "completion_message": "Szum odpuścił, a spokojne drzwi prowadzą prosto do zabawy."
+}
