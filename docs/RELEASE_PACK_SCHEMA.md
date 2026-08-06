@@ -28,3 +28,20 @@ Docelowe rozszerzenie stemów, bez zmiany core:
 ```
 
 Sieć i podpisy dochodzą dopiero wtedy, gdy lokalny release pack jest przyjemny, dostępny sensorycznie i stabilny.
+
+## Completion excerpt
+
+A room may keep its procedural bed during exploration and reveal a short local excerpt only after completion:
+
+```json
+{
+  "audio": {
+    "mode": "procedural_then_excerpt",
+    "title": "Technophobia",
+    "completion_excerpt": "res://assets/audio/technophobia-room-outro.mp3",
+    "completion_volume_db": -12.0
+  }
+}
+```
+
+The path must remain local (`res://`), the excerpt should be compact, and the completion gain must remain below the configured sensory ceiling.

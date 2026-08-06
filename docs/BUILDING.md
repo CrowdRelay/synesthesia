@@ -71,8 +71,8 @@ Artifacts are stored with the workflow run for 14 days.
 Create and push a semantic version tag:
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 The build workflow exports every target and creates or updates a GitHub Release containing the generated archives.

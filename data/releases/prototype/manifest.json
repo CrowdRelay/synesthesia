@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "release_id": "prototype-room-01",
+  "release_id": "technophobia-room-01",
   "artist": "Virya",
-  "title": "Synestezja — Pokój pierwszy",
-  "subtitle": "Nie musisz niczego kończyć. Zostań tyle, ile chcesz.",
+  "title": "VIRYA: Technophobia",
+  "subtitle": "Im dłużej patrzysz w interfejs, tym mniej wiadomo, kto obserwuje kogo.",
   "room": {
-    "name": "Pokój ciszy",
-    "base_color": "#101827",
-    "floor_color": "#080c14",
-    "accent_color": "#71AFFF",
+    "name": "Pokój transmisji",
+    "base_color": "#0A1019",
+    "floor_color": "#05070C",
+    "accent_color": "#6EAFFF",
     "paint_palette": [
-      "#72AFFF",
-      "#B99CFF",
-      "#7FD8C9",
-      "#F3A7C3"
+      "#6EAFFF",
+      "#A889FF",
+      "#57D7C5",
+      "#FF6680"
     ],
-    "completion_coverage": 0.44
+    "completion_coverage": 0.42
   },
   "sensory": {
     "default_mode": "calm",
@@ -26,40 +26,46 @@
     "safe_audio_ceiling_db": -7.0
   },
   "audio": {
-    "mode": "procedural",
-    "stems": [],
-    "note": "Pierwszy wycinek nie zawiera jeszcze muzyki Viryi."
+    "mode": "procedural_then_excerpt",
+    "title": "Technophobia",
+    "completion_excerpt": "res://assets/audio/technophobia-room-outro.mp3",
+    "completion_volume_db": -12.0,
+    "source": "VIRYA — Echoes Of The Modern Mind",
+    "note": "36-second completion excerpt with gentle fades; the room remains fully offline."
   },
   "collectibles": [
     {
-      "id": "breath",
-      "title": "Oddech",
-      "message": "Przestrzeń nie wymaga od Ciebie pośpiechu.",
+      "id": "interface",
+      "title": "Interfejs",
+      "message": "Ekran zna gest, ale nie zna intencji.",
       "position": [
         0.24,
         0.36
       ],
-      "symbol": "○"
+      "symbol": "▦"
     },
     {
-      "id": "signal",
-      "title": "Sygnał",
-      "message": "Pod szumem nadal jest melodia.",
+      "id": "observer",
+      "title": "Obserwator",
+      "message": "Kamera jest ciemna. Poczucie bycia widzianym zostało.",
       "position": [
         0.73,
         0.48
       ],
-      "symbol": "⌁"
+      "symbol": "◉"
     },
     {
-      "id": "trace",
-      "title": "Ślad",
-      "message": "Pokój pamięta sposób, w jaki go dotknąłeś.",
+      "id": "human-signal",
+      "title": "Ludzki sygnał",
+      "message": "Pod błędem transmisji nadal jest oddech i melodia.",
       "position": [
         0.48,
         0.69
       ],
-      "symbol": "◇"
+      "symbol": "⌁"
     }
-  ]
+  ],
+  "intro": "Dotykaj ścian i zakłócaj transmisję. System odpowie powoli.\nNie ma czasu, punktów ani właściwej drogi.",
+  "completion_title": "Transmisja pękła",
+  "completion_message": "Pod szumem był człowiek. Zostań — pokój odsłania fragment „Technophobia”."
 }

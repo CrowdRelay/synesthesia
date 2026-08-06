@@ -3,13 +3,14 @@ extends Control
 const PaintRoomScript := preload("res://scripts/paint_room.gd")
 const AudioDirectorScript := preload("res://scripts/audio_director.gd")
 const HapticsScript := preload("res://scripts/haptics.gd")
+const ProgressStoreScript := preload("res://scripts/progress_store.gd")
 const SnowShader := preload("res://shaders/visual_snow.gdshader")
 const RELEASE_INDEX_PATH := "res://data/release_index.json"
 
 var manifest: Dictionary = {}
-var room: SynesthesiaPaintRoom
-var audio_director: SynesthesiaAudioDirector
-var haptics: SynesthesiaHaptics
+var room
+var audio_director
+var haptics
 var snow_material: ShaderMaterial
 var progress_label: Label
 var discovery_label: Label
@@ -22,9 +23,12 @@ var quiet_mode: bool = false
 var current_coverage: float = 0.0
 var completion_announced: bool = false
 var collectible_total: int = 0
+var save_timer: Timer
+var intro_panel: PanelContainer
+var restoring_progress: bool = false
 
 func _ready() -> void:
-    var manifest_path := _resolve_active_manifest(RELEASE_INDEX_PATH)
+    var manifest_path: String = _resolve_active_manifest(RELEASE_INDEX_PATH)
     if manifest_path.is_empty():
         _show_fatal_error("Nie udało się odnaleźć aktywnego pokoju.")
         return
@@ -103,7 +107,8 @@ func _build_experience() -> void:
     audio_director = AudioDirectorScript.new()
     audio_director.name = "AudioDirector"
     add_child(audio_director)
-    audio_director.configure(manifest["sensory"], collectible_total)
+    var release_audio: Dictionary = manifest.get("audio", {})
+    audio_director.configure(manifest["sensory"], release_audio, collectible_total)
     audio_director.set_calm_mode(calm_mode)
 
     haptics = HapticsScript.new()
@@ -113,7 +118,108 @@ func _build_experience() -> void:
     haptics.set_calm_mode(calm_mode)
 
     room.set_calm_mode(calm_mode)
+    _build_save_timer()
     _apply_sensory_mode()
+    call_deferred("_restore_or_introduce")
+
+func _build_save_timer() -> void:
+    save_timer = Timer.new()
+    save_timer.name = "ProgressSaveTimer"
+    save_timer.one_shot = true
+    save_timer.wait_time = 1.2
+    save_timer.timeout.connect(_save_progress)
+    add_child(save_timer)
+
+func _restore_or_introduce() -> void:
+    await get_tree().process_frame
+    var release_id: String = str(manifest.get("release_id", ""))
+    var saved: Dictionary = ProgressStoreScript.load_release(release_id)
+    if saved.is_empty():
+        _show_intro()
+        return
+
+    restoring_progress = true
+    calm_mode = bool(saved.get("calm_mode", calm_mode))
+    quiet_mode = bool(saved.get("quiet_mode", false))
+    completion_announced = bool(saved.get("completed", false))
+    var room_state: Variant = saved.get("room", {})
+    var restored: bool = false
+    if room_state is Dictionary:
+        restored = bool(room.restore_state(room_state))
+    room.set_calm_mode(calm_mode)
+    haptics.set_calm_mode(calm_mode)
+    audio_director.set_calm_mode(calm_mode)
+    haptics.set_enabled(not quiet_mode)
+    audio_director.set_quiet(quiet_mode)
+    _apply_sensory_mode()
+    quiet_button.text = "Przywróć zmysły" if quiet_mode else "Uspokój pokój"
+    if restored:
+        var found: int = int(room.get_found_count())
+        current_coverage = room.get_coverage()
+        discovery_label.text = "%d/%d ślady · pokój pamięta Twój poprzedni dotyk" % [found, collectible_total]
+        progress_label.text = "%d%% pokoju pamięta · możesz spokojnie kontynuować" % int(round(current_coverage * 100.0))
+        audio_director.set_progress(current_coverage, found)
+        _check_completion()
+    restoring_progress = false
+
+func _show_intro() -> void:
+    room.set_interaction_enabled(false)
+    intro_panel = PanelContainer.new()
+    intro_panel.name = "GentleIntroduction"
+    intro_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+    intro_panel.add_theme_stylebox_override("panel", _panel_style(Color("111a2af7"), 28))
+    add_child(intro_panel)
+    intro_panel.set_anchors_preset(Control.PRESET_CENTER)
+    intro_panel.offset_left = -270.0
+    intro_panel.offset_top = -155.0
+    intro_panel.offset_right = 270.0
+    intro_panel.offset_bottom = 155.0
+
+    var content := VBoxContainer.new()
+    content.alignment = BoxContainer.ALIGNMENT_CENTER
+    content.add_theme_constant_override("separation", 14)
+    intro_panel.add_child(content)
+
+    var heading := Label.new()
+    heading.text = str(manifest.get("room", {}).get("name", "Pokój pierwszy"))
+    heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    heading.add_theme_font_size_override("font_size", 28)
+    heading.add_theme_color_override("font_color", Color("eef6ff"))
+    content.add_child(heading)
+
+    var message := Label.new()
+    message.text = str(manifest.get("intro", "Dotykaj ścian i zostawiaj kolor. Dźwięk odpowie powoli.\nNie ma czasu, punktów ani właściwej drogi."))
+    message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    message.add_theme_font_size_override("font_size", 16)
+    message.add_theme_color_override("font_color", Color("bed2ed"))
+    content.add_child(message)
+
+    var enter_button := _make_button("Wejdź bez pośpiechu")
+    enter_button.pressed.connect(_dismiss_intro)
+    content.add_child(enter_button)
+
+func _dismiss_intro() -> void:
+    if intro_panel != null:
+        intro_panel.queue_free()
+        intro_panel = null
+    room.set_interaction_enabled(true)
+    _schedule_save()
+
+func _schedule_save() -> void:
+    if restoring_progress or save_timer == null:
+        return
+    save_timer.start()
+
+func _save_progress() -> void:
+    if room == null or manifest.is_empty():
+        return
+    ProgressStoreScript.save_release(str(manifest.get("release_id", "")), {
+        "calm_mode": calm_mode,
+        "quiet_mode": quiet_mode,
+        "completed": completion_announced,
+        "room": room.export_state(),
+    })
 
 func _build_snow_overlay() -> void:
     var snow := ColorRect.new()
@@ -222,21 +328,21 @@ func _build_completion_panel() -> void:
     completion_panel.add_child(content)
 
     var heading := Label.new()
-    heading.text = "Pokój się otworzył"
+    heading.text = str(manifest.get("completion_title", "Pokój się otworzył"))
     heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     heading.add_theme_font_size_override("font_size", 26)
     heading.add_theme_color_override("font_color", Color("eef6ff"))
     content.add_child(heading)
 
     completion_label = Label.new()
-    completion_label.text = "Nie wygrałeś. Nie przegrałeś. Zostawiłeś tu swój ślad."
+    completion_label.text = str(manifest.get("completion_message", "Nie wygrałeś. Nie przegrałeś. Zostawiłeś tu swój ślad."))
     completion_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     completion_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     completion_label.add_theme_font_size_override("font_size", 15)
     completion_label.add_theme_color_override("font_color", Color("bed2ed"))
     content.add_child(completion_label)
 
-    var close_button := _make_button("Zostań w pokoju")
+    var close_button := _make_button("Zostań i słuchaj")
     close_button.pressed.connect(func() -> void: completion_panel.visible = false)
     content.add_child(close_button)
 
@@ -271,20 +377,22 @@ func _make_button(text: String) -> Button:
 
 func _on_coverage_changed(value: float) -> void:
     current_coverage = value
-    var percent := int(round(value * 100.0))
+    var percent: int = int(round(value * 100.0))
     progress_label.text = "%d%% pokoju reaguje · dźwięk odsłania się warstwami" % percent
     if audio_director != null:
         audio_director.set_progress(value, room.get_found_count())
     _check_completion()
+    _schedule_save()
 
 func _on_collectible_found(item: Dictionary) -> void:
-    var count := room.get_found_count()
+    var count: int = int(room.get_found_count())
     discovery_label.text = "%d/%d · %s — %s" % [count, collectible_total, str(item.get("title", "Ślad")), str(item.get("message", ""))]
     if haptics != null:
         haptics.discovery()
     if audio_director != null:
         audio_director.set_progress(current_coverage, count)
     _check_completion()
+    _schedule_save()
 
 func _on_paint_pulse(speed_normalized: float) -> void:
     if haptics != null:
@@ -296,10 +404,11 @@ func _toggle_mode() -> void:
     haptics.set_calm_mode(calm_mode)
     audio_director.set_calm_mode(calm_mode)
     _apply_sensory_mode()
+    _schedule_save()
 
 func _apply_sensory_mode() -> void:
     var sensory: Dictionary = manifest["sensory"]
-    var snow := float(sensory.get("visual_snow_calm", 0.022)) if calm_mode else float(sensory.get("visual_snow_full", 0.055))
+    var snow: float = float(sensory.get("visual_snow_calm", 0.022)) if calm_mode else float(sensory.get("visual_snow_full", 0.055))
     snow_material.set_shader_parameter("intensity", snow if not quiet_mode else 0.0)
     snow_material.set_shader_parameter("motion", 0.12 if calm_mode else 0.32)
     mode_button.text = "Tryb spokojny" if calm_mode else "Tryb pełny"
@@ -311,27 +420,37 @@ func _toggle_quiet() -> void:
     snow_material.set_shader_parameter("intensity", 0.0 if quiet_mode else _current_snow_intensity())
     quiet_button.text = "Przywróć zmysły" if quiet_mode else "Uspokój pokój"
     progress_label.text = "Pokój został uspokojony. Nadal możesz malować." if quiet_mode else "%d%% pokoju reaguje" % int(round(current_coverage * 100.0))
+    _schedule_save()
 
 func _current_snow_intensity() -> float:
     var sensory: Dictionary = manifest["sensory"]
     return float(sensory.get("visual_snow_calm", 0.022)) if calm_mode else float(sensory.get("visual_snow_full", 0.055))
 
 func _reset_room() -> void:
+    ProgressStoreScript.clear_release(str(manifest.get("release_id", "")))
     completion_announced = false
     completion_panel.visible = false
     room.reset_room()
     discovery_label.text = "0/%d ślady · maluj bez pośpiechu" % collectible_total
     progress_label.text = "Pokój pozostaje cichy. Dotknij ściany."
     audio_director.set_progress(0.0, 0)
+    audio_director.reset_release_excerpt()
+    current_coverage = 0.0
 
 func _check_completion() -> void:
     if completion_announced:
         return
-    var threshold := float(manifest["room"].get("completion_coverage", 0.44))
+    var threshold: float = float(manifest["room"].get("completion_coverage", 0.44))
     if current_coverage >= threshold and room.get_found_count() == collectible_total:
         completion_announced = true
         completion_panel.visible = true
         haptics.discovery()
+        audio_director.reveal_release_excerpt()
+        _schedule_save()
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
+        _save_progress()
 
 func _show_fatal_error(message: String) -> void:
     var label := Label.new()

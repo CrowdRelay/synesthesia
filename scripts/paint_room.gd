@@ -7,6 +7,7 @@ signal paint_pulse(speed_normalized: float)
 
 const GRID_WIDTH := 24
 const GRID_HEIGHT := 36
+const MAX_SEGMENTS := 1400
 
 var manifest_room: Dictionary = {}
 var palette: Array[Color] = []
@@ -19,12 +20,21 @@ var previous_point := Vector2.ZERO
 var paint_color_index: int = 0
 var calm_mode: bool = true
 var interaction_enabled: bool = true
+var visual_progress: float = 0.0
+var glitch_phase: float = 0.0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
     clip_contents = true
     occupied.resize(GRID_WIDTH * GRID_HEIGHT)
     resized.connect(queue_redraw)
+    set_process(true)
+
+func _process(delta: float) -> void:
+    if visual_progress < 0.06:
+        return
+    glitch_phase = fmod(glitch_phase + delta * (0.17 if calm_mode else 0.36), 1000.0)
+    queue_redraw()
 
 func configure(room_data: Dictionary, collectible_data: Array) -> void:
     manifest_room = room_data.duplicate(true)
@@ -55,17 +65,103 @@ func reset_room() -> void:
     occupied_count = 0
     paint_color_index = 0
     drawing = false
+    visual_progress = 0.0
     for item in collectibles:
         item["found"] = false
     coverage_changed.emit(0.0)
     queue_redraw()
 
 func get_found_count() -> int:
-    var count := 0
+    var count: int = 0
     for item in collectibles:
         if bool(item.get("found", false)):
             count += 1
     return count
+
+
+func get_coverage() -> float:
+    return float(occupied_count) / float(GRID_WIDTH * GRID_HEIGHT)
+
+func export_state() -> Dictionary:
+    var occupied_cells: Array[int] = []
+    for index in range(occupied.size()):
+        if occupied[index] != 0:
+            occupied_cells.append(index)
+
+    var saved_segments: Array[Dictionary] = []
+    if size.x > 1.0 and size.y > 1.0:
+        var reference: float = maxf(1.0, minf(size.x, size.y))
+        for segment in segments:
+            var from: Vector2 = segment.get("from", Vector2.ZERO)
+            var to: Vector2 = segment.get("to", Vector2.ZERO)
+            var color: Color = segment.get("color", Color("72afff"))
+            saved_segments.append({
+                "from": [from.x / size.x, from.y / size.y],
+                "to": [to.x / size.x, to.y / size.y],
+                "width": float(segment.get("width", 40.0)) / reference,
+                "color": color.to_html(true),
+            })
+
+    var found_ids: Array[String] = []
+    for item in collectibles:
+        if bool(item.get("found", false)):
+            found_ids.append(str(item.get("id", "")))
+
+    return {
+        "occupied_cells": occupied_cells,
+        "segments": saved_segments,
+        "found_collectibles": found_ids,
+        "paint_color_index": paint_color_index,
+    }
+
+func restore_state(state: Dictionary) -> bool:
+    if size.x <= 1.0 or size.y <= 1.0:
+        return false
+
+    segments.clear()
+    occupied.fill(0)
+    occupied_count = 0
+    drawing = false
+
+    var raw_cells: Variant = state.get("occupied_cells", [])
+    if raw_cells is Array:
+        for value in raw_cells:
+            var index: int = int(value)
+            if index >= 0 and index < occupied.size() and occupied[index] == 0:
+                occupied[index] = 1
+                occupied_count += 1
+
+    var reference: float = maxf(1.0, minf(size.x, size.y))
+    var raw_segments: Variant = state.get("segments", [])
+    if raw_segments is Array:
+        for value in raw_segments:
+            if not value is Dictionary:
+                continue
+            var saved: Dictionary = value
+            var raw_from: Variant = saved.get("from", [])
+            var raw_to: Variant = saved.get("to", [])
+            if not raw_from is Array or raw_from.size() != 2 or not raw_to is Array or raw_to.size() != 2:
+                continue
+            segments.append({
+                "from": Vector2(float(raw_from[0]) * size.x, float(raw_from[1]) * size.y),
+                "to": Vector2(float(raw_to[0]) * size.x, float(raw_to[1]) * size.y),
+                "width": clampf(float(saved.get("width", 0.05)) * reference, 8.0, 96.0),
+                "color": Color.from_string(str(saved.get("color", "72afffb8")), Color("72afffb8")),
+            })
+
+    var found_lookup: Dictionary = {}
+    var raw_found: Variant = state.get("found_collectibles", [])
+    if raw_found is Array:
+        for value in raw_found:
+            found_lookup[str(value)] = true
+    for item in collectibles:
+        item["found"] = found_lookup.has(str(item.get("id", "")))
+
+    paint_color_index = posmod(int(state.get("paint_color_index", 0)), palette.size())
+    visual_progress = get_coverage()
+    coverage_changed.emit(visual_progress)
+    queue_redraw()
+    return true
 
 func _gui_input(event: InputEvent) -> void:
     if not interaction_enabled:
@@ -111,6 +207,8 @@ func _paint_line(from: Vector2, to: Vector2) -> void:
     var color := palette[paint_color_index]
     color.a = 0.72 if calm_mode else 0.82
     segments.append({"from": from, "to": to, "width": width, "color": color})
+    if segments.size() > MAX_SEGMENTS:
+        segments.pop_front()
 
     var steps := maxi(1, int(ceil(distance / maxf(width * 0.35, 8.0))))
     for index in range(steps + 1):
@@ -126,6 +224,8 @@ func _paint_point(point: Vector2, speed_normalized: float) -> void:
     var color := palette[paint_color_index]
     color.a = 0.74
     segments.append({"from": point, "to": point, "width": width, "color": color})
+    if segments.size() > MAX_SEGMENTS:
+        segments.pop_front()
     _mark_coverage(point, width * 0.52)
     _check_collectibles(point, width)
     paint_pulse.emit(speed_normalized)
@@ -150,7 +250,8 @@ func _mark_coverage(point: Vector2, radius: float) -> void:
                 occupied[cell_index] = 1
                 occupied_count += 1
 
-    coverage_changed.emit(float(occupied_count) / float(GRID_WIDTH * GRID_HEIGHT))
+    visual_progress = float(occupied_count) / float(GRID_WIDTH * GRID_HEIGHT)
+    coverage_changed.emit(visual_progress)
 
 func _check_collectibles(point: Vector2, radius: float) -> void:
     for item in collectibles:
@@ -226,6 +327,8 @@ func _draw() -> void:
     draw_rect(lamp_rect.grow(8.0), Color(accent, 0.035))
     draw_rect(lamp_rect, Color(accent.lightened(0.35), 0.30))
 
+    _draw_technophobia_layer(base, accent, door_rect)
+
     # Sparse floor guides support depth without moving the camera.
     for guide in [0.18, 0.32, 0.68, 0.82]:
         var floor_x := size.x * float(guide)
@@ -250,3 +353,42 @@ func _draw() -> void:
             draw_arc(target, 34.0, 0.0, TAU, 40, Color(accent, 0.72), 2.0, true)
         else:
             draw_circle(target, 5.0, Color(accent, 0.09))
+
+func _draw_technophobia_layer(base: Color, accent: Color, door_rect: Rect2) -> void:
+    var anxiety := smoothstep(0.05, 0.72, visual_progress)
+    if anxiety <= 0.0:
+        return
+    var calm_scale := 0.58 if calm_mode else 1.0
+    var strength := anxiety * calm_scale
+    var warning := Color("ff6680")
+
+    # Slow scan lines and displaced fragments suggest an unstable interface.
+    # Their opacity and movement are capped to avoid flashing or strobing.
+    for index in range(11):
+        var y := size.y * (0.18 + float(index) * 0.057)
+        var drift := sin(glitch_phase * TAU + float(index) * 1.73) * size.x * 0.014 * strength
+        var alpha := 0.018 + strength * (0.018 + float(index % 3) * 0.008)
+        draw_rect(Rect2(size.x * 0.10 + drift, y, size.x * 0.80, 1.0 + float(index % 2)), Color(accent, alpha))
+
+    var monitor := Rect2(size.x * 0.27, size.y * 0.245, size.x * 0.46, size.y * 0.155)
+    draw_rect(monitor.grow(4.0), Color(accent, 0.035 + strength * 0.05), false, 2.0)
+    draw_rect(monitor, Color(base.darkened(0.24), 0.68))
+    for row in range(5):
+        var row_y := monitor.position.y + 18.0 + float(row) * 18.0
+        var width_factor := 0.28 + fmod(float(row) * 0.31 + visual_progress, 0.62)
+        var row_shift := sin(glitch_phase * 2.1 + float(row)) * 9.0 * strength
+        draw_rect(Rect2(monitor.position.x + 17.0 + row_shift, row_y, monitor.size.x * width_factor, 3.0), Color(accent, 0.12 + strength * 0.16))
+
+    if visual_progress > 0.24:
+        for index in range(5):
+            var block_x := size.x * (0.15 + float(index) * 0.145)
+            var block_y := size.y * (0.43 + float(index % 2) * 0.055)
+            var shift := sin(glitch_phase * 1.4 + float(index) * 2.0) * 14.0 * strength
+            draw_rect(Rect2(block_x + shift, block_y, size.x * 0.085, 5.0 + float(index % 3) * 3.0), Color(warning, 0.025 + strength * 0.055))
+
+    # The door appears increasingly machine-read rather than physically open.
+    var readout_y := door_rect.position.y + door_rect.size.y * 0.78
+    for index in range(4):
+        var x := door_rect.position.x + 12.0 + float(index) * door_rect.size.x * 0.20
+        var height := door_rect.size.y * (0.04 + float(index % 2) * 0.025)
+        draw_rect(Rect2(x, readout_y - height, 4.0, height), Color(accent, 0.12 + strength * 0.18))

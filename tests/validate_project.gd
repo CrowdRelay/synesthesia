@@ -4,14 +4,40 @@ const REQUIRED_MANIFEST_KEYS := ["schema_version", "release_id", "room", "sensor
 const RELEASE_INDEX_PATH := "res://data/release_index.json"
 
 func _init() -> void:
+    call_deferred("_run_validation")
+
+func _run_validation() -> void:
     var failures: Array[String] = []
     var manifest_path := _active_manifest_path(failures)
     if not manifest_path.is_empty():
         _validate_manifest(manifest_path, failures)
 
+    for script_path in [
+        "res://scripts/main.gd",
+        "res://scripts/paint_room.gd",
+        "res://scripts/audio_director.gd",
+        "res://scripts/haptics.gd",
+        "res://scripts/progress_store.gd",
+    ]:
+        var script_resource: Resource = load(script_path)
+        if not script_resource is Script:
+            failures.append("script cannot be loaded: %s" % script_path)
+
     var scene: PackedScene = load("res://scenes/main.tscn")
     if scene == null:
         failures.append("main scene cannot be loaded")
+    else:
+        var instance := scene.instantiate()
+        root.add_child(instance)
+        await process_frame
+        await process_frame
+        if instance.get_node_or_null("PaintRoom") == null:
+            failures.append("main scene did not create PaintRoom")
+        if instance.get_node_or_null("AudioDirector") == null:
+            failures.append("main scene did not create AudioDirector")
+        if instance.get_node_or_null("Haptics") == null:
+            failures.append("main scene did not create Haptics")
+        instance.queue_free()
 
     if failures.is_empty():
         print("SYNESTHESIA_VALIDATION=PASS")
@@ -60,3 +86,9 @@ func _validate_manifest(manifest_path: String, failures: Array[String]) -> void:
     var collectibles: Array = manifest.get("collectibles", [])
     if collectibles.is_empty():
         failures.append("active room must contain at least one collectible")
+    var audio: Dictionary = manifest.get("audio", {})
+    var excerpt_path := str(audio.get("completion_excerpt", ""))
+    if excerpt_path.is_empty() or not FileAccess.file_exists(excerpt_path):
+        failures.append("completion excerpt is missing")
+    elif not load(excerpt_path) is AudioStream:
+        failures.append("completion excerpt is not an AudioStream")

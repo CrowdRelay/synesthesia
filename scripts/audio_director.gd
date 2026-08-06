@@ -5,6 +5,7 @@ const MIX_RATE := 22050
 const TAU_F := TAU
 
 var _player: AudioStreamPlayer
+var _release_player: AudioStreamPlayer
 var _playback: AudioStreamGeneratorPlayback
 var _time: float = 0.0
 var _coverage_target: float = 0.0
@@ -17,12 +18,17 @@ var _calm_mode: bool = true
 var _noise_seed: int = 19088743
 var _noise_state: float = 0.0
 var _collectible_total: int = 1
+var _safe_ceiling_db: float = -7.0
+var _release_volume_db: float = -12.0
+var _release_available: bool = false
+var _release_active: bool = false
+var _release_title: String = "VIRYA"
 
 func _ready() -> void:
     _player = AudioStreamPlayer.new()
     _player.name = "ProceduralSoundscape"
     _player.bus = &"Room"
-    _player.volume_db = -7.0
+    _player.volume_db = _safe_ceiling_db
     add_child(_player)
 
     var generator := AudioStreamGenerator.new()
@@ -31,12 +37,34 @@ func _ready() -> void:
     _player.stream = generator
     _player.play()
     _playback = _player.get_stream_playback() as AudioStreamGeneratorPlayback
+
+    _release_player = AudioStreamPlayer.new()
+    _release_player.name = "ReleaseExcerpt"
+    _release_player.bus = &"Music"
+    _release_player.volume_db = -60.0
+    add_child(_release_player)
     set_process(true)
 
-func configure(sensory: Dictionary, collectible_total: int = 1) -> void:
+func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: int = 1) -> void:
     _collectible_total = maxi(1, collectible_total)
+    _safe_ceiling_db = float(sensory.get("safe_audio_ceiling_db", -7.0))
+    _release_volume_db = minf(float(audio.get("completion_volume_db", -12.0)), -6.0)
+    _release_title = str(audio.get("title", "VIRYA"))
     if _player != null:
-        _player.volume_db = float(sensory.get("safe_audio_ceiling_db", -7.0))
+        _player.volume_db = _safe_ceiling_db
+
+    var excerpt_path := str(audio.get("completion_excerpt", ""))
+    if excerpt_path.is_empty():
+        return
+    if not excerpt_path.begins_with("res://") or not FileAccess.file_exists(excerpt_path):
+        push_warning("Completion excerpt is missing: %s" % excerpt_path)
+        return
+    var resource: Resource = load(excerpt_path)
+    if resource is AudioStream:
+        _release_player.stream = resource
+        _release_available = true
+    else:
+        push_warning("Completion excerpt is not an AudioStream: %s" % excerpt_path)
 
 func set_progress(coverage: float, found_count: int) -> void:
     _coverage_target = clampf(coverage, 0.0, 1.0)
@@ -48,12 +76,40 @@ func set_quiet(value: bool) -> void:
 func set_calm_mode(value: bool) -> void:
     _calm_mode = value
 
-func _process(_delta: float) -> void:
-    if _playback == null:
-        return
-    var frames := _playback.get_frames_available()
-    for _frame in range(frames):
-        _push_audio_frame()
+func reveal_release_excerpt() -> bool:
+    if not _release_available or _release_active:
+        return false
+    _release_active = true
+    _release_player.volume_db = -60.0
+    _release_player.play()
+    return true
+
+func reset_release_excerpt() -> void:
+    _release_active = false
+    if _release_player != null:
+        _release_player.stop()
+        _release_player.volume_db = -60.0
+
+func get_release_title() -> String:
+    return _release_title
+
+func _process(delta: float) -> void:
+    if _playback != null:
+        var frames: int = _playback.get_frames_available()
+        for _frame in range(frames):
+            _push_audio_frame()
+
+    if _player != null:
+        var procedural_target := _safe_ceiling_db - (13.0 if _release_active else 0.0)
+        _player.volume_db = move_toward(_player.volume_db, procedural_target, delta * 16.0)
+
+    if _release_player != null:
+        var release_target := -60.0
+        if _release_active:
+            release_target = _release_volume_db - (18.0 if _quiet_target > 0.5 else 0.0)
+        _release_player.volume_db = move_toward(_release_player.volume_db, release_target, delta * 18.0)
+        if _release_active and not _release_player.playing:
+            _release_active = false
 
 func _push_audio_frame() -> void:
     _coverage_smoothed = lerpf(_coverage_smoothed, _coverage_target, 0.00055)

@@ -5,8 +5,8 @@ VIRYA: Synestezja is currently an exploratory artistic prototype. Contributions 
 ## Development setup
 
 1. Install Godot 4.7.1.
-2. Open `virya-synestezja/project.godot`.
-3. Run `cd virya-synestezja && ./validate.sh` before submitting changes.
+2. Open the root `project.godot`.
+3. Run `./validate.sh` from the repository root before submitting changes.
 4. Test touch-related changes on a real mobile device when possible.
 
 ## Pull request expectations

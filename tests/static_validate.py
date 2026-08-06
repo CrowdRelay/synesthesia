@@ -10,15 +10,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_FILES = [
     "project.godot",
+    "run-macos.sh",
     "export_presets.cfg",
     "scenes/main.tscn",
     "scripts/main.gd",
     "scripts/paint_room.gd",
     "scripts/audio_director.gd",
     "scripts/haptics.gd",
+    "scripts/progress_store.gd",
     "shaders/visual_snow.gdshader",
     "data/release_index.json",
     "data/releases/prototype/manifest.json",
+    "assets/audio/technophobia-room-outro.mp3",
+    "assets/audio/README.md",
 ]
 REQUIRED_MANIFEST_KEYS = {
     "schema_version",
@@ -148,21 +152,65 @@ def validate() -> list[str]:
     for relative in ('.github/workflows/ci.yml', '.github/workflows/build.yml'):
         if not (ROOT / relative).is_file():
             fail(f"missing repository workflow: {relative}", failures)
+    ci_workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+    if 'run: "${GODOT_BIN}" --version' in ci_workflow:
+        fail("Godot version command must use a YAML block scalar", failures)
+
+    stale_structure_files = [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "docs/ARCHITECTURE.md"]
+    for stale_file in stale_structure_files:
+        if "virya-synestezja/" in stale_file.read_text():
+            fail(f"stale nested project path in {stale_file.relative_to(ROOT)}", failures)
 
     project_config = (ROOT / "project.godot").read_text()
     if "pointing/emulate_touch_from_mouse=true" in project_config or "pointing/emulate_mouse_from_touch=true" in project_config:
         fail("touch and mouse emulation must stay disabled to prevent duplicate strokes", failures)
     bus_layout = (ROOT / "default_bus_layout.tres").read_text()
+    if '[gd_resource type="AudioBusLayout" format=3]' not in bus_layout:
+        fail("audio bus layout must declare AudioBusLayout type", failures)
     for bus_name in ("Music", "Room", "Sensory", "UI"):
         if f'&"{bus_name}"' not in bus_layout:
             fail(f"missing audio bus: {bus_name}", failures)
     if "Uspokój pokój" not in source_text:
         fail("immediate calming control is missing", failures)
+    main_source = (ROOT / "scripts/main.gd").read_text()
+    if "var restored: bool = false" not in main_source:
+        fail("restored room state must use an explicit bool type", failures)
+    if re.search(r"var\s+restored\s*:=", main_source):
+        fail("room restoration must not rely on Variant type inference", failures)
+    progress_source = (ROOT / "scripts/progress_store.gd").read_text()
+    for contract in ("user://synesthesia-progress-v1.json", "save_release", "load_release", "clear_release"):
+        if contract not in progress_source:
+            fail(f"local progress contract is missing: {contract}", failures)
+    paint_source = (ROOT / "scripts/paint_room.gd").read_text()
+    for contract in ("export_state", "restore_state", "MAX_SEGMENTS"):
+        if contract not in paint_source:
+            fail(f"room memory contract is missing: {contract}", failures)
     if re.search(r"https?://", source_text, flags=re.IGNORECASE):
         fail("runtime core must remain network-free in the first slice", failures)
     for forbidden in ("analytics", "telemetry", "tracking_id", "admob"):
         if forbidden in source_text.lower():
             fail(f"forbidden first-slice dependency: {forbidden}", failures)
+
+    main_source = (ROOT / "scripts/main.gd").read_text()
+    for forbidden_type in ("var room: SynesthesiaPaintRoom", "var audio_director: SynesthesiaAudioDirector", "var haptics: SynesthesiaHaptics"):
+        if forbidden_type in main_source:
+            fail(f"main scene must not depend on editor class cache: {forbidden_type}", failures)
+    if "var count: int" not in main_source:
+        fail("collectible count must use an explicit integer type", failures)
+
+    audio_config = manifest.get("audio", {}) if manifest else {}
+    if not isinstance(audio_config, dict):
+        fail("audio must be an object", failures)
+    else:
+        excerpt = audio_config.get("completion_excerpt", "")
+        if not isinstance(excerpt, str) or not excerpt.startswith("res://"):
+            fail("completion excerpt must use a res:// path", failures)
+        else:
+            excerpt_path = ROOT / excerpt.removeprefix("res://")
+            if not excerpt_path.is_file():
+                fail("completion excerpt file is missing", failures)
+            elif excerpt_path.stat().st_size > 2_000_000:
+                fail("completion excerpt should remain below 2 MB", failures)
 
     audio_source = (ROOT / "scripts/audio_director.gd").read_text()
     frequencies = [float(value) for value in re.findall(r"TAU_F \* ([0-9]+(?:\.[0-9]+)?)", audio_source)]

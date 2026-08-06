@@ -13,11 +13,12 @@ The first vertical slice includes:
 - mouse and touch painting;
 - brush behaviour reacting to gesture speed;
 - hidden narrative traces and collectibles;
-- layered procedural audio;
+- layered procedural audio leading into a real VIRYA excerpt;
 - subtle visual-noise treatment;
 - optional restrained haptics;
 - calm and full sensory modes;
 - an immediate **Calm the room** action;
+- local, versioned room memory;
 - data-driven release manifests for future singles and albums.
 
 The prototype is offline-first and currently contains no accounts, analytics, advertisements, backend dependency, or coercive engagement mechanics.
@@ -48,7 +49,8 @@ Open `project.godot` in Godot 4.7.1 and run the main scene.
 From the command line:
 
 ```bash
-godot --path .
+./run-macos.sh   # macOS
+godot --path .  # other platforms with Godot on PATH
 ```
 
 ## Validate
@@ -75,8 +77,8 @@ Actions → Build → Run workflow → all
 Pushing a tag matching `v*` builds all platforms and creates a GitHub Release.
 
 ```bash
-git tag v0.2.1
-git push origin v0.2.1
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 ## Add another release pack
@@ -97,3 +99,7 @@ Early experimental prototype. The first goal is to validate whether painting, au
 ## License
 
 Source code is available under the repository license. VIRYA names, logos, music, recordings, stems, lyrics, and artwork remain the property of their respective rights holders.
+
+## Current room: Technophobia
+
+The first room is a restrained technological-anxiety space. Painting destabilizes a clinical transmission interface through slow scan lines, displaced fragments, and low-contrast warning traces. Completing the room reveals a short, gently faded excerpt of VIRYA's **Technophobia**. The music is bundled locally; the experience remains offline and free of telemetry.
