@@ -1,59 +1,83 @@
-# Release pack schema v3
+# Release pack schema v4
 
-`data/release_index.json` defines one ordered album route. Each entry points to `data/releases/<id>/manifest.json`.
+Each room lives in `data/releases/<id>/manifest.json` and is referenced in exact story order by `data/release_index.json`.
 
-## Required manifest fields
+## Required top-level fields
 
-- `schema_version`: exactly `3`;
-- `release_id`: lower-case hyphenated identifier;
-- `story_order`: zero-based route position;
-- `artist`, `title`, `subtitle`;
-- `room`: visual and interaction configuration;
-- `sensory`: safe visual, audio and haptic bounds;
-- `audio`: local completion excerpt;
-- `collectibles`: exactly three narrative traces;
-- `intro`, `completion_title`, `completion_message`.
+```text
+schema_version = 4
+release_id
+story_order
+artist
+title
+subtitle
+room
+sensory
+audio
+collectibles (exactly three)
+intro
+completion_title
+completion_message
+```
 
 ## Room contract
 
 ```json
 {
+  "id": "room-id",
   "name": "Visible room name",
+  "scene_path": "res://scenes/rooms/room-id.tscn",
+  "behavior_script": "res://scripts/rooms/behaviors/room-id.gd",
+  "render_pipeline": "mask-gpu-v1",
   "visual_style": "renderer-key",
-  "interaction": "interaction-key",
-  "base_color": "#101827",
-  "floor_color": "#080c14",
-  "accent_color": "#71afff",
-  "secondary_color": "#ff5f7c",
-  "paint_palette": ["#71afff", "#ffffff"],
+  "interaction": "paint",
   "completion_coverage": 0.44,
-  "cinematic_reveal_at": 0.99
+  "cinematic_reveal_at": 0.99,
+  "brush": {
+    "profile": "ink",
+    "min_width": 22,
+    "max_width": 58,
+    "opacity": 0.82,
+    "texture": 0.52,
+    "outline": 0.72,
+    "spacing": 0.58
+  },
+  "art_direction": {
+    "style": "dark_comic",
+    "material_pass": "production-2.5d",
+    "scene_image": "res://assets/rooms/vertical/room-id-scene.webp",
+    "background_image": "res://assets/rooms/vertical/room-id-bg.webp",
+    "subject_image": "res://assets/rooms/vertical/room-id-subject.webp",
+    "foreground_image": "res://assets/rooms/vertical/room-id-foreground.webp",
+    "layers": ["background", "scene", "subject", "foreground", "atmosphere"],
+    "background_parallax": 0.004,
+    "scene_parallax": 0.010,
+    "subject_parallax": 0.016,
+    "foreground_parallax": 0.025
+  }
 }
 ```
 
-`completion_coverage` is the physical grid coverage required for a practical completion. `cinematic_reveal_at` remains `0.99` so the runtime releases the last one percent automatically.
+Production WebP dimensions are 810×1440 for scene/subject/foreground and 540×960 for the blurred background.
 
 ## Audio contract
 
 ```json
 {
-  "mode": "procedural_then_excerpt",
-  "title": "Track title",
-  "completion_excerpt": "res://assets/audio/example-room-outro.mp3",
-  "completion_volume_db": -13.0,
-  "source": "VIRYA — Echoes Of The Modern Mind"
+  "mode": "pink_noise_reveal_mix",
+  "completion_excerpt": "res://assets/audio/room-id-room-outro.mp3",
+  "noise_loop": "res://assets/audio/pink-noise-asmr-loop.ogg",
+  "pink_noise_start_db": -5.0,
+  "hidden_music_db": -44.0,
+  "completion_volume_db": -8.0,
+  "lowpass_start_hz": 1000.0,
+  "lowpass_final_hz": 19500.0,
+  "stereo_reveal": true,
+  "dynamic_space_reveal": true
 }
 ```
 
-Excerpts are local, short, gently faded and statically limited to 50 KB–2 MB. `safe_audio_ceiling_db` in `sensory` must be at most `-6 dB`.
-
-## Sensory contract
-
-- Visual Snow: `0.0..0.12`;
-- haptic amplitude: `0.0..0.65`;
-- calm mode is the default;
-- every effect must remain meaningful when haptics are unavailable;
-- no strobe or sudden loudness spike.
+The sensory safe ceiling must be at most −6 dB. No room may introduce strobe or a sudden loudness jump.
 
 ## Adding a room
 
@@ -61,33 +85,8 @@ Excerpts are local, short, gently faded and statically limited to 50 KB–2 MB. 
 python3 tools/new_release_pack.py new-room \
   --title "VIRYA: New Room" \
   --room "Room name" \
-  --style custom-style
+  --style uncertainty \
+  --position 2
 ```
 
-The scaffold creates schema v3 data and an empty excerpt placeholder path. A new visual style must also be implemented and added to static contracts before CI can pass.
-
-## v0.8 art-direction fields
-
-Every room now owns two additional data-only objects inside `room`:
-
-```json
-{
-  "brush": {
-    "profile": "ink",
-    "min_width": 20,
-    "max_width": 52,
-    "opacity": 0.86,
-    "texture": 0.64,
-    "outline": 0.86,
-    "spacing": 0.54
-  },
-  "art_direction": {
-    "style": "dark_comic",
-    "caption": "MASKI NIE MÓWIĄ PRAWDY",
-    "ink_strength": 0.82,
-    "halftone_strength": 0.30
-  }
-}
-```
-
-The sensory object also controls bounded CRT/cosmic static through `visual_snow_tint`, `scanline_strength`, `roll_strength`, `sparkle_density`, `horizontal_jitter`, `static_motion_calm` and `static_motion_full`. These values are data only and are clamped by the runtime and static validator.
+The generator creates schema-v4 data, a PackedScene, behavior with three acts and all five placeholder layers, then atomically updates every `story_order`. Replace placeholders and provide the excerpt before adding the room to the production route. Run `tools/update_visual_snapshots.py` only after an approved art change.

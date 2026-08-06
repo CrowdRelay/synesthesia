@@ -1,5 +1,4 @@
 extends Node
-class_name SynesthesiaRewardClient
 
 signal run_started(run_id: String, run_token: String, next_room_index: int)
 signal room_recorded(room_id: String, next_room_index: int)

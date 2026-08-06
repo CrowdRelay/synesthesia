@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "release_id": "waves",
   "story_order": 9,
   "artist": "Virya",
@@ -34,8 +34,29 @@
       "style": "dark_comic",
       "caption": "ZOSTAŃ W PÓŁMROKU",
       "ink_strength": 0.58,
-      "halftone_strength": 0.15
-    }
+      "halftone_strength": 0.15,
+      "scene_image": "res://assets/rooms/vertical/waves-scene.webp",
+      "scene_opacity": 1.0,
+      "scene_parallax": 0.006,
+      "material_pass": "production-2.5d",
+      "background_image": "res://assets/rooms/vertical/waves-bg.webp",
+      "background_parallax": 0.0027,
+      "subject_image": "res://assets/rooms/vertical/waves-subject.webp",
+      "foreground_image": "res://assets/rooms/vertical/waves-foreground.webp",
+      "subject_parallax": 0.0093,
+      "foreground_parallax": 0.0147,
+      "layers": [
+        "background",
+        "scene",
+        "subject",
+        "foreground",
+        "atmosphere"
+      ]
+    },
+    "id": "waves",
+    "scene_path": "res://scenes/rooms/waves.tscn",
+    "behavior_script": "res://scripts/rooms/behaviors/waves.gd",
+    "render_pipeline": "mask-gpu-v1"
   },
   "sensory": {
     "default_mode": "calm",
@@ -54,12 +75,19 @@
     "static_motion_full": 0.42
   },
   "audio": {
-    "mode": "procedural_then_excerpt",
+    "mode": "pink_noise_reveal_mix",
     "title": "Waves",
     "completion_excerpt": "res://assets/audio/waves-room-outro.mp3",
-    "completion_volume_db": -13.0,
+    "completion_volume_db": -8.0,
     "source": "VIRYA — Echoes Of The Modern Mind",
-    "note": "Short offline room completion excerpt with gentle fades."
+    "note": "Painting reveals volume, frequency range and stereo space; at 99% the ASMR noise and filtering are gone.",
+    "pink_noise_start_db": -5.0,
+    "hidden_music_db": -44.0,
+    "noise_loop": "res://assets/audio/pink-noise-asmr-loop.ogg",
+    "lowpass_start_hz": 1350.0,
+    "lowpass_final_hz": 19500.0,
+    "stereo_reveal": true,
+    "dynamic_space_reveal": true
   },
   "collectibles": [
     {

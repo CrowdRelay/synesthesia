@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "release_id": "party-time",
   "story_order": 1,
   "artist": "Virya",
@@ -35,8 +35,29 @@
       "style": "dark_comic",
       "caption": "NIE PYTAJ — PRZEBIJ",
       "ink_strength": 0.64,
-      "halftone_strength": 0.3
-    }
+      "halftone_strength": 0.3,
+      "scene_image": "res://assets/rooms/vertical/party-time-scene.webp",
+      "scene_opacity": 1.0,
+      "scene_parallax": 0.012,
+      "material_pass": "production-2.5d",
+      "background_image": "res://assets/rooms/vertical/party-time-bg.webp",
+      "background_parallax": 0.0054,
+      "subject_image": "res://assets/rooms/vertical/party-time-subject.webp",
+      "foreground_image": "res://assets/rooms/vertical/party-time-foreground.webp",
+      "subject_parallax": 0.0186,
+      "foreground_parallax": 0.0294,
+      "layers": [
+        "background",
+        "scene",
+        "subject",
+        "foreground",
+        "atmosphere"
+      ]
+    },
+    "id": "party-time",
+    "scene_path": "res://scenes/rooms/party-time.tscn",
+    "behavior_script": "res://scripts/rooms/behaviors/party-time.gd",
+    "render_pipeline": "mask-gpu-v1"
   },
   "sensory": {
     "default_mode": "calm",
@@ -55,12 +76,19 @@
     "static_motion_full": 0.42
   },
   "audio": {
-    "mode": "procedural_then_excerpt",
+    "mode": "pink_noise_reveal_mix",
     "title": "Party Time",
     "completion_excerpt": "res://assets/audio/party-time-room-outro.mp3",
-    "completion_volume_db": -13.0,
+    "completion_volume_db": -8.0,
     "source": "VIRYA — Echoes Of The Modern Mind",
-    "note": "Short offline room completion excerpt with gentle fades."
+    "note": "Painting reveals volume, frequency range and stereo space; at 99% the ASMR noise and filtering are gone.",
+    "pink_noise_start_db": -5.0,
+    "hidden_music_db": -44.0,
+    "noise_loop": "res://assets/audio/pink-noise-asmr-loop.ogg",
+    "lowpass_start_hz": 1500.0,
+    "lowpass_final_hz": 19500.0,
+    "stereo_reveal": true,
+    "dynamic_space_reveal": true
   },
   "collectibles": [
     {

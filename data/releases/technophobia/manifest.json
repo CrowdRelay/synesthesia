@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "release_id": "technophobia",
   "story_order": 6,
   "artist": "Virya",
@@ -34,8 +34,29 @@
       "style": "dark_comic",
       "caption": "NAPRAW SYGNAŁ",
       "ink_strength": 0.94,
-      "halftone_strength": 0.38
-    }
+      "halftone_strength": 0.38,
+      "scene_image": "res://assets/rooms/vertical/technophobia-scene.webp",
+      "scene_opacity": 1.0,
+      "scene_parallax": 0.013,
+      "material_pass": "production-2.5d",
+      "background_image": "res://assets/rooms/vertical/technophobia-bg.webp",
+      "background_parallax": 0.0059,
+      "subject_image": "res://assets/rooms/vertical/technophobia-subject.webp",
+      "foreground_image": "res://assets/rooms/vertical/technophobia-foreground.webp",
+      "subject_parallax": 0.02015,
+      "foreground_parallax": 0.03185,
+      "layers": [
+        "background",
+        "scene",
+        "subject",
+        "foreground",
+        "atmosphere"
+      ]
+    },
+    "id": "technophobia",
+    "scene_path": "res://scenes/rooms/technophobia.tscn",
+    "behavior_script": "res://scripts/rooms/behaviors/technophobia.gd",
+    "render_pipeline": "mask-gpu-v1"
   },
   "sensory": {
     "default_mode": "calm",
@@ -54,12 +75,19 @@
     "static_motion_full": 0.72
   },
   "audio": {
-    "mode": "procedural_then_excerpt",
+    "mode": "pink_noise_reveal_mix",
     "title": "Technophobia",
     "completion_excerpt": "res://assets/audio/technophobia-room-outro.mp3",
-    "completion_volume_db": -13.0,
+    "completion_volume_db": -8.0,
     "source": "VIRYA — Echoes Of The Modern Mind",
-    "note": "Short offline room completion excerpt with gentle fades."
+    "note": "Painting reveals volume, frequency range and stereo space; at 99% the ASMR noise and filtering are gone.",
+    "pink_noise_start_db": -5.0,
+    "hidden_music_db": -44.0,
+    "noise_loop": "res://assets/audio/pink-noise-asmr-loop.ogg",
+    "lowpass_start_hz": 650.0,
+    "lowpass_final_hz": 19500.0,
+    "stereo_reveal": true,
+    "dynamic_space_reveal": true
   },
   "collectibles": [
     {

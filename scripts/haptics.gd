@@ -1,5 +1,4 @@
 extends Node
-class_name SynesthesiaHaptics
 
 var enabled: bool = true
 var calm_mode: bool = true

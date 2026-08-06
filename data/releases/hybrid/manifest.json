@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "release_id": "hybrid",
   "story_order": 5,
   "artist": "Virya",
@@ -34,8 +34,29 @@
       "style": "dark_comic",
       "caption": "OSTATNI POJEDYNEK",
       "ink_strength": 0.9,
-      "halftone_strength": 0.34
-    }
+      "halftone_strength": 0.34,
+      "scene_image": "res://assets/rooms/vertical/hybrid-scene.webp",
+      "scene_opacity": 1.0,
+      "scene_parallax": 0.011,
+      "material_pass": "production-2.5d",
+      "background_image": "res://assets/rooms/vertical/hybrid-bg.webp",
+      "background_parallax": 0.0049,
+      "subject_image": "res://assets/rooms/vertical/hybrid-subject.webp",
+      "foreground_image": "res://assets/rooms/vertical/hybrid-foreground.webp",
+      "subject_parallax": 0.01705,
+      "foreground_parallax": 0.02695,
+      "layers": [
+        "background",
+        "scene",
+        "subject",
+        "foreground",
+        "atmosphere"
+      ]
+    },
+    "id": "hybrid",
+    "scene_path": "res://scenes/rooms/hybrid.tscn",
+    "behavior_script": "res://scripts/rooms/behaviors/hybrid.gd",
+    "render_pipeline": "mask-gpu-v1"
   },
   "sensory": {
     "default_mode": "calm",
@@ -54,12 +75,19 @@
     "static_motion_full": 0.42
   },
   "audio": {
-    "mode": "procedural_then_excerpt",
+    "mode": "pink_noise_reveal_mix",
     "title": "Hybrid",
     "completion_excerpt": "res://assets/audio/hybrid-room-outro.mp3",
-    "completion_volume_db": -13.0,
+    "completion_volume_db": -8.0,
     "source": "VIRYA — Echoes Of The Modern Mind",
-    "note": "Short offline room completion excerpt with gentle fades."
+    "note": "Painting reveals volume, frequency range and stereo space; at 99% the ASMR noise and filtering are gone.",
+    "pink_noise_start_db": -5.0,
+    "hidden_music_db": -44.0,
+    "noise_loop": "res://assets/audio/pink-noise-asmr-loop.ogg",
+    "lowpass_start_hz": 780.0,
+    "lowpass_final_hz": 19500.0,
+    "stereo_reveal": true,
+    "dynamic_space_reveal": true
   },
   "collectibles": [
     {

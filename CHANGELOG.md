@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.10.0 — Production Renderer and Room Identity
+
+- Replaces stretched horizontal plates with native portrait 810×1440 room art.
+- Adds a five-layer 2.5D stack: background, scene, central subject, foreground and atmosphere.
+- Replaces retained stroke redraw with a dirty-upload L8 reveal mask and one GPU composite shader.
+- Adds deterministic speed-sensitive comic brush stamps with bounded history and profile-specific texture.
+- Splits all eleven rooms into PackedScenes and behavior modules with three narrative acts each.
+- Adds Battery, Balanced and High quality profiles around a 540×960 logical viewport.
+- Replaces procedural pink noise with a seamless stereo OGG and reveals music gain, bandwidth and space.
+- Adds a receding portrait HUD, independent music/noise/VSS/haptics controls and reduced-motion support.
+- Adds threaded next-room preload, schema-v4 atomic checkpoints and a debug diagnostics overlay.
+- Adds visual layer snapshots, generator regression, room pipeline contracts and runtime room instantiation tests.
+- Removes the legacy paint renderer, standalone Visual Snow shader and horizontal room JPGs.
+
+## 0.9.2 — Pink-noise reveal mix and cumulative installer
+
+- Adds a soft runtime-generated ASMR pink-noise bed to every room.
+- Crossfades continuously from noise-dominant to music-dominant as painting reveals the scene.
+- Mutes the noise completely at the 99% cinematic reveal, leaving only the room track.
+- Keeps calm and quiet modes effective across both noise and music.
+- Makes the overlay cumulative from a clean 0.8.0 rollback state.
+- Includes the 0.9.0 scene-fidelity pass, the validator scope fix and the 1080×1920 portrait viewport.
+
+## 0.9.0 — Cover Fidelity / Scene Pass
+
+- Eleven concrete cinematic room tableaux grounded in VIRYA cover art and track narratives.
+- Photorealistic-comic material plates under the VSS reveal mask.
+- Subtle parallax, vignette and narrative light pass per room.
+- Scene assets stay offline, compressed and mobile-budgeted.
+
 ## 0.8.0 — Art Direction Pass
 
 - replaces the circular debug-like stroke with an eleven-profile procedural comic brush engine;

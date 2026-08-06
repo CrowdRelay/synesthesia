@@ -1,54 +1,39 @@
 # VIRYA: Synestezja
 
-A playable sensory edition of VIRYA's **Echoes Of The Modern Mind**, built with Godot 4.7.1.
+A portrait Godot 4.7.1 experience that turns **Echoes Of The Modern Mind** into eleven playable, cover-inspired rooms. The player uncovers each scene with a textured comic brush while Visual Snow, cosmic CRT static and soft ASMR pink noise recede; at 99% the filter disappears and only the full room excerpt remains.
 
-The album becomes eleven rooms. The player paints through Visual Snow, muted negative colour and room-specific distortions. Every gesture repairs or reveals part of the scene; at **99%** the remaining filter releases at once, the song excerpt enters and the next door opens.
+## 0.10.0 — Production Renderer
+
+This release replaces the prototype renderer with a production-oriented mobile pipeline:
+
+- native portrait room plates instead of stretched horizontal images;
+- five-layer 2.5D scenes: blurred background, architecture/scene, central subject, foreground and atmosphere;
+- a low-resolution retained reveal mask composited by one GPU shader;
+- Photoshop-like deterministic brush stamps written once to the mask, not replayed every frame;
+- room-owned PackedScenes and behavior scripts with three narrative acts each;
+- quality profiles for Battery, Balanced and High;
+- static stereo pink-noise loop plus music gain, low-pass and space reveal;
+- compact HUD that recedes while painting, separate audio/VSS/haptics controls and reduced-motion support;
+- schema-v4 atomic progress checkpoints and ordered offline reward synchronization;
+- next-room threaded preloading, diagnostics overlay and stronger CI/runtime contracts.
+
+The logical viewport is **540×960**. Final room art is authored at **810×1440**, giving a clean 9:16 presentation without wasting four times the pixel work on mobile.
 
 ## Album route
 
-1. **Wave of Uncertainty** — a calm tidal chamber.
-2. **Party Time** — balloons, popping, colour and confetti.
-3. **Unmasked** — a Venetian dressing room where masks leave the walls.
-4. **The Calling** — an elegant monochrome dinner with a red-wine toast.
-5. **Seed of Doubt** — a seed growing into a full tree.
-6. **Hybrid** — a Western street duel against inherited authority.
-7. **Technophobia** — screens, cables, ZZZ scan jitter and glitches repaired by paint.
-8. **Invaluable** — a mirror gallery whose panes can be cracked.
-9. **From the Ashes** — falling ash and a phoenix forming from embers.
-10. **Waves** — an intimate bedroom in warm half-light.
-11. **Rise** — a bright atrium and the album finale.
+1. Wave of Uncertainty — a wave breaking into an interior.
+2. Party Time — a photorealistic comic party room with balloons and confetti.
+3. Unmasked — a ceremonial Venetian mask chamber.
+4. The Calling — a monochrome dinner and red-wine toast.
+5. Seed of Doubt — an oppressive room split by a growing tree.
+6. Hybrid — a first-person Western duel.
+7. Technophobia — a cyber-organic CRT nightmare.
+8. Invaluable — a gallery of breakable mirrors.
+9. From the Ashes — a phoenix assembling from ash and embers.
+10. Waves — an intimate bedroom in warm half-light.
+11. Rise — a confident, luminous album finale.
 
-Each room has its own palette, architecture, interaction, haptic profile and gently faded local music excerpt.
-
-## v0.7 performance and polish
-
-- adaptive rendering: full responsiveness while painting, lower idle redraw rates and a 10 Hz reduced-motion path;
-- horizontally merged VSS mask strips and a bounded retained-stroke budget;
-- batched progress events and protected repeatable interactions;
-- responsive touch geometry after phone rotation or browser resize;
-- compact mobile controls, album progress, palette preview and scrollable modals;
-- atomic progress saves with backup recovery and schema migration;
-- offline-safe reward synchronisation with bounded retries and expired-run recovery;
-- installable Web preview with a versioned service worker and cache-safe deploy headers;
-- bounded procedural audio work, Master hard limiter and room-safe delayed haptics.
-
-## Interaction and accessibility
-
-- touch and mouse painting;
-- restrained haptics for painting, discoveries, balloons, mirrors, duel, reveal and doors;
-- calm and full sensory modes;
-- independent haptics toggle;
-- immediate **Uspokój** control reducing motion, Visual Snow, sound intensity and vibration;
-- no strobe, jumpscares, analytics, ads or forced sharing;
-- local progress for every room and the complete album route.
-
-Gameplay remains usable offline. Network access is used only for the optional completion reward.
-
-## Completion reward
-
-After all eleven rooms, the player may claim one physical VIRYA album. The client sends the verified run, e-mail, optional Signal consent and city. Shipping details are collected later through a separate no-store page and remain outside Signal and webhook payloads.
-
-When connectivity returns, locally completed rooms are submitted in order and the album completion is finalised automatically. An expired run is replaced without deleting local gameplay progress.
+Each room has a unique brush profile, three story traces, three acts, interaction state, haptics, materials, atmosphere and a local VIRYA excerpt.
 
 ## Run on macOS
 
@@ -56,7 +41,7 @@ When connectivity returns, locally completed rooms are submitted in order and th
 ./run-macos.sh
 ```
 
-The script uses `/Applications/Godot.app/Contents/MacOS/Godot`, `GODOT_BIN`, or a `godot` executable on `PATH`.
+The script uses `GODOT_BIN`, `/Applications/Godot.app/Contents/MacOS/Godot`, or a Godot executable on `PATH`.
 
 ## Validate
 
@@ -64,7 +49,15 @@ The script uses `/Applications/Godot.app/Contents/MacOS/Godot`, `GODOT_BIN`, or 
 ./validate.sh
 ```
 
-The gate checks content contracts, explicit mobile performance budgets and the real Godot import/runtime. It fails on the process exit code and fatal diagnostics in the engine log.
+The gate runs Python contracts, renderer/audio budgets, visual asset snapshots, generator regression tests, a clean Godot import and runtime instantiation of every room. Fatal parser, compile, resource and runtime diagnostics fail the gate.
+
+Optional room captures:
+
+```bash
+godot --path . --script res://tests/capture_rooms.gd
+```
+
+Captures are written to `user://synesthesia-room-captures`.
 
 ## Web preview
 
@@ -73,35 +66,26 @@ The gate checks content contracts, explicit mobile performance budgets and the r
 python3 -m http.server 8080 --directory build/web
 ```
 
-The generated PWA is prepared for `https://synesthesia.virya.music`. The reward page is available at `/reward/`. The service worker uses network-first navigation/runtime assets and stale-while-revalidate for media, preventing stale deploys while keeping repeat visits fast.
-
-GitHub workflow `Web preview` builds the same directory and deploys it only when `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` are configured.
-
-## Build artifacts
-
-The `Build` workflow produces Linux x86_64, single-threaded Web and Android arm64 debug artifacts. Tagged `v*` commits publish them as a GitHub Release.
+The output is a single-threaded installable PWA. Hosting and DNS are intentionally a separate later step; this release only prepares the verified static build.
 
 ## Repository structure
 
-The Godot project is the repository root. Do not restore a nested application folder.
-
 ```text
-synesthesia/
-├── project.godot
-├── scenes/
-├── scripts/
-├── shaders/
-├── assets/audio/
-├── data/release_index.json
-├── data/releases/<room>/manifest.json
-├── web/reward/
-└── .github/workflows/
+assets/rooms/vertical/       five-layer portrait room assets
+scenes/rooms/                one PackedScene per room
+scripts/render/              composite stage, reveal mask, atmosphere
+scripts/brush/               deterministic textured brush engine
+scripts/rooms/behaviors/     room-specific acts and interactions
+scripts/app/                 quality, preload, transition, diagnostics
+scripts/ui/                  HUD and shared UI factory
+data/releases/               schema-v4 room manifests
+tests/                       static, runtime and visual contracts
 ```
+
+## Safety and privacy
+
+The game works offline. Network access is used only for the optional physical-album reward. Shipping details are collected later through a separate no-store page and are never placed in Signal, outbox or webhook payloads. There are no ads, analytics, forced sharing, strobe effects or jumpscares.
 
 ## Rights
 
 Project source follows the repository licence. VIRYA names, logos, recordings, excerpts, lyrics and artwork remain the property of their respective rights holders and are not relicensed by the source-code licence.
-
-## v0.8 visual language
-
-Every room now uses a thematic comic brush and a room-owned art-direction profile. The hidden image sits beneath animated CRT/cosmic static; the gesture behaves like a compact Photoshop-style textured stamp rather than a circular cursor. At 99% the static drops, the complete panel resolves and the doors open.

@@ -83,7 +83,14 @@ if [[ ! -f "$TEMPLATE_DIR/web_release.zip" ]]; then
   cp -R "$CACHE_DIR/templates-unpack/templates/." "$TEMPLATE_DIR/"
 fi
 
+python3 -m compileall -q tests tools
 python3 tests/static_validate.py
+python3 tools/perf_budget.py
+python3 tools/audio_mix_budget.py
+python3 tests/room_pipeline_contract.py
+python3 tests/visual_snapshot_contract.py
+python3 tests/new_release_pack_contract.py
+python3 tools/asset_report.py
 rm -rf build/web
 mkdir -p build/web
 run_godot_checked import --headless --editor --path "$ROOT" --quit

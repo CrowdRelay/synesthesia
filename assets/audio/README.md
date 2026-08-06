@@ -1,11 +1,16 @@
 # Audio assets
 
 These eleven short gameplay excerpts are derived from VIRYA's private album masters
-for **Echoes Of The Modern Mind**. Each excerpt is used only as the completion
-output of its matching room and has a gentle fade-in, fade-out and reduced gain
-for sensory safety.
+for **Echoes Of The Modern Mind**. In every room the matching excerpt plays quietly
+under a locally generated, soft ASMR pink-noise bed. Painting the scene continuously
+reduces the noise and raises the music; the 99% cinematic reveal mutes the noise
+completely so the room finishes with music only.
 
-The recordings are not covered by any source-code licence in this repository.
-All composition, performance, master and recording rights remain with VIRYA and
-the respective rights holders. Redistribution or reuse outside this project
-requires separate written permission.
+The pink noise is synthesized at runtime and is not an additional recording. Quiet
+and calm modes reduce the whole sensory mix, while the Master hard limiter remains
+the final clipping guard.
+
+The recordings are not covered by any source-code licence in this repository. All
+composition, performance, master and recording rights remain with VIRYA and the
+respective rights holders. Redistribution or reuse outside this project requires
+separate written permission.

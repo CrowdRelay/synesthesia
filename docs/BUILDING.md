@@ -1,8 +1,8 @@
 # Building VIRYA: Synestezja
 
-## Required engine
+## Engine
 
-Use Godot **4.7.1 stable**. The project uses GL Compatibility and a portrait viewport.
+Use Godot **4.7.1 stable** with GL Compatibility.
 
 ## macOS
 
@@ -11,73 +11,54 @@ brew install --cask godot
 ./run-macos.sh
 ```
 
-Validate with the same installed binary:
+## Full validation
 
 ```bash
 GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot ./validate.sh
 ```
 
-## Static and runtime validation
+Validation includes Python syntax, room/schema/resource contracts, mobile renderer and audio budgets, visual layer snapshots, release-generator regression, asset reporting, clean Godot import and runtime validation of all rooms.
+
+## Visual captures
 
 ```bash
-./validate.sh
+godot --path . --script res://tests/capture_rooms.gd
 ```
 
-Static validation checks all eleven manifests, their exact order, excerpts, sensory bounds, renderers, permissions, Web deployment files, reward contracts and explicit mobile performance budgets. Runtime validation asks Godot to load every script, every manifest, every excerpt and the main scene. The shell gate also rejects engine error text even when Godot exits with code zero.
+The captures land in Godot's `user://synesthesia-room-captures` directory. They are review artifacts, not committed build output.
 
-## Web preview
+## Web
 
 ```bash
 ./scripts/build-web-preview.sh
 python3 -m http.server 8080 --directory build/web
 ```
 
-The build script:
+The script downloads and verifies the pinned editor/templates only when a local Godot installation is unavailable, runs all gates, exports Web, injects the PWA shell and writes `asset-report.txt`.
 
-1. finds a local Godot binary or downloads the pinned 4.7.1 Linux editor;
-2. verifies the editor archive SHA-256;
-3. installs matching export templates when necessary;
-4. runs static and runtime import gates;
-5. exports the single-threaded Web preset;
-6. copies the static reward page and Netlify headers;
-7. injects the PWA manifest and service-worker registration;
-8. writes `asset-report.txt` for deploy inspection.
+## Android debug
 
-Output: `build/web/`.
-
-## Android debug APK
-
-Install Android SDK, JDK 17 and official Godot export templates, then run:
+With JDK 17, Android SDK and Godot templates installed:
 
 ```bash
 mkdir -p build/android
 godot --headless --path . --export-debug "Android Debug" build/android/synesthesia-debug.apk
 ```
 
-The development preset targets arm64 and declares `INTERNET` and `VIBRATE`. Production distribution still requires a private release keystore and a separate AAB preset.
+The current preset targets arm64 and requests only internet and vibration. A production AAB requires a private release keystore.
 
-## GitHub Actions
+## Quality profiles
 
-- `CI`: static checks, verified Godot editor, clean import and runtime validation.
+- Battery: 180×320 reveal mask, 20 particles, low shader detail.
+- Balanced: 270×480, 42 particles.
+- High: 360×640, 72 particles.
+
+All profiles retain the 540×960 logical viewport. Use the built-in diagnostics overlay only in debug/profiling sessions.
+
+## CI
+
+- `CI`: verified editor, import and runtime validation.
 - `Build`: Linux, Web and Android artifacts.
-- `Web preview`: `build/web` artifact and optional Netlify deployment.
+- `Web preview`: verified PWA artifact and optional Netlify deployment.
 
-Set these repository secrets only for automated Netlify deployment:
-
-- `NETLIFY_AUTH_TOKEN`
-- `NETLIFY_SITE_ID`
-
-No CrowdRelay secret is needed in the client. The API is public, while run operations use a per-run bearer token.
-
-## Domain
-
-Create a separate Netlify site from this repository, use `build/web` as the publish directory, then attach `synesthesia.virya.music`. Add `https://synesthesia.virya.music` to CrowdRelay's allowed CORS origins before enabling real reward claims.
-
-
-## Performance budget
-
-```bash
-python3 tools/perf_budget.py
-```
-
-The budget prevents accidental regressions in retained paint segments, idle redraw frequency, reduced-motion frequency and VSS strip merging.
+Hosting credentials and DNS are deliberately not required for local builds.

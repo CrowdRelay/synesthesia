@@ -4,16 +4,16 @@ config_version=5
 
 [application]
 config/name="VIRYA: Synestezja"
-config/version="0.8.0"
+config/version="0.10.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://assets/icon.svg"
 
 [display/window]
-size/viewport_width=720
-size/viewport_height=1280
-size/window_width_override=432
-size/window_height_override=768
+size/viewport_width=540
+size/viewport_height=960
+size/window_width_override=540
+size/window_height_override=960
 stretch/mode="canvas_items"
 handheld/orientation=1
 
