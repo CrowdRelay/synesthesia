@@ -1,19 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="38%" r="78%">
-      <stop offset="0" stop-color="#172439"/><stop offset="0.56" stop-color="#090d18"/><stop offset="1" stop-color="#05070d"/>
+    <radialGradient id="bg" cx="50%" cy="42%" r="78%">
+      <stop offset="0" stop-color="#26133f"/><stop offset="0.48" stop-color="#0e0a1b"/><stop offset="1" stop-color="#05060b"/>
     </radialGradient>
-    <linearGradient id="spectral" x1="112" y1="336" x2="400" y2="176" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#71dcff"/><stop offset="0.45" stop-color="#9e82ff"/><stop offset="0.72" stop-color="#ef6fbd"/><stop offset="1" stop-color="#ffb45f"/>
+    <radialGradient id="iris" cx="48%" cy="48%" r="60%">
+      <stop offset="0" stop-color="#ffe7ff"/><stop offset="0.18" stop-color="#c76cff"/><stop offset="0.5" stop-color="#7355ff"/><stop offset="0.78" stop-color="#31c8ff"/><stop offset="1" stop-color="#17102a"/>
+    </radialGradient>
+    <linearGradient id="door" x1="242" y1="188" x2="786" y2="850" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8a63ff"/><stop offset="0.45" stop-color="#e565d3"/><stop offset="1" stop-color="#39d7ff"/>
     </linearGradient>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="24"/></filter>
+    <filter id="smallGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="8"/></filter>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <path d="M173 392V120c0-17 13-30 30-30h106c17 0 30 13 30 30v272" fill="#080c14" stroke="#cbd9ea" stroke-opacity=".26" stroke-width="9"/>
-  <path d="M205 355V139h102v216" fill="#0a1020" stroke="#78dfff" stroke-opacity=".34" stroke-width="4"/>
-  <path d="M122 300c59-103 107-118 151-76 38 36 56 40 117-39" fill="none" stroke="url(#spectral)" stroke-width="38" stroke-linecap="round" opacity=".18" filter="url(#glow)"/>
-  <path d="M122 300c59-103 107-118 151-76 38 36 56 40 117-39" fill="none" stroke="url(#spectral)" stroke-width="16" stroke-linecap="round"/>
-  <path d="M126 324c52-58 91-63 126-34 36 30 76 23 136-44" fill="none" stroke="#e8f7ff" stroke-opacity=".18" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="294" cy="244" r="7" fill="#f2fbff"/>
-  <path d="M256 139v216" stroke="#f3fbff" stroke-opacity=".10" stroke-width="2"/>
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  <path d="M248 842V211c0-37 30-67 67-67h394c37 0 67 30 67 67v631" fill="#080812" stroke="#9b84bc" stroke-opacity=".34" stroke-width="18"/>
+  <path d="M295 804V239c0-25 20-45 45-45h344c25 0 45 20 45 45v565" fill="#0c0915" stroke="url(#door)" stroke-opacity=".62" stroke-width="8"/>
+  <path d="M349 741V294h326v447" fill="#0b0812" stroke="#d8c5ed" stroke-opacity=".14" stroke-width="5"/>
+  <ellipse cx="512" cy="506" rx="222" ry="142" fill="#7b3bff" opacity=".18" filter="url(#glow)"/>
+  <path d="M291 506c58-87 130-132 221-132s163 45 221 132c-58 87-130 132-221 132S349 593 291 506Z" fill="#080810" stroke="#d9d2ff" stroke-width="13"/>
+  <ellipse cx="512" cy="506" rx="112" ry="112" fill="url(#iris)" stroke="#f8ebff" stroke-opacity=".82" stroke-width="9"/>
+  <circle cx="512" cy="506" r="41" fill="#08070f" stroke="#ffd8ff" stroke-opacity=".65" stroke-width="7"/>
+  <circle cx="477" cy="467" r="15" fill="#ffffff" opacity=".72" filter="url(#smallGlow)"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M466 492c-27-29-11-69 27-73 17-25 55-19 64 7 31 2 44 36 25 57 26 24 15 65-18 74-8 32-48 39-68 14-31 7-57-21-47-50-18-12-12-38 17-29Z" stroke="#fff1ff" stroke-width="8" opacity=".82"/>
+    <path d="M494 435c-9 20-5 37 14 49-17 16-18 34-3 54M548 438c-17 18-19 34-5 49-18 14-22 35-10 57M461 486c24 1 40 10 47 27M562 481c-24 3-39 14-45 31" stroke="#ff8ce8" stroke-width="6" opacity=".86"/>
+    <path d="M478 458l23 10m53-6-19 10m-64 59 27-5m52 20-20-17" stroke="#54e2ff" stroke-width="6" opacity=".92"/>
+  </g>
+  <g fill="#fff4ff" filter="url(#smallGlow)"><circle cx="486" cy="452" r="8"/><circle cx="552" cy="468" r="7"/><circle cx="476" cy="532" r="7"/><circle cx="536" cy="548" r="8"/></g>
+  <path d="M324 777c67-38 126-50 188-34 68 18 126 9 188-31" fill="none" stroke="url(#door)" stroke-width="10" stroke-linecap="round" opacity=".48"/>
 </svg>

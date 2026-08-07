@@ -28,11 +28,11 @@ REQUIRED_FILES = [
     "scripts/haptics.gd", "scripts/progress_store.gd", "scripts/reward_client.gd",
     "scripts/render/room_stage.gd", "scripts/render/reveal_mask.gd",
     "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/render/room_dressing_layer.gd", "scripts/render/room_video_layer.gd", "scripts/brush/brush_engine.gd",
-    "scripts/app/quality_manager.gd", "scripts/app/asset_preloader.gd", "scripts/app/adaptive_performance.gd",
+    "scripts/app/quality_manager.gd", "scripts/app/asset_preloader.gd", "scripts/app/adaptive_performance.gd", "scripts/app/native_experience_surface.gd", "scripts/app/signal_signup_client.gd", "scripts/app/menu_runtime_guard.gd", "scripts/app/debug_profile.gd",
     "scripts/app/transition_director.gd", "scripts/app/door_transition_layer.gd", "scripts/app/diagnostics_overlay.gd",
-    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/chapter_card.gd", "scripts/ui/experience_intro_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd", "scripts/ui/boot_sequence.gd",
+    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/ui_metrics.gd", "scripts/ui/door_eye_motif.gd", "scripts/ui/chapter_card.gd", "scripts/ui/experience_intro_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd", "scripts/ui/boot_sequence.gd",
     "scripts/rooms/behavior_base.gd", "shaders/room_composite.gdshader", "shaders/echoes_finale.gdshader", "shaders/room_video_postprocess.gdshader",
-    "assets/audio/pink-noise-asmr-loop.ogg", "assets/audio/balloon-pop.mp3", "assets/finale/echoes-finale.webp", "default_bus_layout.tres",
+    "assets/comic/menu_eye_loop.ogv", "assets/audio/pink-noise-asmr-loop.ogg", "assets/audio/balloon-pop.mp3", "assets/finale/echoes-finale.webp", "default_bus_layout.tres",
     "data/release_index.json", "tests/validate_project.gd",
     "tests/room_pipeline_contract.py", "tests/capture_rooms.gd",
     "tests/visual_snapshot_contract.py", "tests/visual_snapshots.json",
@@ -279,16 +279,20 @@ def main() -> int:
     if shader_only_calls:
         fail("shader-only function used from GDScript: " + ", ".join(shader_only_calls), failures)
 
-    if (ROOT / "VERSION").read_text().strip() != "0.11.11":
-        fail("VERSION must equal 0.11.11", failures)
+    if (ROOT / "VERSION").read_text().strip() != "0.12.9":
+        fail("VERSION must equal 0.12.9", failures)
     project = (ROOT / "project.godot").read_text()
-    for token in ('config/version="0.11.11"', "size/viewport_width=540", "size/viewport_height=960", "size/window_width_override=540", "size/window_height_override=960", "dpi/allow_hidpi=true", 'stretch/mode="canvas_items"', 'boot_splash/image="res://assets/branding/boot-splash.png"'):
+    for token in ('config/version="0.12.9"', "size/viewport_width=1080", "size/viewport_height=1920", "dpi/allow_hidpi=true", 'stretch/mode="disabled"', 'boot_splash/image="res://assets/branding/boot-splash.png"'):
         if token not in project:
             fail(f"project.godot missing {token}", failures)
-    if 'version/name="0.11.11"' not in (ROOT / "export_presets.cfg").read_text():
-        fail("export preset version must equal 0.11.11", failures)
-    if 'version/code=11' not in (ROOT / "export_presets.cfg").read_text():
-        fail("export preset version code must equal 11", failures)
+    export_source = (ROOT / "export_presets.cfg").read_text()
+    for token in ('version/name="0.12.9"', 'version/code=21', 'html/canvas_resize_policy=2'):
+        if token not in export_source:
+            fail(f"adaptive export contract missing: {token}", failures)
+    native_surface = (ROOT / "scripts/app/native_experience_surface.gd").read_text()
+    for token in ('PRESET_FULL_RECT', 'PHONE_ASPECT_CUTOFF', 'get_content_surface', 'get_render_label', 'viewport_size.x / viewport_size.y'):
+        if token not in native_surface:
+            fail(f"native viewport contract missing: {token}", failures)
 
     required_audio = [
         "pink-noise-asmr-loop.ogg", "wave-of-uncertainty-room-outro.mp3",
@@ -336,9 +340,23 @@ def main() -> int:
         if token not in hud_source:
             fail(f"persistent HUD information/style contract missing: {token}", failures)
     intro_source = (ROOT / "scripts/ui/experience_intro_card.gd").read_text()
-    for token in ('WEJDŹ DO ŚRODKA', 'WEJDŹ W SYNESTEZJĘ', 'To nie test i nie diagnoza', 'begin_requested'):
+    for token in ('SYNESTHESIA', 'WEJDŹ DO ŚRODKA', 'NOWA PODRÓŻ', 'USTAWIENIA', 'SYGNAŁ', 'TWÓRCY', 'Interaktywny album w 11 pokojach', 'SignalSignupClient', 'nie daje losu w puli 5 płyt', 'begin_requested'):
         if token not in intro_source:
-            fail(f"experience intro contract missing: {token}", failures)
+            fail(f"experience menu contract missing: {token}", failures)
+    chapter_source = (ROOT / "scripts/ui/chapter_card.gd").read_text()
+    for token in ('mouse_filter = Control.MOUSE_FILTER_IGNORE', '_timer.wait_time = 3.6', 'MALUJ OD RAZU'):
+        if token not in chapter_source:
+            fail(f"non-blocking chapter rail contract missing: {token}", failures)
+    eye_source = (ROOT / "scripts/ui/door_eye_motif.gd").read_text()
+    for token in ('_blink', 'trigger_glitch', '_draw_brain', 'set_open_mix'):
+        if token not in eye_source:
+            fail(f"door-eye motif contract missing: {token}", failures)
+    signal_signup = (ROOT / "scripts/app/signal_signup_client.gd").read_text()
+    for token in ('/v1/public/cities?limit=100', '/v1/fans', '"marketing": true', 'Idempotency-Key'):
+        if token not in signal_signup:
+            fail(f"menu Signal signup contract missing: {token}", failures)
+    if 'reward-claims' in signal_signup or 'enter_draw' in signal_signup:
+        fail("menu Signal signup must never create a Synesthesia draw entry", failures)
     if 'UIFactory.button("⋯"' in hud_source or 'UIFactory.button("⚙"' in hud_source:
         fail("settings button must use the procedural gear, not a font glyph/emoji", failures)
     if 'vec3 soft_bloom' in video_shader_source:
@@ -399,7 +417,7 @@ def main() -> int:
             print(f"FAIL: {message}", file=sys.stderr)
         print(f"SYNESTHESIA_STATIC_VALIDATION=FAIL count={len(failures)}", file=sys.stderr)
         return 1
-    print("SYNESTHESIA_STATIC_VALIDATION=PASS rooms=11 schema=4 logical=540x960 hidpi=true renderer=mask-gpu-v2")
+    print("SYNESTHESIA_STATIC_VALIDATION=PASS rooms=11 schema=4 adaptive_native=true bootstrap=1080x1920 renderer=mask-gpu-v2")
     return 0
 
 

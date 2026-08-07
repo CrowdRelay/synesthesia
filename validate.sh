@@ -6,6 +6,7 @@ cd "$ROOT"
 
 python3 -m compileall -q tests tools
 python3 tests/static_validate.py
+python3 tests/adaptive_viewport_contract.py
 python3 tools/perf_budget.py
 python3 tools/memory_budget.py
 python3 tools/audio_mix_budget.py
@@ -17,6 +18,11 @@ python3 tests/sensory_room_contract.py
 python3 tests/door_transition_contract.py
 python3 tests/cinematic_video_contract.py
 python3 tests/presentation_contract.py
+python3 tests/comic_skin_contract.py
+python3 tests/ui_input_contract.py
+python3 tests/ui_performance_contract.py
+python3 tests/ui_scale_flow_contract.py
+python3 tests/ui_quality_polish_contract.py
 python3 tests/android_pipeline_contract.py
 python3 tests/godot_log_gate_contract.py
 python3 tools/asset_report.py

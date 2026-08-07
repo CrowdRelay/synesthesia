@@ -38,6 +38,15 @@ async function networkFirst(request) {
   }
 }
 
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response.ok) await cache.put(request, response.clone());
+  return response;
+}
+
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
@@ -55,8 +64,14 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/reward/")) return;
-  if (request.mode === "navigate" || /\.(?:wasm|pck|js)$/.test(url.pathname)) {
+  if (request.mode === "navigate") {
     event.respondWith(networkFirst(request));
+    return;
+  }
+  if (/\.(?:wasm|pck|js)$/.test(url.pathname)) {
+    // Runtime files are namespaced by VERSION. Cache-first makes repeat entry
+    // instant without risking stale code across releases.
+    event.respondWith(cacheFirst(request));
     return;
   }
   if (/\.(?:mp3|svg|png|webp|woff2?)$/.test(url.pathname)) {

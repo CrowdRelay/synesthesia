@@ -14,6 +14,7 @@ signal music_changed(value: float)
 signal noise_changed(value: float)
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 
 var _calm: bool = true
 var _quiet: bool = false
@@ -23,9 +24,12 @@ var _haptics: bool = true
 var _quality_button: Button
 var _has_room: bool = true
 var _album_completed: bool = false
+var _ui_scale: float = 1.0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
+    mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
+    focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func configure(state: Dictionary, quality_label: String, version: String) -> void:
@@ -51,33 +55,59 @@ func set_quality_label(value: String, pending_reload: bool = false) -> void:
 func _build(music: float, noise: float, quality_label: String, version: String) -> void:
     var dim: ColorRect = ColorRect.new()
     dim.color = Color(0.006, 0.009, 0.016, 0.66)
-    dim.mouse_filter = Control.MOUSE_FILTER_STOP
+    dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(dim)
     dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
     var panel: PanelContainer = PanelContainer.new()
+    panel.mouse_filter = Control.MOUSE_FILTER_PASS
     panel.add_theme_stylebox_override("panel", UIFactory.panel_style(Color("090f1bf8"), 24, Color("a8cfff31")))
     add_child(panel)
     panel.set_anchors_preset(Control.PRESET_CENTER)
     var viewport_size: Vector2 = get_viewport_rect().size
-    var width: float = minf(510.0, maxf(300.0, viewport_size.x - 20.0))
-    var height: float = minf(820.0, maxf(420.0, viewport_size.y - 20.0))
+    _ui_scale = UiMetrics.scale_for_viewport(viewport_size)
+    var width: float = minf(510.0 * _ui_scale, maxf(300.0 * _ui_scale, viewport_size.x - 20.0 * _ui_scale))
+    var height: float = minf(820.0 * _ui_scale, maxf(420.0 * _ui_scale, viewport_size.y - 20.0 * _ui_scale))
     panel.offset_left = -width * 0.5
     panel.offset_right = width * 0.5
     panel.offset_top = -height * 0.5
     panel.offset_bottom = height * 0.5
 
     var scroll: ScrollContainer = ScrollContainer.new()
+    scroll.mouse_filter = Control.MOUSE_FILTER_PASS
     scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = 0
     scroll.vertical_scroll_mode = 1
     panel.add_child(scroll)
     var content: VBoxContainer = VBoxContainer.new()
+    content.mouse_filter = Control.MOUSE_FILTER_PASS
     content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    content.custom_minimum_size = Vector2(maxf(250.0, width - 48.0), 0.0)
+    content.custom_minimum_size = Vector2(maxf(250.0 * _ui_scale, width - 48.0 * _ui_scale), 0.0)
     content.add_theme_constant_override("separation", 8)
     scroll.add_child(content)
+
+    # Persistent close affordance for room settings. The overlay itself is
+    # transparent to input; only the X button owns its hit rectangle.
+    var close_overlay := MarginContainer.new()
+    close_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    close_overlay.add_theme_constant_override("margin_top", roundi(10.0 * _ui_scale))
+    close_overlay.add_theme_constant_override("margin_right", roundi(10.0 * _ui_scale))
+    panel.add_child(close_overlay)
+    var close_row := HBoxContainer.new()
+    close_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    close_overlay.add_child(close_row)
+    var close_spacer := Control.new()
+    close_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    close_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    close_row.add_child(close_spacer)
+    var close_x := UIFactory.button("×", true)
+    close_x.name = "CloseSettingsX"
+    close_x.tooltip_text = "Wróć do malowania"
+    close_x.custom_minimum_size = Vector2(46.0, 42.0)
+    close_x.size_flags_horizontal = Control.SIZE_SHRINK_END
+    close_x.pressed.connect(func() -> void: close_requested.emit())
+    close_row.add_child(close_x)
 
     var eyebrow: Label = Label.new()
     eyebrow.text = "VIRYA · SYNESTEZJA"
@@ -169,6 +199,7 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     close_button.pressed.connect(func() -> void: close_requested.emit())
     content.add_child(close_button)
 
+    UiMetrics.apply_tree(panel, _ui_scale)
     modulate.a = 0.0
     var tween: Tween = create_tween()
     tween.set_trans(Tween.TRANS_SINE)
@@ -195,7 +226,7 @@ func _slider_row(label_text: String, value: float, signal_ref: Signal) -> VBoxCo
     slider.max_value = 1.0
     slider.step = 0.05
     slider.value = value
-    slider.custom_minimum_size = Vector2(0.0, 30.0)
+    slider.custom_minimum_size = Vector2(0.0, 34.0 * _ui_scale)
     slider.value_changed.connect(func(next_value: float) -> void:
         label.text = "%s · %d%%" % [label_text, int(round(next_value * 100.0))]
         signal_ref.emit(next_value)

@@ -3,12 +3,20 @@ extends Control
 signal dismissed
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
+const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 
 var _accent: Color = Color("72afff")
 var _sheet: PanelContainer
+var _row: HBoxContainer
+var _content: VBoxContainer
+var _body: Label
+var _motif
+var _timer: Timer
+var _ui_scale: float = 1.0
 
 func _ready() -> void:
-    mouse_filter = Control.MOUSE_FILTER_STOP
+    mouse_filter = Control.MOUSE_FILTER_IGNORE
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func configure(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, accent: Color) -> void:
@@ -16,95 +24,133 @@ func configure(room_index: int, room_total: int, room_name: String, intro_text: 
     _build(room_index, room_total, room_name, intro_text, caption)
 
 func _build(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String) -> void:
-    var dim: ColorRect = ColorRect.new()
-    dim.color = Color(0.01, 0.012, 0.022, 0.18)
-    dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    add_child(dim)
-    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
-    var chapter: Label = Label.new()
-    chapter.text = "%02d" % (room_index + 1)
-    chapter.position = Vector2(18.0, 72.0)
-    chapter.add_theme_font_size_override("font_size", 66)
-    chapter.add_theme_color_override("font_color", Color(_accent, 0.40))
-    chapter.add_theme_color_override("font_shadow_color", Color(Color.BLACK, 0.62))
-    chapter.add_theme_constant_override("shadow_offset_x", 2)
-    chapter.add_theme_constant_override("shadow_offset_y", 3)
-    chapter.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    add_child(chapter)
-
-    var chapter_meta: Label = Label.new()
-    chapter_meta.text = "ROZDZIAŁ %02d / %02d" % [room_index + 1, room_total]
-    chapter_meta.position = Vector2(24.0, 140.0)
-    chapter_meta.add_theme_font_size_override("font_size", 10)
-    chapter_meta.add_theme_color_override("font_color", Color("d9e8f8"))
-    chapter_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    add_child(chapter_meta)
-
     _sheet = PanelContainer.new()
-    _sheet.mouse_filter = Control.MOUSE_FILTER_STOP
-    _sheet.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.94, false))
+    _sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _sheet.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.90, true))
     add_child(_sheet)
     _layout_sheet()
 
-    var content: VBoxContainer = VBoxContainer.new()
-    content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    content.add_theme_constant_override("separation", 7)
-    _sheet.add_child(content)
+    _row = HBoxContainer.new()
+    _row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _row.add_theme_constant_override("separation", 10)
+    _sheet.add_child(_row)
 
-    var eyebrow: Label = Label.new()
-    eyebrow.text = caption if not caption.is_empty() else "VIRYA · SYNESTEZJA"
-    eyebrow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    eyebrow.add_theme_font_size_override("font_size", 9)
+    _motif = DoorEyeMotif.new()
+    _motif.custom_minimum_size = Vector2(82.0, 116.0)
+    _motif.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+    _row.add_child(_motif)
+    _motif.configure(_accent, "panel", Color("ef6fbd"))
+
+    _content = VBoxContainer.new()
+    _content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _content.add_theme_constant_override("separation", 4)
+    _content.size_flags_stretch_ratio = 1.0
+    _row.add_child(_content)
+
+    var eyebrow := Label.new()
+    eyebrow.text = "ROZDZIAŁ %02d / %02d  ·  %s" % [room_index + 1, room_total, caption if not caption.is_empty() else "VIRYA · SYNESTEZJA"]
+    eyebrow.add_theme_font_size_override("font_size", 8)
     eyebrow.add_theme_color_override("font_color", _accent)
-    content.add_child(eyebrow)
+    _content.add_child(eyebrow)
 
-    var heading: Label = UIFactory.heading(room_name)
+    var heading := UIFactory.heading(room_name)
     heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    heading.add_theme_font_size_override("font_size", 24)
-    content.add_child(heading)
+    heading.add_theme_font_size_override("font_size", 20)
+    _content.add_child(heading)
 
-    var body: Label = UIFactory.body(intro_text)
-    body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    body.add_theme_font_size_override("font_size", 12)
-    body.custom_minimum_size = Vector2(430.0, 0.0)
-    content.add_child(body)
+    _body = UIFactory.body(_shorten(intro_text, 150))
+    _body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+    _body.add_theme_font_size_override("font_size", 10)
+    _content.add_child(_body)
 
-    var hint: Label = Label.new()
-    hint.text = "MALUJ SCENĘ  /  SZUM USTĘPUJE MUZYCE  /  99% OTWIERA DRZWI"
-    hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    hint.custom_minimum_size = Vector2(430.0, 0.0)
+    var hint := Label.new()
+    hint.text = "MALUJ OD RAZU · SZUM → MUZYKA · DRZWI OTWIERAJĄ SIĘ PRZY KOŃCU"
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     hint.add_theme_font_size_override("font_size", 8)
     hint.add_theme_color_override("font_color", Color("8fa4bc"))
-    content.add_child(hint)
+    _content.add_child(hint)
 
-    var button: Button = UIFactory.button("Zacznij odkrywać")
-    button.pressed.connect(func() -> void: dismissed.emit())
-    content.add_child(button)
+    # Re-run layout after all minimum-size participants exist. Calling this
+    # only before _content/_motif are constructed makes Container sizing a no-op.
+    _layout_sheet()
+    _apply_ui_scale()
 
     modulate.a = 0.0
-    _sheet.position.y += 14.0
-    var tween: Tween = create_tween()
-    tween.set_parallel(true)
-    tween.set_trans(Tween.TRANS_SINE)
-    tween.set_ease(Tween.EASE_OUT)
-    tween.tween_property(self, "modulate:a", 1.0, 0.24)
-    tween.tween_property(_sheet, "position:y", _sheet.position.y - 14.0, 0.30)
+    position.y = 12.0
+    var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    tween.tween_property(self, "modulate:a", 1.0, 0.20)
+    tween.tween_property(self, "position:y", 0.0, 0.26)
+
+    _timer = Timer.new()
+    _timer.one_shot = true
+    _timer.wait_time = 3.6
+    _timer.timeout.connect(_fade_out)
+    add_child(_timer)
+    _timer.start()
 
 func _layout_sheet() -> void:
     if _sheet == null:
         return
-    _sheet.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-    var viewport_size: Vector2 = get_viewport_rect().size
-    var side: float = 18.0
-    var height: float = minf(278.0, maxf(238.0, viewport_size.y * 0.29))
-    _sheet.offset_left = side
-    _sheet.offset_right = -side
-    _sheet.offset_top = -height - 18.0
-    _sheet.offset_bottom = -18.0
-    _sheet.custom_minimum_size = Vector2(maxf(500.0, viewport_size.x - side * 2.0), height)
+    var viewport := get_viewport_rect().size
+    _ui_scale = UiMetrics.scale_for_viewport(viewport)
+    var wide: bool = viewport.x >= 720.0 * _ui_scale and viewport.x / maxf(1.0, viewport.y) > 1.05
+    if wide:
+        _sheet.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+        var available := maxf(320.0 * _ui_scale, viewport.x - 56.0 * _ui_scale)
+        var width := minf(available, clampf(viewport.x * 0.44, 520.0 * _ui_scale, 620.0 * _ui_scale))
+        _sheet.offset_left = 28.0 * _ui_scale
+        _sheet.offset_right = _sheet.offset_left + width
+        _sheet.offset_top = -118.0 * _ui_scale
+        _sheet.offset_bottom = 118.0 * _ui_scale
+        var copy_width := minf(390.0 * _ui_scale, maxf(360.0 * _ui_scale, width - 126.0 * _ui_scale))
+        _set_copy_minimum(copy_width)
+        if _motif != null:
+            _motif.custom_minimum_size = Vector2(82.0, 116.0) * _ui_scale
+    else:
+        _sheet.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+        _sheet.offset_left = 14.0 * _ui_scale
+        _sheet.offset_right = -14.0 * _ui_scale
+        _sheet.offset_top = 18.0 * _ui_scale
+        _sheet.offset_bottom = 214.0 * _ui_scale
+        _set_copy_minimum(0.0)
+        if _motif != null:
+            _motif.custom_minimum_size = Vector2(72.0, 102.0) * _ui_scale
+
+func _apply_ui_scale() -> void:
+    if _sheet != null:
+        UiMetrics.apply_tree(_sheet, _ui_scale)
+
+func _set_copy_minimum(width: float) -> void:
+    var minimum := Vector2(maxf(0.0, width), 0.0)
+    if _content != null:
+        _content.set_custom_minimum_size(minimum)
+        _content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    if _body != null:
+        _body.set_custom_minimum_size(minimum)
+        _body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    if _row != null:
+        _row.queue_sort()
+    if _sheet != null:
+        _sheet.queue_sort()
+
+func _fade_out() -> void:
+    var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+    tween.tween_property(self, "modulate:a", 0.0, 0.24)
+    tween.tween_property(self, "position:y", -8.0, 0.24)
+    await tween.finished
+    dismissed.emit()
+
+func _shorten(value: String, limit: int) -> String:
+    var text := value.strip_edges()
+    if text.length() <= limit:
+        return text
+    var cropped := text.substr(0, limit)
+    var last_space := cropped.rfind(" ")
+    if last_space > limit / 2:
+        cropped = cropped.substr(0, last_space)
+    return "%s…" % cropped
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         call_deferred("_layout_sheet")
+        call_deferred("_apply_ui_scale")

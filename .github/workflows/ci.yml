@@ -57,6 +57,8 @@ jobs:
           python3 tests/door_transition_contract.py
           python3 tests/cinematic_video_contract.py
           python3 tests/presentation_contract.py
+          python3 tests/comic_skin_contract.py
+          python3 tests/ui_performance_contract.py
           python3 tests/godot_log_gate_contract.py
           python3 tools/asset_report.py
 

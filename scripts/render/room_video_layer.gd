@@ -51,7 +51,7 @@ func _ready() -> void:
     _material = ShaderMaterial.new()
     _material.shader = PostProcessShader
     _player.material = _material
-    set_process(true)
+    set_process(false)
 
 func configure(style: String, reduced_motion: bool, quiet_visuals: bool, calm_mode: bool) -> void:
     _style = style if VIDEO_PATHS.has(style) else "uncertainty"
@@ -117,6 +117,7 @@ func _start_video(instant: bool) -> void:
     if _fade_tween != null and _fade_tween.is_valid():
         _fade_tween.kill()
     visible = true
+    set_process(true)
     _entry_elapsed = 1.0 if instant else 0.0
     _material.set_shader_parameter("entry_strength", 0.0 if instant else 1.0)
     _player.modulate.a = _max_alpha if instant else 0.0
@@ -148,6 +149,7 @@ func _stop_video(unload: bool) -> void:
         if unload:
             _player.stream = null
     visible = false
+    set_process(false)
     _entry_elapsed = 0.0
     if _material != null:
         _material.set_shader_parameter("entry_strength", 0.0)

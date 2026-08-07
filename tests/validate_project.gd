@@ -229,7 +229,7 @@ func _fail(message: String) -> void:
 
 func _finish() -> void:
     if _failures.is_empty():
-        print("SYNESTHESIA_VALIDATION=PASS rooms=%d renderer=mask-gpu-v2 viewport=540x960 persistence=png-mask-v2" % EXPECTED_ROOM_COUNT)
+        print("SYNESTHESIA_VALIDATION=PASS rooms=%d renderer=mask-gpu-v2 adaptive_native=true mask_snapshot=540x960 persistence=png-mask-v2" % EXPECTED_ROOM_COUNT)
         quit(0)
     else:
         print("SYNESTHESIA_VALIDATION=FAIL count=%d" % _failures.size())

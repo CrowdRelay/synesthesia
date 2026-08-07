@@ -10,3 +10,5 @@ exports/
 asset-report.txt
 PACKAGE_CHECKSUMS.txt
 *.badging.txt
+__pycache__/
+*.pyc

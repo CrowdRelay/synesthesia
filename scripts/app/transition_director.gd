@@ -17,6 +17,7 @@ func install(host: Control) -> void:
     overlay = ColorRect.new()
     overlay.name = "TransitionOverlay"
     overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    overlay.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
     overlay.color = Color(0.008, 0.012, 0.022, 0.0)
     overlay.visible = false
     overlay.z_index = 930
@@ -76,8 +77,21 @@ func set_reduced_motion(value: bool) -> void:
     if door_layer != null:
         door_layer.set_reduced_motion(value)
 
+func force_idle() -> void:
+    if overlay != null:
+        overlay.visible = false
+        overlay.color = Color(overlay.color, 0.0)
+        overlay.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
+    if accent_line != null:
+        accent_line.color = Color(_accent, 0.0)
+    if door_layer != null:
+        door_layer.reset()
+    if transition_audio != null:
+        transition_audio.stop()
+
 func fade_out(duration: float = 0.34) -> void:
     overlay.visible = true
+    overlay.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
     overlay.color = Color(overlay.color, 0.0)
     accent_line.color = Color(_accent, 0.0)
     accent_line.scale = Vector2(0.08, 1.0)
@@ -93,6 +107,7 @@ func fade_out(duration: float = 0.34) -> void:
 
 func fade_in(duration: float = 0.34) -> void:
     overlay.visible = true
+    overlay.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
     overlay.color = Color(overlay.color, 1.0)
     accent_line.color = Color(_accent, 0.72)
     var tween: Tween = create_tween()
@@ -104,6 +119,7 @@ func fade_in(duration: float = 0.34) -> void:
     tween.tween_property(accent_line, "scale:x", 0.12, duration * 0.72)
     await tween.finished
     overlay.visible = false
+    overlay.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
 
 func travel_out() -> void:
     if door_layer == null:
@@ -113,6 +129,7 @@ func travel_out() -> void:
     # A real hinged door opens first. We then accelerate the camera through the
     # threshold. No room/artwork scale or panel wipe is used here.
     overlay.visible = false
+    overlay.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
     door_layer.visible = true
     door_layer.set_accents(_accent, _next_accent)
     door_layer.set_door_open_mix(0.0)

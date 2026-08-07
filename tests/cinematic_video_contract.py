@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract for lazy 720p cinematic loops and AI-art unification pass."""
+"""Contract for lazy FHD cinematic loops and deterministic source sharpening."""
 from __future__ import annotations
 
 import hashlib
@@ -24,8 +24,12 @@ else:
 clips = manifest.get("clips", {}) if isinstance(manifest, dict) else {}
 if manifest.get("codec") != "Ogg Theora":
     failures.append("cinematic codec must be Ogg Theora")
-if manifest.get("resolution") != "720x1280" or manifest.get("fps") != 24:
-    failures.append("cinematics must remain 720x1280 at 24 fps")
+if manifest.get("source_resolution") != "720x1280":
+    failures.append("cinematic source provenance must remain 720x1280")
+if manifest.get("resolution") != "1080x1920" or manifest.get("fps") != 24:
+    failures.append("cinematics must be 1080x1920 at 24 fps")
+if manifest.get("upscale_profile") != "zscale-lanczos+cas-0.10":
+    failures.append("cinematic upscale profile must stay deterministic and reproducible")
 if sorted(clips) != sorted(STYLES):
     failures.append("cinematic manifest must contain exact 11 rooms + finale")
 total_bytes = 0
@@ -41,9 +45,9 @@ for style in STYLES:
         failures.append(f"{style}.ogv is not an Ogg stream")
     if len(data) < 500_000:
         failures.append(f"{style}.ogv unexpectedly tiny: {len(data)}")
-    if len(data) > 6_500_000:
+    if len(data) > 7_500_000:
         failures.append(f"{style}.ogv exceeds per-clip budget: {len(data)}")
-    if meta.get("width") != 720 or meta.get("height") != 1280 or meta.get("fps") != 24:
+    if meta.get("width") != 1080 or meta.get("height") != 1920 or meta.get("fps") != 24:
         failures.append(f"{style}: manifest geometry/fps mismatch")
     if meta.get("bytes") != len(data):
         failures.append(f"{style}: manifest byte count mismatch")
@@ -91,8 +95,8 @@ finale_card = (ROOT / "scripts/ui/signal_finale_card.gd").read_text()
 ui = (ROOT / "scripts/ui/ui_factory.gd").read_text()
 if 'configure("finale"' not in finale or "set_max_alpha(0.94)" not in finale:
     failures.append("finale video is not blended over the original skull")
-if "620.0" not in finale_card or "0.975" not in ui:
-    failures.append("final Signal form must strongly cover the lower skull/teeth")
+if "UIFactory.menu_style(_accent)" not in finale_card or "820.0" not in finale_card or "0.975" not in ui:
+    failures.append("final Signal form must strongly cover the lower skull/teeth with the adaptive menu panel")
 
 if failures:
     for failure in failures:
@@ -101,6 +105,6 @@ if failures:
 
 print(
     "SYNESTHESIA_CINEMATIC_VIDEO=PASS "
-    f"clips=12 resolution=720x1280 fps=24 bytes={total_bytes} "
+    f"clips=12 resolution=1080x1920 source=720x1280 fps=24 bytes={total_bytes} "
     "lazy=load+unload post=themed unmasked=source-video finale=covered"
 )

@@ -94,4 +94,4 @@ fi
 
 rm -f "$IMPORT_LOG"
 trap - EXIT
-exec "$GODOT" --path "$ROOT"
+SYNESTHESIA_LOCAL_DEBUG=1 exec "$GODOT" --path "$ROOT"

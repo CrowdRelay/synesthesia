@@ -23,9 +23,16 @@ register_tag = '<script src="/register-sw.js" defer></script>'
 boot_markup = '''<div id="synesthesia-boot" role="status" aria-label="Ładowanie Synesthesii">
   <h1 class="synesthesia-boot__title">SYNESTHESIA</h1>
   <div class="synesthesia-boot__sub">VIRYA · ECHOES OF THE MODERN MIND</div>
-  <div class="synesthesia-boot__door" aria-hidden="true"></div>
-  <div class="synesthesia-boot__wave" aria-hidden="true"></div>
-  <div class="synesthesia-boot__hint">WEJDŹ GŁĘBIEJ</div>
+  <div class="synesthesia-boot__door" aria-hidden="true">
+    <div class="synesthesia-boot__eye">
+      <div class="synesthesia-boot__brain"></div>
+      <i class="synesthesia-boot__node synesthesia-boot__node--a"></i>
+      <i class="synesthesia-boot__node synesthesia-boot__node--b"></i>
+      <i class="synesthesia-boot__node synesthesia-boot__node--c"></i>
+      <i class="synesthesia-boot__node synesthesia-boot__node--d"></i>
+    </div>
+  </div>
+  <div class="synesthesia-boot__render">ADAPTIVE NATIVE</div>
 </div>'''
 if manifest_tag not in html:
     html = html.replace("</head>", f"  {manifest_tag}\n</head>")

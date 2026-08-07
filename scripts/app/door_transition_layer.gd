@@ -11,8 +11,16 @@ var _reduced_motion: bool = false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
+    mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
     visible = false
-    set_process(true)
+    visibility_changed.connect(_sync_processing)
+    _sync_processing()
+
+
+func _sync_processing() -> void:
+    var active: bool = is_visible_in_tree()
+    set_process(active)
+    mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED if active else Control.MOUSE_BEHAVIOR_DISABLED
 
 func set_accents(current: Color, next: Color = Color.TRANSPARENT) -> void:
     _accent = current
@@ -72,12 +80,18 @@ func _draw() -> void:
     var h: float = size.y
     var approach: float = _ease_in_acceleration(_approach_mix)
     var warp: float = _smooth01(_warp_mix)
-    var center: Vector2 = Vector2(w * 0.5, h * lerpf(0.52, 0.50, approach))
+    # First-person framing: the doorway already dominates the initial frame and
+    # then crosses the viewport edges as the camera moves through it. This reads
+    # as walking into a physical threshold instead of watching a door icon scale.
+    var center: Vector2 = Vector2(
+        w * (0.5 + 0.012 * sin(_phase * 0.11) * (1.0 - approach)),
+        h * lerpf(0.545, 0.50, approach)
+    )
 
     # Only the transition layer moves toward the viewer. The room artwork below
     # remains untouched, avoiding the rubber-sheet stretch of the old effect.
-    var base_height: float = h * 0.66
-    var camera_scale: float = lerpf(1.0, 4.55, pow(approach, 2.25))
+    var base_height: float = h * (0.90 if h >= w else 0.86)
+    var camera_scale: float = lerpf(1.0, 3.85, pow(approach, 1.55))
     var doorway_height: float = base_height * camera_scale
     var doorway_width: float = doorway_height * 0.54
     var doorway: Rect2 = Rect2(
@@ -179,6 +193,7 @@ func _draw_hinged_door(doorway: Rect2, open_mix: float, approach: float) -> void
     if projected_width > 0.12:
         _draw_projected_panel(inner, projected_width, vertical_skew, 0.10, 0.08, 0.80, 0.34)
         _draw_projected_panel(inner, projected_width, vertical_skew, 0.10, 0.56, 0.80, 0.31)
+        _draw_projected_eye(inner, projected_width, vertical_skew, open_mix)
 
     var handle_ratio_x: float = 0.86
     var handle_ratio_y: float = 0.52
@@ -189,6 +204,34 @@ func _draw_hinged_door(doorway: Rect2, open_mix: float, approach: float) -> void
     var handle_radius: float = clampf(inner.size.x * 0.015 * projected_width, 1.6, 6.0)
     draw_circle(Vector2(handle_x, handle_y), handle_radius, Color(0.82, 0.78, 0.69, 0.60))
     draw_circle(Vector2(handle_x, handle_y), maxf(1.0, handle_radius * 0.38), Color(_accent, 0.42))
+
+
+func _draw_projected_eye(inner: Rect2, projected_width: float, vertical_skew: float, open_mix: float) -> void:
+    var center_x: float = inner.position.x + inner.size.x * projected_width * 0.52
+    var x_ratio: float = 0.52
+    var top_y: float = inner.position.y + vertical_skew * x_ratio
+    var bottom_y: float = inner.end.y - vertical_skew * x_ratio
+    var center := Vector2(center_x, lerpf(top_y, bottom_y, 0.42))
+    var eye_w: float = inner.size.x * projected_width * 0.42
+    var eye_h: float = inner.size.y * 0.075
+    var blink_phase: float = fmod(_phase * 0.22 + open_mix * 0.35, 3.7)
+    var blink: float = clampf(1.0 - absf(blink_phase - 1.85) * 9.0, 0.0, 1.0) if blink_phase > 1.72 and blink_phase < 1.98 else 0.0
+    eye_h *= 1.0 - blink * 0.92
+    if eye_h <= 1.0:
+        return
+    var left := center + Vector2(-eye_w * 0.5, 0.0)
+    var right := center + Vector2(eye_w * 0.5, 0.0)
+    var upper := PackedVector2Array([left, center + Vector2(-eye_w * 0.22, -eye_h * 0.55), center + Vector2(0.0, -eye_h * 0.62), center + Vector2(eye_w * 0.22, -eye_h * 0.55), right])
+    var lower := PackedVector2Array([left, center + Vector2(-eye_w * 0.22, eye_h * 0.55), center + Vector2(0.0, eye_h * 0.62), center + Vector2(eye_w * 0.22, eye_h * 0.55), right])
+    draw_polyline(upper, Color(0.94, 0.91, 1.0, 0.72), maxf(1.0, inner.size.x * 0.006), true)
+    draw_polyline(lower, Color(0.94, 0.91, 1.0, 0.72), maxf(1.0, inner.size.x * 0.006), true)
+    var iris: float = minf(eye_h * 0.72, eye_w * 0.13)
+    draw_circle(center, iris, Color(_accent.lerp(_next_accent, open_mix), 0.44))
+    draw_circle(center, iris * 0.35, Color(0.003, 0.004, 0.009, 0.96))
+    var node_color := _accent.lerp(_next_accent, 0.55)
+    draw_line(center + Vector2(-iris * 0.52, -iris * 0.10), center + Vector2(iris * 0.48, iris * 0.12), Color(node_color, 0.55), maxf(0.8, iris * 0.07))
+    for offset in [Vector2(-0.40, -0.14), Vector2(-0.12, 0.24), Vector2(0.18, -0.22), Vector2(0.40, 0.12)]:
+        draw_circle(center + offset * iris, maxf(1.0, iris * 0.075), Color(node_color, 0.72))
 
 func _draw_projected_panel(inner: Rect2, projected_width: float, vertical_skew: float, x_ratio: float, y_ratio: float, width_ratio: float, height_ratio: float) -> void:
     var x0: float = inner.position.x + inner.size.x * projected_width * x_ratio

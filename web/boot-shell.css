@@ -1,46 +1,63 @@
 :root { color-scheme: dark; }
-html, body { background: #050811; }
+html, body { background: #03050b; }
 #canvas { image-rendering: auto; filter: none; }
 #synesthesia-boot {
   position: fixed; inset: 0; z-index: 2147483646; overflow: hidden;
   display: grid; place-items: center; pointer-events: none;
-  background: radial-gradient(circle at 50% 40%, #14223a 0, #080d17 48%, #020409 100%);
-  color: #edf7ff; opacity: 1; transition: opacity .28s ease;
+  background: radial-gradient(circle at 50% 42%, #251540 0, #0b0917 45%, #020308 100%);
+  color: #f1edff; opacity: 1; transition: opacity .24s ease;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 #synesthesia-boot[data-ready="true"] { opacity: 0; }
 .synesthesia-boot__title {
-  position: absolute; top: max(8vh, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
-  margin: 0; white-space: nowrap; font-size: clamp(24px, 7vw, 58px); font-weight: 550;
-  letter-spacing: clamp(.28em, 2.2vw, .46em); text-indent: .46em;
+  position: absolute; top: max(7vh, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  margin: 0; white-space: nowrap; font-size: clamp(24px, 5vw, 58px); font-weight: 560;
+  letter-spacing: clamp(.24em, 1.7vw, .42em); text-indent: .42em;
 }
 .synesthesia-boot__sub {
-  position: absolute; top: max(14.5vh, calc(env(safe-area-inset-top) + 64px)); left: 50%; transform: translateX(-50%);
-  width: 90%; text-align: center; color: #8da2ba; font-size: clamp(9px, 2.6vw, 16px);
+  position: absolute; top: max(13.5vh, calc(env(safe-area-inset-top) + 60px)); left: 50%; transform: translateX(-50%);
+  width: 92%; text-align: center; color: #9d8eae; font-size: clamp(9px, 1.5vw, 15px);
   letter-spacing: .28em; text-transform: uppercase;
 }
 .synesthesia-boot__door {
-  position: relative; width: min(38vw, 290px); height: min(54vh, 590px);
-  border: 6px solid rgba(205,220,236,.42); border-radius: 28px 28px 8px 8px;
-  box-shadow: 0 0 70px rgba(107,217,255,.08), inset 0 0 40px rgba(0,0,0,.8);
-  background: #050914;
+  position: relative; width: min(38vw, 300px); height: min(58vh, 620px);
+  border: 3px solid rgba(153,124,207,.50); border-radius: 26px 26px 8px 8px;
+  box-shadow: 0 0 74px rgba(132,88,255,.12), inset 0 0 50px rgba(0,0,0,.88);
+  background: linear-gradient(180deg,#0e0a18,#05060c 72%);
 }
 .synesthesia-boot__door::before {
-  content: ""; position: absolute; inset: 8% 12% 0; border: 2px solid rgba(115,220,255,.36); background: #080f20;
+  content: ""; position: absolute; inset: 6% 10% 0; border: 1px solid rgba(239,111,189,.30); background: #080711;
 }
 .synesthesia-boot__door::after {
-  content: ""; position: absolute; left: 50%; top: 8%; bottom: 0; width: 1px; background: rgba(240,251,255,.08);
+  content: ""; position: absolute; left: 50%; top: 6%; bottom: 0; width: 1px; background: rgba(241,237,255,.09);
 }
-.synesthesia-boot__wave {
-  position: absolute; left: 50%; top: 54%; width: min(72vw, 520px); height: 14%; transform: translate(-50%, -50%) rotate(-10deg);
-  border-top: clamp(7px, 1.8vw, 15px) solid transparent; border-radius: 50%;
-  background: linear-gradient(90deg,#71dcff,#9e82ff 45%,#ef6fbd 72%,#ffb45f) border-box;
-  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-  mask-composite: exclude; padding-top: clamp(7px, 1.8vw, 15px); opacity: .95;
-  filter: drop-shadow(0 0 14px rgba(125,198,255,.24));
+.synesthesia-boot__eye {
+  position: absolute; left: 50%; top: 43%; width: 69%; aspect-ratio: 2.2 / 1; transform: translate(-50%,-50%);
+  border-top: 4px solid rgba(246,238,255,.88); border-bottom: 4px solid rgba(246,238,255,.88);
+  border-radius: 52% 52% 48% 48% / 62% 62% 38% 38%;
+  background: radial-gradient(circle at 50% 50%, #05060c 0 16%, #9b5dff 18% 31%, #5e6dff 32% 41%, #31c8ff 42% 50%, transparent 52%);
+  box-shadow: 0 0 40px rgba(152,91,255,.34); overflow: hidden;
+  animation: synesthesia-blink 4.8s infinite, synesthesia-eye-glow 2.8s ease-in-out infinite;
 }
-.synesthesia-boot__hint {
+.synesthesia-boot__brain {
+  position: absolute; left: 50%; top: 50%; width: 42%; height: 52%; transform: translate(-50%,-50%);
+  border: 1px solid rgba(255,142,229,.82); border-radius: 46% 54% 48% 52%;
+  filter: drop-shadow(0 0 5px rgba(255,107,217,.65)); opacity: .86;
+}
+.synesthesia-boot__brain::before,
+.synesthesia-boot__brain::after {
+  content: ""; position: absolute; inset: 18% 12%; border-top: 1px solid rgba(84,224,255,.92); border-bottom: 1px solid rgba(255,142,229,.72); border-radius: 50%; transform: rotate(23deg);
+}
+.synesthesia-boot__brain::after { inset: 30% 18%; transform: rotate(-31deg); }
+.synesthesia-boot__node { position:absolute; width:5px; height:5px; border-radius:50%; background:#f9efff; box-shadow:0 0 8px #9d66ff; }
+.synesthesia-boot__node--a{left:23%;top:27%}.synesthesia-boot__node--b{left:66%;top:24%}.synesthesia-boot__node--c{left:31%;top:67%}.synesthesia-boot__node--d{left:70%;top:62%}
+.synesthesia-boot__render {
   position: absolute; bottom: max(7vh, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
-  color: #8294aa; font-size: clamp(9px, 2.6vw, 15px); letter-spacing: .34em; text-transform: uppercase;
+  color: #74869c; font-size: clamp(8px, 1vw, 13px); letter-spacing: .24em; text-transform: uppercase; white-space: nowrap;
 }
-@media (prefers-reduced-motion: reduce) { #synesthesia-boot { transition-duration: .08s; } }
+#synesthesia-boot[data-glitch="true"] .synesthesia-boot__door { animation: synesthesia-glitch .12s steps(2,end) 2; }
+@keyframes synesthesia-blink { 0%,43%,46%,100%{transform:translate(-50%,-50%) scaleY(1)} 44.2%,44.8%{transform:translate(-50%,-50%) scaleY(.05)} }
+@keyframes synesthesia-eye-glow { 0%,100%{filter:brightness(.96)} 50%{filter:brightness(1.12)} }
+@keyframes synesthesia-glitch { 0%{transform:translate(0)} 33%{transform:translate(7px,-2px)} 66%{transform:translate(-5px,2px)} 100%{transform:translate(0)} }
+@media (max-aspect-ratio: 4/5) { .synesthesia-boot__door { width:min(62vw,320px); height:min(54vh,600px); } }
+@media (prefers-reduced-motion: reduce) { #synesthesia-boot { transition-duration:.08s } .synesthesia-boot__eye{animation:none} }

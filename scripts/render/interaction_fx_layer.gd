@@ -11,7 +11,7 @@ var _accumulator: float = 0.0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
-    set_process(true)
+    set_process(false)
 
 func configure(accent_color: Color, secondary_color: Color) -> void:
     accent = accent_color
@@ -34,10 +34,12 @@ func spawn(point_norm: Vector2, kind: String) -> void:
     })
     while _effects.size() > MAX_EFFECTS:
         _effects.pop_front()
+    set_process(true)
     queue_redraw()
 
 func clear() -> void:
     _effects.clear()
+    set_process(false)
     queue_redraw()
 
 func _process(delta: float) -> void:
@@ -55,6 +57,8 @@ func _process(delta: float) -> void:
         var effect: Dictionary = _effects[index]
         if float(effect.get("age", 0.0)) >= float(effect.get("duration", 0.5)):
             _effects.remove_at(index)
+    if _effects.is_empty():
+        set_process(false)
     queue_redraw()
 
 func _draw() -> void:

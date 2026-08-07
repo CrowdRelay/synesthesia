@@ -9,6 +9,7 @@ signal interaction_ended
 signal act_changed(index: int, title: String)
 
 const BrushEngineScript := preload("res://scripts/brush/brush_engine.gd")
+const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const RevealMaskScript := preload("res://scripts/render/reveal_mask.gd")
 const AtmosphereLayerScript := preload("res://scripts/render/atmosphere_layer.gd")
 const InteractionFxLayerScript := preload("res://scripts/render/interaction_fx_layer.gd")
@@ -114,7 +115,7 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     brush_engine = BrushEngineScript.new()
     var brush_value: Variant = room_data.get("brush", {})
     var brush: Dictionary = brush_value if brush_value is Dictionary else {}
-    brush_engine.configure(brush)
+    brush_engine.configure(DebugProfile.tune_debug_brush(brush))
 
     reveal_mask = RevealMaskScript.new()
     reveal_mask.configure(

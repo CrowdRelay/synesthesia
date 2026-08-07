@@ -4,6 +4,7 @@ signal settings_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
+const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 
 var header_row: HBoxContainer
 var top_margin: MarginContainer
@@ -40,6 +41,7 @@ var _act_timer: Timer
 var _room_index: int = 0
 var _room_total: int = 11
 var _accent: Color = Color("72afff")
+var _ui_scale: float = 1.0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -52,8 +54,52 @@ func _ready() -> void:
     _restore_timer = _timer(0.72, func() -> void: set_painting(false))
     _toast_timer = _timer(2.7, _hide_toast)
     _act_timer = _timer(1.65, _hide_act_banner)
+    call_deferred("_apply_ui_scale")
     call_deferred("_apply_mobile_safe_area")
     call_deferred("_layout_story_overlays")
+
+func suspend_for_menu() -> void:
+    clear_transient_overlays()
+    _painting = false
+    if top_panel != null:
+        top_panel.modulate.a = 1.0
+    if bottom_panel != null:
+        bottom_panel.modulate.a = 1.0
+    visible = false
+
+func resume_for_room() -> void:
+    clear_transient_overlays()
+    visible = true
+    _apply_ui_scale()
+
+func clear_transient_overlays() -> void:
+    if _restore_timer != null:
+        _restore_timer.stop()
+    if _toast_timer != null:
+        _toast_timer.stop()
+    if _act_timer != null:
+        _act_timer.stop()
+    if toast_panel != null:
+        toast_panel.visible = false
+        toast_panel.modulate.a = 0.0
+    if act_banner != null:
+        act_banner.visible = false
+        act_banner.modulate.a = 0.0
+
+func _apply_ui_scale() -> void:
+    var viewport_size: Vector2 = get_viewport_rect().size
+    _ui_scale = UiMetrics.scale_for_viewport(viewport_size)
+    UiMetrics.apply_tree(self, _ui_scale)
+    if header_row != null:
+        header_row.offset_left = 12.0 * _ui_scale
+        header_row.offset_right = -12.0 * _ui_scale
+        header_row.offset_top = 12.0 * _ui_scale
+        header_row.offset_bottom = 166.0 * _ui_scale
+    if top_panel != null:
+        top_panel.custom_minimum_size.y = 146.0 * _ui_scale
+    if bottom_panel != null:
+        bottom_panel.custom_minimum_size.y = 146.0 * _ui_scale
+    _layout_story_overlays()
 
 func _timer(wait: float, callback: Callable) -> Timer:
     var timer: Timer = Timer.new()
@@ -308,30 +354,30 @@ func _layout_story_overlays() -> void:
     var viewport_size: Vector2 = get_viewport_rect().size
     if viewport_size.x <= 1.0 or viewport_size.y <= 1.0:
         return
-    var side: float = clampf(viewport_size.x * 0.055, 22.0, 34.0)
+    var side: float = clampf(viewport_size.x * 0.055, 22.0 * _ui_scale, 34.0 * _ui_scale)
     if toast_panel != null:
         toast_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
         toast_panel.offset_left = side
         toast_panel.offset_right = -side
-        toast_panel.offset_top = -180.0
-        toast_panel.offset_bottom = -108.0
-        toast_panel.custom_minimum_size = Vector2(maxf(420.0, viewport_size.x - side * 2.0), 72.0)
-        toast_label.custom_minimum_size = Vector2(maxf(360.0, viewport_size.x - side * 2.0 - 58.0), toast_label.custom_minimum_size.y)
+        toast_panel.offset_top = -180.0 * _ui_scale
+        toast_panel.offset_bottom = -108.0 * _ui_scale
+        toast_panel.custom_minimum_size = Vector2(maxf(420.0 * _ui_scale, viewport_size.x - side * 2.0), 72.0 * _ui_scale)
+        toast_label.custom_minimum_size = Vector2(maxf(360.0 * _ui_scale, viewport_size.x - side * 2.0 - 58.0 * _ui_scale), toast_label.custom_minimum_size.y)
     if act_banner != null:
         # Keep the act badge in its own top-right slot. It must never share the
         # vertical band occupied by the room instruction panel.
-        var act_width: float = clampf(viewport_size.x * 0.43, 196.0, 250.0)
-        var panel_bottom: float = 136.0
+        var act_width: float = clampf(viewport_size.x * 0.43, 196.0 * _ui_scale, 250.0 * _ui_scale)
+        var panel_bottom: float = 136.0 * _ui_scale
         if header_row != null and header_row.size.y > 1.0:
             panel_bottom = header_row.position.y + header_row.size.y
-        var act_top: float = panel_bottom + 8.0
+        var act_top: float = panel_bottom + 8.0 * _ui_scale
         act_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
         act_banner.offset_left = -side - act_width
         act_banner.offset_right = -side
         act_banner.offset_top = act_top
-        act_banner.offset_bottom = act_top + 46.0
-        act_banner.custom_minimum_size = Vector2(act_width, 46.0)
-        act_banner_label.custom_minimum_size = Vector2(maxf(138.0, act_width - 36.0), 0.0)
+        act_banner.offset_bottom = act_top + 46.0 * _ui_scale
+        act_banner.custom_minimum_size = Vector2(act_width, 46.0 * _ui_scale)
+        act_banner_label.custom_minimum_size = Vector2(maxf(138.0 * _ui_scale, act_width - 36.0 * _ui_scale), 0.0)
         act_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 func _repair_runtime_refs() -> void:
@@ -387,6 +433,8 @@ func _set_reveal_ui(normalized: float) -> void:
 
 func configure_room(title: String, subtitle: String, room_index: int, room_total: int, _album_progress: float, room_data: Dictionary) -> void:
     _repair_runtime_refs()
+    clear_transient_overlays()
+    _apply_ui_scale()
     _room_index = room_index
     _room_total = room_total
     _context_seen = false
@@ -415,7 +463,7 @@ func update_reveal(normalized: float) -> void:
     _set_reveal_ui(normalized)
 
 func update_discovery(text_value: String) -> void:
-    if text_value.is_empty():
+    if text_value.is_empty() or not visible:
         return
     toast_label.text = text_value
     toast_panel.visible = true
@@ -485,7 +533,7 @@ func _rebuild_journey(force_complete: bool = false) -> void:
         var dot: ColorRect = ColorRect.new()
         var completed: bool = force_complete or index < _room_index
         var current: bool = not force_complete and index == _room_index
-        dot.custom_minimum_size = Vector2(18.0 if current else 10.0, 2.0 if current else 2.0)
+        dot.custom_minimum_size = Vector2((18.0 if current else 10.0) * _ui_scale, 2.0 * _ui_scale)
         if completed:
             dot.color = Color(_accent, 0.64)
         elif current:
@@ -503,7 +551,7 @@ func _set_palette(room_data: Dictionary) -> void:
         for raw_color in palette_value:
             var swatch: ColorRect = ColorRect.new()
             swatch.color = Color.from_string(str(raw_color), Color("72afff"))
-            swatch.custom_minimum_size = Vector2(20.0, 3.0)
+            swatch.custom_minimum_size = Vector2(20.0 * _ui_scale, 3.0 * _ui_scale)
             swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
             palette_row.add_child(swatch)
     var brush_value: Variant = room_data.get("brush", {})
@@ -537,11 +585,12 @@ func _apply_mobile_safe_area() -> void:
     var scale_y: float = viewport_size.y / float(screen_size.y)
     var top_extra: int = clampi(int(round(float(safe.position.y) * scale_y)), 0, 48)
     if header_row != null:
-        header_row.offset_top = 12.0 + float(top_extra)
-        header_row.offset_bottom = 166.0 + float(top_extra)
+        header_row.offset_top = 12.0 * _ui_scale + float(top_extra)
+        header_row.offset_bottom = 166.0 * _ui_scale + float(top_extra)
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
+        call_deferred("_apply_ui_scale")
         call_deferred("_apply_mobile_safe_area")
         call_deferred("_layout_story_overlays")
 

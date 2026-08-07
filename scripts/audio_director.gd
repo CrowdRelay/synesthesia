@@ -74,6 +74,7 @@ var _noise_user_gain_db: float = 0.0
 var _lowpass_start_hz: float = 950.0
 var _last_filter_hz: float = -1.0
 var _last_reverb_wet: float = -1.0
+var _suspended: bool = false
 
 func _ready() -> void:
     _noise_player = AudioStreamPlayer.new()
@@ -246,6 +247,22 @@ func set_calm_mode(value: bool) -> void:
 func set_user_levels(music_linear: float, noise_linear: float) -> void:
     _music_user_gain_db = linear_to_db(clampf(music_linear, 0.001, 1.0)) if music_linear > 0.0 else SILENCE_DB
     _noise_user_gain_db = linear_to_db(clampf(noise_linear, 0.0, 1.0)) if noise_linear > 0.0 else SILENCE_DB
+
+func set_suspended(value: bool) -> void:
+    if _suspended == value:
+        return
+    _suspended = value
+    set_process(not value)
+    for player in [_noise_player, _music_player, _ambient_player]:
+        if player != null and player.stream != null:
+            player.stream_paused = value
+    for player in _sfx_players:
+        if player != null and player.stream != null:
+            player.stream_paused = value
+    if not value:
+        # Apply targets on the next frame instead of burning CPU behind menus.
+        _last_filter_hz = -1.0
+        _last_reverb_wet = -1.0
 
 func reveal_release_excerpt() -> bool:
     if not _music_available:

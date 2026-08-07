@@ -12,6 +12,7 @@ brush = (ROOT / "scripts/brush/brush_engine.gd").read_text()
 stage = (ROOT / "scripts/render/room_stage.gd").read_text()
 shader = (ROOT / "shaders/room_composite.gdshader").read_text()
 project = (ROOT / "project.godot").read_text()
+native_surface = (ROOT / "scripts/app/native_experience_surface.gd").read_text()
 
 
 def integer(source: str, pattern: str, label: str) -> int:
@@ -36,8 +37,10 @@ particles = profile_value("high", "particle_count")
 max_stamps = integer(brush, r"MAX_STAMPS_PER_SAMPLE:\s*int\s*=\s*(\d+)", "stamps-per-sample")
 
 checks = {
-    "logical-pixels": viewport_w * viewport_h <= 540 * 960,
-    "portrait": viewport_w * 16 == viewport_h * 9,
+    "bootstrap-pixels": viewport_w * viewport_h <= 1080 * 1920,
+    "portrait-bootstrap": viewport_w * 16 == viewport_h * 9,
+    "native-stretch-disabled": 'stretch/mode="disabled"' in project,
+    "native-responsive-surface": "PHONE_ASPECT_CUTOFF" in native_surface and "get_content_surface" in native_surface,
     "mask": high_w <= 360 and high_h <= 640,
     "particles": particles <= 72,
     "stamps": max_stamps <= 4,
@@ -56,6 +59,6 @@ if failed:
 
 print(
     "SYNESTHESIA_PERF_BUDGET=PASS "
-    f"logical_pixels={viewport_w * viewport_h} high_mask={high_w}x{high_h} "
+    f"bootstrap_pixels={viewport_w * viewport_h} adaptive_native=on high_mask={high_w}x{high_h} "
     f"particles={particles} stamps_per_sample={max_stamps} persistence=png-mask-v2 adaptive=on"
 )

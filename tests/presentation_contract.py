@@ -28,20 +28,23 @@ for token in (
         failures.append(f"HUD presentation token missing: {token}")
 
 for token in (
-    'VIRYA · SYNESTEZJA · 11 POKOJÓW',
+    'SYNESTHESIA',
+    'Interaktywny album w 11 pokojach',
     'WEJDŹ DO ŚRODKA',
-    'Nie rozwiązujesz zagadek — odsłaniasz scenę',
-    'To nie test i nie diagnoza',
-    'WEJDŹ W SYNESTEZJĘ',
+    'NOWA PODRÓŻ',
+    'USTAWIENIA',
+    'SYGNAŁ',
+    'TWÓRCY',
+    'nie daje losu w puli 5 płyt',
     'begin_requested.emit()',
 ):
     if token not in intro:
-        failures.append(f"experience intro token missing: {token}")
+        failures.append(f"experience menu token missing: {token}")
 
 for token in (
     'ExperienceIntroCardScript',
     'experience_intro_seen',
-    'call_deferred("_show_experience_intro")',
+    "boot.released.connect(_show_experience_intro)",
     'await transition_director.travel_out()',
     'await transition_director.travel_in()',
 ):
@@ -69,7 +72,7 @@ if complete_block.find('audio_director.reveal_release_excerpt') > complete_block
 
 lifecycle = (ROOT / "tests/lifecycle_smoke.gd").read_text()
 for token in (
-    '_require_button_width(experience, "WEJDŹ W SYNESTEZJĘ"',
+    '_require_button_width(experience, "WEJDŹ DO ŚRODKA"',
     "func _find_button_with_prefix",
     "func _dispose_node",
 ):
@@ -81,4 +84,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_PRESENTATION=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_PRESENTATION=PASS intro=door-entry hud=two-panel+content unmasked=source-video")
+print("SYNESTHESIA_PRESENTATION=PASS menu=door-eye+signal chapter=nonblocking hud=two-panel+content unmasked=source-video")

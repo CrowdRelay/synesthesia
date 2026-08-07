@@ -10,6 +10,11 @@ const TransitionDirectorScript := preload("res://scripts/app/transition_director
 const AssetPreloaderScript := preload("res://scripts/app/asset_preloader.gd")
 const DiagnosticsOverlayScript := preload("res://scripts/app/diagnostics_overlay.gd")
 const AdaptivePerformanceScript := preload("res://scripts/app/adaptive_performance.gd")
+const NativeExperienceSurfaceScript := preload("res://scripts/app/native_experience_surface.gd")
+const InteractiveUiRootScript := preload("res://scripts/app/interactive_ui_root.gd")
+const MenuRuntimeGuard := preload("res://scripts/app/menu_runtime_guard.gd")
+const DebugProfile := preload("res://scripts/app/debug_profile.gd")
+const ReleaseReader := preload("res://scripts/app/release_reader.gd")
 const ChapterCardScript := preload("res://scripts/ui/chapter_card.gd")
 const ExperienceIntroCardScript := preload("res://scripts/ui/experience_intro_card.gd")
 const CompletionCardScript := preload("res://scripts/ui/completion_card.gd")
@@ -47,6 +52,9 @@ var room
 var audio_director
 var haptics
 var reward_client
+var experience_surface
+var game_surface: Control
+var ui_root: Control
 var room_layer: Control
 var hud
 var transition_director
@@ -62,7 +70,8 @@ var reward_panel
 var finale_background
 var settings_panel
 func _ready() -> void:
-    index_document = _load_json(RELEASE_INDEX_PATH)
+    DebugProfile.fit_macos_window_to_screen()
+    index_document = ReleaseReader.load_json(RELEASE_INDEX_PATH)
     if index_document.is_empty():
         _show_fatal_error("Nie udało się wczytać ścieżki albumu.")
         return
@@ -93,25 +102,29 @@ func _ready() -> void:
     _configure_reward_client()
     if bool(album_state.get("album_completed", false)):
         room_layer.visible = false
-        call_deferred("_show_reward_panel")
     else:
-        var fresh_intro := not bool(album_state.get("experience_intro_seen", false)) and current_room_index == 0 and _array_value(album_state.get("completed_room_ids", [])).is_empty()
-        _load_room(current_room_index, not fresh_intro)
-        if fresh_intro:
-            call_deferred("_show_experience_intro")
+        _load_room(current_room_index, false)
+    _enter_main_menu_mode()
 func _build_application_shell() -> void:
+    experience_surface = NativeExperienceSurfaceScript.new()
+    add_child(experience_surface)
+    game_surface = experience_surface.get_content_surface()
+    ui_root = InteractiveUiRootScript.new()
+    add_child(ui_root)
     room_layer = Control.new()
     room_layer.name = "RoomLayer"
-    add_child(room_layer)
-    room_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    game_surface.add_child(room_layer)
+    room_layer.set_anchors_preset(Control.PRESET_TOP_LEFT)
+    experience_surface.content_geometry_changed.connect(_apply_native_geometry)
+    _apply_native_geometry()
     hud = AppHudScript.new()
     hud.name = "AppHud"
-    add_child(hud)
+    game_surface.add_child(hud)
     hud.settings_requested.connect(_show_settings)
     transition_director = TransitionDirectorScript.new()
     transition_director.name = "TransitionDirector"
-    add_child(transition_director)
-    transition_director.install(self)
+    experience_surface.add_child(transition_director)
+    transition_director.install(experience_surface)
     asset_preloader = AssetPreloaderScript.new()
     asset_preloader.name = "AssetPreloader"
     add_child(asset_preloader)
@@ -129,20 +142,36 @@ func _build_application_shell() -> void:
     save_timer.wait_time = 1.15
     save_timer.timeout.connect(_save_progress)
     add_child(save_timer)
-    var boot := BootSequenceScript.new()
-    add_child(boot)
-func _show_experience_intro() -> void:
-    if experience_intro_panel != null or room == null:
+    var boot = BootSequenceScript.new()
+    ui_root.attach(boot, 100)
+    boot.released.connect(_show_experience_intro)
+func _apply_native_geometry() -> void:
+    if experience_surface == null or room_layer == null:
         return
-    room.set_interaction_enabled(false)
-    hud.visible = false
+    var art_rect: Rect2 = experience_surface.get_art_cover_rect()
+    room_layer.position = art_rect.position
+    room_layer.size = art_rect.size
+func _show_experience_intro() -> void:
+    if experience_intro_panel != null:
+        return
+    _enter_main_menu_mode()
     experience_intro_panel = ExperienceIntroCardScript.new()
-    experience_intro_panel.name = "ExperienceIntro"
-    add_child(experience_intro_panel)
-    experience_intro_panel.configure(_accent_for_release(current_room_index))
+    experience_intro_panel.name = "ExperienceMenu"
+    ui_root.attach(experience_intro_panel, 20)
+    var reward_value: Variant = index_document.get("reward", {})
+    var reward: Dictionary = reward_value if reward_value is Dictionary else {}
+    var has_progress: bool = bool(album_state.get("experience_intro_seen", false)) or current_room_index > 0 or not _array_value(album_state.get("completed_room_ids", [])).is_empty()
+    experience_intro_panel.configure(_accent_for_release(current_room_index), has_progress, bool(album_state.get("album_completed", false)), str(reward.get("api_url", "")), str(reward.get("policy_version", "virya-signal-2026-08")), experience_surface.get_render_label())
     experience_intro_panel.begin_requested.connect(_begin_experience)
+    experience_intro_panel.new_journey_requested.connect(_confirm_reset_album)
+    experience_intro_panel.settings_requested.connect(_show_settings)
 func _begin_experience() -> void:
     if transition_running:
+        return
+    if bool(album_state.get("album_completed", false)):
+        _remove_modal(experience_intro_panel)
+        experience_intro_panel = null
+        _show_reward_panel()
         return
     transition_running = true
     if transition_director != null:
@@ -152,31 +181,26 @@ func _begin_experience() -> void:
     experience_intro_panel = null
     album_state["experience_intro_seen"] = true
     _save_album_state()
-    hud.visible = true
+    _resume_room_runtime()
     await get_tree().process_frame
     if transition_director != null:
         await transition_director.travel_in()
-    if room != null:
+    if completion_announced:
+        call_deferred("_show_completion_panel")
+    elif room != null:
         room.set_interaction_enabled(true)
     transition_running = false
-func _load_json(path: String) -> Dictionary:
-    if path.is_empty() or not FileAccess.file_exists(path):
-        push_error("Missing JSON: %s" % path)
-        return {}
-    var file: FileAccess = FileAccess.open(path, FileAccess.READ)
-    if file == null:
-        push_error("Cannot open JSON: %s" % path)
-        return {}
-    var parsed: Variant = JSON.parse_string(file.get_as_text())
-    if parsed is Dictionary:
-        return parsed
-    push_error("JSON root is not an object: %s" % path)
-    return {}
-func _read_version() -> String:
-    if not FileAccess.file_exists(VERSION_PATH):
-        return "0.11.11"
-    var file: FileAccess = FileAccess.open(VERSION_PATH, FileAccess.READ)
-    return file.get_as_text().strip_edges() if file != null else "0.11.11"
+func _enter_main_menu_mode() -> void:
+    # Preserve the room for instant Continue, but make menu entry a hard state
+    # boundary: no room-owned toast/HUD/audio/transition may survive above it.
+    _remove_modal(intro_panel)
+    intro_panel = null
+    _remove_modal(completion_panel)
+    completion_panel = null
+    MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director)
+func _resume_room_runtime() -> void:
+    MenuRuntimeGuard.resume(room_layer, hud, audio_director)
+
 func _configure_reward_client() -> void:
     var config_value: Variant = index_document.get("reward", {})
     if not config_value is Dictionary:
@@ -190,7 +214,7 @@ func _configure_reward_client() -> void:
     reward_client.configure(
         str(config.get("api_url", "")),
         str(index_document.get("campaign_slug", "")),
-        _read_version(),
+        ReleaseReader.read_text(VERSION_PATH, "0.12.8"),
         ProgressStoreScript.get_install_id(),
     )
     reward_client.restore_run(ProgressStoreScript.load_run())
@@ -219,7 +243,7 @@ func _load_room(index: int, show_intro: bool) -> void:
         _show_fatal_error("Nieprawidłowy wpis pokoju.")
         return
     var entry: Dictionary = entry_value
-    manifest = _load_json(str(entry.get("manifest", "")))
+    manifest = ReleaseReader.load_json(str(entry.get("manifest", "")))
     if manifest.is_empty():
         _show_fatal_error("Nie udało się wczytać pokoju: %s" % str(entry.get("id", "?")))
         return
@@ -289,6 +313,8 @@ func _preload_next_room() -> void:
     if next_value is Dictionary:
         asset_preloader.prepare(str(next_value.get("manifest", "")))
 func _clear_room_runtime() -> void:
+    if hud != null and is_instance_valid(hud):
+        hud.clear_transient_overlays()
     if save_timer != null and not save_timer.is_stopped():
         save_timer.stop()
     if room != null and is_instance_valid(room):
@@ -330,7 +356,8 @@ func _restore_room_after_layout(show_intro: bool) -> void:
         room.set_cinematic_reveal(true)
         room.set_door_open(true)
         audio_director.reveal_release_excerpt()
-        call_deferred("_show_completion_panel")
+        if experience_intro_panel == null:
+            call_deferred("_show_completion_panel")
     elif saved.is_empty() and show_intro:
         _show_intro()
     else:
@@ -344,10 +371,9 @@ func _collectible_total() -> int:
 func _show_intro() -> void:
     if room == null:
         return
-    room.set_interaction_enabled(false)
     intro_panel = ChapterCardScript.new()
     intro_panel.name = "ChapterCard"
-    add_child(intro_panel)
+    ui_root.attach(intro_panel, 20)
     var room_value: Variant = manifest.get("room", {})
     var room_data: Dictionary = room_value if room_value is Dictionary else {}
     var art_value: Variant = room_data.get("art_direction", {})
@@ -479,7 +505,7 @@ func _show_completion_panel() -> void:
         var next_value: Variant = release_entries[next_index]
         var next_name: String = "kolejnego pokoju"
         if next_value is Dictionary:
-            var next_manifest: Dictionary = _load_json(str(next_value.get("manifest", "")))
+            var next_manifest: Dictionary = ReleaseReader.load_json(str(next_value.get("manifest", "")))
             var next_room_value: Variant = next_manifest.get("room", {})
             if next_room_value is Dictionary:
                 next_name = str(next_room_value.get("name", next_name))
@@ -489,7 +515,7 @@ func _show_completion_panel() -> void:
 
     completion_panel = CompletionCardScript.new()
     completion_panel.name = "CompletionCard"
-    add_child(completion_panel)
+    ui_root.attach(completion_panel, 30)
     completion_panel.configure(
         str(manifest.get("completion_title", "Pokój się otworzył")),
         str(manifest.get("completion_message", "Obraz i muzyka zostały odsłonięte.")),
@@ -501,8 +527,11 @@ func _show_completion_panel() -> void:
     else:
         completion_panel.continue_requested.connect(_transition_to_reward)
     completion_panel.stay_requested.connect(func() -> void:
-        _remove_modal(completion_panel)
-        completion_panel = null
+        # CompletionCard keeps a compact persistent DALEJ action while the
+        # listener enjoys the fully revealed room. Never turn listen mode into
+        # a dead end.
+        if room != null and is_instance_valid(room):
+            room.set_interaction_enabled(false)
     )
 
 func _transition_to_room(next_index: int) -> void:
@@ -544,14 +573,7 @@ func _transition_to_reward() -> void:
 func _accent_for_release(index: int) -> Color:
     if index < 0 or index >= release_entries.size():
         return Color("72afff")
-    var entry_value: Variant = release_entries[index]
-    if not entry_value is Dictionary:
-        return Color("72afff")
-    var next_manifest: Dictionary = _load_json(str(entry_value.get("manifest", "")))
-    var room_value: Variant = next_manifest.get("room", {})
-    if not room_value is Dictionary:
-        return Color("72afff")
-    return Color.from_string(str(room_value.get("accent_color", "#72AFFF")), Color("72afff"))
+    return ReleaseReader.accent_for_entry(release_entries[index])
 
 func _show_settings() -> void:
     if settings_panel != null:
@@ -560,7 +582,7 @@ func _show_settings() -> void:
         room.set_interaction_enabled(false)
     settings_panel = SettingsCardScript.new()
     settings_panel.name = "SettingsCard"
-    add_child(settings_panel)
+    ui_root.attach(settings_panel, 60)
     settings_panel.configure({
         "calm": calm_mode,
         "quiet": quiet_mode,
@@ -571,7 +593,7 @@ func _show_settings() -> void:
         "noise": noise_level,
         "has_room": room != null and is_instance_valid(room),
         "album_completed": bool(album_state.get("album_completed", false)),
-    }, str(quality.get("label", "Zbalansowana")), _read_version())
+    }, str(quality.get("label", "Zbalansowana")), ReleaseReader.read_text(VERSION_PATH, "0.12.8"))
     settings_panel.close_requested.connect(_close_settings)
     settings_panel.reload_requested.connect(func() -> void:
         _close_settings()
@@ -633,7 +655,7 @@ func _close_settings() -> void:
     if settings_dirty:
         _save_album_state()
         settings_dirty = false
-    if room != null and not completion_announced:
+    if room != null and not completion_announced and experience_intro_panel == null:
         room.set_interaction_enabled(true)
 
 func _mark_settings_dirty() -> void:
@@ -688,7 +710,7 @@ func _confirm_reset_album() -> void:
 func _show_confirmation(title: String, message: String, confirm_text: String, action: Callable) -> void:
     var card = ConfirmCardScript.new()
     confirmation_panel = card
-    add_child(card)
+    ui_root.attach(card, 80)
     card.configure(title, message, confirm_text)
     card.confirmed.connect(action)
     card.tree_exited.connect(func() -> void: confirmation_panel = null)
@@ -769,10 +791,10 @@ func _prepare_finale_background() -> void:
         return
     finale_background = EchoesFinaleBackgroundScript.new()
     finale_background.name = "EchoesFinaleBackground"
-    add_child(finale_background)
+    experience_surface.add_child(finale_background)
     finale_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     finale_background.configure(reduced_motion, quiet_visuals)
-    move_child(finale_background, room_layer.get_index() + 1)
+    move_child(finale_background, game_surface.get_index() + 1)
 
 func _show_reward_panel() -> void:
     if reward_panel != null:
@@ -781,7 +803,7 @@ func _show_reward_panel() -> void:
     hud.visible = false
     reward_panel = SignalFinaleCardScript.new()
     reward_panel.name = "SignalFinaleCard"
-    add_child(reward_panel)
+    ui_root.attach(reward_panel, 40)
     reward_panel.configure(bool(album_state.get("server_album_completed", false)), ProgressStoreScript.load_reward())
     reward_panel.draw_entry_requested.connect(_submit_reward_claim_values)
     reward_panel.reset_requested.connect(_confirm_reset_album)
