@@ -1,8 +1,11 @@
 extends Node
 
+const MAX_QUEUED: int = 8
+
 var _queued: Dictionary = {}
 
 func prepare(manifest_path: String) -> void:
+    _prune_finished_failures()
     if manifest_path.is_empty() or not FileAccess.file_exists(manifest_path):
         return
     var file: FileAccess = FileAccess.open(manifest_path, FileAccess.READ)
@@ -18,28 +21,48 @@ func prepare(manifest_path: String) -> void:
     var art: Dictionary = art_value if art_value is Dictionary else {}
     var audio_value: Variant = manifest.get("audio", {})
     var audio: Dictionary = audio_value if audio_value is Dictionary else {}
-    for path in [
+    var paths: Array[String] = [
         str(room.get("scene_path", "")),
         str(art.get("scene_image", "")),
         str(art.get("background_image", "")),
         str(art.get("subject_image", "")),
         str(art.get("foreground_image", "")),
         str(audio.get("completion_excerpt", "")),
-    ]:
+    ]
+    for path in paths:
+        if _queued.size() >= MAX_QUEUED:
+            break
         if path.is_empty() or _queued.has(path) or not ResourceLoader.exists(path):
             continue
         var error: Error = ResourceLoader.load_threaded_request(path)
         if error == OK:
-            _queued[path] = true
+            _queued[path] = Time.get_ticks_msec()
 
 func take(path: String) -> Resource:
     if path.is_empty():
         return null
     if _queued.has(path):
         var status: int = int(ResourceLoader.load_threaded_get_status(path))
-        if status == ResourceLoader.THREAD_LOAD_LOADED:
+        if status == ResourceLoader.THREAD_LOAD_LOADED or status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+            var resource: Resource = ResourceLoader.load_threaded_get(path)
             _queued.erase(path)
-            return ResourceLoader.load_threaded_get(path)
+            if resource != null:
+                return resource
+        else:
+            _queued.erase(path)
     if ResourceLoader.exists(path):
         return load(path)
     return null
+
+func queued_count() -> int:
+    return _queued.size()
+
+func _prune_finished_failures() -> void:
+    var stale: Array[String] = []
+    for raw_path in _queued.keys():
+        var path: String = str(raw_path)
+        var status: int = int(ResourceLoader.load_threaded_get_status(path))
+        if status == ResourceLoader.THREAD_LOAD_FAILED or status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+            stale.append(path)
+    for path in stale:
+        _queued.erase(path)

@@ -4,6 +4,7 @@ const INDEX_PATH: String = "res://data/release_index.json"
 const MAIN_SCENE_PATH: String = "res://scenes/main.tscn"
 const NOISE_PATH: String = "res://assets/audio/pink-noise-asmr-loop.ogg"
 const COMPOSITE_SHADER_PATH: String = "res://shaders/room_composite.gdshader"
+const REVEAL_MASK_PATH: String = "res://scripts/render/reveal_mask.gd"
 const EXPECTED_ROOM_COUNT: int = 11
 const EXPECTED_SCHEMA: int = 4
 
@@ -16,6 +17,8 @@ func _run() -> void:
     _require_resource(MAIN_SCENE_PATH, "main scene")
     _require_resource(NOISE_PATH, "pink-noise loop")
     _require_resource(COMPOSITE_SHADER_PATH, "composite shader")
+    _require_resource(REVEAL_MASK_PATH, "reveal mask")
+    _validate_mask_roundtrip()
 
     var main_resource: Resource = load(MAIN_SCENE_PATH)
     if main_resource is PackedScene:
@@ -136,6 +139,7 @@ func _validate_room(position: int, expected_id: String, manifest: Dictionary) ->
         await process_frame
         room_node.call("set_calm_mode", true)
         room_node.call("set_reduced_motion", true)
+        room_node.call("set_runtime_budget", 0.68)
         room_node.call("set_quiet_visuals", true)
         room_node.call("set_interaction_enabled", false)
         var exported_value: Variant = room_node.call("export_state")
@@ -148,12 +152,47 @@ func _validate_room(position: int, expected_id: String, manifest: Dictionary) ->
         var progress_value: Variant = room_node.call("get_normalized_progress")
         if not progress_value is float and not progress_value is int:
             _fail("%s: normalized progress is not numeric" % expected_id)
-        room_node.call("set_cinematic_reveal", true)
+        room_node.call("set_cinematic_reveal", true, true)
         if float(room_node.call("get_normalized_progress")) < 0.99:
             _fail("%s: cinematic reveal did not complete" % expected_id)
 
     room_node.queue_free()
     await process_frame
+
+func _validate_mask_roundtrip() -> void:
+    var mask_script: Resource = load(REVEAL_MASK_PATH)
+    if not mask_script is Script:
+        _fail("reveal mask is not a Script")
+        return
+    var first: Variant = (mask_script as Script).new()
+    first.configure(90, 160)
+    first.apply_stamp({
+        "position": Vector2(0.46, 0.52),
+        "radius": 0.10,
+        "rotation": 0.24,
+        "strength": 0.88,
+        "texture": 0.42,
+        "seed": 17,
+        "profile": "ink",
+    }, true)
+    var before: float = float(first.coverage())
+    var state_value: Variant = first.export_state()
+    if not state_value is Dictionary:
+        _fail("mask export_state is not Dictionary")
+        return
+    var state: Dictionary = state_value
+    if str(state.get("format", "")) != "png-mask-v2":
+        _fail("mask state format is not png-mask-v2")
+    var second: Variant = (mask_script as Script).new()
+    second.configure(90, 160)
+    if not bool(second.restore_state(state, "ink")):
+        _fail("mask png roundtrip failed to restore")
+        return
+    var after: float = float(second.coverage())
+    if absf(before - after) > 0.002:
+        _fail("mask coverage changed after png roundtrip")
+    if int(second.estimated_state_bytes()) <= 0:
+        _fail("mask state byte estimate is empty")
 
 func _load_json(path: String) -> Dictionary:
     if path.is_empty() or not FileAccess.file_exists(path):
@@ -179,7 +218,7 @@ func _fail(message: String) -> void:
 
 func _finish() -> void:
     if _failures.is_empty():
-        print("SYNESTHESIA_VALIDATION=PASS rooms=%d renderer=mask-gpu-v1 viewport=540x960" % EXPECTED_ROOM_COUNT)
+        print("SYNESTHESIA_VALIDATION=PASS rooms=%d renderer=mask-gpu-v2 viewport=540x960 persistence=png-mask-v2" % EXPECTED_ROOM_COUNT)
         quit(0)
     else:
         print("SYNESTHESIA_VALIDATION=FAIL count=%d" % _failures.size())

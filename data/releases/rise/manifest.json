@@ -51,12 +51,13 @@
         "subject",
         "foreground",
         "atmosphere"
-      ]
+      ],
+      "film_grain_strength": 0.22
     },
     "id": "rise",
     "scene_path": "res://scenes/rooms/rise.tscn",
     "behavior_script": "res://scripts/rooms/behaviors/rise.gd",
-    "render_pipeline": "mask-gpu-v1"
+    "render_pipeline": "mask-gpu-v2"
   },
   "sensory": {
     "default_mode": "calm",

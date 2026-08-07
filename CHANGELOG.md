@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.11.0 — Production Polish / Release-Candidate Pass
+
+- Persists the reveal as an exact bounded PNG mask instead of a capped stamp history, with migration from older stamp/segment state.
+- Reworks reveal painting around a `PackedByteArray` and dirty texture uploads; removes per-pixel `Image.set_pixel()` and historical stroke redraw.
+- Reduces active decoded room art to 8.22 MiB and current+next to 16.44 MiB under a dependency-free WebP memory budget.
+- Resizes 2.5D layers by visual role and switches the composite shader to linear non-mipmapped sampling.
+- Adds adaptive frame/memory pressure handling for Balanced quality with automatic degradation and recovery.
+- Makes threaded next-room preloads consumable by room scenes, image layers and audio.
+- Adds cinematic radial final reveal, subject lift, bounded brush glow, film grain and room-specific interaction VFX.
+- Adds chapter cards, act banners, discovery toasts, focus-mode HUD and a delayed bottom-sheet completion moment.
+- Extracts sensory controls into a responsive settings card and adds Android/escape back navigation.
+- Debounces settings writes, stops stale room-save timers during transitions and immediately releases old room/audio/haptics nodes.
+- Caches audio bus effect updates, permits true 0% music and lets discoveries contribute gently to the audio reveal.
+- Adds mask payload limits, runtime mask PNG round-trip validation, production-polish contracts and stdlib-only CI memory checks.
+- Updates the future-room generator to produce role-correct 9:16 placeholder dimensions.
+
 ## 0.10.0 — Production Renderer and Room Identity
 
 - Replaces stretched horizontal plates with native portrait 810×1440 room art.

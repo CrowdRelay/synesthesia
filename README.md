@@ -2,22 +2,24 @@
 
 A portrait Godot 4.7.1 experience that turns **Echoes Of The Modern Mind** into eleven playable, cover-inspired rooms. The player uncovers each scene with a textured comic brush while Visual Snow, cosmic CRT static and soft ASMR pink noise recede; at 99% the filter disappears and only the full room excerpt remains.
 
-## 0.10.0 — Production Renderer
+## 0.11.0 — Production Polish / RC pass
 
-This release replaces the prototype renderer with a production-oriented mobile pipeline:
+This release turns the 0.10 renderer into a tighter production runtime rather than adding another decorative layer:
 
-- native portrait room plates instead of stretched horizontal images;
-- five-layer 2.5D scenes: blurred background, architecture/scene, central subject, foreground and atmosphere;
-- a low-resolution retained reveal mask composited by one GPU shader;
-- Photoshop-like deterministic brush stamps written once to the mask, not replayed every frame;
-- room-owned PackedScenes and behavior scripts with three narrative acts each;
-- quality profiles for Battery, Balanced and High;
-- static stereo pink-noise loop plus music gain, low-pass and space reveal;
-- compact HUD that recedes while painting, separate audio/VSS/haptics controls and reduced-motion support;
-- schema-v4 atomic progress checkpoints and ordered offline reward synchronization;
-- next-room threaded preloading, diagnostics overlay and stronger CI/runtime contracts.
+- exact raster reveal persistence (`png-mask-v2`) so long sessions never lose old painted areas after restart;
+- retained L8 brush mask backed by a byte buffer, avoiding per-pixel `Image.set_pixel()` calls and stroke-history replay;
+- lower decoded room-layer budget: **8.22 MiB active / 16.44 MiB current+next** under the static contract;
+- asymmetric 2.5D art sizes (405×720 background, 675×1200 scene/subject, 540×960 foreground) matched to what is actually visible;
+- adaptive Balanced mode that reduces atmosphere, mask-upload cadence and shader motion under sustained frame or memory pressure, then recovers;
+- consumed threaded preloads for the next room's PackedScene, four image layers and audio instead of leaving resources queued;
+- cinematic GPU reveal from the final brush point, subtle subject lift, film grain and bounded interaction VFX;
+- chapter cards, act banners, discovery toasts, auto-hiding HUD and an unobtrusive completion sheet that lets the full image/music breathe;
+- a dedicated responsive settings card with instant sensory changes, debounced persistence and Android/back navigation;
+- cached audio-effect updates, exact zero-volume music control and richer room-specific haptics;
+- immediate release of the previous room/audio/haptics on transitions, stale-save-timer cancellation and bounded persisted-mask input;
+- stdlib-only WebP memory gate, production-polish contract and stronger runtime mask round-trip validation.
 
-The logical viewport is **540×960**. Final room art is authored at **810×1440**, giving a clean 9:16 presentation without wasting four times the pixel work on mobile.
+The logical viewport remains **540×960**. The production source layers are intentionally asymmetric to reduce RAM/VRAM while keeping the scene/subject oversampled relative to the phone viewport. The renderer uses linear filtering without requesting mipmapped sampling for these full-screen 2D plates.
 
 ## Album route
 

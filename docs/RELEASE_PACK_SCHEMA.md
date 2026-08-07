@@ -28,7 +28,7 @@ completion_message
   "name": "Visible room name",
   "scene_path": "res://scenes/rooms/room-id.tscn",
   "behavior_script": "res://scripts/rooms/behaviors/room-id.gd",
-  "render_pipeline": "mask-gpu-v1",
+  "render_pipeline": "mask-gpu-v2",
   "visual_style": "renderer-key",
   "interaction": "paint",
   "completion_coverage": 0.44,

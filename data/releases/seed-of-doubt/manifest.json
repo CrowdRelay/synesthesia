@@ -51,12 +51,13 @@
         "subject",
         "foreground",
         "atmosphere"
-      ]
+      ],
+      "film_grain_strength": 0.32
     },
     "id": "seed-of-doubt",
     "scene_path": "res://scenes/rooms/seed-of-doubt.tscn",
     "behavior_script": "res://scripts/rooms/behaviors/seed-of-doubt.gd",
-    "render_pipeline": "mask-gpu-v1"
+    "render_pipeline": "mask-gpu-v2"
   },
   "sensory": {
     "default_mode": "calm",

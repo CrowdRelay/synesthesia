@@ -52,12 +52,13 @@
         "subject",
         "foreground",
         "atmosphere"
-      ]
+      ],
+      "film_grain_strength": 0.3
     },
     "id": "party-time",
     "scene_path": "res://scenes/rooms/party-time.tscn",
     "behavior_script": "res://scripts/rooms/behaviors/party-time.gd",
-    "render_pipeline": "mask-gpu-v1"
+    "render_pipeline": "mask-gpu-v2"
   },
   "sensory": {
     "default_mode": "calm",

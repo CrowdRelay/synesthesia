@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static mobile/Web renderer budgets for the production mask pipeline."""
+"""Static mobile/Web renderer budgets for the production mask-v2 pipeline."""
 from __future__ import annotations
 
 import re
@@ -10,6 +10,7 @@ quality = (ROOT / "scripts/app/quality_manager.gd").read_text()
 mask = (ROOT / "scripts/render/reveal_mask.gd").read_text()
 brush = (ROOT / "scripts/brush/brush_engine.gd").read_text()
 stage = (ROOT / "scripts/render/room_stage.gd").read_text()
+shader = (ROOT / "shaders/room_composite.gdshader").read_text()
 project = (ROOT / "project.godot").read_text()
 
 
@@ -32,7 +33,6 @@ viewport_h = integer(project, r"size/viewport_height=(\d+)", "viewport-height")
 high_w = profile_value("high", "mask_width")
 high_h = profile_value("high", "mask_height")
 particles = profile_value("high", "particle_count")
-history = integer(mask, r"MAX_STAMP_HISTORY:\s*int\s*=\s*(\d+)", "stamp-history")
 max_stamps = integer(brush, r"MAX_STAMPS_PER_SAMPLE:\s*int\s*=\s*(\d+)", "stamps-per-sample")
 
 checks = {
@@ -40,11 +40,15 @@ checks = {
     "portrait": viewport_w * 16 == viewport_h * 9,
     "mask": high_w <= 360 and high_h <= 640,
     "particles": particles <= 72,
-    "history": history <= 1200,
     "stamps": max_stamps <= 4,
+    "raster-state": 'STATE_FORMAT: String = "png-mask-v2"' in mask,
+    "no-stamp-history": "MAX_STAMP_HISTORY" not in mask and "_history" not in mask,
+    "buffer-first-mask": "_alpha[index] = value" in mask and "_image.set_pixel" not in mask,
     "upload-throttle": "texture_upload_hz" in quality and "upload_if_dirty" in stage,
+    "adaptive-runtime": "set_runtime_budget" in stage and "runtime_scale" in shader,
     "no-history-redraw": "for segment in" not in stage and "draw_history" not in stage,
     "single-composite": "room_composite.gdshader" in stage and "visual_snow.gdshader" not in stage,
+    "cinematic-gpu-reveal": "completion_reveal" in shader and "completion_origin" in shader,
 }
 failed = [name for name, ok in checks.items() if not ok]
 if failed:
@@ -53,5 +57,5 @@ if failed:
 print(
     "SYNESTHESIA_PERF_BUDGET=PASS "
     f"logical_pixels={viewport_w * viewport_h} high_mask={high_w}x{high_h} "
-    f"particles={particles} history={history} stamps_per_sample={max_stamps}"
+    f"particles={particles} stamps_per_sample={max_stamps} persistence=png-mask-v2 adaptive=on"
 )

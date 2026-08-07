@@ -7,10 +7,12 @@ cd "$ROOT"
 python3 -m compileall -q tests tools
 python3 tests/static_validate.py
 python3 tools/perf_budget.py
+python3 tools/memory_budget.py
 python3 tools/audio_mix_budget.py
 python3 tests/room_pipeline_contract.py
 python3 tests/visual_snapshot_contract.py
 python3 tests/new_release_pack_contract.py
+python3 tests/production_polish_contract.py
 python3 tools/asset_report.py
 
 GODOT_BIN="${GODOT_BIN:-godot}"

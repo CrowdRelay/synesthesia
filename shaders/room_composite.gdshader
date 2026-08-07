@@ -1,10 +1,10 @@
 shader_type canvas_item;
 render_mode unshaded;
 
-uniform sampler2D background_texture : source_color, filter_linear_mipmap;
+uniform sampler2D background_texture : source_color, filter_linear;
 uniform sampler2D reveal_mask : filter_linear;
-uniform sampler2D subject_texture : source_color, filter_linear_mipmap;
-uniform sampler2D foreground_texture : source_color, filter_linear_mipmap;
+uniform sampler2D subject_texture : source_color, filter_linear;
+uniform sampler2D foreground_texture : source_color, filter_linear;
 uniform vec4 accent_color : source_color = vec4(0.4, 0.8, 1.0, 1.0);
 uniform vec4 noise_tint : source_color = vec4(0.9, 0.75, 0.9, 1.0);
 uniform float progress : hint_range(0.0, 1.0) = 0.0;
@@ -23,6 +23,13 @@ uniform float foreground_parallax : hint_range(0.0, 0.10) = 0.042;
 uniform int quality_level = 1;
 uniform bool reduced_motion = false;
 uniform bool quiet_visuals = false;
+uniform float completion_reveal : hint_range(0.0, 1.0) = 0.0;
+uniform vec2 completion_origin = vec2(0.5, 0.5);
+uniform vec2 brush_point = vec2(0.5, 0.5);
+uniform float brush_energy : hint_range(0.0, 1.0) = 0.0;
+uniform float film_grain_strength : hint_range(0.0, 1.0) = 0.32;
+uniform float subject_lift : hint_range(0.0, 1.0) = 0.0;
+uniform float runtime_scale : hint_range(0.5, 1.0) = 1.0;
 
 float hash21(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -35,7 +42,7 @@ vec2 cover_uv(vec2 uv, float zoom, vec2 shift) {
 }
 
 void fragment() {
-    float motion_scale = reduced_motion ? 0.20 : 1.0;
+    float motion_scale = reduced_motion ? 0.20 : runtime_scale;
     vec2 scene_uv = cover_uv(UV, 1.018, parallax * scene_parallax * motion_scale);
     vec2 back_uv = cover_uv(UV, 1.095, parallax * background_parallax * motion_scale);
     vec2 subject_uv = cover_uv(UV, 1.026, parallax * subject_parallax * motion_scale);
@@ -48,12 +55,16 @@ void fragment() {
     float edge_distance = min(min(UV.x, 1.0 - UV.x), min(UV.y, 1.0 - UV.y));
     float edge_blend = smoothstep(0.0, 0.19, edge_distance);
     vec3 photographed = mix(back.rgb, scene.rgb, edge_blend);
-    photographed = mix(photographed, subject.rgb, subject.a * 0.92);
+    vec3 lifted_subject = subject.rgb * (1.0 + subject_lift * 0.075);
+    photographed = mix(photographed, lifted_subject, subject.a * (0.88 + subject_lift * 0.10));
     photographed = mix(photographed, foreground.rgb, foreground.a * 0.96);
 
     float mask = texture(reveal_mask, UV).r;
-    float fully_revealed = step(0.989, progress);
-    float reveal = max(mask, fully_revealed);
+    float reveal_radius = completion_reveal * 1.45;
+    float reveal_distance = distance(UV, completion_origin);
+    float cinematic = 1.0 - smoothstep(reveal_radius - 0.075, reveal_radius + 0.055, reveal_distance);
+    cinematic *= step(0.001, completion_reveal);
+    float reveal = max(mask, cinematic);
     float hidden = 1.0 - reveal;
 
     float luminance = dot(photographed, vec3(0.2126, 0.7152, 0.0722));
@@ -93,8 +104,20 @@ void fragment() {
         color *= 1.0 - hidden * halftone * halftone_strength * 0.20;
     }
 
-    float edge = 1.0 - smoothstep(0.002, 0.015, abs(mask - 0.52));
-    color += accent_color.rgb * edge * hidden * 0.34;
+    float mask_edge = 1.0 - smoothstep(0.002, 0.015, abs(mask - 0.52));
+    float brush_distance = distance(UV, brush_point);
+    float brush_glow = (1.0 - smoothstep(0.018, 0.105, brush_distance)) * brush_energy;
+    color += accent_color.rgb * mask_edge * hidden * 0.30;
+    color += accent_color.rgb * brush_glow * (0.035 + hidden * 0.075);
+
+    float cinematic_edge = 1.0 - smoothstep(0.018, 0.055, abs(reveal_distance - reveal_radius));
+    cinematic_edge *= step(0.001, completion_reveal) * (1.0 - step(0.995, completion_reveal));
+    color += accent_color.rgb * cinematic_edge * 0.16;
+
+    float revealed_grain = hash21(floor(pixel * 0.34) + vec2(19.0, 73.0));
+    float grain_strength = film_grain_strength * runtime_scale * (quiet_visuals ? 0.20 : 1.0);
+    color *= 1.0 + (revealed_grain - 0.5) * 0.042 * grain_strength * reveal;
+
     float vignette = 1.0 - smoothstep(0.22, 0.78, distance(UV, vec2(0.5)));
     color *= mix(0.76, 1.0, vignette);
     color = mix(color, color * color * (3.0 - 2.0 * color), ink_strength * 0.16);

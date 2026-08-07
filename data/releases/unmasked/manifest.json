@@ -51,12 +51,13 @@
         "subject",
         "foreground",
         "atmosphere"
-      ]
+      ],
+      "film_grain_strength": 0.34
     },
     "id": "unmasked",
     "scene_path": "res://scenes/rooms/unmasked.tscn",
     "behavior_script": "res://scripts/rooms/behaviors/unmasked.gd",
-    "render_pipeline": "mask-gpu-v1"
+    "render_pipeline": "mask-gpu-v2"
   },
   "sensory": {
     "default_mode": "calm",

@@ -1,7 +1,9 @@
 extends RefCounted
 
 const COVERAGE_ALPHA: int = 54
-const MAX_STAMP_HISTORY: int = 1200
+const STATE_FORMAT: String = "png-mask-v2"
+const MAX_ENCODED_STATE_CHARS: int = 1_000_000
+const MAX_PNG_STATE_BYTES: int = 750_000
 
 var width: int = 270
 var height: int = 480
@@ -10,7 +12,6 @@ var _image: Image
 var _texture: ImageTexture
 var _covered_pixels: int = 0
 var _dirty: bool = false
-var _history: Array[Dictionary] = []
 
 func configure(mask_width: int, mask_height: int) -> void:
     width = clampi(mask_width, 90, 540)
@@ -18,10 +19,9 @@ func configure(mask_width: int, mask_height: int) -> void:
     _alpha.resize(width * height)
     _alpha.fill(0)
     _image = Image.create(width, height, false, Image.FORMAT_L8)
-    _image.fill(Color.BLACK)
+    _sync_image_data()
     _texture = ImageTexture.create_from_image(_image)
     _covered_pixels = 0
-    _history.clear()
     _dirty = false
 
 func texture() -> Texture2D:
@@ -29,13 +29,11 @@ func texture() -> Texture2D:
 
 func clear() -> void:
     _alpha.fill(0)
-    _image.fill(Color.BLACK)
     _covered_pixels = 0
-    _history.clear()
     _dirty = true
     upload_if_dirty()
 
-func apply_stamp(stamp: Dictionary, remember: bool = true) -> bool:
+func apply_stamp(stamp: Dictionary, _remember: bool = true) -> bool:
     var position_value: Variant = stamp.get("position", Vector2.ZERO)
     var position: Vector2 = position_value if position_value is Vector2 else Vector2.ZERO
     var radius_norm: float = clampf(float(stamp.get("radius", 0.04)), 0.004, 0.22)
@@ -64,9 +62,10 @@ func apply_stamp(stamp: Dictionary, remember: bool = true) -> bool:
             var dy: float = float(y) - center_y
             var local_x: float = (dx * cosine + dy * sine) / maxf(radius_px * stretch.x, 0.01)
             var local_y: float = (-dx * sine + dy * cosine) / maxf(radius_px * stretch.y, 0.01)
-            var distance: float = sqrt(local_x * local_x + local_y * local_y)
-            if distance >= 1.0:
+            var distance_squared: float = local_x * local_x + local_y * local_y
+            if distance_squared >= 1.0:
                 continue
+            var distance: float = sqrt(distance_squared)
             var falloff: float = 1.0 - distance
             falloff = falloff * falloff * (3.0 - 2.0 * falloff)
             var grain: float = _grain(x, y, seed, profile)
@@ -79,21 +78,16 @@ func apply_stamp(stamp: Dictionary, remember: bool = true) -> bool:
             if previous < COVERAGE_ALPHA and value >= COVERAGE_ALPHA:
                 _covered_pixels += 1
             _alpha[index] = value
-            var channel: float = float(value) / 255.0
-            _image.set_pixel(x, y, Color(channel, channel, channel, 1.0))
             changed = true
 
     if changed:
         _dirty = true
-        if remember:
-            _history.append(_compact_stamp(stamp))
-            if _history.size() > MAX_STAMP_HISTORY:
-                _history = _history.slice(_history.size() - MAX_STAMP_HISTORY)
     return changed
 
 func upload_if_dirty() -> bool:
     if not _dirty or _texture == null:
         return false
+    _sync_image_data()
     _texture.update(_image)
     _dirty = false
     return true
@@ -102,35 +96,37 @@ func coverage() -> float:
     return float(_covered_pixels) / float(maxi(1, width * height))
 
 func export_state() -> Dictionary:
-    var stamps: Array = []
-    for stamp in _history:
-        var position_value: Variant = stamp.get("position", Vector2.ZERO)
-        var position: Vector2 = position_value if position_value is Vector2 else Vector2.ZERO
-        stamps.append([
-            snappedf(position.x, 0.0001),
-            snappedf(position.y, 0.0001),
-            snappedf(float(stamp.get("radius", 0.04)), 0.0001),
-            snappedf(float(stamp.get("rotation", 0.0)), 0.001),
-            snappedf(float(stamp.get("strength", 0.82)), 0.01),
-            snappedf(float(stamp.get("texture", 0.5)), 0.01),
-            int(stamp.get("seed", 0)),
-            str(stamp.get("profile", "soft")),
-        ])
+    _sync_image_data()
+    var png: PackedByteArray = _image.save_png_to_buffer()
+    if png.is_empty():
+        return {
+            "format": "threshold-bitmap-v2-fallback",
+            "mask_size": [width, height],
+            "covered": _export_threshold_runs(),
+        }
     return {
-        "format": "stamps-v1",
+        "format": STATE_FORMAT,
         "mask_size": [width, height],
-        "stamps": stamps,
+        "png_base64": Marshalls.raw_to_base64(png),
     }
 
 func restore_state(state: Dictionary, fallback_profile: String) -> bool:
     clear()
+    var state_format: String = str(state.get("format", ""))
+    if state_format == STATE_FORMAT and _restore_png_state(state):
+        return true
+    if state_format == "threshold-bitmap-v2-fallback" and _restore_threshold_runs(state):
+        return true
+
+    # v0.10/v0.9 migration: replay stored brush stamps once into the raster mask.
     var raw_stamps: Variant = state.get("stamps", [])
     if raw_stamps is Array and not raw_stamps.is_empty():
+        var restored_stamps: int = 0
         for value in raw_stamps:
             if not value is Array or value.size() < 7:
                 continue
             var profile: String = str(value[7]) if value.size() >= 8 else fallback_profile
-            apply_stamp({
+            if apply_stamp({
                 "position": Vector2(float(value[0]), float(value[1])),
                 "radius": float(value[2]),
                 "rotation": float(value[3]),
@@ -138,11 +134,12 @@ func restore_state(state: Dictionary, fallback_profile: String) -> bool:
                 "texture": float(value[5]),
                 "seed": int(value[6]),
                 "profile": profile,
-            }, true)
+            }, false):
+                restored_stamps += 1
         upload_if_dirty()
-        return true
+        return restored_stamps > 0
 
-    # v0.9 migration: convert stored segment endpoints into one-time mask stamps.
+    # v0.9 legacy migration: convert segment endpoints into one-time mask stamps.
     var legacy_segments: Variant = state.get("segments", [])
     if legacy_segments is Array:
         var serial: int = 0
@@ -158,31 +155,91 @@ func restore_state(state: Dictionary, fallback_profile: String) -> bool:
             var to_point: Vector2 = Vector2(float(raw_to[0]), float(raw_to[1]))
             var distance: float = from_point.distance_to(to_point)
             var steps: int = clampi(int(ceil(distance / 0.025)), 1, 12)
-            for step in range(steps + 1):
+            for step_index in range(steps + 1):
                 serial += 1
                 apply_stamp({
-                    "position": from_point.lerp(to_point, float(step) / float(steps)),
+                    "position": from_point.lerp(to_point, float(step_index) / float(steps)),
                     "radius": clampf(float(segment.get("width", 0.05)) * 0.5, 0.012, 0.11),
                     "rotation": (to_point - from_point).angle(),
                     "strength": 0.86,
                     "texture": 0.52,
                     "seed": serial,
                     "profile": str(segment.get("profile", fallback_profile)),
-                }, true)
+                }, false)
         upload_if_dirty()
         return serial > 0
     return false
 
-func _compact_stamp(stamp: Dictionary) -> Dictionary:
-    return {
-        "position": stamp.get("position", Vector2.ZERO),
-        "radius": float(stamp.get("radius", 0.04)),
-        "rotation": float(stamp.get("rotation", 0.0)),
-        "strength": float(stamp.get("strength", 0.82)),
-        "texture": float(stamp.get("texture", 0.5)),
-        "seed": int(stamp.get("seed", 0)),
-        "profile": str(stamp.get("profile", "soft")),
-    }
+func estimated_state_bytes() -> int:
+    _sync_image_data()
+    var png: PackedByteArray = _image.save_png_to_buffer()
+    return png.size()
+
+func _restore_png_state(state: Dictionary) -> bool:
+    var encoded: String = str(state.get("png_base64", ""))
+    if encoded.is_empty() or encoded.length() > MAX_ENCODED_STATE_CHARS:
+        return false
+    var png: PackedByteArray = Marshalls.base64_to_raw(encoded)
+    if png.is_empty() or png.size() > MAX_PNG_STATE_BYTES:
+        return false
+    var restored: Image = Image.new()
+    var error: Error = restored.load_png_from_buffer(png)
+    if error != OK or restored.is_empty():
+        return false
+    if restored.get_format() != Image.FORMAT_L8:
+        restored.convert(Image.FORMAT_L8)
+    if restored.get_width() != width or restored.get_height() != height:
+        restored.resize(width, height, Image.INTERPOLATE_LANCZOS)
+    _image = restored
+    _alpha = _image.get_data()
+    if _alpha.size() != width * height:
+        return false
+    _recount_coverage()
+    _texture.update(_image)
+    _dirty = false
+    return true
+
+func _export_threshold_runs() -> Array:
+    var runs: Array = []
+    var index: int = 0
+    while index < _alpha.size():
+        if int(_alpha[index]) < COVERAGE_ALPHA:
+            index += 1
+            continue
+        var start: int = index
+        while index < _alpha.size() and int(_alpha[index]) >= COVERAGE_ALPHA:
+            index += 1
+        runs.append([start, index - start])
+    return runs
+
+func _restore_threshold_runs(state: Dictionary) -> bool:
+    var runs_value: Variant = state.get("covered", [])
+    if not runs_value is Array:
+        return false
+    var any_run: bool = false
+    for raw_run in runs_value:
+        if not raw_run is Array or raw_run.size() != 2:
+            continue
+        var start: int = clampi(int(raw_run[0]), 0, _alpha.size())
+        var length: int = clampi(int(raw_run[1]), 0, _alpha.size() - start)
+        for offset in range(length):
+            _alpha[start + offset] = 255
+        any_run = any_run or length > 0
+    _recount_coverage()
+    _dirty = true
+    upload_if_dirty()
+    return any_run
+
+func _sync_image_data() -> void:
+    if _image == null:
+        _image = Image.create(width, height, false, Image.FORMAT_L8)
+    _image.set_data(width, height, false, Image.FORMAT_L8, _alpha)
+
+func _recount_coverage() -> void:
+    _covered_pixels = 0
+    for value in _alpha:
+        if int(value) >= COVERAGE_ALPHA:
+            _covered_pixels += 1
 
 func _profile_stretch(profile: String) -> Vector2:
     match profile:

@@ -39,8 +39,17 @@ with tempfile.TemporaryDirectory(prefix="synesthesia-pack-") as temp:
     manifest = json.loads((target / "data/releases/contract-room/manifest.json").read_text())
     art = manifest["room"]["art_direction"]
     assert art["layers"] == ["background", "scene", "subject", "foreground", "atmosphere"]
-    for key in ("scene_image", "background_image", "subject_image", "foreground_image"):
-        assert (target / art[key].removeprefix("res://")).is_file(), key
+    expected_sizes = {
+        "scene_image": (675, 1200),
+        "background_image": (405, 720),
+        "subject_image": (675, 1200),
+        "foreground_image": (540, 960),
+    }
+    for key, (width, height) in expected_sizes.items():
+        art_path = target / art[key].removeprefix("res://")
+        assert art_path.is_file(), key
+        svg = art_path.read_text()
+        assert f'width="{width}" height="{height}"' in svg, (key, width, height)
     behavior = (target / "scripts/rooms/behaviors/contract-room.gd").read_text()
     assert "func configure(data: Dictionary)" in behavior
     assert "func acts() -> Array[String]" in behavior

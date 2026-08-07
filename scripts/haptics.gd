@@ -68,6 +68,28 @@ func special(kind: String) -> void:
         "duel":
             Input.vibrate_handheld(42 if calm_mode else 58, clampf(base * 1.38, 0.12, 0.68))
             _pulse_after_delay(115, 26 if calm_mode else 38, clampf(base * 1.05, 0.10, 0.58))
+        "mask":
+            Input.vibrate_handheld(14, clampf(base * 1.22, 0.08, 0.54))
+            _pulse_after_delay(42, 11, clampf(base * 0.72, 0.06, 0.34))
+        "screen":
+            Input.vibrate_handheld(9, clampf(base * 0.82, 0.06, 0.38))
+            _pulse_after_delay(31, 9, clampf(base * 0.66, 0.05, 0.30))
+            _pulse_after_delay(70, 16, clampf(base * 1.04, 0.08, 0.48))
+        "seed":
+            Input.vibrate_handheld(24 if calm_mode else 34, clampf(base * 0.88, 0.07, 0.42))
+            _pulse_after_delay(84, 18, clampf(base * 0.70, 0.06, 0.34))
+        "phoenix":
+            Input.vibrate_handheld(32 if calm_mode else 46, clampf(base * 1.08, 0.09, 0.54))
+            _pulse_after_delay(92, 44 if calm_mode else 58, clampf(base * 1.34, 0.11, 0.66))
+        "presence":
+            Input.vibrate_handheld(20 if calm_mode else 28, clampf(base * 0.66, 0.05, 0.32))
+            _pulse_after_delay(128, 20, clampf(base * 0.52, 0.05, 0.26))
+        "light":
+            Input.vibrate_handheld(26 if calm_mode else 38, clampf(base * 0.84, 0.07, 0.40))
+            _pulse_after_delay(72, 34, clampf(base * 1.02, 0.08, 0.50))
+        "wave":
+            Input.vibrate_handheld(16 if calm_mode else 24, clampf(base * 0.68, 0.05, 0.34))
+            _pulse_after_delay(60, 28 if calm_mode else 40, clampf(base * 0.88, 0.07, 0.44))
         _:
             discovery()
 

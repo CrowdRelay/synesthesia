@@ -11,6 +11,7 @@ var redraw_hz: float = 24.0
 var _particles: Array[Dictionary] = []
 var _accumulator: float = 0.0
 var _time: float = 0.0
+var _runtime_scale: float = 1.0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -40,9 +41,12 @@ func set_sensory(calm: bool, reduced: bool) -> void:
     calm_mode = calm
     reduced_motion = reduced
 
+func set_runtime_scale(value: float) -> void:
+    _runtime_scale = clampf(value, 0.55, 1.0)
+
 func _process(delta: float) -> void:
     _accumulator += delta
-    var target_hz: float = 8.0 if reduced_motion else redraw_hz
+    var target_hz: float = 8.0 if reduced_motion else maxf(8.0, redraw_hz * _runtime_scale)
     if _accumulator < 1.0 / target_hz:
         return
     _time += _accumulator * (0.26 if calm_mode else 0.48)
@@ -53,7 +57,8 @@ func _draw() -> void:
     if size.x <= 1.0 or size.y <= 1.0:
         return
     var visible_ratio: float = 0.20 + progress * 0.80
-    for index in range(_particles.size()):
+    var active_count: int = clampi(int(round(float(_particles.size()) * _runtime_scale)), 8, _particles.size())
+    for index in range(active_count):
         var particle: Dictionary = _particles[index]
         var x: float = float(particle.get("x", 0.5))
         var y: float = fmod(float(particle.get("y", 0.5)) + _time * float(particle.get("speed", 0.03)), 1.0)

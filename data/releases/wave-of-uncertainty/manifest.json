@@ -51,12 +51,13 @@
         "subject",
         "foreground",
         "atmosphere"
-      ]
+      ],
+      "film_grain_strength": 0.24
     },
     "id": "wave-of-uncertainty",
     "scene_path": "res://scenes/rooms/wave-of-uncertainty.tscn",
     "behavior_script": "res://scripts/rooms/behaviors/wave-of-uncertainty.gd",
-    "render_pipeline": "mask-gpu-v1"
+    "render_pipeline": "mask-gpu-v2"
   },
   "sensory": {
     "default_mode": "calm",

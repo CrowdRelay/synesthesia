@@ -51,12 +51,13 @@
         "subject",
         "foreground",
         "atmosphere"
-      ]
+      ],
+      "film_grain_strength": 0.3
     },
     "id": "from-the-ashes",
     "scene_path": "res://scenes/rooms/from-the-ashes.tscn",
     "behavior_script": "res://scripts/rooms/behaviors/from-the-ashes.gd",
-    "render_pipeline": "mask-gpu-v1"
+    "render_pipeline": "mask-gpu-v2"
   },
   "sensory": {
     "default_mode": "calm",

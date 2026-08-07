@@ -32,8 +32,15 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def write_svg(path: Path, title: str, foreground: str, background: str, blurred: bool) -> None:
-    width, height = (540, 960) if blurred else (810, 1440)
+def write_svg(path: Path, title: str, foreground: str, background: str, role: str) -> None:
+    dimensions = {
+        "background": (405, 720),
+        "scene": (675, 1200),
+        "subject": (675, 1200),
+        "foreground": (540, 960),
+    }
+    width, height = dimensions[role]
+    blurred = role == "background"
     title_safe = (title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
     blur = '<filter id="b"><feGaussianBlur stdDeviation="36"/></filter>' if blurred else ""
     filter_attr = ' filter="url(#b)"' if blurred else ""
@@ -99,7 +106,7 @@ def main() -> int:
             "name": args.room,
             "scene_path": f"res://scenes/rooms/{args.release_id}.tscn",
             "behavior_script": f"res://scripts/rooms/behaviors/{args.release_id}.gd",
-            "render_pipeline": "mask-gpu-v1",
+            "render_pipeline": "mask-gpu-v2",
             "visual_style": args.style,
             "interaction": "paint",
             "base_color": "#101827",
@@ -118,6 +125,7 @@ def main() -> int:
                 "caption": args.room.upper(),
                 "ink_strength": 0.70,
                 "halftone_strength": 0.22,
+                "film_grain_strength": 0.28,
                 "scene_image": f"res://assets/rooms/vertical/{args.release_id}-scene.svg",
                 "background_image": f"res://assets/rooms/vertical/{args.release_id}-bg.svg",
                 "subject_image": f"res://assets/rooms/vertical/{args.release_id}-subject.svg",
@@ -160,10 +168,10 @@ def main() -> int:
 
     behavior_path.write_text(f'''extends "res://scripts/rooms/behavior_base.gd"\n\nfunc configure(data: Dictionary) -> void:\n    super.configure(data)\n\nfunc acts() -> Array[String]:\n    return ["WEJŚCIE", "PRZEMIANA", "ODSŁONIĘCIE"]\n''')
     scene_path.write_text(f'''[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://scripts/render/room_stage.gd" id="1"]\n\n[node name="{args.release_id}" type="Control"]\nlayout_mode = 3\nanchors_preset = 15\nanchor_right = 1.0\nanchor_bottom = 1.0\ngrow_horizontal = 2\ngrow_vertical = 2\nscript = ExtResource("1")\nroom_id = "{args.release_id}"\n''')
-    write_svg(scene_art_path, args.title, "#71AFFF", "#101827", False)
-    write_svg(background_art_path, args.title, "#B99CFF", "#080C14", True)
-    write_svg(subject_art_path, "", "#71AFFF", "#00000000", False)
-    write_svg(foreground_art_path, "", "#B99CFF", "#00000000", False)
+    write_svg(scene_art_path, args.title, "#71AFFF", "#101827", "scene")
+    write_svg(background_art_path, args.title, "#B99CFF", "#080C14", "background")
+    write_svg(subject_art_path, "", "#71AFFF", "#00000000", "subject")
+    write_svg(foreground_art_path, "", "#B99CFF", "#00000000", "foreground")
 
     entry = {"id": args.release_id, "manifest": f"res://data/releases/{args.release_id}/manifest.json", "available": True}
     if args.position is None:

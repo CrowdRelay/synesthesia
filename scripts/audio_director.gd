@@ -27,6 +27,8 @@ var _release_title: String = "VIRYA"
 var _music_user_gain_db: float = 0.0
 var _noise_user_gain_db: float = 0.0
 var _lowpass_start_hz: float = 950.0
+var _last_filter_hz: float = -1.0
+var _last_reverb_wet: float = -1.0
 
 func _ready() -> void:
     _noise_player = AudioStreamPlayer.new()
@@ -70,7 +72,7 @@ func _resolve_bus_effects() -> void:
     if reverb is AudioEffectReverb:
         _music_reverb = reverb as AudioEffectReverb
 
-func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: int = 1) -> void:
+func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: int = 1, asset_source = null) -> void:
     _collectible_total = maxi(1, collectible_total)
     _pink_noise_start_db = clampf(float(audio.get("pink_noise_start_db", -5.0)), -18.0, -3.0)
     _hidden_music_db = clampf(float(audio.get("hidden_music_db", -44.0)), -60.0, -24.0)
@@ -89,7 +91,11 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
     if excerpt_path.is_empty() or not excerpt_path.begins_with("res://") or not ResourceLoader.exists(excerpt_path):
         push_warning("Room music excerpt is missing: %s" % excerpt_path)
         return
-    var resource: Resource = load(excerpt_path)
+    var resource: Resource = null
+    if asset_source != null and asset_source.has_method("take"):
+        resource = asset_source.take(excerpt_path)
+    if resource == null:
+        resource = load(excerpt_path)
     if not resource is AudioStream:
         push_warning("Room music excerpt is not an AudioStream: %s" % excerpt_path)
         return
@@ -120,7 +126,7 @@ func set_calm_mode(value: bool) -> void:
     _calm_mode = value
 
 func set_user_levels(music_linear: float, noise_linear: float) -> void:
-    _music_user_gain_db = linear_to_db(clampf(music_linear, 0.05, 1.0))
+    _music_user_gain_db = linear_to_db(clampf(music_linear, 0.001, 1.0)) if music_linear > 0.0 else SILENCE_DB
     _noise_user_gain_db = linear_to_db(clampf(noise_linear, 0.0, 1.0)) if noise_linear > 0.0 else SILENCE_DB
 
 func reveal_release_excerpt() -> bool:
@@ -150,7 +156,8 @@ func _process(delta: float) -> void:
     _collectibles_smoothed = move_toward(_collectibles_smoothed, _collectibles_target, delta * 0.90)
     _quiet_smoothed = move_toward(_quiet_smoothed, _quiet_target, delta * 1.80)
 
-    var reveal_mix: float = smoothstep(0.0, COMPLETION_THRESHOLD, _coverage_smoothed)
+    var coverage_mix: float = smoothstep(0.0, COMPLETION_THRESHOLD, _coverage_smoothed)
+    var reveal_mix: float = clampf(coverage_mix * 0.96 + _collectibles_smoothed * 0.04, 0.0, 1.0)
     var quiet_cut_db: float = lerpf(0.0, 18.0, _quiet_smoothed)
 
     if _noise_player != null:
@@ -178,9 +185,16 @@ func _process(delta: float) -> void:
     _apply_filter(reveal_mix)
 
 func _apply_filter(reveal_mix: float) -> void:
+    var clamped_mix: float = clampf(reveal_mix, 0.0, 1.0)
     if _music_lowpass != null:
-        var filter_curve: float = pow(clampf(reveal_mix, 0.0, 1.0), 0.72)
-        _music_lowpass.cutoff_hz = lerpf(_lowpass_start_hz, MAX_FILTER_HZ, filter_curve)
+        var filter_curve: float = pow(clamped_mix, 0.72)
+        var target_hz: float = lerpf(_lowpass_start_hz, MAX_FILTER_HZ, filter_curve)
+        if _last_filter_hz < 0.0 or absf(target_hz - _last_filter_hz) >= 18.0:
+            _last_filter_hz = target_hz
+            _music_lowpass.cutoff_hz = target_hz
     if _music_reverb != null:
-        _music_reverb.wet = lerpf(0.22, 0.035, clampf(reveal_mix, 0.0, 1.0))
-        _music_reverb.room_size = lerpf(0.62, 0.34, clampf(reveal_mix, 0.0, 1.0))
+        var target_wet: float = lerpf(0.22, 0.035, clamped_mix)
+        if _last_reverb_wet < 0.0 or absf(target_wet - _last_reverb_wet) >= 0.002:
+            _last_reverb_wet = target_wet
+            _music_reverb.wet = target_wet
+            _music_reverb.room_size = lerpf(0.62, 0.34, clamped_mix)

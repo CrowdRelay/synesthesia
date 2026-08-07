@@ -2,7 +2,7 @@ extends RefCounted
 
 const PANEL_COLOR: Color = Color("101724f2")
 
-static func panel_style(color: Color = PANEL_COLOR, radius: int = 18) -> StyleBoxFlat:
+static func panel_style(color: Color = PANEL_COLOR, radius: int = 18, border: Color = Color("dbeaff22")) -> StyleBoxFlat:
     var style: StyleBoxFlat = StyleBoxFlat.new()
     style.bg_color = color
     style.corner_radius_top_left = radius
@@ -17,7 +17,7 @@ static func panel_style(color: Color = PANEL_COLOR, radius: int = 18) -> StyleBo
     style.border_width_top = 1
     style.border_width_right = 1
     style.border_width_bottom = 1
-    style.border_color = Color("dbeaff22")
+    style.border_color = border
     return style
 
 static func button(text_value: String, compact: bool = false) -> Button:
@@ -27,9 +27,12 @@ static func button(text_value: String, compact: bool = false) -> Button:
     control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     control.add_theme_font_size_override("font_size", 12 if compact else 13)
     control.add_theme_color_override("font_color", Color("edf6ff"))
-    control.add_theme_stylebox_override("normal", panel_style(Color("18243aeb"), 13))
-    control.add_theme_stylebox_override("hover", panel_style(Color("223655f4"), 13))
-    control.add_theme_stylebox_override("pressed", panel_style(Color("0e1728f4"), 13))
+    control.add_theme_stylebox_override("normal", panel_style(Color("18243aeb"), 13, Color("b9d9ff2b")))
+    control.add_theme_stylebox_override("hover", panel_style(Color("223655f4"), 13, Color("d8eaff52")))
+    control.add_theme_stylebox_override("pressed", panel_style(Color("0e1728f4"), 13, Color("7fbaff66")))
+    control.add_theme_stylebox_override("focus", panel_style(Color("1b2a43f0"), 13, Color("8fc4ff99")))
+    control.add_theme_stylebox_override("disabled", panel_style(Color("101722cc"), 13, Color("dbeaff12")))
+    control.add_theme_color_override("font_disabled_color", Color("8d9aaa"))
     return control
 
 static func heading(text_value: String) -> Label:

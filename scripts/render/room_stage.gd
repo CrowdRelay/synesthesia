@@ -11,6 +11,7 @@ signal act_changed(index: int, title: String)
 const BrushEngineScript := preload("res://scripts/brush/brush_engine.gd")
 const RevealMaskScript := preload("res://scripts/render/reveal_mask.gd")
 const AtmosphereLayerScript := preload("res://scripts/render/atmosphere_layer.gd")
+const InteractionFxLayerScript := preload("res://scripts/render/interaction_fx_layer.gd")
 const CompositeShader := preload("res://shaders/room_composite.gdshader")
 
 @export var room_id: String = ""
@@ -25,6 +26,7 @@ var reveal_mask
 var composite: TextureRect
 var composite_material: ShaderMaterial
 var atmosphere
+var interaction_fx
 var interaction_enabled: bool = true
 var calm_mode: bool = true
 var reduced_motion: bool = false
@@ -43,8 +45,15 @@ var _phase: float = 0.0
 var _redraw_accumulator: float = 0.0
 var _upload_accumulator: float = 0.0
 var _texture_upload_hz: float = 30.0
+var _base_texture_upload_hz: float = 30.0
 var _last_pulse_ms: int = 0
 var _last_special_ms: Dictionary = {}
+var _cinematic_mix: float = 0.0
+var _cinematic_target: float = 0.0
+var _brush_energy: float = 0.0
+var _runtime_scale: float = 1.0
+var _last_parallax_sent: Vector2 = Vector2(99.0, 99.0)
+var _last_coverage_emitted: float = -1.0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -71,13 +80,20 @@ func _build_composite() -> void:
     add_child(atmosphere)
     atmosphere.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dictionary = {}, quality_data: Dictionary = {}) -> void:
+    interaction_fx = InteractionFxLayerScript.new()
+    interaction_fx.name = "InteractionFx"
+    interaction_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    add_child(interaction_fx)
+    interaction_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dictionary = {}, quality_data: Dictionary = {}, asset_source = null) -> void:
     manifest_room = room_data.duplicate(true)
     sensory = sensory_data.duplicate(true)
     quality = quality_data.duplicate(true)
     room_id = str(room_data.get("id", room_id))
     completion_threshold = clampf(float(room_data.get("completion_coverage", 0.44)), 0.20, 0.75)
-    _texture_upload_hz = clampf(float(quality.get("texture_upload_hz", 30.0)), 12.0, 60.0)
+    _base_texture_upload_hz = clampf(float(quality.get("texture_upload_hz", 30.0)), 12.0, 60.0)
+    _texture_upload_hz = _base_texture_upload_hz
 
     brush_engine = BrushEngineScript.new()
     var brush_value: Variant = room_data.get("brush", {})
@@ -98,13 +114,17 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
             collectibles.append(item)
 
     _configure_behavior(room_data)
-    _configure_art(room_data)
+    _configure_art(room_data, asset_source)
+    var accent_color: Color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
+    var secondary_color: Color = Color.from_string(str(room_data.get("secondary_color", "#FF6680")), Color("ff6680"))
     atmosphere.configure(
         str(room_data.get("visual_style", "uncertainty")),
-        Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff")),
-        Color.from_string(str(room_data.get("secondary_color", "#FF6680")), Color("ff6680")),
+        accent_color,
+        secondary_color,
         quality,
     )
+    interaction_fx.configure(accent_color, secondary_color)
+    interaction_fx.set_sensory(calm_mode, reduced_motion)
     _set_progress_from_mask()
     queue_redraw()
 
@@ -119,33 +139,13 @@ func _configure_behavior(room_data: Dictionary) -> void:
         behavior = (resource as Script).new()
         behavior.configure(room_data)
 
-func _configure_art(room_data: Dictionary) -> void:
+func _configure_art(room_data: Dictionary, asset_source = null) -> void:
     var art_value: Variant = room_data.get("art_direction", {})
     var art: Dictionary = art_value if art_value is Dictionary else {}
-    var scene_path: String = str(art.get("scene_image", ""))
-    var background_path: String = str(art.get("background_image", ""))
-    var subject_path: String = str(art.get("subject_image", ""))
-    var foreground_path: String = str(art.get("foreground_image", ""))
-    var scene_texture: Texture2D
-    var background_texture: Texture2D
-    var subject_texture: Texture2D
-    var foreground_texture: Texture2D
-    if ResourceLoader.exists(scene_path):
-        var scene_resource: Resource = load(scene_path)
-        if scene_resource is Texture2D:
-            scene_texture = scene_resource as Texture2D
-    if ResourceLoader.exists(background_path):
-        var background_resource: Resource = load(background_path)
-        if background_resource is Texture2D:
-            background_texture = background_resource as Texture2D
-    if ResourceLoader.exists(subject_path):
-        var subject_resource: Resource = load(subject_path)
-        if subject_resource is Texture2D:
-            subject_texture = subject_resource as Texture2D
-    if ResourceLoader.exists(foreground_path):
-        var foreground_resource: Resource = load(foreground_path)
-        if foreground_resource is Texture2D:
-            foreground_texture = foreground_resource as Texture2D
+    var scene_texture: Texture2D = _take_texture(str(art.get("scene_image", "")), asset_source)
+    var background_texture: Texture2D = _take_texture(str(art.get("background_image", "")), asset_source)
+    var subject_texture: Texture2D = _take_texture(str(art.get("subject_image", "")), asset_source)
+    var foreground_texture: Texture2D = _take_texture(str(art.get("foreground_image", "")), asset_source)
     composite.texture = scene_texture
     composite_material.set_shader_parameter("background_texture", background_texture)
     composite_material.set_shader_parameter("subject_texture", subject_texture)
@@ -164,13 +164,37 @@ func _configure_art(room_data: Dictionary) -> void:
     composite_material.set_shader_parameter("horizontal_jitter", float(sensory.get("horizontal_jitter", 0.12)))
     composite_material.set_shader_parameter("motion", float(sensory.get("static_motion_calm", 0.18)))
     composite_material.set_shader_parameter("quality_level", int(quality.get("shader_quality", 1)))
+    composite_material.set_shader_parameter("film_grain_strength", float(art.get("film_grain_strength", 0.30)))
+    composite_material.set_shader_parameter("completion_reveal", 0.0)
+    composite_material.set_shader_parameter("completion_origin", Vector2(0.5, 0.5))
+    composite_material.set_shader_parameter("brush_point", pointer_norm)
+    composite_material.set_shader_parameter("brush_energy", 0.0)
+    composite_material.set_shader_parameter("subject_lift", 0.0)
+    composite_material.set_shader_parameter("runtime_scale", _runtime_scale)
+
+func _take_texture(path: String, asset_source = null) -> Texture2D:
+    if path.is_empty():
+        return null
+    var resource: Resource = null
+    if asset_source != null and asset_source.has_method("take"):
+        resource = asset_source.take(path)
+    if resource == null and ResourceLoader.exists(path):
+        resource = load(path)
+    return resource as Texture2D if resource is Texture2D else null
 
 func _process(delta: float) -> void:
     var target: float = 1.0 if door_target_open else 0.0
     door_open_amount = move_toward(door_open_amount, target, delta * 0.82)
     var motion_factor: float = 0.18 if reduced_motion else (0.58 if calm_mode else 0.90)
     smoothed_parallax = smoothed_parallax.lerp(target_parallax, clampf(delta * 4.5 * motion_factor, 0.0, 1.0))
-    composite_material.set_shader_parameter("parallax", smoothed_parallax)
+    if smoothed_parallax.distance_squared_to(_last_parallax_sent) > 0.000001:
+        _last_parallax_sent = smoothed_parallax
+        composite_material.set_shader_parameter("parallax", smoothed_parallax)
+
+    _cinematic_mix = move_toward(_cinematic_mix, _cinematic_target, delta * (1.05 if reduced_motion else 1.42))
+    composite_material.set_shader_parameter("completion_reveal", _cinematic_mix)
+    _brush_energy = move_toward(_brush_energy, 0.0, delta * (2.8 if calm_mode else 3.8))
+    composite_material.set_shader_parameter("brush_energy", _brush_energy)
 
     _upload_accumulator += delta
     if _upload_accumulator >= 1.0 / _texture_upload_hz:
@@ -179,9 +203,9 @@ func _process(delta: float) -> void:
 
     _phase = fmod(_phase + delta * (0.32 if calm_mode else 0.72), 1000.0)
     _redraw_accumulator += delta
-    var redraw_hz: float = 10.0 if reduced_motion else (24.0 if calm_mode else 30.0)
+    var redraw_hz: float = 10.0 if reduced_motion else (24.0 if calm_mode else 30.0) * _runtime_scale
     if drawing or not is_equal_approx(door_open_amount, target):
-        redraw_hz = 45.0
+        redraw_hz = maxf(24.0, 45.0 * _runtime_scale)
     if _redraw_accumulator >= 1.0 / redraw_hz:
         _redraw_accumulator = 0.0
         queue_redraw()
@@ -189,6 +213,7 @@ func _process(delta: float) -> void:
 func set_calm_mode(value: bool) -> void:
     calm_mode = value
     atmosphere.set_sensory(calm_mode, reduced_motion)
+    interaction_fx.set_sensory(calm_mode, reduced_motion)
     composite_material.set_shader_parameter(
         "motion",
         float(sensory.get("static_motion_calm", 0.18)) if calm_mode else float(sensory.get("static_motion_full", 0.46)),
@@ -197,6 +222,7 @@ func set_calm_mode(value: bool) -> void:
 func set_reduced_motion(value: bool) -> void:
     reduced_motion = value
     atmosphere.set_sensory(calm_mode, reduced_motion)
+    interaction_fx.set_sensory(calm_mode, reduced_motion)
     composite_material.set_shader_parameter("reduced_motion", value)
 
 func set_quiet_visuals(value: bool) -> void:
@@ -208,15 +234,27 @@ func set_interaction_enabled(value: bool) -> void:
     if not value and drawing:
         _end_stroke()
 
-func set_cinematic_reveal(value: bool) -> void:
+func set_cinematic_reveal(value: bool, instant: bool = false) -> void:
     cinematic_revealed = value
+    _cinematic_target = 1.0 if value else 0.0
     if value:
-        current_progress = 1.0
-        composite_material.set_shader_parameter("progress", 1.0)
+        composite_material.set_shader_parameter("completion_origin", pointer_norm)
+        if instant:
+            _cinematic_mix = 1.0
+            composite_material.set_shader_parameter("completion_reveal", 1.0)
         composite_material.set_shader_parameter("noise_intensity", 0.0)
         atmosphere.set_progress(1.0)
         _update_act(1.0)
+    elif instant:
+        _cinematic_mix = 0.0
+        composite_material.set_shader_parameter("completion_reveal", 0.0)
     queue_redraw()
+
+func set_runtime_budget(scale: float) -> void:
+    _runtime_scale = clampf(scale, 0.55, 1.0)
+    composite_material.set_shader_parameter("runtime_scale", _runtime_scale)
+    _texture_upload_hz = maxf(12.0, _base_texture_upload_hz * _runtime_scale)
+    atmosphere.set_runtime_scale(_runtime_scale)
 
 func set_door_open(value: bool) -> void:
     door_target_open = value
@@ -231,6 +269,12 @@ func reset_room() -> void:
     for item in collectibles:
         item["found"] = false
     cinematic_revealed = false
+    _cinematic_mix = 0.0
+    _cinematic_target = 0.0
+    _brush_energy = 0.0
+    composite_material.set_shader_parameter("completion_reveal", 0.0)
+    composite_material.set_shader_parameter("brush_energy", 0.0)
+    interaction_fx.clear()
     door_target_open = false
     door_open_amount = 0.0
     current_progress = 0.0
@@ -250,6 +294,8 @@ func get_coverage() -> float:
     return reveal_mask.coverage() if reveal_mask != null else 0.0
 
 func get_normalized_progress() -> float:
+    if cinematic_revealed:
+        return 1.0
     return clampf(get_coverage() / completion_threshold, 0.0, 1.0)
 
 func get_current_act() -> int:
@@ -261,7 +307,7 @@ func export_state() -> Dictionary:
         if bool(item.get("found", false)):
             found_ids.append(str(item.get("id", "")))
     return {
-        "renderer": "mask-v1",
+        "renderer": "mask-v2",
         "mask": reveal_mask.export_state(),
         "behavior": behavior.export_state() if behavior != null else {},
         "found_collectibles": found_ids,
@@ -292,7 +338,7 @@ func restore_state(saved: Dictionary) -> bool:
     door_open_amount = 1.0 if door_target_open else 0.0
     _set_progress_from_mask()
     if cinematic_revealed:
-        set_cinematic_reveal(true)
+        set_cinematic_reveal(true, true)
     queue_redraw()
     return restored
 
@@ -313,6 +359,7 @@ func _gui_input(event: InputEvent) -> void:
     if event is InputEventScreenTouch:
         var touch: InputEventScreenTouch = event as InputEventScreenTouch
         pointer_norm = _normalized_point(touch.position)
+        target_parallax = (pointer_norm - Vector2(0.5, 0.5)) * 2.0
         if touch.pressed:
             _begin_stroke(pointer_norm)
         else:
@@ -321,6 +368,7 @@ func _gui_input(event: InputEvent) -> void:
     elif event is InputEventScreenDrag:
         var drag: InputEventScreenDrag = event as InputEventScreenDrag
         pointer_norm = _normalized_point(drag.position)
+        target_parallax = (pointer_norm - Vector2(0.5, 0.5)) * 2.0
         _continue_stroke(pointer_norm)
         accept_event()
     elif event is InputEventMouseButton:
@@ -379,8 +427,13 @@ func _apply_stamps(stamps: Array[Dictionary]) -> void:
         _check_behavior(position, float(stamp.get("radius", 0.04)))
     if not changed:
         return
+    _brush_energy = maxf(_brush_energy, 0.34 + last_speed * 0.66)
+    composite_material.set_shader_parameter("brush_point", pointer_norm)
     _set_progress_from_mask()
-    coverage_changed.emit(get_coverage())
+    var coverage_value: float = get_coverage()
+    if _last_coverage_emitted < 0.0 or absf(coverage_value - _last_coverage_emitted) >= 0.0008 or get_normalized_progress() >= 0.99:
+        _last_coverage_emitted = coverage_value
+        coverage_changed.emit(coverage_value)
     var now_ms: int = Time.get_ticks_msec()
     if now_ms - _last_pulse_ms >= 48:
         _last_pulse_ms = now_ms
@@ -389,6 +442,7 @@ func _apply_stamps(stamps: Array[Dictionary]) -> void:
 func _set_progress_from_mask() -> void:
     current_progress = get_normalized_progress()
     composite_material.set_shader_parameter("progress", current_progress)
+    composite_material.set_shader_parameter("subject_lift", pow(current_progress, 0.72))
     var base_noise: float = float(sensory.get("visual_snow_calm", 0.032)) if calm_mode else float(sensory.get("visual_snow_full", 0.064))
     composite_material.set_shader_parameter("noise_intensity", base_noise * (1.0 - current_progress) * 3.0)
     atmosphere.set_progress(current_progress)
@@ -403,6 +457,8 @@ func _update_act(progress_value: float) -> void:
     if next_act == current_act:
         return
     current_act = next_act
+    if current_act > 0:
+        interaction_fx.spawn(Vector2(0.5, 0.46), "act")
     var titles: Array[String] = behavior.acts() if behavior != null else ["ROZPOZNANIE", "PRZEŁAMANIE", "TRANSFORMACJA"]
     var title: String = titles[current_act] if current_act < titles.size() else "TRANSFORMACJA"
     act_changed.emit(current_act, title)
@@ -417,6 +473,7 @@ func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void:
         var target: Vector2 = Vector2(float(position_value[0]), float(position_value[1]))
         if point_norm.distance_to(target) <= radius_norm + 0.065:
             item["found"] = true
+            interaction_fx.spawn(target, "discovery")
             collectible_found.emit(item.duplicate(true))
 
 func _check_behavior(point_norm: Vector2, radius_norm: float) -> void:
@@ -431,6 +488,7 @@ func _check_behavior(point_norm: Vector2, radius_norm: float) -> void:
         if now_ms - int(_last_special_ms.get(key, 0)) < 180:
             continue
         _last_special_ms[key] = now_ms
+        interaction_fx.spawn(point_norm, kind)
         special_interaction.emit(kind, index)
 
 func _normalized_point(local_point: Vector2) -> Vector2:

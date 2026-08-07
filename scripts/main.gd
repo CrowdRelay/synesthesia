@@ -1,5 +1,4 @@
 extends Control
-
 const AudioDirectorScript := preload("res://scripts/audio_director.gd")
 const HapticsScript := preload("res://scripts/haptics.gd")
 const ProgressStoreScript := preload("res://scripts/progress_store.gd")
@@ -10,12 +9,14 @@ const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const TransitionDirectorScript := preload("res://scripts/app/transition_director.gd")
 const AssetPreloaderScript := preload("res://scripts/app/asset_preloader.gd")
 const DiagnosticsOverlayScript := preload("res://scripts/app/diagnostics_overlay.gd")
+const AdaptivePerformanceScript := preload("res://scripts/app/adaptive_performance.gd")
+const ChapterCardScript := preload("res://scripts/ui/chapter_card.gd")
+const CompletionCardScript := preload("res://scripts/ui/completion_card.gd")
+const SettingsCardScript := preload("res://scripts/ui/settings_card.gd")
 const RoomStageScript := preload("res://scripts/render/room_stage.gd")
-
 const RELEASE_INDEX_PATH: String = "res://data/release_index.json"
 const VERSION_PATH: String = "res://VERSION"
 const FINAL_REVEAL_RATIO: float = 0.99
-
 var index_document: Dictionary = {}
 var release_entries: Array = []
 var manifest: Dictionary = {}
@@ -28,7 +29,6 @@ var room_timer_running: bool = false
 var completion_announced: bool = false
 var restoring_progress: bool = false
 var transition_running: bool = false
-
 var calm_mode: bool = true
 var quiet_mode: bool = false
 var quiet_visuals: bool = false
@@ -38,7 +38,6 @@ var quality_profile: String = "balanced"
 var music_level: float = 1.0
 var noise_level: float = 1.0
 var quality: Dictionary = {}
-
 var room
 var audio_director
 var haptics
@@ -47,18 +46,18 @@ var room_layer: Control
 var hud
 var transition_director
 var asset_preloader
+var adaptive_performance
 var save_timer: Timer
-
-var intro_panel: PanelContainer
-var completion_panel: PanelContainer
+var settings_dirty: bool = false
+var intro_panel
+var completion_panel
 var reward_panel: PanelContainer
-var settings_panel: PanelContainer
+var settings_panel
 var reward_email: LineEdit
 var reward_city: LineEdit
 var reward_marketing: CheckBox
 var reward_status: Label
 var reward_claim_button: Button
-
 func _ready() -> void:
     index_document = _load_json(RELEASE_INDEX_PATH)
     if index_document.is_empty():
@@ -72,7 +71,6 @@ func _ready() -> void:
     if release_entries.is_empty():
         _show_fatal_error("Nie znaleziono żadnego dostępnego pokoju.")
         return
-
     album_state = ProgressStoreScript.load_album()
     current_room_index = clampi(int(album_state.get("current_room_index", 0)), 0, release_entries.size() - 1)
     calm_mode = bool(album_state.get("calm_mode", true))
@@ -81,14 +79,13 @@ func _ready() -> void:
     reduced_motion = bool(album_state.get("reduced_motion", false))
     haptics_enabled = bool(album_state.get("haptics_enabled", true))
     quality_profile = str(album_state.get("quality_profile", QualityManager.recommended()))
-    music_level = clampf(float(album_state.get("music_level", 1.0)), 0.05, 1.0)
+    music_level = clampf(float(album_state.get("music_level", 1.0)), 0.0, 1.0)
     noise_level = clampf(float(album_state.get("noise_level", 1.0)), 0.0, 1.0)
     quality = QualityManager.resolve(quality_profile)
     if not album_state.has("started_at_unix"):
         album_state["started_at_unix"] = int(Time.get_unix_time_from_system())
     if not album_state.has("total_elapsed_ms"):
         album_state["total_elapsed_ms"] = 0
-
     _build_application_shell()
     _configure_reward_client()
     if bool(album_state.get("album_completed", false)):
@@ -96,38 +93,36 @@ func _ready() -> void:
         call_deferred("_show_reward_panel")
     else:
         _load_room(current_room_index, true)
-
 func _build_application_shell() -> void:
     room_layer = Control.new()
     room_layer.name = "RoomLayer"
     add_child(room_layer)
     room_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
     hud = AppHudScript.new()
     hud.name = "AppHud"
     add_child(hud)
     hud.settings_requested.connect(_show_settings)
-
     transition_director = TransitionDirectorScript.new()
     transition_director.name = "TransitionDirector"
     add_child(transition_director)
     transition_director.install(self)
-
     asset_preloader = AssetPreloaderScript.new()
     asset_preloader.name = "AssetPreloader"
     add_child(asset_preloader)
-
+    adaptive_performance = AdaptivePerformanceScript.new()
+    adaptive_performance.name = "AdaptivePerformance"
+    add_child(adaptive_performance)
+    adaptive_performance.budget_changed.connect(_on_runtime_budget_changed)
+    adaptive_performance.configure(quality_profile)
     var diagnostics: Node = DiagnosticsOverlayScript.new()
     diagnostics.name = "Diagnostics"
     add_child(diagnostics)
-
     save_timer = Timer.new()
     save_timer.name = "ProgressSaveTimer"
     save_timer.one_shot = true
     save_timer.wait_time = 1.15
     save_timer.timeout.connect(_save_progress)
     add_child(save_timer)
-
 func _load_json(path: String) -> Dictionary:
     if path.is_empty() or not FileAccess.file_exists(path):
         push_error("Missing JSON: %s" % path)
@@ -141,13 +136,11 @@ func _load_json(path: String) -> Dictionary:
         return parsed
     push_error("JSON root is not an object: %s" % path)
     return {}
-
 func _read_version() -> String:
     if not FileAccess.file_exists(VERSION_PATH):
-        return "0.10.0"
+        return "0.11.0"
     var file: FileAccess = FileAccess.open(VERSION_PATH, FileAccess.READ)
-    return file.get_as_text().strip_edges() if file != null else "0.10.0"
-
+    return file.get_as_text().strip_edges() if file != null else "0.11.0"
 func _configure_reward_client() -> void:
     var config_value: Variant = index_document.get("reward", {})
     if not config_value is Dictionary:
@@ -173,7 +166,6 @@ func _configure_reward_client() -> void:
     reward_client.retry_scheduled.connect(_on_reward_retry_scheduled)
     reward_client.run_invalidated.connect(_on_reward_run_invalidated)
     reward_client.start_run()
-
 func _load_room(index: int, show_intro: bool) -> void:
     if index < 0 or index >= release_entries.size():
         _show_fatal_error("Próba wejścia do nieznanego pokoju.")
@@ -183,7 +175,6 @@ func _load_room(index: int, show_intro: bool) -> void:
     _remove_modal(completion_panel)
     completion_panel = null
     _clear_room_runtime()
-
     current_room_index = index
     album_state["current_room_index"] = current_room_index
     _save_album_state()
@@ -196,7 +187,6 @@ func _load_room(index: int, show_intro: bool) -> void:
     if manifest.is_empty():
         _show_fatal_error("Nie udało się wczytać pokoju: %s" % str(entry.get("id", "?")))
         return
-
     var room_value: Variant = manifest.get("room", {})
     var room_data: Dictionary = room_value if room_value is Dictionary else {}
     var collectible_value: Variant = manifest.get("collectibles", [])
@@ -205,7 +195,12 @@ func _load_room(index: int, show_intro: bool) -> void:
     room.name = "RoomStage"
     room_layer.add_child(room)
     room.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    room.configure(room_data, collectible_entries, manifest.get("sensory", {}), quality)
+    room.configure(room_data, collectible_entries, manifest.get("sensory", {}), quality, asset_preloader)
+    if adaptive_performance != null:
+        room.set_runtime_budget(float(adaptive_performance.get_scale()))
+    var room_accent: Color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
+    if transition_director != null and transition_director.has_method("set_accent"):
+        transition_director.set_accent(room_accent)
     room.coverage_changed.connect(_on_coverage_changed)
     room.collectible_found.connect(_on_collectible_found)
     room.paint_pulse.connect(_on_paint_pulse)
@@ -213,13 +208,11 @@ func _load_room(index: int, show_intro: bool) -> void:
     room.interaction_started.connect(func() -> void: hud.set_painting(true))
     room.interaction_ended.connect(func() -> void: hud.set_painting(false))
     room.act_changed.connect(_on_act_changed)
-
     audio_director = AudioDirectorScript.new()
     audio_director.name = "AudioDirector"
     add_child(audio_director)
-    audio_director.configure(manifest.get("sensory", {}), manifest.get("audio", {}), maxi(1, collectible_entries.size()))
+    audio_director.configure(manifest.get("sensory", {}), manifest.get("audio", {}), maxi(1, collectible_entries.size()), asset_preloader)
     audio_director.set_user_levels(music_level, noise_level)
-
     haptics = HapticsScript.new()
     haptics.name = "Haptics"
     add_child(haptics)
@@ -265,12 +258,14 @@ func _preload_next_room() -> void:
         asset_preloader.prepare(str(next_value.get("manifest", "")))
 
 func _clear_room_runtime() -> void:
+    if save_timer != null and not save_timer.is_stopped():
+        save_timer.stop()
     if room != null and is_instance_valid(room):
-        room.queue_free()
+        room.free()
     if audio_director != null and is_instance_valid(audio_director):
-        audio_director.queue_free()
+        audio_director.free()
     if haptics != null and is_instance_valid(haptics):
-        haptics.queue_free()
+        haptics.free()
     room = null
     audio_director = null
     haptics = null
@@ -323,18 +318,23 @@ func _show_intro() -> void:
     if room == null:
         return
     room.set_interaction_enabled(false)
-    intro_panel = UIFactory.modal(self, Vector2(500.0, 430.0))
-    var content: VBoxContainer = UIFactory.modal_content(intro_panel, 13)
+    intro_panel = ChapterCardScript.new()
+    intro_panel.name = "ChapterCard"
+    add_child(intro_panel)
     var room_value: Variant = manifest.get("room", {})
     var room_data: Dictionary = room_value if room_value is Dictionary else {}
-    content.add_child(UIFactory.heading(str(room_data.get("name", "Pokój"))))
-    content.add_child(UIFactory.body(str(manifest.get("intro", "Maluj bez pośpiechu. Obraz odpowie kolorem i dźwiękiem."))))
-    var act_note: Label = UIFactory.body("Trzy akty: rozpoznanie, przełamanie i transformacja. Przy 99% znika szum i zostaje pełny utwór.")
-    act_note.add_theme_color_override("font_color", Color("88c5ff"))
-    content.add_child(act_note)
-    var button: Button = UIFactory.button("Wejdź w scenę")
-    button.pressed.connect(_dismiss_intro)
-    content.add_child(button)
+    var art_value: Variant = room_data.get("art_direction", {})
+    var art: Dictionary = art_value if art_value is Dictionary else {}
+    var accent: Color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
+    intro_panel.configure(
+        current_room_index,
+        release_entries.size(),
+        str(room_data.get("name", "Pokój")),
+        str(manifest.get("intro", "Maluj bez pośpiechu. Obraz odpowie kolorem i dźwiękiem.")),
+        str(art.get("caption", "VIRYA · SYNESTEZJA")),
+        accent,
+    )
+    intro_panel.dismissed.connect(_dismiss_intro)
 
 func _dismiss_intro() -> void:
     _remove_modal(intro_panel)
@@ -438,34 +438,43 @@ func _complete_current_room() -> void:
     call_deferred("_show_completion_panel")
 
 func _show_completion_panel() -> void:
-    await get_tree().create_timer(0.62).timeout
+    await get_tree().create_timer(1.28).timeout
     if completion_panel != null or transition_running or reward_panel != null:
         return
-    completion_panel = UIFactory.modal(self, Vector2(510.0, 390.0))
-    var content: VBoxContainer = UIFactory.modal_content(completion_panel, 12)
-    content.add_child(UIFactory.heading(str(manifest.get("completion_title", "Pokój się otworzył"))))
-    content.add_child(UIFactory.body(str(manifest.get("completion_message", "Obraz i muzyka zostały odsłonięte."))))
-    var next_button: Button
+    var room_value: Variant = manifest.get("room", {})
+    var room_data: Dictionary = room_value if room_value is Dictionary else {}
+    var accent: Color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
+    var next_label: String
+    var next_index: int = current_room_index + 1
     if current_room_index < release_entries.size() - 1:
-        var next_value: Variant = release_entries[current_room_index + 1]
+        var next_value: Variant = release_entries[next_index]
         var next_name: String = "kolejnego pokoju"
         if next_value is Dictionary:
             var next_manifest: Dictionary = _load_json(str(next_value.get("manifest", "")))
             var next_room_value: Variant = next_manifest.get("room", {})
             if next_room_value is Dictionary:
                 next_name = str(next_room_value.get("name", next_name))
-        next_button = UIFactory.button("Przejdź dalej · %s" % next_name)
-        next_button.pressed.connect(func() -> void: _transition_to_room(current_room_index + 1))
+        next_label = "Dalej · %s" % next_name
     else:
-        next_button = UIFactory.button("Przejdź przez ostatnie drzwi")
-        next_button.pressed.connect(_transition_to_reward)
-    content.add_child(next_button)
-    var stay: Button = UIFactory.button("Zostań i słuchaj")
-    stay.pressed.connect(func() -> void:
+        next_label = "Przejdź przez ostatnie drzwi"
+
+    completion_panel = CompletionCardScript.new()
+    completion_panel.name = "CompletionCard"
+    add_child(completion_panel)
+    completion_panel.configure(
+        str(manifest.get("completion_title", "Pokój się otworzył")),
+        str(manifest.get("completion_message", "Obraz i muzyka zostały odsłonięte.")),
+        next_label,
+        accent,
+    )
+    if current_room_index < release_entries.size() - 1:
+        completion_panel.continue_requested.connect(func() -> void: _transition_to_room(next_index))
+    else:
+        completion_panel.continue_requested.connect(_transition_to_reward)
+    completion_panel.stay_requested.connect(func() -> void:
         _remove_modal(completion_panel)
         completion_panel = null
     )
-    content.add_child(stay)
 
 func _transition_to_room(next_index: int) -> void:
     if transition_running:
@@ -501,121 +510,110 @@ func _show_settings() -> void:
         return
     if room != null:
         room.set_interaction_enabled(false)
-    settings_panel = UIFactory.modal(self, Vector2(510.0, 720.0))
-    var content: VBoxContainer = UIFactory.modal_content(settings_panel, 9)
-    content.add_child(UIFactory.heading("Ustawienia doświadczenia"))
-
-    var mode_button: Button = UIFactory.button("Tryb: %s" % ("spokojny" if calm_mode else "pełny"))
-    mode_button.pressed.connect(func() -> void:
-        calm_mode = not calm_mode
-        mode_button.text = "Tryb: %s" % ("spokojny" if calm_mode else "pełny")
-        _apply_sensory_mode()
-        _save_album_state()
-    )
-    content.add_child(mode_button)
-
-    var quiet_button: Button = UIFactory.button("Audio: %s" % ("uspokojone" if quiet_mode else "pełne"))
-    quiet_button.pressed.connect(func() -> void:
-        quiet_mode = not quiet_mode
-        quiet_button.text = "Audio: %s" % ("uspokojone" if quiet_mode else "pełne")
-        _apply_sensory_mode()
-        _save_album_state()
-    )
-    content.add_child(quiet_button)
-
-    var visual_button: Button = UIFactory.button("VSS: %s" % ("minimalne" if quiet_visuals else "albumowe"))
-    visual_button.pressed.connect(func() -> void:
-        quiet_visuals = not quiet_visuals
-        visual_button.text = "VSS: %s" % ("minimalne" if quiet_visuals else "albumowe")
-        _apply_sensory_mode()
-        _save_album_state()
-    )
-    content.add_child(visual_button)
-
-    var motion_button: Button = UIFactory.button("Ruch: %s" % ("ograniczony" if reduced_motion else "pełny"))
-    motion_button.pressed.connect(func() -> void:
-        reduced_motion = not reduced_motion
-        motion_button.text = "Ruch: %s" % ("ograniczony" if reduced_motion else "pełny")
-        _apply_sensory_mode()
-        _save_album_state()
-    )
-    content.add_child(motion_button)
-
-    var haptic_button: Button = UIFactory.button("Haptyka: %s" % ("włączona" if haptics_enabled else "wyłączona"))
-    haptic_button.pressed.connect(func() -> void:
-        haptics_enabled = not haptics_enabled
-        haptic_button.text = "Haptyka: %s" % ("włączona" if haptics_enabled else "wyłączona")
-        _apply_sensory_mode()
-        _save_album_state()
-    )
-    content.add_child(haptic_button)
-
-    var quality_button: Button = UIFactory.button("Jakość: %s" % str(quality.get("label", "Zbalansowana")))
-    quality_button.pressed.connect(func() -> void:
-        quality_profile = QualityManager.next(quality_profile)
-        quality = QualityManager.resolve(quality_profile)
-        quality_button.text = "Jakość: %s · przeładuj pokój" % str(quality.get("label", "Zbalansowana"))
-        _save_album_state()
-    )
-    content.add_child(quality_button)
-
-    content.add_child(_slider_row("Muzyka", music_level, func(value: float) -> void:
-        music_level = value
-        _apply_audio_levels()
-        _save_album_state()
-    ))
-    content.add_child(_slider_row("Różowy szum", noise_level, func(value: float) -> void:
-        noise_level = value
-        _apply_audio_levels()
-        _save_album_state()
-    ))
-
-    var reload_button: Button = UIFactory.button("Zastosuj jakość i przeładuj pokój")
-    reload_button.pressed.connect(func() -> void:
+    settings_panel = SettingsCardScript.new()
+    settings_panel.name = "SettingsCard"
+    add_child(settings_panel)
+    settings_panel.configure({
+        "calm": calm_mode,
+        "quiet": quiet_mode,
+        "quiet_visuals": quiet_visuals,
+        "reduced_motion": reduced_motion,
+        "haptics": haptics_enabled,
+        "music": music_level,
+        "noise": noise_level,
+    }, str(quality.get("label", "Zbalansowana")), _read_version())
+    settings_panel.close_requested.connect(_close_settings)
+    settings_panel.reload_requested.connect(func() -> void:
         _close_settings()
         _reload_current_room()
     )
-    content.add_child(reload_button)
-    var reset_button: Button = UIFactory.button("Od nowa ten pokój")
-    reset_button.pressed.connect(func() -> void:
+    settings_panel.reset_requested.connect(func() -> void:
         _close_settings()
-        _reset_room()
+        _confirm_reset_room()
     )
-    content.add_child(reset_button)
-    var close_button: Button = UIFactory.button("Wróć do malowania")
-    close_button.pressed.connect(_close_settings)
-    content.add_child(close_button)
-
-func _slider_row(label_text: String, value: float, callback: Callable) -> VBoxContainer:
-    var container: VBoxContainer = VBoxContainer.new()
-    var label: Label = UIFactory.body("%s · %d%%" % [label_text, int(round(value * 100.0))])
-    container.add_child(label)
-    var slider: HSlider = HSlider.new()
-    slider.min_value = 0.0
-    slider.max_value = 1.0
-    slider.step = 0.05
-    slider.value = value
-    slider.custom_minimum_size = Vector2(0.0, 30.0)
-    slider.value_changed.connect(func(next_value: float) -> void:
-        label.text = "%s · %d%%" % [label_text, int(round(next_value * 100.0))]
-        callback.call(next_value)
+    settings_panel.calm_changed.connect(func(value: bool) -> void:
+        calm_mode = value
+        _apply_sensory_mode()
+        _mark_settings_dirty()
     )
-    container.add_child(slider)
-    return container
+    settings_panel.quiet_changed.connect(func(value: bool) -> void:
+        quiet_mode = value
+        _apply_sensory_mode()
+        _mark_settings_dirty()
+    )
+    settings_panel.visuals_changed.connect(func(value: bool) -> void:
+        quiet_visuals = value
+        _apply_sensory_mode()
+        _mark_settings_dirty()
+    )
+    settings_panel.motion_changed.connect(func(value: bool) -> void:
+        reduced_motion = value
+        _apply_sensory_mode()
+        _mark_settings_dirty()
+    )
+    settings_panel.haptics_changed.connect(func(value: bool) -> void:
+        haptics_enabled = value
+        _apply_sensory_mode()
+        _mark_settings_dirty()
+    )
+    settings_panel.quality_cycle_requested.connect(func() -> void:
+        quality_profile = QualityManager.next(quality_profile)
+        quality = QualityManager.resolve(quality_profile)
+        settings_panel.set_quality_label(str(quality.get("label", "Zbalansowana")), true)
+        _mark_settings_dirty()
+    )
+    settings_panel.music_changed.connect(func(value: float) -> void:
+        music_level = value
+        _apply_audio_levels()
+        _mark_settings_dirty()
+    )
+    settings_panel.noise_changed.connect(func(value: float) -> void:
+        noise_level = value
+        _apply_audio_levels()
+        _mark_settings_dirty()
+    )
 
 func _close_settings() -> void:
     _remove_modal(settings_panel)
     settings_panel = null
+    if settings_dirty:
+        _save_album_state()
+        settings_dirty = false
     if room != null and not completion_announced:
         room.set_interaction_enabled(true)
 
+func _mark_settings_dirty() -> void:
+    settings_dirty = true
+
 func _reload_current_room() -> void:
     _save_progress()
+    if adaptive_performance != null:
+        adaptive_performance.configure(quality_profile)
     var index: int = current_room_index
     await transition_director.fade_out(0.28)
     _load_room(index, false)
     await get_tree().process_frame
     await transition_director.fade_in(0.28)
+
+func _confirm_reset_room() -> void:
+    var panel: PanelContainer = UIFactory.modal(self, Vector2(480.0, 290.0))
+    panel.name = "ResetConfirmation"
+    var content: VBoxContainer = UIFactory.modal_content(panel, 10)
+    content.add_child(UIFactory.heading("Zacząć pokój od nowa?"))
+    content.add_child(UIFactory.body("Zniknie tylko lokalny postęp bieżącego pokoju. Pozostałe rozdziały albumu zostają bez zmian."))
+    var confirm: Button = UIFactory.button("Tak, wyczyść ten pokój")
+    confirm.pressed.connect(func() -> void:
+        _remove_modal(panel)
+        _reset_room()
+    )
+    content.add_child(confirm)
+    var cancel: Button = UIFactory.button("Anuluj")
+    cancel.pressed.connect(func() -> void:
+        _remove_modal(panel)
+        if room != null and not completion_announced:
+            room.set_interaction_enabled(true)
+    )
+    content.add_child(cancel)
 
 func _reset_room() -> void:
     if room == null:
@@ -663,6 +661,10 @@ func _apply_sensory_mode() -> void:
 func _apply_audio_levels() -> void:
     if audio_director != null:
         audio_director.set_user_levels(music_level, noise_level)
+
+func _on_runtime_budget_changed(scale: float, _reason: String) -> void:
+    if room != null and is_instance_valid(room):
+        room.set_runtime_budget(scale)
 
 func _schedule_save() -> void:
     if not restoring_progress and save_timer != null:
@@ -887,10 +889,37 @@ func _remove_modal(panel: Control) -> void:
     if panel != null and is_instance_valid(panel):
         panel.queue_free()
 
+func _unhandled_input(event: InputEvent) -> void:
+    if event.is_action_pressed(&"ui_cancel") and _handle_back_request():
+        get_viewport().set_input_as_handled()
+
+func _handle_back_request() -> bool:
+    if settings_panel != null:
+        _close_settings()
+        return true
+    if intro_panel != null:
+        _dismiss_intro()
+        return true
+    if completion_panel != null:
+        _remove_modal(completion_panel)
+        completion_panel = null
+        return true
+    if reward_panel != null:
+        return true
+    if room != null and is_instance_valid(room):
+        _show_settings()
+        return true
+    return false
+
 func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+        _handle_back_request()
+        return
     if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
-        _save_progress()
-        _save_album_state()
+        if room != null and is_instance_valid(room):
+            _save_progress()
+        else:
+            _save_album_state()
 
 func _show_fatal_error(message: String) -> void:
     var label: Label = Label.new()

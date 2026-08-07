@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline production contracts for VIRYA: Synestezja 0.10."""
+"""Offline production contracts for VIRYA: Synestezja 0.11."""
 from __future__ import annotations
 
 import json
@@ -27,17 +27,17 @@ REQUIRED_FILES = [
     "scenes/main.tscn", "scripts/main.gd", "scripts/audio_director.gd",
     "scripts/haptics.gd", "scripts/progress_store.gd", "scripts/reward_client.gd",
     "scripts/render/room_stage.gd", "scripts/render/reveal_mask.gd",
-    "scripts/render/atmosphere_layer.gd", "scripts/brush/brush_engine.gd",
-    "scripts/app/quality_manager.gd", "scripts/app/asset_preloader.gd",
+    "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/brush/brush_engine.gd",
+    "scripts/app/quality_manager.gd", "scripts/app/asset_preloader.gd", "scripts/app/adaptive_performance.gd",
     "scripts/app/transition_director.gd", "scripts/app/diagnostics_overlay.gd",
-    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd",
+    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/chapter_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd",
     "scripts/rooms/behavior_base.gd", "shaders/room_composite.gdshader",
     "assets/audio/pink-noise-asmr-loop.ogg", "default_bus_layout.tres",
     "data/release_index.json", "tests/validate_project.gd",
     "tests/room_pipeline_contract.py", "tests/capture_rooms.gd",
     "tests/visual_snapshot_contract.py", "tests/visual_snapshots.json",
-    "tests/new_release_pack_contract.py", "tools/update_visual_snapshots.py",
-    "tools/perf_budget.py", "tools/audio_mix_budget.py",
+    "tests/new_release_pack_contract.py", "tests/production_polish_contract.py", "tools/update_visual_snapshots.py",
+    "tools/perf_budget.py", "tools/memory_budget.py", "tools/audio_mix_budget.py",
     "tools/new_release_pack.py", "tools/asset_report.py",
     "web/reward/index.html", "web/_headers", "web/register-sw.js",
     "web/service-worker.js", "web/manifest.webmanifest",
@@ -122,7 +122,7 @@ def validate_manifest(path: Path, slug: str, order: int, failures: list[str]) ->
         "id": slug,
         "scene_path": f"res://scenes/rooms/{slug}.tscn",
         "behavior_script": f"res://scripts/rooms/behaviors/{slug}.gd",
-        "render_pipeline": "mask-gpu-v1",
+        "render_pipeline": "mask-gpu-v2",
         "visual_style": EXPECTED_STYLES[slug],
     }
     for key, expected in expected_room_fields.items():
@@ -158,29 +158,36 @@ def validate_manifest(path: Path, slug: str, order: int, failures: list[str]) ->
         foreground = resource_path(art.get("foreground_image"), f"{slug}: foreground layer", failures)
         if scene and scene.suffix.lower() == ".webp":
             try:
-                if webp_size(scene) != (810, 1440):
-                    fail(f"{slug}: scene must be 810x1440", failures)
+                if webp_size(scene) != (675, 1200):
+                    fail(f"{slug}: scene must be 675x1200", failures)
             except ValueError as exc:
                 fail(f"{slug}: invalid scene WebP: {exc}", failures)
             if not 45_000 <= scene.stat().st_size <= 420_000:
                 fail(f"{slug}: scene outside 45..420 KB budget", failures)
         if background and background.suffix.lower() == ".webp":
             try:
-                if webp_size(background) != (540, 960):
-                    fail(f"{slug}: background must be 540x960", failures)
+                if webp_size(background) != (405, 720):
+                    fail(f"{slug}: background must be 405x720", failures)
             except ValueError as exc:
                 fail(f"{slug}: invalid background WebP: {exc}", failures)
             if not 2_000 <= background.stat().st_size <= 220_000:
                 fail(f"{slug}: background outside 2..220 KB budget", failures)
-        for layer_path, label in ((subject, "subject"), (foreground, "foreground")):
-            if layer_path and layer_path.suffix.lower() == ".webp":
-                try:
-                    if webp_size(layer_path) != (810, 1440):
-                        fail(f"{slug}: {label} layer must be 810x1440", failures)
-                except ValueError as exc:
-                    fail(f"{slug}: invalid {label} WebP: {exc}", failures)
-                if not 8_000 <= layer_path.stat().st_size <= 300_000:
-                    fail(f"{slug}: {label} layer outside 8..300 KB budget", failures)
+        if subject and subject.suffix.lower() == ".webp":
+            try:
+                if webp_size(subject) != (675, 1200):
+                    fail(f"{slug}: subject layer must be 675x1200", failures)
+            except ValueError as exc:
+                fail(f"{slug}: invalid subject WebP: {exc}", failures)
+            if not 8_000 <= subject.stat().st_size <= 300_000:
+                fail(f"{slug}: subject layer outside 8..300 KB budget", failures)
+        if foreground and foreground.suffix.lower() == ".webp":
+            try:
+                if webp_size(foreground) != (540, 960):
+                    fail(f"{slug}: foreground layer must be 540x960", failures)
+            except ValueError as exc:
+                fail(f"{slug}: invalid foreground WebP: {exc}", failures)
+            if not 8_000 <= foreground.stat().st_size <= 220_000:
+                fail(f"{slug}: foreground layer outside 8..220 KB budget", failures)
         if art.get("layers") != ["background", "scene", "subject", "foreground", "atmosphere"]:
             fail(f"{slug}: exact five-layer 2.5D stack required", failures)
         for key, maximum in (("scene_parallax", 0.03), ("background_parallax", 0.03), ("subject_parallax", 0.06), ("foreground_parallax", 0.09)):
@@ -253,10 +260,10 @@ def main() -> int:
     if (ROOT / "virya-synestezja").exists():
         fail("nested virya-synestezja directory is forbidden", failures)
 
-    if (ROOT / "VERSION").read_text().strip() != "0.10.0":
-        fail("VERSION must equal 0.10.0", failures)
+    if (ROOT / "VERSION").read_text().strip() != "0.11.0":
+        fail("VERSION must equal 0.11.0", failures)
     project = (ROOT / "project.godot").read_text()
-    for token in ('config/version="0.10.0"', "size/viewport_width=540", "size/viewport_height=960", "size/window_width_override=540", "size/window_height_override=960"):
+    for token in ('config/version="0.11.0"', "size/viewport_width=540", "size/viewport_height=960", "size/window_width_override=540", "size/window_height_override=960"):
         if token not in project:
             fail(f"project.godot missing {token}", failures)
 
@@ -286,7 +293,7 @@ def main() -> int:
         fail("room_stage.gd exceeds 560-line renderer budget", failures)
 
     shader = (ROOT / "shaders/room_composite.gdshader").read_text()
-    for token in ("reveal_mask", "background_texture", "subject_texture", "foreground_texture", "noise_intensity", "scanline_strength", "quiet_visuals", "quality_level"):
+    for token in ("reveal_mask", "background_texture", "subject_texture", "foreground_texture", "noise_intensity", "scanline_strength", "quiet_visuals", "quality_level", "completion_reveal", "brush_energy", "runtime_scale"):
         if token not in shader:
             fail(f"composite shader missing {token}", failures)
     if "AudioEffectHardLimiter" not in (ROOT / "default_bus_layout.tres").read_text():
@@ -301,7 +308,7 @@ def main() -> int:
             print(f"FAIL: {message}", file=sys.stderr)
         print(f"SYNESTHESIA_STATIC_VALIDATION=FAIL count={len(failures)}", file=sys.stderr)
         return 1
-    print("SYNESTHESIA_STATIC_VALIDATION=PASS rooms=11 schema=4 viewport=540x960 renderer=mask-gpu-v1")
+    print("SYNESTHESIA_STATIC_VALIDATION=PASS rooms=11 schema=4 viewport=540x960 renderer=mask-gpu-v2")
     return 0
 
 
