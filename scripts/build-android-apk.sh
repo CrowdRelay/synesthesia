@@ -144,6 +144,14 @@ export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$keystore_path"
 export GODOT_ANDROID_KEYSTORE_DEBUG_USER="$keystore_user"
 export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD="$keystore_password"
 
+
+# Android exports require ETC2/ASTC VRAM imports even with the GL Compatibility renderer.
+# Keep this as a hard preflight so CI fails with an actionable message before Godot export.
+if ! grep -Fqx 'textures/vram_compression/import_etc2_astc=true' "$ROOT/project.godot"; then
+  printf '%s\n' 'ERROR: Android export requires rendering/textures/vram_compression/import_etc2_astc=true in project.godot.' >&2
+  exit 1
+fi
+
 # Validate the exact source tree that will be exported. validate.sh runs Godot import + lifecycle smoke when GODOT_BIN is provided.
 export SYNESTHESIA_GODOT_LOG_DIR="${SYNESTHESIA_GODOT_LOG_DIR:-$ROOT/build/ci-logs}"
 mkdir -p "$SYNESTHESIA_GODOT_LOG_DIR"

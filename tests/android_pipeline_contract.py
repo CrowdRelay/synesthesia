@@ -8,6 +8,7 @@ failures: list[str] = []
 workflow_path = ROOT / ".github/workflows/android-apk.yml"
 build_script_path = ROOT / "scripts/build-android-apk.sh"
 preset_path = ROOT / "export_presets.cfg"
+project_path = ROOT / "project.godot"
 
 if not workflow_path.is_file():
     failures.append(".github/workflows/android-apk.yml missing")
@@ -22,6 +23,7 @@ else:
     script = build_script_path.read_text()
 
 preset = preset_path.read_text()
+project = project_path.read_text()
 
 for token in (
     "branches: [main]",
@@ -75,6 +77,9 @@ for token in (
 ):
     if token not in preset:
         failures.append(f"Android export preset missing token: {token}")
+
+if 'textures/vram_compression/import_etc2_astc=true' not in project:
+    failures.append("Android export requires rendering/textures/vram_compression/import_etc2_astc=true")
 
 if failures:
     for failure in failures:

@@ -1,3 +1,9 @@
+## Android export hotfix — ETC2/ASTC
+
+- enables `rendering/textures/vram_compression/import_etc2_astc=true`, required by Godot 4.7.1 for Android export
+- adds an Android pipeline contract and build preflight so this configuration cannot regress silently
+- leaves Web/Linux renderer behavior and all runtime video/audio assets unchanged
+
 ## Android APK CI pipeline
 
 - adds a dedicated `Android APK` GitHub Actions workflow for every push to `main` and manual dispatch
