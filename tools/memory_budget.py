@@ -11,6 +11,9 @@ ROOMS = ROOT / "assets" / "rooms" / "vertical"
 MAX_ACTIVE_BYTES = 9 * 1024 * 1024
 MAX_CURRENT_PLUS_NEXT = 19 * 1024 * 1024
 MAX_FINALE_BYTES = 5 * 1024 * 1024
+VIDEO_FRAME_BYTES = 720 * 1280 * 4
+MAX_ACTIVE_WITH_VIDEO = 13 * 1024 * 1024
+MAX_FINALE_WITH_VIDEO = 8 * 1024 * 1024
 EXPECTED = {
     "bg": ((405, 720), 3),
     "scene": ((675, 1200), 3),
@@ -103,6 +106,9 @@ if peak * 2 > MAX_CURRENT_PLUS_NEXT:
         f"current+next {peak * 2 / 1048576:.2f} MiB exceeds "
         f"{MAX_CURRENT_PLUS_NEXT / 1048576:.2f} MiB"
     )
+active_with_video = peak + VIDEO_FRAME_BYTES
+if active_with_video > MAX_ACTIVE_WITH_VIDEO:
+    failures.append(f"active room + one 720p RGBA video frame exceeds {MAX_ACTIVE_WITH_VIDEO / 1048576:.2f} MiB")
 
 finale_path = ROOT / "assets" / "finale" / "echoes-finale.webp"
 finale_bytes = 0
@@ -116,6 +122,8 @@ else:
             failures.append(f"finale: {finale_size} != (810, 1440)")
         if finale_bytes > MAX_FINALE_BYTES:
             failures.append(f"finale decoded {finale_bytes / 1048576:.2f} MiB exceeds {MAX_FINALE_BYTES / 1048576:.2f} MiB")
+        if finale_bytes + VIDEO_FRAME_BYTES > MAX_FINALE_WITH_VIDEO:
+            failures.append("finale image + one 720p video frame exceeds finale video budget")
     except (OSError, ValueError, struct.error) as exc:
         failures.append(f"finale unreadable WebP ({exc})")
 
@@ -127,5 +135,5 @@ if failures:
 print(
     "SYNESTHESIA_MEMORY_BUDGET=PASS "
     f"rooms={len(per_room)} peak_decoded={peak / 1048576:.2f}MiB "
-    f"current_plus_next={peak * 2 / 1048576:.2f}MiB finale={finale_bytes / 1048576:.2f}MiB parser=stdlib-webp"
+    f"current_plus_next={peak * 2 / 1048576:.2f}MiB active_plus_video={active_with_video / 1048576:.2f}MiB finale={finale_bytes / 1048576:.2f}MiB parser=stdlib-webp"
 )

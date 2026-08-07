@@ -1,3 +1,40 @@
+## 0.11.11 — macOS Godot 4.7.1 importer crash hotfix
+
+- removes the legacy `settings-gear.svg` that could segfault Godot 4.7.1 during the headless editor reimport on macOS
+- draws the Settings gear procedurally in GDScript, so the icon no longer depends on SVG or font/emoji import support
+- ignores the legacy `assets/ui` SVG directory on overlay installs and purges only its stale `.godot/imported` cache before `run-macos.sh` starts the editor scan
+- retains the runtime audio-before-HUD ordering and self-healing HUD references from the previous runtime hotfix
+
+## 0.11.11 — Runtime Shader / Clean Loops / Settings Gear Hotfix
+
+- Fixes Godot 4.7.1 shader compilation by keeping every `TEXTURE` sample inside `fragment()` instead of referencing the CanvasItem builtin from a helper function.
+- Rebuilds all cinematic ping-pong loops after removing the final 8 AI outro/watermark frames from the forward pass; Hybrid keeps its earlier editorial cut.
+- Replaces the font-dependent menu glyph with a bundled SVG gear icon so Settings renders consistently on macOS, mobile and Web.
+- Keeps 720×1280 / 24 fps lazy Ogg Theora playback, themed post-processing, Unmasked eye glow and the stronger Echoes finale form cover.
+
+## 0.11.9 — playback/layout hotfix
+
+Cinematic room videos now use direct `VideoStreamTheora` runtime streams, and the two persistent HUD cards are laid out side by side in a single header row.
+
+## 0.11.8 cinematic reveal
+
+Completed rooms now cross from the exact painted still into a lazy-loaded 720×1280 Theora loop. Each clip uses a restrained thematic post-process to unify AI-generated motion with the original artwork; Unmasked additionally burns out the generated slit pupils with a dedicated additive eye-glow pass. The final Echoes animation is blended with the original cover and sits behind a denser Signal claim sheet.
+
+## 0.11.7 — Living Rooms / Sensory Pass
+
+- Moves the act banner into an independent top-right safe slot so it cannot overlap the instruction panel.
+- Adds a quiet thematic ambience bed for every one of the 11 rooms, plus room-specific interaction SFX.
+- Makes room transitions explicitly door-like: paneled leaves, handles, close/open sounds and a perspective zoom/suck teleport through the threshold.
+- Keeps every fully revealed room alive instead of freezing: alternating waves, rising balloons and light, glowing/opening masks, banquet toast motion, twisting Seed tree, first-person Hybrid duel, Technophobia glitches, simultaneous Invaluable mirror burst, phoenix take-off, bedroom lamp/window wind, and Rise ascent into the window light.
+- Makes the Echoes finale skull disintegrate much more aggressively with denser dust and leftward particle streaks.
+- Adds regression coverage for thematic audio assets, living-room animation hooks, door teleport state and HUD non-overlap.
+
+## 0.11.5 — Audio / HUD / CI hotfix
+
+- Room music uses Godot resource resolution again, including exported/imported MP3 and OGG assets.
+- Persistent act marker is right-aligned in the lower HUD.
+- Atmosphere drawing is safe before particle configuration, fixing runtime validation in CI.
+
 ## 0.11.4 — Cinematic Inner Rooms / UX Pass
 
 - Fixes chapter, act and discovery-toast layouts so long Polish copy keeps a usable horizontal measure instead of collapsing to one-character columns.

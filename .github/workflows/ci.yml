@@ -53,6 +53,10 @@ jobs:
           python3 tests/visual_snapshot_contract.py
           python3 tests/new_release_pack_contract.py
           python3 tests/production_polish_contract.py
+          python3 tests/sensory_room_contract.py
+          python3 tests/door_transition_contract.py
+          python3 tests/cinematic_video_contract.py
+          python3 tests/presentation_contract.py
           python3 tools/asset_report.py
 
       - name: Install verified Godot editor
@@ -94,7 +98,7 @@ jobs:
           if (( status != 0 )); then
             exit "${status}"
           fi
-          if grep -E '(^|[[:space:]])(SCRIPT ERROR:|ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed loading resource:|Shader error:|Warning treated as error|ObjectDB instance was leaked|Pink-noise.*missing|Room music.*missing)' "${log_file}" >/dev/null; then
+          if grep -E '(^|[[:space:]])(SCRIPT ERROR:|ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed loading resource:|Shader error:|Warning treated as error|ObjectDB instance was leaked|Pink-noise.*missing|Room music.*missing|Room ambience.*missing|Cinematic video.*missing)' "${log_file}" >/dev/null; then
             echo "Godot import emitted an error" >&2
             exit 1
           fi

@@ -19,6 +19,22 @@ func on_paint(_point_norm: Vector2, _radius_norm: float, _progress: float) -> Ar
 func render(_canvas, _viewport_size: Vector2, _progress: float, _phase: float) -> void:
     pass
 
+func set_cinematic(value: bool) -> void:
+    var previous: bool = bool(state.get("_cinematic", false))
+    state["_cinematic"] = value
+    if value and not previous:
+        state["_cinematic_time"] = 0.0
+
+func advance(delta: float) -> void:
+    if bool(state.get("_cinematic", false)):
+        state["_cinematic_time"] = float(state.get("_cinematic_time", 0.0)) + delta
+
+func cinematic_active() -> bool:
+    return bool(state.get("_cinematic", false))
+
+func cinematic_time() -> float:
+    return float(state.get("_cinematic_time", 0.0))
+
 func export_state() -> Dictionary:
     return state.duplicate(true)
 

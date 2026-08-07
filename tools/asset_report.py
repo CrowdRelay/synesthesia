@@ -12,7 +12,8 @@ for group, pattern in (
     ("room-subject", "assets/rooms/vertical/*-subject.webp"),
     ("room-foreground", "assets/rooms/vertical/*-foreground.webp"),
     ("room-background", "assets/rooms/vertical/*-bg.webp"),
-    ("audio", "assets/audio/*"),
+    ("audio", "assets/audio/**/*"),
+    ("video", "assets/video/*.ogv"),
 ):
     for path in sorted(ROOT.glob(pattern)):
         if path.is_file():

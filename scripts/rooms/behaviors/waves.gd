@@ -15,6 +15,21 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
         var second: Vector2 = Vector2(viewport_size.x * 0.58, viewport_size.y * 0.58)
         canvas.draw_circle(first, 14.0, Color(accent, alpha * 0.10))
         canvas.draw_circle(second + Vector2(sin(phase) * 2.0, 0.0), 14.0, Color(secondary, alpha * 0.11))
+    if cinematic_active():
+        var cinematic_t: float = cinematic_time()
+        # Only the bedside lamp flickers; the room itself stays quiet and intimate.
+        var lamp: Vector2 = Vector2(viewport_size.x * 0.78, viewport_size.y * 0.47)
+        var flicker_gate: float = 0.58 + 0.42 * sin(cinematic_t * 7.0) * sin(cinematic_t * 2.3 + 0.7)
+        var lamp_alpha: float = 0.035 + 0.055 * maxf(0.0, flicker_gate)
+        canvas.draw_circle(lamp, 78.0, Color(secondary, lamp_alpha))
+        canvas.draw_circle(lamp, 12.0, Color(secondary, 0.18 + lamp_alpha))
+        # Wind is visible only at the window edge, never as a full-room effect.
+        var window_rect: Rect2 = Rect2(viewport_size.x * 0.08, viewport_size.y * 0.16, viewport_size.x * 0.28, viewport_size.y * 0.30)
+        for index in range(7):
+            var y: float = window_rect.position.y + 24.0 + float(index) * 29.0
+            var travel: float = fmod(cinematic_t * (38.0 + float(index) * 4.0) + float(index) * 41.0, window_rect.size.x + 90.0)
+            var x: float = window_rect.end.x + 20.0 - travel
+            canvas.draw_line(Vector2(x, y), Vector2(x - 34.0, y + sin(cinematic_t * 2.0 + float(index)) * 5.0), Color(accent, 0.055), 1.0)
 
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.42 and not bool(state.get("presence", false)) and _near(point_norm, Vector2(0.58, 0.58), radius_norm + 0.12):

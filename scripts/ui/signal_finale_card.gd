@@ -18,7 +18,7 @@ func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func configure(server_completed: bool, saved_reward: Dictionary) -> void:
-    _sheet = UIFactory.bottom_sheet(self, 548.0, _accent)
+    _sheet = UIFactory.bottom_sheet(self, 620.0, _accent)
     _sheet.name = "SignalFinaleSheet"
     var content: VBoxContainer = UIFactory.modal_content(_sheet, 9)
     content.custom_minimum_size = Vector2(maxf(content.custom_minimum_size.x, 470.0), content.custom_minimum_size.y)

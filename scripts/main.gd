@@ -11,6 +11,7 @@ const AssetPreloaderScript := preload("res://scripts/app/asset_preloader.gd")
 const DiagnosticsOverlayScript := preload("res://scripts/app/diagnostics_overlay.gd")
 const AdaptivePerformanceScript := preload("res://scripts/app/adaptive_performance.gd")
 const ChapterCardScript := preload("res://scripts/ui/chapter_card.gd")
+const ExperienceIntroCardScript := preload("res://scripts/ui/experience_intro_card.gd")
 const CompletionCardScript := preload("res://scripts/ui/completion_card.gd")
 const SettingsCardScript := preload("res://scripts/ui/settings_card.gd")
 const ConfirmCardScript := preload("res://scripts/ui/confirm_card.gd")
@@ -53,6 +54,7 @@ var adaptive_performance
 var save_timer: Timer
 var settings_dirty: bool = false
 var intro_panel
+var experience_intro_panel
 var completion_panel
 var confirmation_panel
 var reward_panel
@@ -92,7 +94,10 @@ func _ready() -> void:
         room_layer.visible = false
         call_deferred("_show_reward_panel")
     else:
-        _load_room(current_room_index, true)
+        var fresh_intro := not bool(album_state.get("experience_intro_seen", false)) and current_room_index == 0 and _array_value(album_state.get("completed_room_ids", [])).is_empty()
+        _load_room(current_room_index, not fresh_intro)
+        if fresh_intro:
+            call_deferred("_show_experience_intro")
 func _build_application_shell() -> void:
     room_layer = Control.new()
     room_layer.name = "RoomLayer"
@@ -123,6 +128,34 @@ func _build_application_shell() -> void:
     save_timer.wait_time = 1.15
     save_timer.timeout.connect(_save_progress)
     add_child(save_timer)
+func _show_experience_intro() -> void:
+    if experience_intro_panel != null or room == null:
+        return
+    room.set_interaction_enabled(false)
+    hud.visible = false
+    experience_intro_panel = ExperienceIntroCardScript.new()
+    experience_intro_panel.name = "ExperienceIntro"
+    add_child(experience_intro_panel)
+    experience_intro_panel.configure(_accent_for_release(current_room_index))
+    experience_intro_panel.begin_requested.connect(_begin_experience)
+func _begin_experience() -> void:
+    if transition_running:
+        return
+    transition_running = true
+    if transition_director != null:
+        transition_director.set_next_accent(_accent_for_release(current_room_index))
+        await transition_director.travel_out()
+    _remove_modal(experience_intro_panel)
+    experience_intro_panel = null
+    album_state["experience_intro_seen"] = true
+    _save_album_state()
+    hud.visible = true
+    await get_tree().process_frame
+    if transition_director != null:
+        await transition_director.travel_in()
+    if room != null:
+        room.set_interaction_enabled(true)
+    transition_running = false
 func _load_json(path: String) -> Dictionary:
     if path.is_empty() or not FileAccess.file_exists(path):
         push_error("Missing JSON: %s" % path)
@@ -138,9 +171,9 @@ func _load_json(path: String) -> Dictionary:
     return {}
 func _read_version() -> String:
     if not FileAccess.file_exists(VERSION_PATH):
-        return "0.11.4"
+        return "0.11.11"
     var file: FileAccess = FileAccess.open(VERSION_PATH, FileAccess.READ)
-    return file.get_as_text().strip_edges() if file != null else "0.11.4"
+    return file.get_as_text().strip_edges() if file != null else "0.11.11"
 func _configure_reward_client() -> void:
     var config_value: Variant = index_document.get("reward", {})
     if not config_value is Dictionary:
@@ -211,13 +244,12 @@ func _load_room(index: int, show_intro: bool) -> void:
     audio_director = AudioDirectorScript.new()
     audio_director.name = "AudioDirector"
     add_child(audio_director)
-    audio_director.configure(manifest.get("sensory", {}), manifest.get("audio", {}), maxi(1, collectible_entries.size()), asset_preloader)
+    audio_director.configure(manifest.get("sensory", {}), manifest.get("audio", {}), maxi(1, collectible_entries.size()), asset_preloader, str(room_data.get("visual_style", "uncertainty")))
     audio_director.set_user_levels(music_level, noise_level)
     haptics = HapticsScript.new()
     haptics.name = "Haptics"
     add_child(haptics)
     haptics.configure(manifest.get("sensory", {}), str(room_data.get("visual_style", "paint")))
-
     completion_announced = false
     current_coverage = 0.0
     var elapsed_value: Variant = album_state.get("room_elapsed_ms", {})
@@ -225,7 +257,6 @@ func _load_room(index: int, show_intro: bool) -> void:
     room_elapsed_before_start_ms = maxi(0, int(elapsed.get(str(manifest.get("release_id", "")), 0)))
     room_started_ms = Time.get_ticks_msec()
     room_timer_running = true
-
     hud.configure_room(
         str(manifest.get("title", "VIRYA: Synestezja")),
         str(manifest.get("subtitle", "")),
@@ -237,7 +268,6 @@ func _load_room(index: int, show_intro: bool) -> void:
     _apply_sensory_mode()
     _preload_next_room()
     call_deferred("_restore_room_after_layout", show_intro)
-
 func _instantiate_room(room_data: Dictionary):
     var scene_path: String = str(room_data.get("scene_path", ""))
     var resource: Resource = null
@@ -249,14 +279,12 @@ func _instantiate_room(room_data: Dictionary):
         return (resource as PackedScene).instantiate()
     push_warning("Falling back to generic room stage: %s" % scene_path)
     return RoomStageScript.new()
-
 func _preload_next_room() -> void:
     if asset_preloader == null or current_room_index + 1 >= release_entries.size():
         return
     var next_value: Variant = release_entries[current_room_index + 1]
     if next_value is Dictionary:
         asset_preloader.prepare(str(next_value.get("manifest", "")))
-
 func _clear_room_runtime() -> void:
     if save_timer != null and not save_timer.is_stopped():
         save_timer.stop()
@@ -269,7 +297,6 @@ func _clear_room_runtime() -> void:
     room = null
     audio_director = null
     haptics = null
-
 func _restore_room_after_layout(show_intro: bool) -> void:
     await get_tree().process_frame
     await get_tree().process_frame
@@ -285,17 +312,16 @@ func _restore_room_after_layout(show_intro: bool) -> void:
             restored = bool(room.restore_state(room_state_value))
         completion_announced = bool(saved.get("completed", false))
         room_elapsed_before_start_ms = maxi(room_elapsed_before_start_ms, int(saved.get("elapsed_ms", 0)))
-
     _apply_sensory_mode()
     room.set_interaction_enabled(not completion_announced)
     if restored:
         current_coverage = float(room.get_coverage())
         var normalized: float = float(room.get_normalized_progress())
         var found: int = int(room.get_found_count())
-        hud.update_reveal(normalized)
-        hud.update_discovery("%d/%d ślady · pokój pamięta poprzedni dotyk" % [found, _collectible_total()])
         audio_director.set_progress(normalized, found)
-
+        if hud != null and is_instance_valid(hud):
+            hud.update_reveal(normalized)
+            hud.update_discovery("%d/%d ślady · pokój pamięta poprzedni dotyk" % [found, _collectible_total()])
     room_timer_running = not completion_announced
     if completion_announced:
         room.set_cinematic_reveal(true)
@@ -305,15 +331,13 @@ func _restore_room_after_layout(show_intro: bool) -> void:
     elif saved.is_empty() and show_intro:
         _show_intro()
     else:
-        room.set_interaction_enabled(true)
+        room.set_interaction_enabled(experience_intro_panel == null)
     restoring_progress = false
-
 func _collectible_total() -> int:
     var value: Variant = manifest.get("collectibles", [])
     if value is Array:
         return maxi(1, value.size())
     return 1
-
 func _show_intro() -> void:
     if room == null:
         return
@@ -335,29 +359,27 @@ func _show_intro() -> void:
         accent,
     )
     intro_panel.dismissed.connect(_dismiss_intro)
-
 func _dismiss_intro() -> void:
     _remove_modal(intro_panel)
     intro_panel = null
     if room != null:
         room.set_interaction_enabled(true)
     _schedule_save()
-
 func _on_coverage_changed(value: float) -> void:
     if room == null:
         return
     current_coverage = value
     var normalized: float = float(room.get_normalized_progress())
-    hud.update_reveal(normalized)
     if audio_director != null:
         audio_director.set_progress(normalized, int(room.get_found_count()))
+    if hud != null and is_instance_valid(hud):
+        hud.update_reveal(normalized)
     var room_value: Variant = manifest.get("room", {})
     var room_data: Dictionary = room_value if room_value is Dictionary else {}
     var reveal_at: float = float(room_data.get("cinematic_reveal_at", FINAL_REVEAL_RATIO))
     if normalized >= reveal_at:
         _complete_current_room()
     _schedule_save()
-
 func _on_collectible_found(item: Dictionary) -> void:
     if room == null:
         return
@@ -409,11 +431,13 @@ func _complete_current_room() -> void:
     room.reveal_remaining_collectibles()
     room.set_door_open(true)
     current_coverage = float(room.get_coverage())
-    hud.update_reveal(1.0)
-    hud.update_discovery("%d/%d ślady · drzwi są otwarte" % [_collectible_total(), _collectible_total()])
     if audio_director != null:
         audio_director.set_progress(1.0, _collectible_total())
         audio_director.reveal_release_excerpt()
+        audio_director.play_cinematic_sfx()
+    if hud != null and is_instance_valid(hud):
+        hud.update_reveal(1.0)
+        hud.update_discovery("%d/%d ślady · drzwi są otwarte" % [_collectible_total(), _collectible_total()])
     if haptics != null:
         haptics.cinematic_reveal()
 
@@ -901,6 +925,8 @@ func _unhandled_input(event: InputEvent) -> void:
         get_viewport().set_input_as_handled()
 
 func _handle_back_request() -> bool:
+    if experience_intro_panel != null:
+        return true
     if confirmation_panel != null:
         _remove_modal(confirmation_panel)
         confirmation_panel = null

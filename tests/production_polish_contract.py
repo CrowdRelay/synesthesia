@@ -104,6 +104,9 @@ hud = require(
     "update_discovery",
     "update_act",
     "get_display_safe_area",
+    "HeaderRow",
+    "size_flags_stretch_ratio = 1.18",
+    "size_flags_stretch_ratio = 0.82",
     "tylko muzyka",
 )
 require("scripts/ui/chapter_card.gd", "Zacznij odkrywać", "99% OTWIERA DRZWI")
@@ -118,14 +121,19 @@ require("scripts/audio_director.gd", "BALLOON_POP_PATH", "play_interaction_sfx",
 require("scripts/ui/ui_factory.gd", "ScrollContainer.SCROLL_MODE_DISABLED", "content.custom_minimum_size")
 require("run-macos.sh", "--headless --editor", "--reset", "required_audio")
 require("scripts/progress_store.gd", "reset_local_journey", "server_recorded_room_ids", "server_album_completed")
-require("scripts/audio_director.gd", "FileAccess.file_exists", "func _exit_tree()")
+require("scripts/audio_director.gd", "ResourceLoader.exists", "func _exit_tree()")
 require("tests/lifecycle_smoke.gd", "SYNESTHESIA_LIFECYCLE_SMOKE=PASS", "preloader.drain()")
+require("tests/sensory_room_contract.py", "SYNESTHESIA_SENSORY_ROOMS=PASS", "ambience=11", "doors=hinge+supersonic")
+require("tests/door_transition_contract.py", "SYNESTHESIA_DOOR_TRANSITION=PASS", "door=hinged", "no-room-stretch")
+require("tests/cinematic_video_contract.py", "SYNESTHESIA_CINEMATIC_VIDEO=PASS", "clips=12", "lazy=load+unload")
+require("tests/presentation_contract.py", "SYNESTHESIA_PRESENTATION=PASS", "intro=door-entry", "hud=two-panel+content")
+require("scripts/render/room_video_layer.gd", "VideoStreamPlayer.new()", "VideoStreamTheora.new()", "theora.file = _video_path", "_player.stream = null", "entry_strength")
 
 memory = require("tools/memory_budget.py", "stdlib-webp", "MAX_CURRENT_PLUS_NEXT")
 if "PIL" in memory or "pillow" in memory.lower():
     failures.append("memory budget must remain stdlib-only")
-require("validate.sh", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py", "lifecycle_smoke.gd")
-require(".github/workflows/ci.yml", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py")
+require("validate.sh", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py", "lifecycle_smoke.gd")
+require(".github/workflows/ci.yml", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py")
 
 if len(main.splitlines()) > 980:
     failures.append(f"main controller grew above 980 lines: {len(main.splitlines())}")

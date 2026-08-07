@@ -53,42 +53,54 @@ void fragment() {
     vec2 subject_loop = vec2(0.0);
     vec2 foreground_loop = vec2(0.0);
     float unlock_zoom = 0.0;
+    float profile_light = 0.0;
 
-    if (unlock_profile == 0) { // Wave of Uncertainty — tidal breathing.
-        scene_loop = vec2(sin(t * 0.43) * 0.0014, cos(t * 0.37) * 0.0018);
-        foreground_loop = vec2(sin(t * 0.61) * 0.0020, -0.0010);
-    } else if (unlock_profile == 1) { // Party Time — restrained pulse.
-        unlock_zoom = (0.5 + 0.5 * sin(t * 1.55)) * 0.0032;
-        subject_loop = vec2(sin(t * 1.1) * 0.0012, cos(t * 1.35) * 0.0010);
-    } else if (unlock_profile == 2) { // Unmasked — masks breathe apart.
-        subject_loop = vec2(sin(t * 0.52) * 0.0018, cos(t * 0.47) * 0.0008);
-    } else if (unlock_profile == 3) { // The Calling — slow table/wine drift.
-        scene_loop = vec2(sin(t * 0.34) * 0.0010, cos(t * 0.29) * 0.0007);
-        foreground_loop = vec2(-sin(t * 0.41) * 0.0012, 0.0);
-    } else if (unlock_profile == 4) { // Seed — organic upward growth.
-        subject_loop = vec2(sin(t * 0.31) * 0.0008, -0.0015 - 0.0007 * sin(t * 0.47));
-        unlock_zoom = (0.5 + 0.5 * sin(t * 0.38)) * 0.0018;
-    } else if (unlock_profile == 5) { // Hybrid — heat haze / duel tension.
-        scene_loop = vec2(sin(t * 0.72) * 0.0015, sin(t * 1.21) * 0.0005);
-        subject_loop = vec2(-sin(t * 0.48) * 0.0010, 0.0);
-    } else if (unlock_profile == 6) { // Technophobia — tiny digital instability.
-        float tech = hash21(vec2(floor(t * 7.0), 13.0)) - 0.5;
-        subject_loop = vec2(tech * 0.0024, -tech * 0.0008);
-        foreground_loop = vec2(-tech * 0.0013, 0.0);
-    } else if (unlock_profile == 7) { // Invaluable — mirror shimmer.
-        subject_loop = vec2(sin(t * 0.39) * 0.0011, cos(t * 0.51) * 0.0007);
-        foreground_loop = vec2(cos(t * 0.33) * 0.0017, 0.0);
-    } else if (unlock_profile == 8) { // From the Ashes — phoenix rises.
-        subject_loop = vec2(sin(t * 0.44) * 0.0009, -0.0018 - 0.0008 * sin(t * 0.66));
-        foreground_loop = vec2(0.0, -0.0010);
-    } else if (unlock_profile == 9) { // Waves — slow intimate breathing.
-        scene_loop = vec2(sin(t * 0.25) * 0.0008, cos(t * 0.22) * 0.0007);
-        foreground_loop = vec2(-sin(t * 0.31) * 0.0012, 0.0);
-        unlock_zoom = (0.5 + 0.5 * sin(t * 0.24)) * 0.0014;
-    } else if (unlock_profile == 10) { // Rise — gentle upward light.
-        scene_loop = vec2(sin(t * 0.28) * 0.0007, -0.0010 - 0.0005 * sin(t * 0.35));
-        subject_loop = vec2(0.0, -0.0012);
-        unlock_zoom = (0.5 + 0.5 * sin(t * 0.30)) * 0.0016;
+    if (unlock_profile == 0) { // Wave of Uncertainty — alternating left/right hits.
+        scene_loop = vec2(sin(t * 1.65) * 0.0080, cos(t * 0.58) * 0.0026);
+        foreground_loop = vec2(-sin(t * 1.65) * 0.0100, sin(t * 0.74) * 0.0014);
+        unlock_zoom = (0.5 + 0.5 * sin(t * 0.72)) * 0.0036;
+    } else if (unlock_profile == 1) { // Party Time — balloons and room light lift.
+        float rise = min(t * 0.012, 0.055);
+        unlock_zoom = (0.5 + 0.5 * sin(t * 1.55)) * 0.0050;
+        subject_loop = vec2(sin(t * 1.1) * 0.0022, rise + cos(t * 1.35) * 0.0012);
+        profile_light = 0.045 + 0.025 * (0.5 + 0.5 * sin(t * 2.0));
+    } else if (unlock_profile == 2) { // Unmasked — masks breathe while eyes animate in overlay.
+        subject_loop = vec2(sin(t * 0.72) * 0.0032, cos(t * 0.57) * 0.0014);
+        profile_light = 0.018 * (0.5 + 0.5 * sin(t * 3.2));
+    } else if (unlock_profile == 3) { // The Calling — table and raised toast drift.
+        scene_loop = vec2(sin(t * 0.44) * 0.0018, cos(t * 0.39) * 0.0012);
+        foreground_loop = vec2(-sin(t * 0.51) * 0.0022, 0.0);
+    } else if (unlock_profile == 4) { // Seed — tree twists and grows under tension.
+        subject_loop = vec2(sin(t * 1.15) * 0.0055 + sin(t * 0.31) * 0.0020, min(t * 0.004, 0.020));
+        unlock_zoom = (0.5 + 0.5 * sin(t * 0.58)) * 0.0032;
+    } else if (unlock_profile == 5) { // Hybrid — heat haze / post-shot recoil.
+        scene_loop = vec2(sin(t * 0.92) * 0.0026, sin(t * 1.41) * 0.0009);
+        subject_loop = vec2(-sin(t * 0.68) * 0.0022, 0.0);
+    } else if (unlock_profile == 6) { // Technophobia — explicit bzz/glitch instability.
+        float tech = hash21(vec2(floor(t * 11.0), 13.0)) - 0.5;
+        subject_loop = vec2(tech * 0.0100, -tech * 0.0022);
+        foreground_loop = vec2(-tech * 0.0060, 0.0);
+        scene_loop = vec2(tech * 0.0040, 0.0);
+    } else if (unlock_profile == 7) { // Invaluable — impact shake before shards fly.
+        float impact = max(0.0, 1.0 - t / 1.25);
+        subject_loop = vec2(sin(t * 34.0) * 0.0070 * impact, cos(t * 28.0) * 0.0040 * impact);
+        foreground_loop = vec2(-sin(t * 31.0) * 0.0090 * impact, 0.0);
+    } else if (unlock_profile == 8) { // From the Ashes — phoenix visibly leaves the ashes.
+        float flight = min(t / 4.2, 1.0);
+        subject_loop = vec2(sin(t * 1.05) * 0.0040 * flight, flight * 0.075 + sin(t * 4.8) * 0.0028);
+        foreground_loop = vec2(0.0, flight * 0.018);
+        unlock_zoom = flight * 0.012;
+        profile_light = 0.025 * (1.0 - flight * 0.45);
+    } else if (unlock_profile == 9) { // Waves — mostly still room; lamp flicker is localized by behavior.
+        scene_loop = vec2(sin(t * 0.25) * 0.0005, cos(t * 0.22) * 0.0005);
+        foreground_loop = vec2(-sin(t * 0.31) * 0.0008, 0.0);
+        profile_light = 0.012 * max(0.0, sin(t * 7.0) * sin(t * 2.3));
+    } else if (unlock_profile == 10) { // Rise — person floats toward the window/light.
+        float ascent = min(t / 3.4, 1.0);
+        scene_loop = vec2(sin(t * 0.38) * 0.0010, ascent * 0.010);
+        subject_loop = vec2(0.0, ascent * 0.070);
+        unlock_zoom = ascent * 0.014;
+        profile_light = 0.035 + ascent * 0.085;
     }
 
     back_loop *= unlock;
@@ -101,10 +113,18 @@ void fragment() {
     vec2 back_uv = cover_uv(UV, 1.095 + unlock_zoom * 0.45, parallax * background_parallax * motion_scale + back_loop);
     vec2 subject_uv = cover_uv(UV, 1.026 + unlock_zoom * 0.72, parallax * subject_parallax * motion_scale + subject_loop);
     vec2 foreground_uv = cover_uv(UV, 1.042 + unlock_zoom * 1.10, parallax * foreground_parallax * motion_scale + foreground_loop);
-    vec4 scene = texture(TEXTURE, scene_uv);
-    vec4 back = texture(background_texture, back_uv);
-    vec4 subject = texture(subject_texture, subject_uv);
-    vec4 foreground = texture(foreground_texture, foreground_uv);
+    if (unlock_profile == 4) {
+        subject_uv.x += sin(UV.y * 10.0 + t * 2.2) * 0.0038 * unlock;
+    } else if (unlock_profile == 6) {
+        float glitch_band = step(0.76, hash21(vec2(floor(UV.y * 18.0), floor(t * 9.0))));
+        float glitch_offset = (hash21(vec2(floor(t * 13.0), floor(UV.y * 18.0))) - 0.5) * 0.030 * glitch_band * unlock;
+        scene_uv.x += glitch_offset;
+        subject_uv.x -= glitch_offset * 0.72;
+    }
+    vec4 scene = texture(TEXTURE, clamp(scene_uv, vec2(0.001), vec2(0.999)));
+    vec4 back = texture(background_texture, clamp(back_uv, vec2(0.001), vec2(0.999)));
+    vec4 subject = texture(subject_texture, clamp(subject_uv, vec2(0.001), vec2(0.999)));
+    vec4 foreground = texture(foreground_texture, clamp(foreground_uv, vec2(0.001), vec2(0.999)));
 
     float edge_distance = min(min(UV.x, 1.0 - UV.x), min(UV.y, 1.0 - UV.y));
     float edge_blend = smoothstep(0.0, 0.19, edge_distance);
@@ -150,6 +170,7 @@ void fragment() {
 
     vec3 static_color = mix(vec3(0.72), noise_tint.rgb, 0.64) * (0.72 + pink * 0.52);
     vec3 color = mix(obscured, photographed, reveal);
+    color += accent_color.rgb * profile_light * unlock * reveal;
     color = mix(color, static_color, clamp(static_alpha, 0.0, 0.42));
 
     if (quality_level > 0) {

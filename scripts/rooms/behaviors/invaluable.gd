@@ -13,8 +13,23 @@ func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> v
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#BDD9FF")), Color("bdd9ff"))
     var cracked_value: Variant = state.get("cracked", [])
     var cracked: Array = cracked_value if cracked_value is Array else []
+    var cinematic_t: float = cinematic_time()
     for index in range(MIRRORS.size()):
         var center: Vector2 = Vector2(MIRRORS[index].x * viewport_size.x, MIRRORS[index].y * viewport_size.y)
+        if cinematic_active():
+            var burst: float = minf(cinematic_t, 1.6)
+            for shard in range(10):
+                var angle: float = float(shard) * TAU / 10.0 + float(index) * 0.41
+                var speed: float = 48.0 + float((shard * 17 + index * 11) % 64)
+                var distance: float = burst * speed
+                var gravity: float = 54.0 * burst * burst
+                var p: Vector2 = center + Vector2.from_angle(angle) * distance + Vector2(0.0, gravity)
+                var tangent: Vector2 = Vector2.from_angle(angle + 0.7) * (6.0 + float(shard % 4) * 2.0)
+                var alpha: float = clampf(1.0 - burst / 1.8, 0.0, 1.0)
+                canvas.draw_line(p - tangent, p + tangent, Color(accent, 0.38 * alpha), 1.2)
+            if cinematic_t < 0.22:
+                canvas.draw_circle(center, 58.0 * (1.0 - cinematic_t / 0.22), Color(Color.WHITE, 0.08))
+            continue
         var rect: Rect2 = Rect2(center - Vector2(34.0, 58.0), Vector2(68.0, 116.0))
         canvas.draw_rect(rect, Color(accent, 0.08 + progress * 0.08), false, 1.4)
         if cracked.has(index):

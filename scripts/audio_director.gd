@@ -6,14 +6,55 @@ const SILENCE_DB: float = -60.0
 const COMPLETION_THRESHOLD: float = 0.99
 const MIN_FILTER_HZ: float = 820.0
 const MAX_FILTER_HZ: float = 19500.0
+const AMBIENCE_PATHS: Dictionary = {
+    "uncertainty": "res://assets/audio/ambience/uncertainty.wav",
+    "party": "res://assets/audio/ambience/party.wav",
+    "unmasked": "res://assets/audio/ambience/unmasked.wav",
+    "calling": "res://assets/audio/ambience/calling.wav",
+    "seed": "res://assets/audio/ambience/seed.wav",
+    "hybrid": "res://assets/audio/ambience/hybrid.wav",
+    "technophobia": "res://assets/audio/ambience/technophobia.wav",
+    "invaluable": "res://assets/audio/ambience/invaluable.wav",
+    "ashes": "res://assets/audio/ambience/ashes.wav",
+    "waves": "res://assets/audio/ambience/waves.wav",
+    "rise": "res://assets/audio/ambience/rise.wav",
+}
+const INTERACTION_SFX: Dictionary = {
+    "toast": "res://assets/audio/sfx/glass-clink.wav",
+    "seed": "res://assets/audio/sfx/wood-creak.wav",
+    "duel": "res://assets/audio/sfx/gunshot.wav",
+    "mirror": "res://assets/audio/sfx/mirror-shatter.wav",
+    "phoenix": "res://assets/audio/sfx/wing-whoosh.wav",
+    "screen": "res://assets/audio/sfx/electric-bzz.wav",
+    "mask": "res://assets/audio/sfx/mask-whisper.wav",
+    "wave": "res://assets/audio/sfx/wave-slap.wav",
+    "light": "res://assets/audio/sfx/light-rise.wav",
+    "presence": "res://assets/audio/sfx/presence-wind.wav",
+}
+const CINEMATIC_SFX: Dictionary = {
+    "uncertainty": "res://assets/audio/sfx/wave-slap.wav",
+    "party": "res://assets/audio/sfx/light-rise.wav",
+    "unmasked": "res://assets/audio/sfx/mask-whisper.wav",
+    "calling": "res://assets/audio/sfx/glass-clink.wav",
+    "seed": "res://assets/audio/sfx/wood-creak.wav",
+    "hybrid": "res://assets/audio/sfx/presence-wind.wav",
+    "technophobia": "res://assets/audio/sfx/electric-bzz.wav",
+    "invaluable": "res://assets/audio/sfx/mirror-shatter.wav",
+    "ashes": "res://assets/audio/sfx/wing-whoosh.wav",
+    "waves": "res://assets/audio/sfx/presence-wind.wav",
+    "rise": "res://assets/audio/sfx/light-rise.wav",
+}
 
 var _noise_player: AudioStreamPlayer
 var _music_player: AudioStreamPlayer
+var _ambient_player: AudioStreamPlayer
 var _music_lowpass: AudioEffectLowPassFilter
 var _music_reverb: AudioEffectReverb
 var _sfx_players: Array[AudioStreamPlayer] = []
+var _sfx_streams: Dictionary = {}
 var _balloon_pop_stream: AudioStream
 var _sfx_cursor: int = 0
+var _visual_style: String = "uncertainty"
 var _coverage_target: float = 0.0
 var _coverage_smoothed: float = 0.0
 var _collectibles_target: float = 0.0
@@ -47,38 +88,69 @@ func _ready() -> void:
     _music_player.bus = &"Music"
     _music_player.volume_db = SILENCE_DB
     add_child(_music_player)
+
+    _ambient_player = AudioStreamPlayer.new()
+    _ambient_player.name = "ThematicRoomAmbience"
+    _ambient_player.bus = &"Room"
+    _ambient_player.volume_db = SILENCE_DB
+    add_child(_ambient_player)
+
     _resolve_bus_effects()
     _build_sfx_pool()
     set_process(true)
 
-
 func _build_sfx_pool() -> void:
-    if FileAccess.file_exists(BALLOON_POP_PATH):
-        var resource: Resource = load(BALLOON_POP_PATH)
-        if resource is AudioStream:
-            _balloon_pop_stream = resource as AudioStream
-    for index in range(3):
+    _balloon_pop_stream = _load_audio_stream(BALLOON_POP_PATH)
+    for index in range(4):
         var player: AudioStreamPlayer = AudioStreamPlayer.new()
         player.name = "RoomSfx%d" % index
         player.bus = &"Room"
-        player.volume_db = -2.0
+        player.volume_db = -10.0
         add_child(player)
         _sfx_players.append(player)
 
-func play_interaction_sfx(kind: String, index: int = 0) -> void:
-    if kind != "balloon" or _balloon_pop_stream == null or _sfx_players.is_empty():
+func _load_audio_stream(path: String) -> AudioStream:
+    if path.is_empty() or not ResourceLoader.exists(path):
+        return null
+    var resource: Resource = load(path)
+    return resource as AudioStream if resource is AudioStream else null
+
+func _stream_for_sfx(path: String) -> AudioStream:
+    if path.is_empty():
+        return null
+    if _sfx_streams.has(path):
+        return _sfx_streams[path] as AudioStream
+    var stream: AudioStream = _load_audio_stream(path)
+    if stream != null:
+        _sfx_streams[path] = stream
+    return stream
+
+func _play_sfx_stream(stream: AudioStream, pitch: float = 1.0, volume_db: float = -10.0) -> void:
+    if stream == null or _sfx_players.is_empty():
         return
     var player: AudioStreamPlayer = _sfx_players[_sfx_cursor % _sfx_players.size()]
     _sfx_cursor = (_sfx_cursor + 1) % _sfx_players.size()
     player.stop()
-    player.stream = _balloon_pop_stream
-    player.pitch_scale = clampf(0.96 + float(index % 5) * 0.018, 0.92, 1.08)
-    player.volume_db = -10.0 if _quiet_target > 0.5 else -2.0
+    player.stream = stream
+    player.pitch_scale = clampf(pitch, 0.88, 1.12)
+    player.volume_db = volume_db - (12.0 if _quiet_target > 0.5 else 0.0)
     player.play()
 
+func play_interaction_sfx(kind: String, index: int = 0) -> void:
+    if kind == "balloon":
+        _play_sfx_stream(_balloon_pop_stream, 0.96 + float(index % 5) * 0.018, -9.0)
+        return
+    var path: String = str(INTERACTION_SFX.get(kind, ""))
+    var volume: float = -12.0 if kind in ["duel", "mirror"] else -15.0
+    _play_sfx_stream(_stream_for_sfx(path), 0.98 + float(index % 3) * 0.015, volume)
+
+func play_cinematic_sfx() -> void:
+    var path: String = str(CINEMATIC_SFX.get(_visual_style, ""))
+    _play_sfx_stream(_stream_for_sfx(path), 1.0, -16.0)
+
 func _load_noise_loop() -> void:
-    if not FileAccess.file_exists(PINK_NOISE_PATH):
-        push_warning("Pink-noise source file is missing: %s" % PINK_NOISE_PATH)
+    if not ResourceLoader.exists(PINK_NOISE_PATH):
+        push_warning("Pink-noise resource is missing: %s" % PINK_NOISE_PATH)
         return
     var resource: Resource = load(PINK_NOISE_PATH)
     if not resource is AudioStream:
@@ -102,8 +174,9 @@ func _resolve_bus_effects() -> void:
     if reverb is AudioEffectReverb:
         _music_reverb = reverb as AudioEffectReverb
 
-func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: int = 1, asset_source = null) -> void:
+func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: int = 1, asset_source = null, visual_style: String = "uncertainty") -> void:
     _collectible_total = maxi(1, collectible_total)
+    _visual_style = visual_style
     _pink_noise_start_db = clampf(float(audio.get("pink_noise_start_db", -5.0)), -18.0, -3.0)
     _hidden_music_db = clampf(float(audio.get("hidden_music_db", -44.0)), -60.0, -24.0)
     _completion_music_db = clampf(float(audio.get("completion_volume_db", -8.0)), -18.0, -6.0)
@@ -116,10 +189,11 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
     _collectibles_smoothed = 0.0
     _completion_active = false
     _music_available = false
+    _load_room_ambience()
 
     var excerpt_path: String = str(audio.get("completion_excerpt", ""))
-    if excerpt_path.is_empty() or not excerpt_path.begins_with("res://") or not FileAccess.file_exists(excerpt_path):
-        push_warning("Room music source file is missing: %s" % excerpt_path)
+    if excerpt_path.is_empty() or not excerpt_path.begins_with("res://") or not ResourceLoader.exists(excerpt_path):
+        push_warning("Room music resource is missing: %s" % excerpt_path)
         return
     var resource: Resource = null
     if asset_source != null and asset_source.has_method("take"):
@@ -142,6 +216,20 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
     _music_player.play()
     _music_available = true
     _apply_filter(0.0)
+
+func _load_room_ambience() -> void:
+    if _ambient_player == null:
+        return
+    _ambient_player.stop()
+    _ambient_player.stream = null
+    var path: String = str(AMBIENCE_PATHS.get(_visual_style, ""))
+    var stream: AudioStream = _load_audio_stream(path)
+    if stream == null:
+        push_warning("Room ambience resource is missing: %s" % path)
+        return
+    _ambient_player.stream = stream
+    _ambient_player.volume_db = SILENCE_DB
+    _ambient_player.play()
 
 func set_progress(coverage: float, found_count: int) -> void:
     _coverage_target = clampf(coverage, 0.0, 1.0)
@@ -186,8 +274,6 @@ func _process(delta: float) -> void:
     _collectibles_smoothed = move_toward(_collectibles_smoothed, _collectibles_target, delta * 0.90)
     _quiet_smoothed = move_toward(_quiet_smoothed, _quiet_target, delta * 1.80)
 
-    # The mix follows reveal directly: 20% reveal = 20% music / 80% noise.
-    # This is amplitude-proportional, not a midpoint switch and not a shaped crossfade.
     var reveal_mix: float = clampf(_coverage_smoothed, 0.0, 1.0)
     if _completion_active or _coverage_target >= COMPLETION_THRESHOLD:
         reveal_mix = 1.0
@@ -215,6 +301,12 @@ func _process(delta: float) -> void:
         music_target_db -= quiet_cut_db
         _music_player.volume_db = move_toward(_music_player.volume_db, music_target_db, delta * 17.0)
 
+    if _ambient_player != null and _ambient_player.stream != null:
+        if not _ambient_player.playing:
+            _ambient_player.play()
+        var ambient_target_db: float = (-31.0 if _calm_mode else -27.0) + reveal_mix * 2.5 - quiet_cut_db
+        _ambient_player.volume_db = move_toward(_ambient_player.volume_db, ambient_target_db, delta * 9.0)
+
     _apply_filter(reveal_mix)
 
 func _apply_filter(reveal_mix: float) -> void:
@@ -240,11 +332,15 @@ func _exit_tree() -> void:
     if _music_player != null:
         _music_player.stop()
         _music_player.stream = null
+    if _ambient_player != null:
+        _ambient_player.stop()
+        _ambient_player.stream = null
     for player in _sfx_players:
         if player != null:
             player.stop()
             player.stream = null
     _sfx_players.clear()
+    _sfx_streams.clear()
     _balloon_pop_stream = null
     _music_lowpass = null
     _music_reverb = null

@@ -3,7 +3,9 @@ extends Control
 signal settings_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
 
+var header_row: HBoxContainer
 var top_margin: MarginContainer
 var top_panel: PanelContainer
 var bottom_margin: MarginContainer
@@ -17,7 +19,13 @@ var act_label: Label
 var brush_label: Label
 var palette_row: HBoxContainer
 var journey_row: HBoxContainer
+var top_content: VBoxContainer
+var bottom_content: VBoxContainer
+var progress_row: HBoxContainer
 var settings_button: Button
+var instruction_label: Label
+var top_accent_bar: ColorRect
+var bottom_accent_bar: ColorRect
 var toast_panel: PanelContainer
 var toast_label: Label
 var toast_accent_bar: ColorRect
@@ -36,6 +44,7 @@ var _accent: Color = Color("72afff")
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _build_header_row()
     _build_top()
     _build_bottom()
     _build_toast()
@@ -54,73 +63,121 @@ func _timer(wait: float, callback: Callable) -> Timer:
     add_child(timer)
     return timer
 
+func _build_header_row() -> void:
+    header_row = HBoxContainer.new()
+    header_row.name = "HeaderRow"
+    header_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    header_row.add_theme_constant_override("separation", 8)
+    add_child(header_row)
+    header_row.set_anchors_preset(Control.PRESET_TOP_WIDE)
+    header_row.offset_left = 12.0
+    header_row.offset_right = -12.0
+    header_row.offset_top = 12.0
+    header_row.offset_bottom = 166.0
+
 func _build_top() -> void:
     top_margin = MarginContainer.new()
     top_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    top_margin.add_theme_constant_override("margin_left", 12)
-    top_margin.add_theme_constant_override("margin_top", 12)
-    top_margin.add_theme_constant_override("margin_right", 12)
-    add_child(top_margin)
-    top_margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
+    top_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    top_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    top_margin.size_flags_stretch_ratio = 1.18
+    header_row.add_child(top_margin)
 
     top_panel = PanelContainer.new()
     top_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    top_panel.add_theme_stylebox_override("panel", UIFactory.panel_style(Color("070b13c9"), 16, Color("dbeaff1f")))
+    top_panel.custom_minimum_size = Vector2(0.0, 146.0)
+    top_panel.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.88, false))
     top_margin.add_child(top_panel)
 
-    var content: VBoxContainer = VBoxContainer.new()
-    content.add_theme_constant_override("separation", 4)
-    top_panel.add_child(content)
+    var shell := HBoxContainer.new()
+    shell.add_theme_constant_override("separation", 10)
+    top_panel.add_child(shell)
+    top_accent_bar = ColorRect.new()
+    top_accent_bar.color = _accent
+    top_accent_bar.custom_minimum_size = Vector2(3.0, 0.0)
+    top_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    shell.add_child(top_accent_bar)
 
-    var row: HBoxContainer = HBoxContainer.new()
+    top_content = VBoxContainer.new()
+    top_content.name = "TopContent"
+    top_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    top_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    top_content.add_theme_constant_override("separation", 4)
+    shell.add_child(top_content)
+    var content: VBoxContainer = top_content
+
+    var row := HBoxContainer.new()
+    row.custom_minimum_size = Vector2(0.0, 30.0)
     row.add_theme_constant_override("separation", 7)
     content.add_child(row)
 
     counter_label = Label.new()
-    counter_label.custom_minimum_size = Vector2(48.0, 0.0)
+    counter_label.name = "RoomCounter"
+    counter_label.custom_minimum_size = Vector2(48.0, 22.0)
+    counter_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     counter_label.add_theme_font_size_override("font_size", 10)
     counter_label.add_theme_color_override("font_color", Color("88bfff"))
     row.add_child(counter_label)
 
     title_label = Label.new()
+    title_label.name = "RoomTitle"
     title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-    title_label.add_theme_font_size_override("font_size", 17)
+    title_label.add_theme_font_size_override("font_size", 15)
     title_label.add_theme_color_override("font_color", Color("f4f7fb"))
     row.add_child(title_label)
 
-    settings_button = UIFactory.button("⋯", true)
-    settings_button.custom_minimum_size = Vector2(40.0, 32.0)
+    settings_button = UIFactory.button("", true)
+    var settings_gear: Control = SettingsGearIcon.new()
+    settings_gear.name = "SettingsGearIcon"
+    settings_gear.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    settings_gear.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    settings_button.add_child(settings_gear)
+    settings_button.custom_minimum_size = Vector2(38.0, 30.0)
+    settings_button.size_flags_horizontal = Control.SIZE_SHRINK_END
     settings_button.mouse_filter = Control.MOUSE_FILTER_STOP
     settings_button.tooltip_text = "Ustawienia doświadczenia"
     settings_button.pressed.connect(func() -> void: settings_requested.emit())
     row.add_child(settings_button)
 
     subtitle_label = Label.new()
+    subtitle_label.name = "RoomSubtitle"
     subtitle_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    subtitle_label.custom_minimum_size = Vector2(0.0, 28.0)
     subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    subtitle_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     subtitle_label.add_theme_font_size_override("font_size", 10)
-    subtitle_label.add_theme_color_override("font_color", Color("aab8ca"))
+    subtitle_label.add_theme_color_override("font_color", Color("b6c4d5"))
     content.add_child(subtitle_label)
 
-    var progress_row: HBoxContainer = HBoxContainer.new()
+    progress_row = HBoxContainer.new()
+    progress_row.name = "RevealProgressRow"
+    progress_row.custom_minimum_size = Vector2(0.0, 16.0)
     progress_row.add_theme_constant_override("separation", 7)
     content.add_child(progress_row)
     progress_bar = ProgressBar.new()
+    progress_bar.name = "RevealProgress"
     progress_bar.min_value = 0.0
     progress_bar.max_value = 1.0
     progress_bar.show_percentage = false
     progress_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    progress_bar.custom_minimum_size = Vector2(0.0, 4.0)
+    progress_bar.custom_minimum_size = Vector2(0.0, 5.0)
+    progress_bar.add_theme_stylebox_override("background", _bar_style(Color("0b1320d9")))
+    progress_bar.add_theme_stylebox_override("fill", _bar_style(_accent))
     progress_row.add_child(progress_bar)
     progress_label = Label.new()
-    progress_label.custom_minimum_size = Vector2(122.0, 0.0)
+    progress_label.name = "RevealProgressLabel"
+    progress_label.custom_minimum_size = Vector2(108.0, 16.0)
     progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    progress_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     progress_label.add_theme_font_size_override("font_size", 9)
     progress_label.add_theme_color_override("font_color", Color("8ec4ff"))
     progress_row.add_child(progress_label)
 
     journey_row = HBoxContainer.new()
+    journey_row.name = "JourneyRow"
+    journey_row.custom_minimum_size = Vector2(0.0, 6.0)
     journey_row.alignment = BoxContainer.ALIGNMENT_CENTER
     journey_row.add_theme_constant_override("separation", 4)
     content.add_child(journey_row)
@@ -128,34 +185,67 @@ func _build_top() -> void:
 func _build_bottom() -> void:
     bottom_margin = MarginContainer.new()
     bottom_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    bottom_margin.add_theme_constant_override("margin_left", 12)
-    bottom_margin.add_theme_constant_override("margin_right", 12)
-    bottom_margin.add_theme_constant_override("margin_bottom", 12)
-    add_child(bottom_margin)
-    bottom_margin.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+    bottom_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    bottom_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    bottom_margin.size_flags_stretch_ratio = 0.82
+    header_row.add_child(bottom_margin)
 
     bottom_panel = PanelContainer.new()
     bottom_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    bottom_panel.add_theme_stylebox_override("panel", UIFactory.panel_style(Color("070b13d9"), 16, Color("dbeaff1c")))
+    bottom_panel.custom_minimum_size = Vector2(0.0, 146.0)
+    bottom_panel.add_theme_stylebox_override("panel", UIFactory.story_style(Color("f3d39d"), 0.88, false))
     bottom_margin.add_child(bottom_panel)
 
-    var content: VBoxContainer = VBoxContainer.new()
-    content.add_theme_constant_override("separation", 4)
-    bottom_panel.add_child(content)
+    var shell := HBoxContainer.new()
+    shell.add_theme_constant_override("separation", 10)
+    bottom_panel.add_child(shell)
+    bottom_accent_bar = ColorRect.new()
+    bottom_accent_bar.color = Color("f3d39d")
+    bottom_accent_bar.custom_minimum_size = Vector2(3.0, 0.0)
+    bottom_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    shell.add_child(bottom_accent_bar)
+
+    bottom_content = VBoxContainer.new()
+    bottom_content.name = "BottomContent"
+    bottom_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    bottom_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    bottom_content.add_theme_constant_override("separation", 5)
+    shell.add_child(bottom_content)
+    var content: VBoxContainer = bottom_content
 
     act_label = Label.new()
-    act_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    act_label.name = "ActLabel"
+    act_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    act_label.custom_minimum_size = Vector2(0.0, 24.0)
+    act_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+    act_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    act_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
     act_label.add_theme_font_size_override("font_size", 10)
     act_label.add_theme_color_override("font_color", Color("f0d39d"))
     content.add_child(act_label)
 
+    instruction_label = Label.new()
+    instruction_label.name = "InstructionLabel"
+    instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM → MUZYKA"
+    instruction_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    instruction_label.custom_minimum_size = Vector2(0.0, 22.0)
+    instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    instruction_label.add_theme_font_size_override("font_size", 9)
+    instruction_label.add_theme_color_override("font_color", Color("b5c3d4"))
+    content.add_child(instruction_label)
+
     palette_row = HBoxContainer.new()
-    palette_row.alignment = BoxContainer.ALIGNMENT_CENTER
+    palette_row.name = "PaletteRow"
+    palette_row.custom_minimum_size = Vector2(0.0, 10.0)
+    palette_row.alignment = BoxContainer.ALIGNMENT_BEGIN
     palette_row.add_theme_constant_override("separation", 4)
     content.add_child(palette_row)
 
     brush_label = Label.new()
-    brush_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    brush_label.name = "BrushLabel"
+    brush_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+    brush_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    brush_label.custom_minimum_size = Vector2(0.0, 28.0)
     brush_label.add_theme_font_size_override("font_size", 9)
     brush_label.add_theme_color_override("font_color", Color("8d9fb5"))
     content.add_child(brush_label)
@@ -228,15 +318,75 @@ func _layout_story_overlays() -> void:
         toast_panel.custom_minimum_size = Vector2(maxf(420.0, viewport_size.x - side * 2.0), 72.0)
         toast_label.custom_minimum_size = Vector2(maxf(360.0, viewport_size.x - side * 2.0 - 58.0), toast_label.custom_minimum_size.y)
     if act_banner != null:
-        act_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-        act_banner.offset_left = side
+        # Keep the act badge in its own top-right slot. It must never share the
+        # vertical band occupied by the room instruction panel.
+        var act_width: float = clampf(viewport_size.x * 0.43, 196.0, 250.0)
+        var panel_bottom: float = 136.0
+        if header_row != null and header_row.size.y > 1.0:
+            panel_bottom = header_row.position.y + header_row.size.y
+        var act_top: float = panel_bottom + 8.0
+        act_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+        act_banner.offset_left = -side - act_width
         act_banner.offset_right = -side
-        act_banner.offset_top = 138.0
-        act_banner.offset_bottom = 198.0
-        act_banner.custom_minimum_size = Vector2(maxf(420.0, viewport_size.x - side * 2.0), 60.0)
-        act_banner_label.custom_minimum_size = Vector2(maxf(360.0, viewport_size.x - side * 2.0 - 58.0), act_banner_label.custom_minimum_size.y)
+        act_banner.offset_top = act_top
+        act_banner.offset_bottom = act_top + 46.0
+        act_banner.custom_minimum_size = Vector2(act_width, 46.0)
+        act_banner_label.custom_minimum_size = Vector2(maxf(138.0, act_width - 36.0), 0.0)
+        act_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+func _repair_runtime_refs() -> void:
+    if not is_instance_valid(counter_label):
+        counter_label = find_child("RoomCounter", true, false) as Label
+    if not is_instance_valid(title_label):
+        title_label = find_child("RoomTitle", true, false) as Label
+    if not is_instance_valid(subtitle_label):
+        subtitle_label = find_child("RoomSubtitle", true, false) as Label
+    if not is_instance_valid(progress_row):
+        progress_row = find_child("RevealProgressRow", true, false) as HBoxContainer
+    if not is_instance_valid(progress_bar):
+        progress_bar = find_child("RevealProgress", true, false) as ProgressBar
+    if not is_instance_valid(progress_label):
+        progress_label = find_child("RevealProgressLabel", true, false) as Label
+    if not is_instance_valid(journey_row):
+        journey_row = find_child("JourneyRow", true, false) as HBoxContainer
+    if not is_instance_valid(act_label):
+        act_label = find_child("ActLabel", true, false) as Label
+    if not is_instance_valid(instruction_label):
+        instruction_label = find_child("InstructionLabel", true, false) as Label
+    if not is_instance_valid(palette_row):
+        palette_row = find_child("PaletteRow", true, false) as HBoxContainer
+    if not is_instance_valid(brush_label):
+        brush_label = find_child("BrushLabel", true, false) as Label
+    if not is_instance_valid(progress_bar) and is_instance_valid(progress_row):
+        progress_bar = ProgressBar.new()
+        progress_bar.name = "RevealProgress"
+        progress_bar.min_value = 0.0
+        progress_bar.max_value = 1.0
+        progress_bar.show_percentage = false
+        progress_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        progress_bar.custom_minimum_size = Vector2(0.0, 7.0)
+        progress_bar.add_theme_stylebox_override("background", _bar_style(Color("0b1320d9")))
+        progress_bar.add_theme_stylebox_override("fill", _bar_style(_accent))
+        progress_row.add_child(progress_bar)
+
+func _set_reveal_ui(normalized: float) -> void:
+    _repair_runtime_refs()
+    if is_instance_valid(progress_bar):
+        progress_bar.value = clampf(normalized, 0.0, 1.0)
+    if not is_instance_valid(progress_label):
+        return
+    var percent: int = 100 if normalized >= 0.99 else int(floor(normalized * 100.0))
+    if normalized >= 0.99:
+        progress_label.text = "100% · tylko muzyka"
+    elif normalized >= 0.70:
+        progress_label.text = "%d%% · muzyka prowadzi" % percent
+    elif normalized >= 0.30:
+        progress_label.text = "%d%% · sygnał wraca" % percent
+    else:
+        progress_label.text = "%d%% · szum prowadzi" % percent
 
 func configure_room(title: String, subtitle: String, room_index: int, room_total: int, _album_progress: float, room_data: Dictionary) -> void:
+    _repair_runtime_refs()
     _room_index = room_index
     _room_total = room_total
     _context_seen = false
@@ -244,10 +394,14 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     subtitle_label.text = subtitle
     subtitle_label.visible = true
     counter_label.text = "%02d / %02d" % [room_index + 1, room_total]
-    progress_bar.value = 0.0
-    progress_label.text = "0% · szum prowadzi"
+    _set_reveal_ui(0.0)
     act_label.text = "AKT I · ROZPOZNANIE"
     _accent = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
+    top_panel.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.88, false))
+    bottom_panel.add_theme_stylebox_override("panel", UIFactory.story_style(_accent.lerp(Color("f3d39d"), 0.48), 0.88, false))
+    top_accent_bar.color = _accent
+    bottom_accent_bar.color = _accent.lerp(Color("f3d39d"), 0.42)
+    progress_bar.add_theme_stylebox_override("fill", _bar_style(_accent))
     if toast_panel != null:
         toast_panel.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.94, true))
     if toast_accent_bar != null:
@@ -258,16 +412,7 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     _hide_act_banner()
 
 func update_reveal(normalized: float) -> void:
-    var percent: int = 100 if normalized >= 0.99 else int(floor(normalized * 100.0))
-    progress_bar.value = normalized
-    if normalized >= 0.99:
-        progress_label.text = "100% · tylko muzyka"
-    elif normalized >= 0.70:
-        progress_label.text = "%d%% · muzyka prowadzi" % percent
-    elif normalized >= 0.30:
-        progress_label.text = "%d%% · sygnał wraca" % percent
-    else:
-        progress_label.text = "%d%% · szum prowadzi" % percent
+    _set_reveal_ui(normalized)
 
 func update_discovery(text_value: String) -> void:
     if text_value.is_empty():
@@ -306,25 +451,28 @@ func set_painting(value: bool) -> void:
     if value:
         _context_seen = true
         _restore_timer.start()
-    var target_alpha: float = 0.10 if value else 1.0
-    var target_bottom_alpha: float = 0.0 if value else 1.0
+    var target_alpha: float = 0.82 if value else 1.0
+    var target_bottom_alpha: float = 0.78 if value else 1.0
     var tween: Tween = create_tween()
     tween.set_parallel(true)
     tween.set_trans(Tween.TRANS_SINE)
     tween.set_ease(Tween.EASE_OUT)
     tween.tween_property(top_panel, "modulate:a", target_alpha, 0.16)
     tween.tween_property(bottom_panel, "modulate:a", target_bottom_alpha, 0.16)
-    subtitle_label.visible = not value and not _context_seen
-    palette_row.visible = not value
-    brush_label.visible = not value
+    subtitle_label.visible = true
+    palette_row.visible = true
+    brush_label.visible = true
+    instruction_label.visible = true
 
 func show_final() -> void:
+    _repair_runtime_refs()
     title_label.text = "Synestezja"
     subtitle_label.text = "Jedenaście pokojów. Jeden pełny Sygnał."
     subtitle_label.visible = true
     counter_label.text = "FINAŁ"
-    progress_bar.value = 1.0
-    progress_label.text = "Album odsłonięty"
+    _set_reveal_ui(1.0)
+    if is_instance_valid(progress_label):
+        progress_label.text = "Album odsłonięty"
     act_label.text = "CAŁE DOŚWIADCZENIE"
     _room_index = _room_total - 1
     _rebuild_journey(true)
@@ -388,15 +536,23 @@ func _apply_mobile_safe_area() -> void:
         return
     var scale_y: float = viewport_size.y / float(screen_size.y)
     var top_extra: int = clampi(int(round(float(safe.position.y) * scale_y)), 0, 48)
-    var safe_bottom: int = safe.position.y + safe.size.y
-    var bottom_extra: int = clampi(int(round(float(maxi(0, screen_size.y - safe_bottom)) * scale_y)), 0, 48)
-    top_margin.add_theme_constant_override("margin_top", 12 + top_extra)
-    bottom_margin.add_theme_constant_override("margin_bottom", 12 + bottom_extra)
+    if header_row != null:
+        header_row.offset_top = 12.0 + float(top_extra)
+        header_row.offset_bottom = 166.0 + float(top_extra)
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         call_deferred("_apply_mobile_safe_area")
         call_deferred("_layout_story_overlays")
+
+func _bar_style(color: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = color
+    style.corner_radius_top_left = 3
+    style.corner_radius_top_right = 3
+    style.corner_radius_bottom_left = 3
+    style.corner_radius_bottom_right = 3
+    return style
 
 func _brush_name(profile: String) -> String:
     match profile:

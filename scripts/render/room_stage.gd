@@ -13,6 +13,7 @@ const RevealMaskScript := preload("res://scripts/render/reveal_mask.gd")
 const AtmosphereLayerScript := preload("res://scripts/render/atmosphere_layer.gd")
 const InteractionFxLayerScript := preload("res://scripts/render/interaction_fx_layer.gd")
 const RoomDressingLayerScript := preload("res://scripts/render/room_dressing_layer.gd")
+const RoomVideoLayerScript := preload("res://scripts/render/room_video_layer.gd")
 const CompositeShader := preload("res://shaders/room_composite.gdshader")
 
 @export var room_id: String = ""
@@ -29,6 +30,7 @@ var composite_material: ShaderMaterial
 var atmosphere
 var interaction_fx
 var room_dressing
+var video_layer
 var interaction_enabled: bool = true
 var calm_mode: bool = true
 var reduced_motion: bool = false
@@ -58,14 +60,12 @@ var _last_parallax_sent: Vector2 = Vector2(99.0, 99.0)
 var _last_coverage_emitted: float = -1.0
 var _cinematic_elapsed: float = 0.0
 var _unlock_profile: int = 0
-
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
     focus_mode = Control.FOCUS_NONE
     clip_contents = true
     _build_composite()
     set_process(true)
-
 func _build_composite() -> void:
     composite = TextureRect.new()
     composite.name = "RoomComposite"
@@ -89,13 +89,19 @@ func _build_composite() -> void:
     room_dressing.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(room_dressing)
     room_dressing.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    video_layer = RoomVideoLayerScript.new()
+    video_layer.name = "RoomVideoLayer"
+    add_child(video_layer)
+    video_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    move_child(room_dressing, 1)
+    move_child(video_layer, 2)
+    move_child(atmosphere, 3)
 
     interaction_fx = InteractionFxLayerScript.new()
     interaction_fx.name = "InteractionFx"
     interaction_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(interaction_fx)
     interaction_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
 func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dictionary = {}, quality_data: Dictionary = {}, asset_source = null) -> void:
     manifest_room = room_data.duplicate(true)
     sensory = sensory_data.duplicate(true)
@@ -135,15 +141,16 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     )
     interaction_fx.configure(accent_color, secondary_color)
     interaction_fx.set_sensory(calm_mode, reduced_motion)
-    room_dressing.configure(str(room_data.get("visual_style", "uncertainty")), accent_color, secondary_color)
+    var visual_style: String = str(room_data.get("visual_style", "uncertainty"))
+    room_dressing.configure(visual_style, accent_color, secondary_color)
     room_dressing.set_reduced_motion(reduced_motion)
-    _unlock_profile = _unlock_profile_index(str(room_data.get("visual_style", "uncertainty")))
+    video_layer.configure(visual_style, reduced_motion, quiet_visuals, calm_mode)
+    _unlock_profile = _unlock_profile_index(visual_style)
     composite_material.set_shader_parameter("unlock_profile", _unlock_profile)
     composite_material.set_shader_parameter("cinematic_time", 0.0)
     composite_material.set_shader_parameter("unlock_motion", 0.0)
     _set_progress_from_mask()
     queue_redraw()
-
 func _configure_behavior(room_data: Dictionary) -> void:
     behavior = null
     var behavior_path: String = str(room_data.get("behavior_script", ""))
@@ -154,7 +161,6 @@ func _configure_behavior(room_data: Dictionary) -> void:
     if resource is Script:
         behavior = (resource as Script).new()
         behavior.configure(room_data)
-
 func _configure_art(room_data: Dictionary, asset_source = null) -> void:
     var art_value: Variant = room_data.get("art_direction", {})
     var art: Dictionary = art_value if art_value is Dictionary else {}
@@ -190,7 +196,6 @@ func _configure_art(room_data: Dictionary, asset_source = null) -> void:
     composite_material.set_shader_parameter("cinematic_time", 0.0)
     composite_material.set_shader_parameter("unlock_motion", 0.0)
     composite_material.set_shader_parameter("unlock_profile", 0)
-
 func _take_texture(path: String, asset_source = null) -> Texture2D:
     if path.is_empty():
         return null
@@ -200,8 +205,9 @@ func _take_texture(path: String, asset_source = null) -> Texture2D:
     if resource == null and ResourceLoader.exists(path):
         resource = load(path)
     return resource as Texture2D if resource is Texture2D else null
-
 func _process(delta: float) -> void:
+    if behavior != null and behavior.has_method("advance"):
+        behavior.advance(delta)
     var target: float = 1.0 if door_target_open else 0.0
     door_open_amount = move_toward(door_open_amount, target, delta * 0.82)
     if room_dressing != null:
@@ -243,26 +249,26 @@ func _process(delta: float) -> void:
     if _redraw_accumulator >= 1.0 / redraw_hz:
         _redraw_accumulator = 0.0
         queue_redraw()
-
 func set_calm_mode(value: bool) -> void:
     calm_mode = value
+    video_layer.set_calm_mode(value)
     atmosphere.set_sensory(calm_mode, reduced_motion)
     interaction_fx.set_sensory(calm_mode, reduced_motion)
     composite_material.set_shader_parameter(
         "motion",
         float(sensory.get("static_motion_calm", 0.18)) if calm_mode else float(sensory.get("static_motion_full", 0.46)),
     )
-
 func set_reduced_motion(value: bool) -> void:
     reduced_motion = value
+    video_layer.set_reduced_motion(value)
     atmosphere.set_sensory(calm_mode, reduced_motion)
     interaction_fx.set_sensory(calm_mode, reduced_motion)
     if room_dressing != null:
         room_dressing.set_reduced_motion(reduced_motion)
     composite_material.set_shader_parameter("reduced_motion", value)
-
 func set_quiet_visuals(value: bool) -> void:
     quiet_visuals = value
+    video_layer.set_quiet_visuals(value)
     composite_material.set_shader_parameter("quiet_visuals", value)
 
 func set_interaction_enabled(value: bool) -> void:
@@ -273,6 +279,9 @@ func set_interaction_enabled(value: bool) -> void:
 func set_cinematic_reveal(value: bool, instant: bool = false) -> void:
     var was_revealed: bool = cinematic_revealed
     cinematic_revealed = value
+    if behavior != null and behavior.has_method("set_cinematic"):
+        behavior.set_cinematic(value)
+    video_layer.set_cinematic(value, instant)
     _cinematic_target = 1.0 if value else 0.0
     if value:
         if not was_revealed:
@@ -291,6 +300,7 @@ func set_cinematic_reveal(value: bool, instant: bool = false) -> void:
 
 func set_runtime_budget(scale: float) -> void:
     _runtime_scale = clampf(scale, 0.55, 1.0)
+    video_layer.set_runtime_scale(_runtime_scale)
     composite_material.set_shader_parameter("runtime_scale", _runtime_scale)
     _texture_upload_hz = maxf(12.0, _base_texture_upload_hz * _runtime_scale)
     atmosphere.set_runtime_scale(_runtime_scale)
@@ -310,6 +320,7 @@ func reset_room() -> void:
     for item in collectibles:
         item["found"] = false
     cinematic_revealed = false
+    video_layer.set_cinematic(false, true)
     _cinematic_mix = 0.0
     _cinematic_target = 0.0
     _cinematic_elapsed = 0.0

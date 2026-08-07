@@ -56,8 +56,10 @@ func _process(delta: float) -> void:
 func _draw() -> void:
     if size.x <= 1.0 or size.y <= 1.0:
         return
+    if _particles.is_empty():
+        return
     var visible_ratio: float = 0.20 + progress * 0.80
-    var active_count: int = clampi(int(round(float(_particles.size()) * _runtime_scale)), 8, _particles.size())
+    var active_count: int = clampi(int(round(float(_particles.size()) * _runtime_scale)), 1, _particles.size())
     for index in range(active_count):
         var particle: Dictionary = _particles[index]
         var x: float = float(particle.get("x", 0.5))

@@ -13,6 +13,10 @@ python3 tests/room_pipeline_contract.py
 python3 tests/visual_snapshot_contract.py
 python3 tests/new_release_pack_contract.py
 python3 tests/production_polish_contract.py
+python3 tests/sensory_room_contract.py
+python3 tests/door_transition_contract.py
+python3 tests/cinematic_video_contract.py
+python3 tests/presentation_contract.py
 python3 tools/asset_report.py
 
 GODOT_BIN="${GODOT_BIN:-godot}"

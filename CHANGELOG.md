@@ -1,3 +1,73 @@
+## 0.11.11 — macOS Godot 4.7.1 importer crash hotfix
+
+- removes the legacy `settings-gear.svg` that could segfault Godot 4.7.1 during the headless editor reimport on macOS
+- draws the Settings gear procedurally in GDScript, so the icon no longer depends on SVG or font/emoji import support
+- ignores the legacy `assets/ui` SVG directory on overlay installs and purges only its stale `.godot/imported` cache before `run-macos.sh` starts the editor scan
+- retains the runtime audio-before-HUD ordering and self-healing HUD references from the previous runtime hotfix
+
+## Final runtime hotfix — HUD + music reveal
+
+- fixes the runtime `Nil.value` crash in `AppHud.update_reveal()` with named/self-healing HUD references
+- moves audio progress and final music reveal ahead of HUD rendering so UI failures can never mute the music path
+- increases both top story panels to 146 px and keeps secondary copy visible while painting
+- preserves the user-cleaned 720x1280 cinematic pack byte-for-byte
+
+## 0.11.12 — Final clean-video pass
+
+- swapped all runtime cinematics to the user's cleaned original MP4 sources, re-encoded as runtime Ogg Theora while preserving the original visual content
+- removed the synthetic Unmasked eye-glow runtime treatment and kept the user's cleaned Unmasked video as-is
+- rebuilt each runtime clip as a forward-then-reverse loop from the cleaned source so gameplay playback stays smooth while using the original motion
+- kept the 0.11.11 intro screen, supersonic door entry, restored information panels and stylized HUD presentation
+
+## 0.11.11 — Runtime Shader / Clean Loops / Settings Gear Hotfix
+
+- Fixes Godot 4.7.1 shader compilation by keeping every `TEXTURE` sample inside `fragment()` instead of referencing the CanvasItem builtin from a helper function.
+- Rebuilds all cinematic ping-pong loops after removing the final 8 AI outro/watermark frames from the forward pass; Hybrid keeps its earlier editorial cut.
+- Replaces the font-dependent menu glyph with a bundled SVG gear icon so Settings renders consistently on macOS, mobile and Web.
+- Keeps 720×1280 / 24 fps lazy Ogg Theora playback, themed post-processing, Unmasked eye glow and the stronger Echoes finale form cover.
+
+## 0.11.9 — Cinematic Playback + Header Layout Fix
+
+- Fixed room cinematic playback by constructing `VideoStreamTheora` directly from the `.ogv` runtime file instead of relying on `ResourceLoader.load()`.
+- Added a one-tick playback retry for file-backed Theora streams.
+- Explicitly includes `assets/video/*.ogv` in export presets.
+- Rebuilt the HUD top area as one horizontal header row: room/progress card on the left, act/palette/brush card on the right.
+- Act story badge now appears below that shared row instead of colliding with it.
+
+## 0.11.8 — Cinematic Loops / AI Unification Pass
+
+- Replaced cheap post-reveal image stretching with twelve real 720×1280 / 24 fps Ogg Theora cinematic loops: eleven rooms plus the Echoes finale.
+- Cinematics load lazily only after room completion and release their VideoStream when leaving/resetting the room.
+- Added a room-specific post-process pass: restrained grain, bloom, chromatic drift and signal scars; Technophobia intentionally gets the strongest digital tearing.
+- Unmasked now has a dedicated additive eye-glow overlay covering every visible eye location so the AI cat pupils disappear into uniform light.
+- Echoes finale blends its video over the original skull while the Signal form is taller and substantially more opaque, masking the unnatural teeth area.
+- Reduced-motion mode keeps the static artwork instead of starting cinematic video.
+
+## 0.11.7 — Supersonic Door Teleport
+
+- Replaces the old screen-closing/sliding-door transition with one physical hinged door rendered in perspective.
+- Camera motion now approaches the real doorway, crosses the threshold, accelerates into a radial supersonic tunnel, snaps between rooms, and decelerates into the destination.
+- The room artwork is never scaled or stretched by the transition.
+- Adds deterministic radial velocity streaks, portal depth rings, restrained chromatic speed cues and a short snap flash.
+- Keeps reduced-motion timing shorter while preserving the physical door/threshold metaphor.
+- Adds a dedicated regression contract that rejects the old sliding-panel implementation and room scaling.
+
+## 0.11.6 — Living Rooms / Sensory Pass
+
+- Moves the act banner into an independent top-right safe slot so it cannot overlap the instruction panel.
+- Adds a quiet thematic ambience bed for every one of the 11 rooms, plus room-specific interaction SFX.
+- Makes room transitions explicitly door-like: paneled leaves, handles, close/open sounds and a perspective zoom/suck teleport through the threshold.
+- Keeps every fully revealed room alive instead of freezing: alternating waves, rising balloons and light, glowing/opening masks, banquet toast motion, twisting Seed tree, first-person Hybrid duel, Technophobia glitches, simultaneous Invaluable mirror burst, phoenix take-off, bedroom lamp/window wind, and Rise ascent into the window light.
+- Makes the Echoes finale skull disintegrate much more aggressively with denser dust and leftward particle streaks.
+- Adds regression coverage for thematic audio assets, living-room animation hooks, door teleport state and HUD non-overlap.
+
+## 0.11.5 — Audio / HUD / CI hotfix
+
+- Restores room music loading through `ResourceLoader.exists()` so imported MP3/OGG resources remain valid in Godot runtime and exported builds instead of being rejected by raw file checks.
+- Keeps the reveal-proportional 80/20 → 50/50 → 20/80 audio mix and adds a lifecycle assertion that the room excerpt is actually available after configuration.
+- Moves the persistent `AKT …` marker to the right side of the lower HUD so it stays away from the central interaction area.
+- Makes the atmosphere renderer safe before `configure()` populates particles, fixing the GitHub Actions runtime-validation out-of-bounds error.
+
 ## 0.11.4 — Cinematic Inner Rooms / UX Pass
 
 - Fixes chapter, act and discovery-toast layouts so long Polish copy keeps a usable horizontal measure instead of collapsing to one-character columns.

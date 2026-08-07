@@ -39,7 +39,9 @@ static func story_style(accent: Color, alpha: float = 0.93, compact: bool = fals
     return style
 
 static func finale_style(accent: Color) -> StyleBoxFlat:
-    var style: StyleBoxFlat = story_style(accent, 0.90, false)
+    var style: StyleBoxFlat = story_style(accent, 0.975, false)
+    style.bg_color = Color(0.014, 0.020, 0.032, 0.975)
+    style.border_color = Color(accent, 0.62)
     style.corner_radius_top_left = 26
     style.corner_radius_top_right = 26
     style.corner_radius_bottom_left = 0

@@ -49,10 +49,30 @@ required_audio=(
 for name in "${required_audio[@]}"; do
   [[ -s "$ROOT/assets/audio/$name" ]] || { echo "Missing audio asset: assets/audio/$name" >&2; exit 4; }
 done
+required_sensory_audio=(
+  ambience/uncertainty.wav ambience/party.wav ambience/unmasked.wav ambience/calling.wav
+  ambience/seed.wav ambience/hybrid.wav ambience/technophobia.wav ambience/invaluable.wav
+  ambience/ashes.wav ambience/waves.wav ambience/rise.wav
+  sfx/glass-clink.wav sfx/wood-creak.wav sfx/gunshot.wav sfx/mirror-shatter.wav
+  sfx/wing-whoosh.wav sfx/electric-bzz.wav sfx/mask-whisper.wav sfx/wave-slap.wav
+  sfx/light-rise.wav sfx/presence-wind.wav sfx/door-close.wav sfx/door-open.wav sfx/teleport-suck.wav
+)
+for name in "${required_sensory_audio[@]}"; do
+  [[ -s "$ROOT/assets/audio/$name" ]] || { echo "Missing sensory audio asset: assets/audio/$name" >&2; exit 4; }
+done
 [[ -s "$ROOT/assets/finale/echoes-finale.webp" ]] || { echo "Missing finale artwork: assets/finale/echoes-finale.webp" >&2; exit 4; }
+required_video=(uncertainty party unmasked calling seed hybrid technophobia invaluable ashes waves rise finale)
+for name in "${required_video[@]}"; do
+  [[ -s "$ROOT/assets/video/$name.ogv" ]] || { echo "Missing cinematic video: assets/video/$name.ogv" >&2; exit 4; }
+done
 
 # A source checkout needs Godot's imported cache for MP3/OGG/WebP resources.
 # v0.11.0 used to delete .godot after validation, which made real assets look missing at runtime.
+# The old settings-gear.svg triggered a Godot 4.7.1 macOS headless importer crash.
+# It is procedural now; purge only that legacy imported cache before the editor scan.
+if [[ -d "$ROOT/.godot/imported" ]]; then
+  find "$ROOT/.godot/imported" -maxdepth 1 -type f -name 'settings-gear.svg-*' -delete 2>/dev/null || true
+fi
 IMPORT_LOG="$(mktemp "${TMPDIR:-/tmp}/synesthesia-import.XXXXXX.log")"
 trap 'rm -f "$IMPORT_LOG"' EXIT
 set +e

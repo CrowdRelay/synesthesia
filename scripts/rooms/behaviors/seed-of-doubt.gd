@@ -6,7 +6,11 @@ func acts() -> Array[String]:
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#9DE66F")), Color("9de66f"))
     var root: Vector2 = Vector2(viewport_size.x * 0.5, viewport_size.y * 0.74)
-    var trunk_top: Vector2 = root - Vector2(0.0, viewport_size.y * (0.10 + progress * 0.43))
+    var cinematic_t: float = cinematic_time()
+    var twist: float = 0.0
+    if cinematic_active():
+        twist = sin(cinematic_t * 1.45) * 24.0 + sin(cinematic_t * 3.1) * 7.0
+    var trunk_top: Vector2 = root - Vector2(-twist * 0.28, viewport_size.y * (0.10 + progress * 0.43))
     canvas.draw_line(root, trunk_top, Color(accent, 0.15 + progress * 0.18), 4.0 + progress * 6.0)
     var branches: int = 2 + int(floor(progress * 9.0))
     for index in range(branches):
@@ -14,8 +18,16 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
         var branch_origin: Vector2 = root.lerp(trunk_top, ratio)
         var side: float = -1.0 if index % 2 == 0 else 1.0
         var sway: float = sin(phase * 2.0 + float(index)) * 4.0
-        var branch_end: Vector2 = branch_origin + Vector2(side * (36.0 + ratio * 54.0) + sway, -28.0 - ratio * 38.0)
+        if cinematic_active():
+            sway += sin(cinematic_t * (1.6 + ratio) + float(index) * 0.7) * (8.0 + ratio * 14.0)
+        var branch_end: Vector2 = branch_origin + Vector2(side * (36.0 + ratio * 54.0) + sway + twist * ratio * 0.5, -28.0 - ratio * 38.0)
         canvas.draw_line(branch_origin, branch_end, Color(accent, 0.12 + progress * 0.20), 1.4 + progress * 2.2)
+    if cinematic_active():
+        for index in range(9):
+            var ratio: float = float(index) / 8.0
+            var y: float = lerpf(root.y, trunk_top.y, ratio)
+            var x: float = lerpf(root.x, trunk_top.x, ratio) + sin(cinematic_t * 4.0 + float(index)) * (3.0 + ratio * 8.0)
+            canvas.draw_circle(Vector2(x, y), 1.2 + ratio * 1.3, Color(accent, 0.14 + ratio * 0.10))
 
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.30 and not bool(state.get("seed", false)) and _near(point_norm, Vector2(0.5, 0.74), radius_norm + 0.08):

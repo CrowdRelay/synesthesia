@@ -27,16 +27,16 @@ REQUIRED_FILES = [
     "scenes/main.tscn", "scripts/main.gd", "scripts/audio_director.gd",
     "scripts/haptics.gd", "scripts/progress_store.gd", "scripts/reward_client.gd",
     "scripts/render/room_stage.gd", "scripts/render/reveal_mask.gd",
-    "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/render/room_dressing_layer.gd", "scripts/brush/brush_engine.gd",
+    "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/render/room_dressing_layer.gd", "scripts/render/room_video_layer.gd", "scripts/brush/brush_engine.gd",
     "scripts/app/quality_manager.gd", "scripts/app/asset_preloader.gd", "scripts/app/adaptive_performance.gd",
     "scripts/app/transition_director.gd", "scripts/app/door_transition_layer.gd", "scripts/app/diagnostics_overlay.gd",
-    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/chapter_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd",
-    "scripts/rooms/behavior_base.gd", "shaders/room_composite.gdshader", "shaders/echoes_finale.gdshader",
+    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/chapter_card.gd", "scripts/ui/experience_intro_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd",
+    "scripts/rooms/behavior_base.gd", "shaders/room_composite.gdshader", "shaders/echoes_finale.gdshader", "shaders/room_video_postprocess.gdshader",
     "assets/audio/pink-noise-asmr-loop.ogg", "assets/audio/balloon-pop.mp3", "assets/finale/echoes-finale.webp", "default_bus_layout.tres",
     "data/release_index.json", "tests/validate_project.gd",
     "tests/room_pipeline_contract.py", "tests/capture_rooms.gd",
     "tests/visual_snapshot_contract.py", "tests/visual_snapshots.json",
-    "tests/new_release_pack_contract.py", "tests/production_polish_contract.py", "tools/update_visual_snapshots.py",
+    "tests/new_release_pack_contract.py", "tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py", "assets/video/manifest.json", "tools/update_visual_snapshots.py",
     "tools/perf_budget.py", "tools/memory_budget.py", "tools/audio_mix_budget.py",
     "tools/new_release_pack.py", "tools/asset_report.py", "tools/reset_local_progress.gd", "tests/lifecycle_smoke.gd",
     "web/reward/index.html", "web/_headers", "web/register-sw.js",
@@ -279,16 +279,16 @@ def main() -> int:
     if shader_only_calls:
         fail("shader-only function used from GDScript: " + ", ".join(shader_only_calls), failures)
 
-    if (ROOT / "VERSION").read_text().strip() != "0.11.4":
-        fail("VERSION must equal 0.11.4", failures)
+    if (ROOT / "VERSION").read_text().strip() != "0.11.11":
+        fail("VERSION must equal 0.11.11", failures)
     project = (ROOT / "project.godot").read_text()
-    for token in ('config/version="0.11.4"', "size/viewport_width=540", "size/viewport_height=960", "size/window_width_override=540", "size/window_height_override=960"):
+    for token in ('config/version="0.11.11"', "size/viewport_width=540", "size/viewport_height=960", "size/window_width_override=540", "size/window_height_override=960"):
         if token not in project:
             fail(f"project.godot missing {token}", failures)
-    if 'version/name="0.11.4"' not in (ROOT / "export_presets.cfg").read_text():
-        fail("export preset version must equal 0.11.4", failures)
-    if 'version/code=9' not in (ROOT / "export_presets.cfg").read_text():
-        fail("export preset version code must equal 9", failures)
+    if 'version/name="0.11.11"' not in (ROOT / "export_presets.cfg").read_text():
+        fail("export preset version must equal 0.11.11", failures)
+    if 'version/code=11' not in (ROOT / "export_presets.cfg").read_text():
+        fail("export preset version code must equal 11", failures)
 
     required_audio = [
         "pink-noise-asmr-loop.ogg", "wave-of-uncertainty-room-outro.mp3",
@@ -318,7 +318,34 @@ def main() -> int:
 
     ui_factory_source = (ROOT / "scripts/ui/ui_factory.gd").read_text()
     settings_source = (ROOT / "scripts/ui/settings_card.gd").read_text()
+    hud_source = (ROOT / "scripts/ui/app_hud.gd").read_text()
+    video_shader_source = (ROOT / "shaders/room_video_postprocess.gdshader").read_text()
+    gear_path = ROOT / "assets/ui/settings-gear.svg"
+    gear_script = ROOT / "scripts/ui/settings_gear_icon.gd"
+    gear_ignore = ROOT / "assets/ui/.gdignore"
+    if gear_path.exists() and not gear_ignore.is_file():
+        fail("legacy settings gear SVG must be removed or hidden by assets/ui/.gdignore", failures)
+    if not gear_script.is_file() or gear_script.stat().st_size < 500:
+        fail("procedural settings gear script missing or truncated", failures)
+    if not gear_ignore.is_file():
+        fail("assets/ui/.gdignore must suppress legacy SVG imports on overlay installs", failures)
+    for token in ('SettingsGearIcon', 'SettingsGearIcon.new()', 'SettingsGearIcon'):
+        if token not in hud_source:
+            fail(f"procedural settings gear button contract missing: {token}", failures)
+    for token in ('instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM → MUZYKA"', 'top_accent_bar', 'bottom_accent_bar', 'subtitle_label.visible = true'):
+        if token not in hud_source:
+            fail(f"persistent HUD information/style contract missing: {token}", failures)
+    intro_source = (ROOT / "scripts/ui/experience_intro_card.gd").read_text()
+    for token in ('WEJDŹ DO ŚRODKA', 'WEJDŹ W SYNESTEZJĘ', 'To nie test i nie diagnoza', 'begin_requested'):
+        if token not in intro_source:
+            fail(f"experience intro contract missing: {token}", failures)
+    if 'UIFactory.button("⋯"' in hud_source or 'UIFactory.button("⚙"' in hud_source:
+        fail("settings button must use the procedural gear, not a font glyph/emoji", failures)
+    if 'vec3 soft_bloom' in video_shader_source:
+        fail("video shader must not sample CanvasItem TEXTURE from helper scope", failures)
     run_source = (ROOT / "run-macos.sh").read_text()
+    if "settings-gear.svg-*" not in run_source:
+        fail("run-macos must purge the legacy crashy settings SVG import cache", failures)
     progress_source = (ROOT / "scripts/progress_store.gd").read_text()
     if "ScrollContainer.SCROLL_MODE_DISABLED" not in ui_factory_source or "horizontal_scroll_mode = 0" not in settings_source:
         fail("responsive scroll layout contract missing: horizontal scroll must be disabled", failures)
