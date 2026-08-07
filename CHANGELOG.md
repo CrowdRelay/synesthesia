@@ -234,3 +234,11 @@
 ## 0.1.0 — Calm vertical slice
 
 - Added touch painting, traces, procedural sound, sensory modes and offline validation.
+
+## CI hardening — shared Godot 4.7.1 runtime gate
+
+- Centralizes GitHub CI and Android pre-export validation through the same `validate.sh` runtime path.
+- Adds a stage-aware Godot log gate: exit code + required PASS marker + strict fatal-error scanning.
+- Allows only the known Godot 4.7.1 post-PASS headless shutdown diagnostics, pinned to 4.7.1 and capped at 16 ObjectDB / 8 Resource entries.
+- `SCRIPT ERROR`, parser/compiler/shader/load errors, pre-PASS errors, missing PASS markers, newer-engine leak signatures, or leak counts above budget remain fatal.
+- Android export now requires the explicit `SYNESTHESIA_GODOT_RUNTIME=PASS` marker before producing an APK.

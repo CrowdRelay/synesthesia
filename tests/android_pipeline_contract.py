@@ -33,6 +33,8 @@ for token in (
     "build/android/synesthesia-debug.apk",
     "ANDROID_DEBUG_KEYSTORE_BASE64",
     "SYNESTHESIA_ANDROID_VERSION_CODE",
+    "synesthesia-android-godot-logs-",
+    "if: always()",
 ):
     if token not in workflow:
         failures.append(f"Android workflow missing token: {token}")
@@ -53,6 +55,9 @@ for token in (
     'apksigner',
     'aapt2',
     'music.virya.synesthesia',
+    'SYNESTHESIA_GODOT_RUNTIME=PASS',
+    'shared Synesthesia validation failed before Android export',
+    'SYNESTHESIA_GODOT_LOG_DIR',
 ):
     if token not in script:
         failures.append(f"Android build script missing token: {token}")

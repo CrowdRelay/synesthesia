@@ -145,7 +145,24 @@ export GODOT_ANDROID_KEYSTORE_DEBUG_USER="$keystore_user"
 export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD="$keystore_password"
 
 # Validate the exact source tree that will be exported. validate.sh runs Godot import + lifecycle smoke when GODOT_BIN is provided.
-GODOT_BIN="$GODOT_BIN" ./validate.sh
+export SYNESTHESIA_GODOT_LOG_DIR="${SYNESTHESIA_GODOT_LOG_DIR:-$ROOT/build/ci-logs}"
+mkdir -p "$SYNESTHESIA_GODOT_LOG_DIR"
+validation_log="$(mktemp "${TMPDIR:-/tmp}/synesthesia-android-validation.XXXXXX.log")"
+set +e
+GODOT_BIN="$GODOT_BIN" ./validate.sh 2>&1 | tee "$validation_log"
+validation_status=${PIPESTATUS[0]}
+set -e
+if (( validation_status != 0 )); then
+  rm -f "$validation_log"
+  printf 'ERROR: shared Synesthesia validation failed before Android export.\n' >&2
+  exit "$validation_status"
+fi
+if ! grep -q '^SYNESTHESIA_GODOT_RUNTIME=PASS$' "$validation_log"; then
+  rm -f "$validation_log"
+  printf 'ERROR: shared validation exited cleanly without SYNESTHESIA_GODOT_RUNTIME=PASS.\n' >&2
+  exit 1
+fi
+rm -f "$validation_log"
 
 mkdir -p "$(dirname "$APK_PATH")"
 rm -f "$APK_PATH" "${APK_PATH}.sha256"

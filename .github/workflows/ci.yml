@@ -57,6 +57,7 @@ jobs:
           python3 tests/door_transition_contract.py
           python3 tests/cinematic_video_contract.py
           python3 tests/presentation_contract.py
+          python3 tests/godot_log_gate_contract.py
           python3 tools/asset_report.py
 
       - name: Install verified Godot editor
@@ -86,24 +87,19 @@ jobs:
         run: |
           "${GODOT_BIN}" --version
 
-      - name: Import project headlessly
+      - name: Run shared hardened Godot validation
         shell: bash
-        run: |
-          set -euo pipefail
-          log_file="${RUNNER_TEMP}/godot-import.log"
-          set +e
-          "${GODOT_BIN}" --headless --editor --path "${PROJECT_DIR}" --quit 2>&1 | tee "${log_file}"
-          status=${PIPESTATUS[0]}
-          set -e
-          if (( status != 0 )); then
-            exit "${status}"
-          fi
-          if grep -E '(^|[[:space:]])(SCRIPT ERROR:|ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed loading resource:|Shader error:|Warning treated as error|ObjectDB instance was leaked|Pink-noise.*missing|Room music.*missing|Room ambience.*missing|Cinematic video.*missing)' "${log_file}" >/dev/null; then
-            echo "Godot import emitted an error" >&2
-            exit 1
-          fi
-
-      - name: Run Godot runtime validation
+        env:
+          SYNESTHESIA_GODOT_LOG_DIR: build/ci-logs
         run: |
           set -euo pipefail
           GODOT_BIN="${GODOT_BIN}" ./validate.sh
+
+      - name: Upload Godot validation diagnostics
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: synesthesia-ci-godot-logs-${{ github.sha }}
+          path: build/ci-logs/*.log
+          if-no-files-found: ignore
+          retention-days: 7
