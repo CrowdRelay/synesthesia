@@ -7,3 +7,6 @@ exports/
 *.aab
 *.ipa
 .DS_Store
+asset-report.txt
+PACKAGE_CHECKSUMS.txt
+*.badging.txt
