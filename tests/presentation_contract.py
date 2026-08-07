@@ -66,6 +66,16 @@ complete_block = main[complete_start:complete_end]
 if complete_block.find('audio_director.reveal_release_excerpt') > complete_block.find('hud.update_reveal'):
     failures.append("completion music must start before HUD updates")
 
+
+lifecycle = (ROOT / "tests/lifecycle_smoke.gd").read_text()
+for token in (
+    '_require_button_width(experience, "WEJDŹ W SYNESTEZJĘ"',
+    "func _find_button_with_prefix",
+    "func _dispose_node",
+):
+    if token not in lifecycle:
+        failures.append(f"lifecycle smoke missing intro/cleanup regression token: {token}")
+
 if failures:
     for failure in failures:
         print(f"FAIL: {failure}")

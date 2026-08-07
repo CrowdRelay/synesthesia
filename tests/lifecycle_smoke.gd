@@ -25,12 +25,12 @@ func _run() -> void:
     var file: FileAccess = FileAccess.open(MANIFEST_PATH, FileAccess.READ)
     if file == null:
         _fail("cannot open manifest")
-        _finish()
+        call_deferred("_finish")
         return
     var parsed: Variant = JSON.parse_string(file.get_as_text())
     if not parsed is Dictionary:
         _fail("manifest is invalid")
-        _finish()
+        call_deferred("_finish")
         return
     var manifest: Dictionary = parsed
 
@@ -73,7 +73,7 @@ func _run() -> void:
     await process_frame
     await process_frame
     _require_label_width(settings, "Dopasuj intensywność", 220.0, "settings")
-    settings.free()
+    await _dispose_node(settings)
 
     var confirmation = ConfirmCardScript.new()
     get_root().add_child(confirmation)
@@ -81,7 +81,7 @@ func _run() -> void:
     await process_frame
     await process_frame
     _require_label_width(confirmation, "Wyczyścimy lokalne", 220.0, "confirmation")
-    confirmation.free()
+    await _dispose_node(confirmation)
 
     var chapter = ChapterCardScript.new()
     get_root().add_child(chapter)
@@ -89,7 +89,7 @@ func _run() -> void:
     await process_frame
     await process_frame
     _require_label_width(chapter, "Prowadź kolor", 360.0, "chapter")
-    chapter.free()
+    await _dispose_node(chapter)
 
     var experience = ExperienceIntroCardScript.new()
     get_root().add_child(experience)
@@ -97,8 +97,8 @@ func _run() -> void:
     await process_frame
     await process_frame
     _require_label_width(experience, "Synestezja to interaktywna", 320.0, "experience-intro")
-    _require_label_width(experience, "WEJDŹ W SYNESTEZJĘ", 220.0, "experience-intro-button")
-    experience.free()
+    _require_button_width(experience, "WEJDŹ W SYNESTEZJĘ", 220.0, "experience-intro-button")
+    await _dispose_node(experience)
 
     var hud = AppHudScript.new()
     get_root().add_child(hud)
@@ -128,7 +128,7 @@ func _run() -> void:
     hud.set_painting(false)
     _require_label_alignment(hud, "AKT II", HORIZONTAL_ALIGNMENT_LEFT, "act-label")
     _require_label_width(hud, "POP! Balon", 340.0, "toast")
-    hud.free()
+    await _dispose_node(hud)
 
     var completion = CompletionCardScript.new()
     get_root().add_child(completion)
@@ -136,7 +136,7 @@ func _run() -> void:
     await process_frame
     await process_frame
     _require_label_width(completion, "Obraz oddycha", 360.0, "completion")
-    completion.free()
+    await _dispose_node(completion)
 
     var cinematic = RoomVideoLayerScript.new()
     get_root().add_child(cinematic)
@@ -151,14 +151,14 @@ func _run() -> void:
     cinematic.set_cinematic(false, true)
     if cinematic.has_stream_loaded():
         _fail("cinematic stream did not unload after reveal ended")
-    cinematic.free()
+    await _dispose_node(cinematic)
 
     var finale_bg = EchoesFinaleBackgroundScript.new()
     get_root().add_child(finale_bg)
     finale_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     finale_bg.configure(false, false)
     await process_frame
-    finale_bg.free()
+    await _dispose_node(finale_bg)
 
     var finale = SignalFinaleCardScript.new()
     get_root().add_child(finale)
@@ -166,7 +166,7 @@ func _run() -> void:
     await process_frame
     await process_frame
     _require_label_width(finale, "Jedenaście zakątków", 360.0, "finale")
-    finale.free()
+    await _dispose_node(finale)
 
     var doorway = DoorTransitionLayerScript.new()
     get_root().add_child(doorway)
@@ -178,19 +178,52 @@ func _run() -> void:
     doorway.set_suck_mix(0.62)
     await process_frame
     doorway.reset()
-    doorway.free()
+    await _dispose_node(doorway)
 
     var reward = RewardClientScript.new()
     get_root().add_child(reward)
     reward.configure("", "", "0.11.11", "smoke")
     reward.shutdown()
-    reward.free()
+    await _dispose_node(reward)
 
-    audio.free()
+    await _dispose_node(audio)
     preloader.drain()
-    preloader.free()
+    await _dispose_node(preloader)
+    # Give VideoStream/AudioStream backends and deferred frees enough frames to
+    # release engine-side objects before SceneTree.quit(). This keeps the
+    # lifecycle smoke meaningful instead of ending with shutdown leak noise.
     await process_frame
-    _finish()
+    await process_frame
+    await process_frame
+    # Defer quit until _run() has returned so its local Resource references are
+    # released before Godot performs leak checks during engine shutdown.
+    call_deferred("_finish")
+
+func _require_button_width(node: Node, prefix: String, minimum: float, context: String) -> void:
+    var button: Button = _find_button_with_prefix(node, prefix)
+    if button == null:
+        _fail("%s button missing: %s" % [context, prefix])
+    elif button.size.x < minimum:
+        _fail("%s button collapsed horizontally: %.1f < %.1f" % [context, button.size.x, minimum])
+
+func _find_button_with_prefix(node: Node, prefix: String) -> Button:
+    if node is Button:
+        var button: Button = node as Button
+        if button.text.begins_with(prefix):
+            return button
+    for child in node.get_children():
+        var found: Button = _find_button_with_prefix(child, prefix)
+        if found != null:
+            return found
+    return null
+
+func _dispose_node(node: Node) -> void:
+    if node == null or not is_instance_valid(node):
+        return
+    if node.has_method("shutdown"):
+        node.call("shutdown")
+    node.queue_free()
+    await process_frame
 
 func _require_label_alignment(node: Node, prefix: String, expected: int, context: String) -> void:
     var label: Label = _find_label_with_prefix(node, prefix)

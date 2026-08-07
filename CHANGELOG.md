@@ -1,3 +1,10 @@
+## 0.11.11 — CI lifecycle / validation cleanup
+
+- fixes the lifecycle smoke test to validate the intro CTA as a `Button` instead of incorrectly searching only `Label` nodes
+- gracefully queues runtime test nodes for deletion and gives audio/video backends time to release before quitting the smoke test
+- normalizes room-root anchors before assigning the 540×960 validation size, removing repeated Godot anchor warnings
+- no gameplay, clean-video, audio mix or room artwork assets changed
+
 ## 0.11.11 — macOS Godot 4.7.1 importer crash hotfix
 
 - removes the legacy `settings-gear.svg` that could segfault Godot 4.7.1 during the headless editor reimport on macOS

@@ -120,10 +120,18 @@ func _validate_room(position: int, expected_id: String, manifest: Dictionary) ->
     var room_node: Node = (scene_resource as PackedScene).instantiate()
     if str(room_node.get("room_id")) != expected_id:
         _fail("%s: scene room_id mismatch" % expected_id)
-    get_root().add_child(room_node)
     if room_node is Control:
         var room_control: Control = room_node as Control
+        # Validation owns the root size explicitly. Normalize the root anchors
+        # before entering the tree so Godot does not override `size` after
+        # _ready() and emit the non-equal-opposite-anchors warning.
+        room_control.anchor_left = 0.0
+        room_control.anchor_top = 0.0
+        room_control.anchor_right = 0.0
+        room_control.anchor_bottom = 0.0
+        room_control.position = Vector2.ZERO
         room_control.size = Vector2(540.0, 960.0)
+    get_root().add_child(room_node)
     await process_frame
 
     var quality: Dictionary = {
