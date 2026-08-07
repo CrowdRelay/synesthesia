@@ -35,7 +35,7 @@ run_godot_checked() {
     rm -f "$log_file"
     return "$status"
   fi
-  if grep -E '(^|[[:space:]])(SCRIPT ERROR:|ERROR:|Parse Error:|Compile Error:|Failed loading resource:|Warning treated as error)' "$log_file" >/dev/null; then
+  if grep -E '(^|[[:space:]])(SCRIPT ERROR:|ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed loading resource:|Shader error:|Warning treated as error|ObjectDB instance was leaked|Pink-noise.*missing|Room music.*missing)' "$log_file" >/dev/null; then
     echo "SYNESTHESIA_GODOT_RUNTIME=FAIL stage=$label reason=godot-error-log" >&2
     rm -f "$log_file"
     return 1
@@ -45,5 +45,6 @@ run_godot_checked() {
 
 run_godot_checked import --headless --editor --path "$ROOT" --quit
 run_godot_checked validation --headless --path "$ROOT" --script res://tests/validate_project.gd
+run_godot_checked lifecycle --headless --path "$ROOT" --script res://tests/lifecycle_smoke.gd
 
 echo "SYNESTHESIA_GODOT_RUNTIME=PASS"

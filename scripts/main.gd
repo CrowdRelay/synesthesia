@@ -13,6 +13,9 @@ const AdaptivePerformanceScript := preload("res://scripts/app/adaptive_performan
 const ChapterCardScript := preload("res://scripts/ui/chapter_card.gd")
 const CompletionCardScript := preload("res://scripts/ui/completion_card.gd")
 const SettingsCardScript := preload("res://scripts/ui/settings_card.gd")
+const ConfirmCardScript := preload("res://scripts/ui/confirm_card.gd")
+const EchoesFinaleBackgroundScript := preload("res://scripts/ui/echoes_finale_background.gd")
+const SignalFinaleCardScript := preload("res://scripts/ui/signal_finale_card.gd")
 const RoomStageScript := preload("res://scripts/render/room_stage.gd")
 const RELEASE_INDEX_PATH: String = "res://data/release_index.json"
 const VERSION_PATH: String = "res://VERSION"
@@ -51,13 +54,10 @@ var save_timer: Timer
 var settings_dirty: bool = false
 var intro_panel
 var completion_panel
-var reward_panel: PanelContainer
+var confirmation_panel
+var reward_panel
+var finale_background
 var settings_panel
-var reward_email: LineEdit
-var reward_city: LineEdit
-var reward_marketing: CheckBox
-var reward_status: Label
-var reward_claim_button: Button
 func _ready() -> void:
     index_document = _load_json(RELEASE_INDEX_PATH)
     if index_document.is_empty():
@@ -138,9 +138,9 @@ func _load_json(path: String) -> Dictionary:
     return {}
 func _read_version() -> String:
     if not FileAccess.file_exists(VERSION_PATH):
-        return "0.11.0"
+        return "0.11.4"
     var file: FileAccess = FileAccess.open(VERSION_PATH, FileAccess.READ)
-    return file.get_as_text().strip_edges() if file != null else "0.11.0"
+    return file.get_as_text().strip_edges() if file != null else "0.11.4"
 func _configure_reward_client() -> void:
     var config_value: Variant = index_document.get("reward", {})
     if not config_value is Dictionary:
@@ -378,9 +378,11 @@ func _on_paint_pulse(speed_normalized: float) -> void:
     if haptics != null:
         haptics.paint_tick(speed_normalized)
 
-func _on_special_interaction(kind: String, _index: int) -> void:
+func _on_special_interaction(kind: String, index: int) -> void:
     if haptics != null:
         haptics.special(kind)
+    if audio_director != null and audio_director.has_method("play_interaction_sfx"):
+        audio_director.play_interaction_sfx(kind, index)
     var messages: Dictionary = {
         "balloon": "POP! Balon pękł · scena nabiera koloru",
         "mirror": "Tafla pękła · odbicie traci władzę",
@@ -484,10 +486,13 @@ func _transition_to_room(next_index: int) -> void:
         haptics.door_open()
     _remove_modal(completion_panel)
     completion_panel = null
-    await transition_director.fade_out()
+    if transition_director != null:
+        transition_director.set_next_accent(_accent_for_release(next_index))
+        await transition_director.travel_out()
     _load_room(next_index, true)
     await get_tree().process_frame
-    await transition_director.fade_in()
+    if transition_director != null:
+        await transition_director.travel_in()
     transition_running = false
 
 func _transition_to_reward() -> void:
@@ -498,12 +503,28 @@ func _transition_to_reward() -> void:
         haptics.door_open()
     _remove_modal(completion_panel)
     completion_panel = null
-    await transition_director.fade_out()
+    if transition_director != null:
+        transition_director.set_next_accent(Color("e35f83"))
+        await transition_director.travel_out()
     _clear_room_runtime()
     room_layer.visible = false
-    await transition_director.fade_in()
+    _prepare_finale_background()
+    if transition_director != null:
+        await transition_director.travel_in()
     transition_running = false
     _show_reward_panel()
+
+func _accent_for_release(index: int) -> Color:
+    if index < 0 or index >= release_entries.size():
+        return Color("72afff")
+    var entry_value: Variant = release_entries[index]
+    if not entry_value is Dictionary:
+        return Color("72afff")
+    var next_manifest: Dictionary = _load_json(str(entry_value.get("manifest", "")))
+    var room_value: Variant = next_manifest.get("room", {})
+    if not room_value is Dictionary:
+        return Color("72afff")
+    return Color.from_string(str(room_value.get("accent_color", "#72AFFF")), Color("72afff"))
 
 func _show_settings() -> void:
     if settings_panel != null:
@@ -521,6 +542,8 @@ func _show_settings() -> void:
         "haptics": haptics_enabled,
         "music": music_level,
         "noise": noise_level,
+        "has_room": room != null and is_instance_valid(room),
+        "album_completed": bool(album_state.get("album_completed", false)),
     }, str(quality.get("label", "Zbalansowana")), _read_version())
     settings_panel.close_requested.connect(_close_settings)
     settings_panel.reload_requested.connect(func() -> void:
@@ -530,6 +553,10 @@ func _show_settings() -> void:
     settings_panel.reset_requested.connect(func() -> void:
         _close_settings()
         _confirm_reset_room()
+    )
+    settings_panel.reset_album_requested.connect(func() -> void:
+        _close_settings()
+        _confirm_reset_album()
     )
     settings_panel.calm_changed.connect(func(value: bool) -> void:
         calm_mode = value
@@ -596,24 +623,7 @@ func _reload_current_room() -> void:
     await transition_director.fade_in(0.28)
 
 func _confirm_reset_room() -> void:
-    var panel: PanelContainer = UIFactory.modal(self, Vector2(480.0, 290.0))
-    panel.name = "ResetConfirmation"
-    var content: VBoxContainer = UIFactory.modal_content(panel, 10)
-    content.add_child(UIFactory.heading("Zacząć pokój od nowa?"))
-    content.add_child(UIFactory.body("Zniknie tylko lokalny postęp bieżącego pokoju. Pozostałe rozdziały albumu zostają bez zmian."))
-    var confirm: Button = UIFactory.button("Tak, wyczyść ten pokój")
-    confirm.pressed.connect(func() -> void:
-        _remove_modal(panel)
-        _reset_room()
-    )
-    content.add_child(confirm)
-    var cancel: Button = UIFactory.button("Anuluj")
-    cancel.pressed.connect(func() -> void:
-        _remove_modal(panel)
-        if room != null and not completion_announced:
-            room.set_interaction_enabled(true)
-    )
-    content.add_child(cancel)
+    _show_confirmation("Zacząć pokój od nowa?", "Zniknie tylko lokalny postęp bieżącego pokoju. Pozostałe rozdziały albumu zostają bez zmian.", "Tak, wyczyść ten pokój", Callable(self, "_reset_room"))
 
 func _reset_room() -> void:
     if room == null:
@@ -645,6 +655,27 @@ func _reset_room() -> void:
     _apply_sensory_mode()
     _save_album_state()
 
+func _confirm_reset_album() -> void:
+    _show_confirmation("Zagrać od nowa?", "Wyczyścimy lokalne malowanie, odkrycia i czasy wszystkich 11 pokojów. Ustawienia zostają. Nagroda i stan po stronie Sygnału nie są cofane.", "Tak, zacznij świeżą podróż", Callable(self, "_reset_album_local"))
+
+func _show_confirmation(title: String, message: String, confirm_text: String, action: Callable) -> void:
+    var card = ConfirmCardScript.new()
+    confirmation_panel = card
+    add_child(card)
+    card.configure(title, message, confirm_text)
+    card.confirmed.connect(action)
+    card.tree_exited.connect(func() -> void: confirmation_panel = null)
+
+func _reset_album_local() -> void:
+    if save_timer != null and not save_timer.is_stopped():
+        save_timer.stop()
+    if reward_client != null and is_instance_valid(reward_client) and reward_client.has_method("shutdown"):
+        reward_client.shutdown()
+    if ProgressStoreScript.reset_local_journey():
+        get_tree().reload_current_scene()
+    else:
+        hud.update_discovery("Nie udało się wyczyścić lokalnego postępu")
+
 func _apply_sensory_mode() -> void:
     if room != null and is_instance_valid(room):
         room.set_calm_mode(calm_mode)
@@ -657,6 +688,10 @@ func _apply_sensory_mode() -> void:
     if haptics != null:
         haptics.set_calm_mode(calm_mode)
         haptics.set_enabled(haptics_enabled and not quiet_mode)
+    if transition_director != null and transition_director.has_method("set_reduced_motion"):
+        transition_director.set_reduced_motion(reduced_motion)
+    if finale_background != null and is_instance_valid(finale_background):
+        finale_background.configure(reduced_motion, quiet_visuals)
 
 func _apply_audio_levels() -> void:
     if audio_director != null:
@@ -702,73 +737,49 @@ func _save_album_state() -> void:
     _populate_settings_state()
     ProgressStoreScript.save_album(album_state)
 
+func _prepare_finale_background() -> void:
+    if finale_background != null and is_instance_valid(finale_background):
+        return
+    finale_background = EchoesFinaleBackgroundScript.new()
+    finale_background.name = "EchoesFinaleBackground"
+    add_child(finale_background)
+    finale_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    finale_background.configure(reduced_motion, quiet_visuals)
+    move_child(finale_background, room_layer.get_index() + 1)
+
 func _show_reward_panel() -> void:
     if reward_panel != null:
         return
-    hud.show_final()
-    reward_panel = UIFactory.modal(self, Vector2(510.0, 720.0))
-    var content: VBoxContainer = UIFactory.modal_content(reward_panel, 9)
-    content.add_child(UIFactory.heading("Twój Sygnał dotarł"))
-    content.add_child(UIFactory.body("Ukończyłeś cały album. Po potwierdzeniu e-maila otrzymujesz jedną płytę VIRYA na nasz koszt. Dane wysyłkowe podasz dopiero w bezpiecznym formularzu z wiadomości."))
-    reward_email = LineEdit.new()
-    reward_email.placeholder_text = "E-mail do potwierdzenia nagrody"
-    reward_email.custom_minimum_size = Vector2(0.0, 46.0)
-    content.add_child(reward_email)
-    reward_city = LineEdit.new()
-    reward_city.placeholder_text = "Miasto Sygnału, np. Wrocław"
-    reward_city.custom_minimum_size = Vector2(0.0, 46.0)
-    content.add_child(reward_city)
-    reward_marketing = CheckBox.new()
-    reward_marketing.text = "Chcę otrzymywać informacje od VIRYA"
-    content.add_child(reward_marketing)
-    var note: Label = UIFactory.body("Zgoda marketingowa jest dobrowolna i oddzielona od odbioru płyty.")
-    note.add_theme_font_size_override("font_size", 11)
-    content.add_child(note)
-    reward_status = UIFactory.body("")
-    reward_status.add_theme_color_override("font_color", Color("82bfff"))
-    content.add_child(reward_status)
-    reward_claim_button = UIFactory.button("Odbierz płytę")
-    reward_claim_button.pressed.connect(_submit_reward_claim)
-    reward_claim_button.disabled = not bool(album_state.get("server_album_completed", false))
-    content.add_child(reward_claim_button)
-    if reward_claim_button.disabled:
-        reward_status.text = "Synchronizuję ukończenie z Sygnałem. Postęp jest bezpieczny lokalnie."
-    var replay: Button = UIFactory.button("Wróć do pierwszego pokoju")
-    replay.pressed.connect(_restart_album_view)
-    content.add_child(replay)
-    var saved_reward: Dictionary = ProgressStoreScript.load_reward()
-    if str(saved_reward.get("status", "")).begins_with("pending"):
-        reward_status.text = str(saved_reward.get("message", "Sprawdź skrzynkę i potwierdź nagrodę."))
-        reward_claim_button.disabled = true
+    _prepare_finale_background()
+    hud.visible = false
+    reward_panel = SignalFinaleCardScript.new()
+    reward_panel.name = "SignalFinaleCard"
+    add_child(reward_panel)
+    reward_panel.configure(bool(album_state.get("server_album_completed", false)), ProgressStoreScript.load_reward())
+    reward_panel.claim_requested.connect(_submit_reward_claim_values)
+    reward_panel.reset_requested.connect(_confirm_reset_album)
 
-func _submit_reward_claim() -> void:
+func _submit_reward_claim_values(email: String, city: String, marketing: bool) -> void:
     if reward_client == null:
-        reward_status.text = "Sygnał jest chwilowo niedostępny. Ukończenie pozostało zapisane lokalnie."
+        reward_panel.set_status("Sygnał jest chwilowo niedostępny. Ukończenie pozostało zapisane lokalnie.")
         return
     if not bool(album_state.get("server_album_completed", false)):
-        reward_status.text = "Najpierw kończę synchronizację jedenastu pokojów."
-        reward_claim_button.disabled = true
+        reward_panel.set_status("Najpierw kończę synchronizację jedenastu pokojów.")
+        reward_panel.set_claim_enabled(false)
         _sync_completed_rooms_to_server(int(reward_client.get_run_state().get("next_room_index", 0)))
         return
-    var email: String = reward_email.text.strip_edges()
     if not _looks_like_email(email):
-        reward_status.text = "Podaj poprawny adres e-mail."
+        reward_panel.set_status("Podaj poprawny adres e-mail.")
         return
-    var city_slug: String = _slugify_city(reward_city.text)
-    if reward_marketing.button_pressed and city_slug.is_empty():
-        reward_status.text = "Przy zapisie do Sygnału podaj swoje miasto."
+    var city_slug: String = _slugify_city(city)
+    if marketing and city_slug.is_empty():
+        reward_panel.set_status("Przy zapisie do Sygnału podaj swoje miasto.")
         return
     var config_value: Variant = index_document.get("reward", {})
     var config: Dictionary = config_value if config_value is Dictionary else {}
-    reward_claim_button.disabled = true
-    reward_status.text = "Łączę ukończenie z nagrodą…"
-    reward_client.claim_reward(email, city_slug, reward_marketing.button_pressed, str(config.get("policy_version", "virya-signal-2026-08")))
-
-func _restart_album_view() -> void:
-    _remove_modal(reward_panel)
-    reward_panel = null
-    room_layer.visible = true
-    _load_room(0, false)
+    reward_panel.set_claim_enabled(false)
+    reward_panel.set_status("Łączę ukończenie z nagrodą…")
+    reward_client.claim_reward(email, city_slug, marketing, str(config.get("policy_version", "virya-signal-2026-08")))
 
 func _on_run_started(_run_id: String, _run_token: String, next_room_index: int) -> void:
     ProgressStoreScript.save_run(reward_client.get_run_state())
@@ -811,30 +822,27 @@ func _on_album_recorded() -> void:
     album_state["server_album_completed"] = true
     _save_album_state()
     ProgressStoreScript.save_run(reward_client.get_run_state())
-    if reward_status != null:
-        reward_status.text = "Ukończenie potwierdzone. Możesz odebrać płytę."
-    if reward_claim_button != null:
-        reward_claim_button.disabled = false
+    if reward_panel != null and is_instance_valid(reward_panel):
+        reward_panel.set_status("Ukończenie potwierdzone. Możesz odebrać płytę.")
+        reward_panel.set_claim_enabled(true)
 
 func _on_reward_claimed(status: String, message: String) -> void:
     ProgressStoreScript.save_reward({"status": status, "message": message, "claimed_at_unix": int(Time.get_unix_time_from_system())})
-    if reward_status != null:
-        reward_status.text = message
-    if reward_claim_button != null:
-        reward_claim_button.disabled = true
+    if reward_panel != null and is_instance_valid(reward_panel):
+        reward_panel.set_status(message)
+        reward_panel.set_claim_enabled(false)
 
 func _on_reward_request_failed(operation: String, message: String) -> void:
-    if operation == "claim_reward" and reward_status != null:
-        reward_status.text = message
-        if reward_claim_button != null:
-            reward_claim_button.disabled = false
+    if operation == "claim_reward" and reward_panel != null and is_instance_valid(reward_panel):
+        reward_panel.set_status(message)
+        reward_panel.set_claim_enabled(true)
     else:
         hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")
 
 func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
     var text_value: String = "Ponawiam połączenie z Sygnałem · próba %d/3" % attempt
-    if operation == "claim_reward" and reward_status != null:
-        reward_status.text = text_value
+    if operation == "claim_reward" and reward_panel != null and is_instance_valid(reward_panel):
+        reward_panel.set_status(text_value)
     else:
         hud.update_discovery(text_value)
 
@@ -843,10 +851,9 @@ func _on_reward_run_invalidated() -> void:
     album_state["server_recorded_room_ids"] = []
     album_state["server_album_completed"] = false
     _save_album_state()
-    if reward_status != null:
-        reward_status.text = "Odnawiam bezpieczne połączenie z Sygnałem…"
-    if reward_claim_button != null:
-        reward_claim_button.disabled = true
+    if reward_panel != null and is_instance_valid(reward_panel):
+        reward_panel.set_status("Odnawiam bezpieczne połączenie z Sygnałem…")
+        reward_panel.set_claim_enabled(false)
 
 func _looks_like_email(value: String) -> bool:
     var at: int = value.find("@")
@@ -894,6 +901,10 @@ func _unhandled_input(event: InputEvent) -> void:
         get_viewport().set_input_as_handled()
 
 func _handle_back_request() -> bool:
+    if confirmation_panel != null:
+        _remove_modal(confirmation_panel)
+        confirmation_panel = null
+        return true
     if settings_panel != null:
         _close_settings()
         return true
@@ -920,6 +931,14 @@ func _notification(what: int) -> void:
             _save_progress()
         else:
             _save_album_state()
+
+func _exit_tree() -> void:
+    if save_timer != null and not save_timer.is_stopped():
+        save_timer.stop()
+    if reward_client != null and is_instance_valid(reward_client) and reward_client.has_method("shutdown"):
+        reward_client.shutdown()
+    if asset_preloader != null and is_instance_valid(asset_preloader) and asset_preloader.has_method("drain"):
+        asset_preloader.drain()
 
 func _show_fatal_error(message: String) -> void:
     var label: Label = Label.new()

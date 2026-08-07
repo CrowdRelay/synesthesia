@@ -13,7 +13,7 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
             var wave: float = sin(float(sample) * 0.58 + phase * 4.0 + float(index))
             var y: float = baseline + float(index) * 16.0 + wave * (8.0 + progress * 17.0)
             points.append(Vector2(x, y))
-        canvas.draw_polyline(points, accent.with_alpha(0.08 + progress * 0.08), 1.3 + float(index) * 0.25, true)
+        canvas.draw_polyline(points, Color(accent, 0.08 + progress * 0.08), 1.3 + float(index) * 0.25, true)
 
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.72 and not bool(state.get("horizon", false)) and point_norm.y < 0.44 + radius_norm:

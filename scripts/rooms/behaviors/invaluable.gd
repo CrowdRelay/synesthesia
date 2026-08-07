@@ -16,11 +16,11 @@ func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> v
     for index in range(MIRRORS.size()):
         var center: Vector2 = Vector2(MIRRORS[index].x * viewport_size.x, MIRRORS[index].y * viewport_size.y)
         var rect: Rect2 = Rect2(center - Vector2(34.0, 58.0), Vector2(68.0, 116.0))
-        canvas.draw_rect(rect, accent.with_alpha(0.08 + progress * 0.08), false, 1.4)
+        canvas.draw_rect(rect, Color(accent, 0.08 + progress * 0.08), false, 1.4)
         if cracked.has(index):
             for branch in range(6):
                 var angle: float = float(branch) * TAU / 6.0
-                canvas.draw_line(center, center + Vector2.from_angle(angle) * 46.0, Color.WHITE.with_alpha(0.26), 1.0)
+                canvas.draw_line(center, center + Vector2.from_angle(angle) * 46.0, Color(Color.WHITE, 0.26), 1.0)
 
 func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Array[Dictionary]:
     var cracked_value: Variant = state.get("cracked", [])

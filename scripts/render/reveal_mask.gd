@@ -262,20 +262,25 @@ func _grain(x: int, y: int, seed: int, profile: String) -> float:
     var base: float = _hash01(x, y, seed)
     match profile:
         "dry_ink":
-            return 0.30 + 0.70 * step(0.28, base)
+            return 0.30 + 0.70 * _threshold(base, 0.28)
         "glitch":
-            var stripe: float = _hash01(x / 5, y / 2, seed + 91)
-            return 0.18 + 0.82 * step(0.22, stripe)
+            var stripe_x: int = int(floor(float(x) / 5.0))
+            var stripe_y: int = int(floor(float(y) / 2.0))
+            var stripe: float = _hash01(stripe_x, stripe_y, seed + 91)
+            return 0.18 + 0.82 * _threshold(stripe, 0.22)
         "glass":
             return 0.50 + 0.50 * abs(sin(float(x + y + seed) * 0.31))
         "confetti":
-            return 0.35 + 0.65 * step(0.36, base)
+            return 0.35 + 0.65 * _threshold(base, 0.36)
         "ember":
             return 0.38 + 0.62 * pow(base, 0.45)
         "organic":
             return 0.48 + 0.52 * (0.5 + 0.5 * sin(float(x * 3 + y * 2 + seed) * 0.11))
         _:
             return 0.58 + 0.42 * base
+
+func _threshold(value: float, edge: float) -> float:
+    return 0.0 if value < edge else 1.0
 
 func _hash01(x: int, y: int, seed: int) -> float:
     var value: float = sin(float(x * 127 + y * 311 + seed * 74) * 0.0171) * 43758.5453

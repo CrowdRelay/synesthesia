@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROOMS = ROOT / "assets" / "rooms" / "vertical"
 MAX_ACTIVE_BYTES = 9 * 1024 * 1024
 MAX_CURRENT_PLUS_NEXT = 19 * 1024 * 1024
+MAX_FINALE_BYTES = 5 * 1024 * 1024
 EXPECTED = {
     "bg": ((405, 720), 3),
     "scene": ((675, 1200), 3),
@@ -103,6 +104,21 @@ if peak * 2 > MAX_CURRENT_PLUS_NEXT:
         f"{MAX_CURRENT_PLUS_NEXT / 1048576:.2f} MiB"
     )
 
+finale_path = ROOT / "assets" / "finale" / "echoes-finale.webp"
+finale_bytes = 0
+if not finale_path.is_file():
+    failures.append("missing Echoes finale image")
+else:
+    try:
+        finale_size = webp_size(finale_path)
+        finale_bytes = finale_size[0] * finale_size[1] * 3
+        if finale_size != (810, 1440):
+            failures.append(f"finale: {finale_size} != (810, 1440)")
+        if finale_bytes > MAX_FINALE_BYTES:
+            failures.append(f"finale decoded {finale_bytes / 1048576:.2f} MiB exceeds {MAX_FINALE_BYTES / 1048576:.2f} MiB")
+    except (OSError, ValueError, struct.error) as exc:
+        failures.append(f"finale unreadable WebP ({exc})")
+
 if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
@@ -111,5 +127,5 @@ if failures:
 print(
     "SYNESTHESIA_MEMORY_BUDGET=PASS "
     f"rooms={len(per_room)} peak_decoded={peak / 1048576:.2f}MiB "
-    f"current_plus_next={peak * 2 / 1048576:.2f}MiB parser=stdlib-webp"
+    f"current_plus_next={peak * 2 / 1048576:.2f}MiB finale={finale_bytes / 1048576:.2f}MiB parser=stdlib-webp"
 )

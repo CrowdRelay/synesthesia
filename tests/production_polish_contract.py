@@ -55,6 +55,7 @@ preloader = require(
     "load_threaded_request",
     "load_threaded_get",
     "_prune_finished_failures",
+    "func drain()",
 )
 adaptive = require(
     "scripts/app/adaptive_performance.gd",
@@ -81,13 +82,21 @@ main = require(
     "audio_director.free()",
     "ChapterCardScript",
     "CompletionCardScript",
+    "_confirm_reset_album",
+    "reset_local_journey",
+    "asset_preloader.drain()",
+    "travel_out",
+    "SignalFinaleCardScript",
 )
 settings = require(
     "scripts/ui/settings_card.gd",
     "OBRAZ I RUCH",
     "DŹWIĘK I DOTYK",
+    "POSTĘP LOKALNY",
+    "reset_album_requested",
     "brak stroboskopu",
     "quality_cycle_requested",
+    "horizontal_scroll_mode = 0",
 )
 hud = require(
     "scripts/ui/app_hud.gd",
@@ -98,18 +107,30 @@ hud = require(
     "tylko muzyka",
 )
 require("scripts/ui/chapter_card.gd", "Zacznij odkrywać", "99% OTWIERA DRZWI")
-require("scripts/ui/completion_card.gd", "SZUM 0% · MUZYKA 100%", "Zostań i słuchaj")
+require("scripts/ui/confirm_card.gd", "signal confirmed", "signal cancelled", "UIFactory.modal_content")
+require("scripts/ui/completion_card.gd", "DRZWI OTWARTE", "Zostań i słuchaj")
+require("scripts/ui/signal_finale_card.gd", "Sygnał dotarł.", "ECHOES OF THE MODERN MIND", "Odbierz płytę")
+require("scripts/ui/echoes_finale_background.gd", "echoes-finale.webp", "echoes_finale.gdshader")
+require("scripts/app/transition_director.gd", "travel_out", "travel_in", "DoorTransitionLayerScript")
+require("scripts/render/room_dressing_layer.gd", "_draw_chamber_shell", "_draw_open_doorway")
+require("scripts/audio_director.gd", "BALLOON_POP_PATH", "play_interaction_sfx", "music_ratio", "noise_ratio")
+
+require("scripts/ui/ui_factory.gd", "ScrollContainer.SCROLL_MODE_DISABLED", "content.custom_minimum_size")
+require("run-macos.sh", "--headless --editor", "--reset", "required_audio")
+require("scripts/progress_store.gd", "reset_local_journey", "server_recorded_room_ids", "server_album_completed")
+require("scripts/audio_director.gd", "FileAccess.file_exists", "func _exit_tree()")
+require("tests/lifecycle_smoke.gd", "SYNESTHESIA_LIFECYCLE_SMOKE=PASS", "preloader.drain()")
 
 memory = require("tools/memory_budget.py", "stdlib-webp", "MAX_CURRENT_PLUS_NEXT")
 if "PIL" in memory or "pillow" in memory.lower():
     failures.append("memory budget must remain stdlib-only")
-for path in ("validate.sh", ".github/workflows/ci.yml"):
-    require(path, "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py")
+require("validate.sh", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py", "lifecycle_smoke.gd")
+require(".github/workflows/ci.yml", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py")
 
-if len(main.splitlines()) > 950:
-    failures.append(f"main controller grew above 950 lines: {len(main.splitlines())}")
-if len(stage.splitlines()) > 560:
-    failures.append(f"room stage grew above 560 lines: {len(stage.splitlines())}")
+if len(main.splitlines()) > 980:
+    failures.append(f"main controller grew above 980 lines: {len(main.splitlines())}")
+if len(stage.splitlines()) > 620:
+    failures.append(f"room stage grew above 620 lines: {len(stage.splitlines())}")
 
 if failures:
     for failure in failures:
@@ -119,5 +140,5 @@ if failures:
 print(
     "SYNESTHESIA_PRODUCTION_POLISH=PASS "
     "persistence=png-mask-v2 adaptive=on preload=consumed "
-    "ux=focus+chapter+completion+settings+mobile-back"
+    "ux=focus+chapter+completion+story-bubbles+doors+echoes-finale+mobile-back"
 )

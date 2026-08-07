@@ -14,8 +14,8 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
         points.append(center + Vector2(0.0, 38.0 - lift))
         points.append(center + Vector2(side * wing_span * 0.48, -18.0 - lift + sin(phase * 3.0) * 4.0))
         points.append(center + Vector2(side * wing_span, 24.0 - lift))
-        canvas.draw_polyline(points, accent.with_alpha(0.12 + progress * 0.22), 2.0 + progress * 2.5, true)
-    canvas.draw_circle(center + Vector2(0.0, 18.0 - lift), 8.0 + progress * 8.0, accent.with_alpha(0.12 + progress * 0.20))
+        canvas.draw_polyline(points, Color(accent, 0.12 + progress * 0.22), 2.0 + progress * 2.5, true)
+    canvas.draw_circle(center + Vector2(0.0, 18.0 - lift), 8.0 + progress * 8.0, Color(accent, 0.12 + progress * 0.20))
 
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.72 and not bool(state.get("phoenix", false)) and _near(point_norm, Vector2(0.5, 0.48), radius_norm + 0.16):

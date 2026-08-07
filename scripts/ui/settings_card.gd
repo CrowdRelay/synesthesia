@@ -3,6 +3,7 @@ extends Control
 signal close_requested
 signal reload_requested
 signal reset_requested
+signal reset_album_requested
 signal calm_changed(value: bool)
 signal quiet_changed(value: bool)
 signal visuals_changed(value: bool)
@@ -20,6 +21,8 @@ var _quiet_visuals: bool = false
 var _reduced_motion: bool = false
 var _haptics: bool = true
 var _quality_button: Button
+var _has_room: bool = true
+var _album_completed: bool = false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -31,6 +34,8 @@ func configure(state: Dictionary, quality_label: String, version: String) -> voi
     _quiet_visuals = bool(state.get("quiet_visuals", false))
     _reduced_motion = bool(state.get("reduced_motion", false))
     _haptics = bool(state.get("haptics", true))
+    _has_room = bool(state.get("has_room", true))
+    _album_completed = bool(state.get("album_completed", false))
     _build(
         clampf(float(state.get("music", 1.0)), 0.0, 1.0),
         clampf(float(state.get("noise", 1.0)), 0.0, 1.0),
@@ -65,9 +70,12 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     var scroll: ScrollContainer = ScrollContainer.new()
     scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    scroll.horizontal_scroll_mode = 0
+    scroll.vertical_scroll_mode = 1
     panel.add_child(scroll)
     var content: VBoxContainer = VBoxContainer.new()
     content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    content.custom_minimum_size = Vector2(maxf(250.0, width - 48.0), 0.0)
     content.add_theme_constant_override("separation", 8)
     scroll.add_child(content)
 
@@ -133,13 +141,25 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     content.add_child(_slider_row("Muzyka", music, music_changed))
     content.add_child(_slider_row("Różowy szum", noise, noise_changed))
 
-    content.add_child(_section("POKÓJ"))
-    var reload_button: Button = UIFactory.button("Zastosuj jakość i przeładuj pokój")
-    reload_button.pressed.connect(func() -> void: reload_requested.emit())
-    content.add_child(reload_button)
-    var reset_button: Button = UIFactory.button("Od nowa ten pokój…")
-    reset_button.pressed.connect(func() -> void: reset_requested.emit())
-    content.add_child(reset_button)
+    if _has_room:
+        content.add_child(_section("POKÓJ"))
+        var reload_button: Button = UIFactory.button("Zastosuj jakość i przeładuj pokój")
+        reload_button.pressed.connect(func() -> void: reload_requested.emit())
+        content.add_child(reload_button)
+        var reset_button: Button = UIFactory.button("Od nowa ten pokój…")
+        reset_button.pressed.connect(func() -> void: reset_requested.emit())
+        content.add_child(reset_button)
+
+    content.add_child(_section("POSTĘP LOKALNY"))
+    var reset_album_label: String = "Zagraj od nowa · wyczyść lokalną podróż…" if _album_completed else "Wyczyść całą lokalną podróż…"
+    var reset_album_button: Button = UIFactory.button(reset_album_label)
+    reset_album_button.pressed.connect(func() -> void: reset_album_requested.emit())
+    content.add_child(reset_album_button)
+    var reset_note: Label = UIFactory.body("Reset czyści malowanie i czasy 11 pokojów. Nie cofa odebranej nagrody ani stanu po stronie Sygnału.")
+    reset_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+    reset_note.add_theme_font_size_override("font_size", 10)
+    reset_note.add_theme_color_override("font_color", Color("718398"))
+    content.add_child(reset_note)
 
     var note: Label = UIFactory.body("v%s · postęp zapisuje się lokalnie · brak stroboskopu" % version)
     note.add_theme_font_size_override("font_size", 9)
@@ -158,12 +178,14 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
 func _section(text_value: String) -> Label:
     var label: Label = Label.new()
     label.text = text_value
+    label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     label.add_theme_font_size_override("font_size", 9)
     label.add_theme_color_override("font_color", Color("8fbef4"))
     return label
 
 func _slider_row(label_text: String, value: float, signal_ref: Signal) -> VBoxContainer:
     var container: VBoxContainer = VBoxContainer.new()
+    container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     var label: Label = UIFactory.body("%s · %d%%" % [label_text, int(round(value * 100.0))])
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     label.add_theme_font_size_override("font_size", 11)

@@ -20,8 +20,10 @@ var journey_row: HBoxContainer
 var settings_button: Button
 var toast_panel: PanelContainer
 var toast_label: Label
+var toast_accent_bar: ColorRect
 var act_banner: PanelContainer
 var act_banner_label: Label
+var act_accent_bar: ColorRect
 var _painting: bool = false
 var _context_seen: bool = false
 var _restore_timer: Timer
@@ -42,6 +44,7 @@ func _ready() -> void:
     _toast_timer = _timer(2.7, _hide_toast)
     _act_timer = _timer(1.65, _hide_act_banner)
     call_deferred("_apply_mobile_safe_area")
+    call_deferred("_layout_story_overlays")
 
 func _timer(wait: float, callback: Callable) -> Timer:
     var timer: Timer = Timer.new()
@@ -94,6 +97,7 @@ func _build_top() -> void:
     row.add_child(settings_button)
 
     subtitle_label = Label.new()
+    subtitle_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     subtitle_label.add_theme_font_size_override("font_size", 10)
     subtitle_label.add_theme_color_override("font_color", Color("aab8ca"))
@@ -157,42 +161,80 @@ func _build_bottom() -> void:
     content.add_child(brush_label)
 
 func _build_toast() -> void:
-    var margin: MarginContainer = MarginContainer.new()
-    margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    margin.add_theme_constant_override("margin_left", 28)
-    margin.add_theme_constant_override("margin_right", 28)
-    margin.add_theme_constant_override("margin_bottom", 112)
-    add_child(margin)
-    margin.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
     toast_panel = PanelContainer.new()
     toast_panel.visible = false
     toast_panel.modulate.a = 0.0
     toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    toast_panel.add_theme_stylebox_override("panel", UIFactory.panel_style(Color("080d17ed"), 14, Color("9fc9ff31")))
-    margin.add_child(toast_panel)
+    toast_panel.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.94, true))
+    add_child(toast_panel)
+    var row: HBoxContainer = HBoxContainer.new()
+    row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    row.add_theme_constant_override("separation", 10)
+    toast_panel.add_child(row)
+    toast_accent_bar = ColorRect.new()
+    toast_accent_bar.color = _accent
+    toast_accent_bar.custom_minimum_size = Vector2(3.0, 28.0)
+    toast_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(toast_accent_bar)
     toast_label = Label.new()
-    toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    toast_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+    toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     toast_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    toast_label.custom_minimum_size = Vector2(360.0, 0.0)
     toast_label.add_theme_font_size_override("font_size", 11)
-    toast_label.add_theme_color_override("font_color", Color("dce9f6"))
-    toast_panel.add_child(toast_label)
+    toast_label.add_theme_color_override("font_color", Color("e6f1ff"))
+    row.add_child(toast_label)
 
 func _build_act_banner() -> void:
     act_banner = PanelContainer.new()
     act_banner.visible = false
     act_banner.modulate.a = 0.0
     act_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    act_banner.add_theme_stylebox_override("panel", UIFactory.panel_style(Color("060a12e8"), 12, Color("f3d39d33")))
+    act_banner.add_theme_stylebox_override("panel", UIFactory.story_style(Color("f3d39d"), 0.93, true))
     add_child(act_banner)
-    act_banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
-    act_banner.position = Vector2(-150.0, 146.0)
-    act_banner.custom_minimum_size = Vector2(300.0, 46.0)
+    var row: HBoxContainer = HBoxContainer.new()
+    row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    row.add_theme_constant_override("separation", 10)
+    act_banner.add_child(row)
+    act_accent_bar = ColorRect.new()
+    act_accent_bar.color = Color("f3d39d")
+    act_accent_bar.custom_minimum_size = Vector2(3.0, 26.0)
+    act_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(act_accent_bar)
     act_banner_label = Label.new()
-    act_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    act_banner_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    act_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     act_banner_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    act_banner_label.add_theme_font_size_override("font_size", 11)
-    act_banner_label.add_theme_color_override("font_color", Color("f4e3bf"))
-    act_banner.add_child(act_banner_label)
+    act_banner_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+    act_banner_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+    act_banner_label.custom_minimum_size = Vector2(360.0, 0.0)
+    act_banner_label.add_theme_font_size_override("font_size", 10)
+    act_banner_label.add_theme_color_override("font_color", Color("f7e7c7"))
+    row.add_child(act_banner_label)
+    _layout_story_overlays()
+
+func _layout_story_overlays() -> void:
+    var viewport_size: Vector2 = get_viewport_rect().size
+    if viewport_size.x <= 1.0 or viewport_size.y <= 1.0:
+        return
+    var side: float = clampf(viewport_size.x * 0.055, 22.0, 34.0)
+    if toast_panel != null:
+        toast_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+        toast_panel.offset_left = side
+        toast_panel.offset_right = -side
+        toast_panel.offset_top = -180.0
+        toast_panel.offset_bottom = -108.0
+        toast_panel.custom_minimum_size = Vector2(maxf(420.0, viewport_size.x - side * 2.0), 72.0)
+        toast_label.custom_minimum_size = Vector2(maxf(360.0, viewport_size.x - side * 2.0 - 58.0), toast_label.custom_minimum_size.y)
+    if act_banner != null:
+        act_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+        act_banner.offset_left = side
+        act_banner.offset_right = -side
+        act_banner.offset_top = 138.0
+        act_banner.offset_bottom = 198.0
+        act_banner.custom_minimum_size = Vector2(maxf(420.0, viewport_size.x - side * 2.0), 60.0)
+        act_banner_label.custom_minimum_size = Vector2(maxf(360.0, viewport_size.x - side * 2.0 - 58.0), act_banner_label.custom_minimum_size.y)
 
 func configure_room(title: String, subtitle: String, room_index: int, room_total: int, _album_progress: float, room_data: Dictionary) -> void:
     _room_index = room_index
@@ -206,6 +248,10 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     progress_label.text = "0% · szum prowadzi"
     act_label.text = "AKT I · ROZPOZNANIE"
     _accent = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
+    if toast_panel != null:
+        toast_panel.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.94, true))
+    if toast_accent_bar != null:
+        toast_accent_bar.color = _accent
     _set_palette(room_data)
     _rebuild_journey()
     _hide_toast()
@@ -293,7 +339,7 @@ func _rebuild_journey(force_complete: bool = false) -> void:
         var current: bool = not force_complete and index == _room_index
         dot.custom_minimum_size = Vector2(18.0 if current else 10.0, 2.0 if current else 2.0)
         if completed:
-            dot.color = _accent.with_alpha(0.64)
+            dot.color = Color(_accent, 0.64)
         elif current:
             dot.color = _accent
         else:
@@ -350,6 +396,7 @@ func _apply_mobile_safe_area() -> void:
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         call_deferred("_apply_mobile_safe_area")
+        call_deferred("_layout_story_overlays")
 
 func _brush_name(profile: String) -> String:
     match profile:

@@ -66,3 +66,15 @@ func _prune_finished_failures() -> void:
             stale.append(path)
     for path in stale:
         _queued.erase(path)
+
+func drain() -> void:
+    var paths: Array = _queued.keys()
+    for raw_path in paths:
+        var path: String = str(raw_path)
+        var status: int = int(ResourceLoader.load_threaded_get_status(path))
+        if status == ResourceLoader.THREAD_LOAD_LOADED or status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+            ResourceLoader.load_threaded_get(path)
+    _queued.clear()
+
+func _exit_tree() -> void:
+    drain()

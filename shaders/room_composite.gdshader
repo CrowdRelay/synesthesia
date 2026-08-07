@@ -30,6 +30,9 @@ uniform float brush_energy : hint_range(0.0, 1.0) = 0.0;
 uniform float film_grain_strength : hint_range(0.0, 1.0) = 0.32;
 uniform float subject_lift : hint_range(0.0, 1.0) = 0.0;
 uniform float runtime_scale : hint_range(0.5, 1.0) = 1.0;
+uniform float cinematic_time = 0.0;
+uniform float unlock_motion : hint_range(0.0, 1.0) = 0.0;
+uniform int unlock_profile = 0;
 
 float hash21(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -43,10 +46,61 @@ vec2 cover_uv(vec2 uv, float zoom, vec2 shift) {
 
 void fragment() {
     float motion_scale = reduced_motion ? 0.20 : runtime_scale;
-    vec2 scene_uv = cover_uv(UV, 1.018, parallax * scene_parallax * motion_scale);
-    vec2 back_uv = cover_uv(UV, 1.095, parallax * background_parallax * motion_scale);
-    vec2 subject_uv = cover_uv(UV, 1.026, parallax * subject_parallax * motion_scale);
-    vec2 foreground_uv = cover_uv(UV, 1.042, parallax * foreground_parallax * motion_scale);
+    float unlock = completion_reveal * unlock_motion * motion_scale;
+    float t = cinematic_time;
+    vec2 back_loop = vec2(0.0);
+    vec2 scene_loop = vec2(0.0);
+    vec2 subject_loop = vec2(0.0);
+    vec2 foreground_loop = vec2(0.0);
+    float unlock_zoom = 0.0;
+
+    if (unlock_profile == 0) { // Wave of Uncertainty — tidal breathing.
+        scene_loop = vec2(sin(t * 0.43) * 0.0014, cos(t * 0.37) * 0.0018);
+        foreground_loop = vec2(sin(t * 0.61) * 0.0020, -0.0010);
+    } else if (unlock_profile == 1) { // Party Time — restrained pulse.
+        unlock_zoom = (0.5 + 0.5 * sin(t * 1.55)) * 0.0032;
+        subject_loop = vec2(sin(t * 1.1) * 0.0012, cos(t * 1.35) * 0.0010);
+    } else if (unlock_profile == 2) { // Unmasked — masks breathe apart.
+        subject_loop = vec2(sin(t * 0.52) * 0.0018, cos(t * 0.47) * 0.0008);
+    } else if (unlock_profile == 3) { // The Calling — slow table/wine drift.
+        scene_loop = vec2(sin(t * 0.34) * 0.0010, cos(t * 0.29) * 0.0007);
+        foreground_loop = vec2(-sin(t * 0.41) * 0.0012, 0.0);
+    } else if (unlock_profile == 4) { // Seed — organic upward growth.
+        subject_loop = vec2(sin(t * 0.31) * 0.0008, -0.0015 - 0.0007 * sin(t * 0.47));
+        unlock_zoom = (0.5 + 0.5 * sin(t * 0.38)) * 0.0018;
+    } else if (unlock_profile == 5) { // Hybrid — heat haze / duel tension.
+        scene_loop = vec2(sin(t * 0.72) * 0.0015, sin(t * 1.21) * 0.0005);
+        subject_loop = vec2(-sin(t * 0.48) * 0.0010, 0.0);
+    } else if (unlock_profile == 6) { // Technophobia — tiny digital instability.
+        float tech = hash21(vec2(floor(t * 7.0), 13.0)) - 0.5;
+        subject_loop = vec2(tech * 0.0024, -tech * 0.0008);
+        foreground_loop = vec2(-tech * 0.0013, 0.0);
+    } else if (unlock_profile == 7) { // Invaluable — mirror shimmer.
+        subject_loop = vec2(sin(t * 0.39) * 0.0011, cos(t * 0.51) * 0.0007);
+        foreground_loop = vec2(cos(t * 0.33) * 0.0017, 0.0);
+    } else if (unlock_profile == 8) { // From the Ashes — phoenix rises.
+        subject_loop = vec2(sin(t * 0.44) * 0.0009, -0.0018 - 0.0008 * sin(t * 0.66));
+        foreground_loop = vec2(0.0, -0.0010);
+    } else if (unlock_profile == 9) { // Waves — slow intimate breathing.
+        scene_loop = vec2(sin(t * 0.25) * 0.0008, cos(t * 0.22) * 0.0007);
+        foreground_loop = vec2(-sin(t * 0.31) * 0.0012, 0.0);
+        unlock_zoom = (0.5 + 0.5 * sin(t * 0.24)) * 0.0014;
+    } else if (unlock_profile == 10) { // Rise — gentle upward light.
+        scene_loop = vec2(sin(t * 0.28) * 0.0007, -0.0010 - 0.0005 * sin(t * 0.35));
+        subject_loop = vec2(0.0, -0.0012);
+        unlock_zoom = (0.5 + 0.5 * sin(t * 0.30)) * 0.0016;
+    }
+
+    back_loop *= unlock;
+    scene_loop *= unlock;
+    subject_loop *= unlock;
+    foreground_loop *= unlock;
+    unlock_zoom *= unlock;
+
+    vec2 scene_uv = cover_uv(UV, 1.018 + unlock_zoom, parallax * scene_parallax * motion_scale + scene_loop);
+    vec2 back_uv = cover_uv(UV, 1.095 + unlock_zoom * 0.45, parallax * background_parallax * motion_scale + back_loop);
+    vec2 subject_uv = cover_uv(UV, 1.026 + unlock_zoom * 0.72, parallax * subject_parallax * motion_scale + subject_loop);
+    vec2 foreground_uv = cover_uv(UV, 1.042 + unlock_zoom * 1.10, parallax * foreground_parallax * motion_scale + foreground_loop);
     vec4 scene = texture(TEXTURE, scene_uv);
     vec4 back = texture(background_texture, back_uv);
     vec4 subject = texture(subject_texture, subject_uv);
@@ -81,7 +135,7 @@ void fragment() {
     float rolling_center = fract(TIME * mix(0.024, 0.09, motion) * motion_scale);
     float rolling_distance = abs(UV.y - rolling_center);
     rolling_distance = min(rolling_distance, 1.0 - rolling_distance);
-    float rolling = smoothstep(0.16, 0.0, rolling_distance);
+    float rolling = 1.0 - smoothstep(0.0, 0.16, rolling_distance);
     float tear_seed = hash21(vec2(floor(UV.y * 86.0), floor(TIME * 7.0 * motion_scale)));
     float tear = step(0.88, tear_seed) * sin((UV.x + TIME * 0.28) * 92.0);
 

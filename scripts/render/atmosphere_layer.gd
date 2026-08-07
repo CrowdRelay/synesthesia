@@ -69,20 +69,20 @@ func _draw() -> void:
         var alpha: float = (0.035 + 0.10 * visible_ratio) * (0.55 + 0.45 * sin(_time * 2.0 + phase))
         match style:
             "ashes":
-                draw_circle(point, radius * 0.75, accent.with_alpha(alpha * 1.35))
+                draw_circle(point, radius * 0.75, Color(accent, alpha * 1.35))
             "party":
                 var confetti_color: Color = accent if index % 2 == 0 else secondary
-                draw_rect(Rect2(point, Vector2(radius * 1.8, radius * 0.65)), confetti_color.with_alpha(alpha * 1.25), true)
+                draw_rect(Rect2(point, Vector2(radius * 1.8, radius * 0.65)), Color(confetti_color, alpha * 1.25), true)
             "uncertainty", "waves":
-                draw_line(point - Vector2(radius * 4.0, 0.0), point + Vector2(radius * 4.0, 0.0), accent.with_alpha(alpha * 0.70), maxf(1.0, radius * 0.45))
+                draw_line(point - Vector2(radius * 4.0, 0.0), point + Vector2(radius * 4.0, 0.0), Color(accent, alpha * 0.70), maxf(1.0, radius * 0.45))
             "technophobia":
-                draw_rect(Rect2(point, Vector2(radius * 4.0, maxf(1.0, radius * 0.55))), secondary.with_alpha(alpha), true)
+                draw_rect(Rect2(point, Vector2(radius * 4.0, maxf(1.0, radius * 0.55))), Color(secondary, alpha), true)
             "seed":
-                draw_line(point, point + Vector2(sin(phase) * radius * 2.0, -radius * 4.0), accent.with_alpha(alpha), maxf(1.0, radius * 0.35))
+                draw_line(point, point + Vector2(sin(phase) * radius * 2.0, -radius * 4.0), Color(accent, alpha), maxf(1.0, radius * 0.35))
             "invaluable":
-                draw_line(point - Vector2(radius * 2.0, radius * 2.0), point + Vector2(radius * 2.0, radius * 2.0), accent.with_alpha(alpha), maxf(1.0, radius * 0.30))
+                draw_line(point - Vector2(radius * 2.0, radius * 2.0), point + Vector2(radius * 2.0, radius * 2.0), Color(accent, alpha), maxf(1.0, radius * 0.30))
             _:
-                draw_circle(point, radius * 0.55, accent.with_alpha(alpha))
+                draw_circle(point, radius * 0.55, Color(accent, alpha))
 
 func _hash01(a: int, b: int) -> float:
     var value: float = sin(float(a * 127 + b * 311) * 0.0179) * 43758.5453

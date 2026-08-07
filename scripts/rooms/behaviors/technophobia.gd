@@ -16,14 +16,14 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
         if screens.has(index):
             continue
         var column: int = index % 3
-        var row: int = int(index / 3)
+        var row: int = int(floor(float(index) / 3.0))
         var rect: Rect2 = Rect2(44.0 + float(column) * 154.0, 140.0 + float(row) * 116.0, 112.0, 70.0)
         var jitter: float = sin(phase * 26.0 + float(index)) * (1.0 - progress) * 3.0
         rect.position.x += jitter
-        canvas.draw_rect(rect, Color.BLACK.with_alpha(0.18), true)
-        canvas.draw_rect(rect, accent.with_alpha(0.16 + (1.0 - progress) * 0.10), false, 1.6)
+        canvas.draw_rect(rect, Color(Color.BLACK, 0.18), true)
+        canvas.draw_rect(rect, Color(accent, 0.16 + (1.0 - progress) * 0.10), false, 1.6)
         if index % 2 == 0:
-            canvas.draw_line(rect.position + Vector2(8.0, 22.0), rect.end - Vector2(8.0, 22.0), secondary.with_alpha(0.18), 2.0)
+            canvas.draw_line(rect.position + Vector2(8.0, 22.0), rect.end - Vector2(8.0, 22.0), Color(secondary, 0.18), 2.0)
 
 func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Array[Dictionary]:
     var screens_value: Variant = state.get("screens", [])
@@ -32,7 +32,7 @@ func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Arra
         if screens.has(index):
             continue
         var column: int = index % 3
-        var row: int = int(index / 3)
+        var row: int = int(floor(float(index) / 3.0))
         var target: Vector2 = Vector2((100.0 + float(column) * 154.0) / 540.0, (175.0 + float(row) * 116.0) / 960.0)
         if _near(point_norm, target, radius_norm + 0.10):
             screens.append(index)

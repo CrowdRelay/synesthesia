@@ -16,6 +16,9 @@ func _initialize() -> void:
 func _run() -> void:
     _require_resource(MAIN_SCENE_PATH, "main scene")
     _require_resource(NOISE_PATH, "pink-noise loop")
+    var noise_resource: Resource = load(NOISE_PATH)
+    if not noise_resource is AudioStream:
+        _fail("pink-noise loop is not an AudioStream")
     _require_resource(COMPOSITE_SHADER_PATH, "composite shader")
     _require_resource(REVEAL_MASK_PATH, "reveal mask")
     _validate_mask_roundtrip()

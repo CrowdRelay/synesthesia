@@ -245,3 +245,16 @@ func _on_retry_timeout() -> void:
     if not request_data.is_empty():
         _queue.push_front(request_data)
     _pump()
+
+func shutdown() -> void:
+    _queue.clear()
+    _active = {}
+    _retry_request = {}
+    _busy = false
+    if _retry_timer != null and is_instance_valid(_retry_timer):
+        _retry_timer.stop()
+    if _http != null and is_instance_valid(_http):
+        _http.cancel_request()
+
+func _exit_tree() -> void:
+    shutdown()

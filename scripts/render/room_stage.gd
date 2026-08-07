@@ -12,6 +12,7 @@ const BrushEngineScript := preload("res://scripts/brush/brush_engine.gd")
 const RevealMaskScript := preload("res://scripts/render/reveal_mask.gd")
 const AtmosphereLayerScript := preload("res://scripts/render/atmosphere_layer.gd")
 const InteractionFxLayerScript := preload("res://scripts/render/interaction_fx_layer.gd")
+const RoomDressingLayerScript := preload("res://scripts/render/room_dressing_layer.gd")
 const CompositeShader := preload("res://shaders/room_composite.gdshader")
 
 @export var room_id: String = ""
@@ -27,6 +28,7 @@ var composite: TextureRect
 var composite_material: ShaderMaterial
 var atmosphere
 var interaction_fx
+var room_dressing
 var interaction_enabled: bool = true
 var calm_mode: bool = true
 var reduced_motion: bool = false
@@ -54,6 +56,8 @@ var _brush_energy: float = 0.0
 var _runtime_scale: float = 1.0
 var _last_parallax_sent: Vector2 = Vector2(99.0, 99.0)
 var _last_coverage_emitted: float = -1.0
+var _cinematic_elapsed: float = 0.0
+var _unlock_profile: int = 0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -79,6 +83,12 @@ func _build_composite() -> void:
     atmosphere.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(atmosphere)
     atmosphere.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+    room_dressing = RoomDressingLayerScript.new()
+    room_dressing.name = "RoomDressing"
+    room_dressing.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    add_child(room_dressing)
+    room_dressing.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
     interaction_fx = InteractionFxLayerScript.new()
     interaction_fx.name = "InteractionFx"
@@ -125,6 +135,12 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     )
     interaction_fx.configure(accent_color, secondary_color)
     interaction_fx.set_sensory(calm_mode, reduced_motion)
+    room_dressing.configure(str(room_data.get("visual_style", "uncertainty")), accent_color, secondary_color)
+    room_dressing.set_reduced_motion(reduced_motion)
+    _unlock_profile = _unlock_profile_index(str(room_data.get("visual_style", "uncertainty")))
+    composite_material.set_shader_parameter("unlock_profile", _unlock_profile)
+    composite_material.set_shader_parameter("cinematic_time", 0.0)
+    composite_material.set_shader_parameter("unlock_motion", 0.0)
     _set_progress_from_mask()
     queue_redraw()
 
@@ -171,6 +187,9 @@ func _configure_art(room_data: Dictionary, asset_source = null) -> void:
     composite_material.set_shader_parameter("brush_energy", 0.0)
     composite_material.set_shader_parameter("subject_lift", 0.0)
     composite_material.set_shader_parameter("runtime_scale", _runtime_scale)
+    composite_material.set_shader_parameter("cinematic_time", 0.0)
+    composite_material.set_shader_parameter("unlock_motion", 0.0)
+    composite_material.set_shader_parameter("unlock_profile", 0)
 
 func _take_texture(path: String, asset_source = null) -> Texture2D:
     if path.is_empty():
@@ -185,6 +204,18 @@ func _take_texture(path: String, asset_source = null) -> Texture2D:
 func _process(delta: float) -> void:
     var target: float = 1.0 if door_target_open else 0.0
     door_open_amount = move_toward(door_open_amount, target, delta * 0.82)
+    if room_dressing != null:
+        room_dressing.set_door_open_amount(door_open_amount)
+
+    if cinematic_revealed:
+        _cinematic_elapsed = fmod(_cinematic_elapsed + delta, 10000.0)
+        var camera_amount: float = 0.045 if reduced_motion else (0.20 if calm_mode else 0.27)
+        var camera_speed: float = 0.22 + float(_unlock_profile % 4) * 0.018
+        target_parallax = Vector2(
+            sin(_cinematic_elapsed * TAU * camera_speed) * camera_amount,
+            sin(_cinematic_elapsed * TAU * camera_speed * 0.53 + 0.8) * camera_amount * 0.24
+        )
+        composite_material.set_shader_parameter("cinematic_time", _cinematic_elapsed)
     var motion_factor: float = 0.18 if reduced_motion else (0.58 if calm_mode else 0.90)
     smoothed_parallax = smoothed_parallax.lerp(target_parallax, clampf(delta * 4.5 * motion_factor, 0.0, 1.0))
     if smoothed_parallax.distance_squared_to(_last_parallax_sent) > 0.000001:
@@ -193,6 +224,9 @@ func _process(delta: float) -> void:
 
     _cinematic_mix = move_toward(_cinematic_mix, _cinematic_target, delta * (1.05 if reduced_motion else 1.42))
     composite_material.set_shader_parameter("completion_reveal", _cinematic_mix)
+    composite_material.set_shader_parameter("unlock_motion", _cinematic_mix * (0.10 if reduced_motion else 1.0))
+    if room_dressing != null:
+        room_dressing.set_cinematic(_cinematic_mix)
     _brush_energy = move_toward(_brush_energy, 0.0, delta * (2.8 if calm_mode else 3.8))
     composite_material.set_shader_parameter("brush_energy", _brush_energy)
 
@@ -223,6 +257,8 @@ func set_reduced_motion(value: bool) -> void:
     reduced_motion = value
     atmosphere.set_sensory(calm_mode, reduced_motion)
     interaction_fx.set_sensory(calm_mode, reduced_motion)
+    if room_dressing != null:
+        room_dressing.set_reduced_motion(reduced_motion)
     composite_material.set_shader_parameter("reduced_motion", value)
 
 func set_quiet_visuals(value: bool) -> void:
@@ -235,9 +271,12 @@ func set_interaction_enabled(value: bool) -> void:
         _end_stroke()
 
 func set_cinematic_reveal(value: bool, instant: bool = false) -> void:
+    var was_revealed: bool = cinematic_revealed
     cinematic_revealed = value
     _cinematic_target = 1.0 if value else 0.0
     if value:
+        if not was_revealed:
+            _cinematic_elapsed = 0.0
         composite_material.set_shader_parameter("completion_origin", pointer_norm)
         if instant:
             _cinematic_mix = 1.0
@@ -255,6 +294,8 @@ func set_runtime_budget(scale: float) -> void:
     composite_material.set_shader_parameter("runtime_scale", _runtime_scale)
     _texture_upload_hz = maxf(12.0, _base_texture_upload_hz * _runtime_scale)
     atmosphere.set_runtime_scale(_runtime_scale)
+    if room_dressing != null:
+        room_dressing.set_runtime_scale(_runtime_scale)
 
 func set_door_open(value: bool) -> void:
     door_target_open = value
@@ -271,6 +312,8 @@ func reset_room() -> void:
     cinematic_revealed = false
     _cinematic_mix = 0.0
     _cinematic_target = 0.0
+    _cinematic_elapsed = 0.0
+    target_parallax = Vector2.ZERO
     _brush_energy = 0.0
     composite_material.set_shader_parameter("completion_reveal", 0.0)
     composite_material.set_shader_parameter("brush_energy", 0.0)
@@ -446,6 +489,8 @@ func _set_progress_from_mask() -> void:
     var base_noise: float = float(sensory.get("visual_snow_calm", 0.032)) if calm_mode else float(sensory.get("visual_snow_full", 0.064))
     composite_material.set_shader_parameter("noise_intensity", base_noise * (1.0 - current_progress) * 3.0)
     atmosphere.set_progress(current_progress)
+    if room_dressing != null:
+        room_dressing.set_progress(current_progress)
     _update_act(current_progress)
 
 func _update_act(progress_value: float) -> void:
@@ -514,7 +559,7 @@ func _render_collectibles() -> void:
             continue
         var center: Vector2 = Vector2(float(position_value[0]) * size.x, float(position_value[1]) * size.y)
         var pulse: float = 0.5 + 0.5 * sin(_phase * 4.0 + float(center.x))
-        draw_arc(center, 11.0 + pulse * 3.0, 0.0, TAU, 22, accent.with_alpha(0.10 + pulse * 0.08), 1.4)
+        draw_arc(center, 11.0 + pulse * 3.0, 0.0, TAU, 22, Color(accent, 0.10 + pulse * 0.08), 1.4)
 
 func _render_cursor() -> void:
     if not interaction_enabled:
@@ -530,16 +575,31 @@ func _render_cursor() -> void:
         var jitter: float = 0.82 + 0.18 * sin(float(index * 7) + _phase * 2.0)
         polygon.append(center + Vector2.from_angle(angle) * width_px * jitter)
     polygon.append(polygon[0])
-    draw_polyline(polygon, accent.with_alpha(0.22), 1.2, true)
+    draw_polyline(polygon, Color(accent, 0.22), 1.2, true)
 
 func _render_doors() -> void:
+    # The persistent room shell/doorway is rendered by RoomDressingLayer so the
+    # cover art stays unobstructed. Full door leaves only appear during travel
+    # in TransitionDirector.
     if door_open_amount <= 0.001:
         return
-    var remaining: float = 1.0 - door_open_amount
-    var panel_width: float = size.x * 0.5 * remaining
-    var door_color: Color = Color("05070be8")
-    draw_rect(Rect2(0.0, 0.0, panel_width, size.y), door_color, true)
-    draw_rect(Rect2(size.x - panel_width, 0.0, panel_width, size.y), door_color, true)
-    if panel_width > 2.0:
-        draw_line(Vector2(panel_width, 0.0), Vector2(panel_width, size.y), Color.WHITE.with_alpha(0.08), 1.0)
-        draw_line(Vector2(size.x - panel_width, 0.0), Vector2(size.x - panel_width, size.y), Color.WHITE.with_alpha(0.08), 1.0)
+    var threshold_half: float = size.x * 0.18 * door_open_amount
+    var y: float = size.y - 43.0
+    var accent: Color = Color.from_string(str(manifest_room.get("accent_color", "#72AFFF")), Color("72afff"))
+    draw_line(Vector2(size.x * 0.5 - threshold_half, y), Vector2(size.x * 0.5 + threshold_half, y), Color(accent, 0.10 + door_open_amount * 0.16), 1.2)
+
+func _unlock_profile_index(style: String) -> int:
+    match style:
+        "uncertainty": return 0
+        "party": return 1
+        "unmasked": return 2
+        "calling": return 3
+        "seed": return 4
+        "hybrid": return 5
+        "technophobia": return 6
+        "invaluable": return 7
+        "ashes": return 8
+        "waves": return 9
+        "rise": return 10
+        _: return 0
+

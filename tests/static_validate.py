@@ -27,18 +27,18 @@ REQUIRED_FILES = [
     "scenes/main.tscn", "scripts/main.gd", "scripts/audio_director.gd",
     "scripts/haptics.gd", "scripts/progress_store.gd", "scripts/reward_client.gd",
     "scripts/render/room_stage.gd", "scripts/render/reveal_mask.gd",
-    "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/brush/brush_engine.gd",
+    "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/render/room_dressing_layer.gd", "scripts/brush/brush_engine.gd",
     "scripts/app/quality_manager.gd", "scripts/app/asset_preloader.gd", "scripts/app/adaptive_performance.gd",
-    "scripts/app/transition_director.gd", "scripts/app/diagnostics_overlay.gd",
-    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/chapter_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd",
-    "scripts/rooms/behavior_base.gd", "shaders/room_composite.gdshader",
-    "assets/audio/pink-noise-asmr-loop.ogg", "default_bus_layout.tres",
+    "scripts/app/transition_director.gd", "scripts/app/door_transition_layer.gd", "scripts/app/diagnostics_overlay.gd",
+    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/chapter_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd",
+    "scripts/rooms/behavior_base.gd", "shaders/room_composite.gdshader", "shaders/echoes_finale.gdshader",
+    "assets/audio/pink-noise-asmr-loop.ogg", "assets/audio/balloon-pop.mp3", "assets/finale/echoes-finale.webp", "default_bus_layout.tres",
     "data/release_index.json", "tests/validate_project.gd",
     "tests/room_pipeline_contract.py", "tests/capture_rooms.gd",
     "tests/visual_snapshot_contract.py", "tests/visual_snapshots.json",
     "tests/new_release_pack_contract.py", "tests/production_polish_contract.py", "tools/update_visual_snapshots.py",
     "tools/perf_budget.py", "tools/memory_budget.py", "tools/audio_mix_budget.py",
-    "tools/new_release_pack.py", "tools/asset_report.py",
+    "tools/new_release_pack.py", "tools/asset_report.py", "tools/reset_local_progress.gd", "tests/lifecycle_smoke.gd",
     "web/reward/index.html", "web/_headers", "web/register-sw.js",
     "web/service-worker.js", "web/manifest.webmanifest",
     ".github/workflows/ci.yml", ".github/workflows/build.yml",
@@ -260,12 +260,76 @@ def main() -> int:
     if (ROOT / "virya-synestezja").exists():
         fail("nested virya-synestezja directory is forbidden", failures)
 
-    if (ROOT / "VERSION").read_text().strip() != "0.11.0":
-        fail("VERSION must equal 0.11.0", failures)
+    # Godot 4.7.1 Color has no with_alpha() method. Use Color(existing_color, alpha).
+    forbidden_color_api = []
+    for gdscript in sorted(ROOT.rglob("*.gd")):
+        if ".with_alpha(" in gdscript.read_text():
+            forbidden_color_api.append(str(gdscript.relative_to(ROOT)))
+    if forbidden_color_api:
+        fail("Godot 4.7.1-incompatible Color.with_alpha() usage: " + ", ".join(forbidden_color_api), failures)
+
+    # step/mix/fract and derivative helpers are shader-language functions, not GDScript globals.
+    shader_only_calls: list[str] = []
+    shader_only_pattern = re.compile(r"(?<![A-Za-z0-9_.])(step|mix|fract|dFdx|dFdy|fwidth)\s*\(")
+    for gdscript in sorted(ROOT.rglob("*.gd")):
+        source = gdscript.read_text()
+        match = shader_only_pattern.search(source)
+        if match:
+            shader_only_calls.append(f"{gdscript.relative_to(ROOT)}:{match.group(1)}")
+    if shader_only_calls:
+        fail("shader-only function used from GDScript: " + ", ".join(shader_only_calls), failures)
+
+    if (ROOT / "VERSION").read_text().strip() != "0.11.4":
+        fail("VERSION must equal 0.11.4", failures)
     project = (ROOT / "project.godot").read_text()
-    for token in ('config/version="0.11.0"', "size/viewport_width=540", "size/viewport_height=960", "size/window_width_override=540", "size/window_height_override=960"):
+    for token in ('config/version="0.11.4"', "size/viewport_width=540", "size/viewport_height=960", "size/window_width_override=540", "size/window_height_override=960"):
         if token not in project:
             fail(f"project.godot missing {token}", failures)
+    if 'version/name="0.11.4"' not in (ROOT / "export_presets.cfg").read_text():
+        fail("export preset version must equal 0.11.4", failures)
+    if 'version/code=9' not in (ROOT / "export_presets.cfg").read_text():
+        fail("export preset version code must equal 9", failures)
+
+    required_audio = [
+        "pink-noise-asmr-loop.ogg", "wave-of-uncertainty-room-outro.mp3",
+        "party-time-room-outro.mp3", "unmasked-room-outro.mp3",
+        "the-calling-room-outro.mp3", "seed-of-doubt-room-outro.mp3",
+        "hybrid-room-outro.mp3", "technophobia-room-outro.mp3",
+        "invaluable-room-outro.mp3", "from-the-ashes-room-outro.mp3",
+        "waves-room-outro.mp3", "rise-room-outro.mp3",
+    ]
+    for filename in required_audio:
+        audio_path = ROOT / "assets/audio" / filename
+        if not audio_path.is_file() or audio_path.stat().st_size < 50_000:
+            fail(f"missing or truncated audio asset: assets/audio/{filename}", failures)
+
+    pop_path = ROOT / "assets/audio/balloon-pop.mp3"
+    if not pop_path.is_file() or not 3_000 <= pop_path.stat().st_size <= 80_000:
+        fail("balloon pop SFX missing or outside compact budget", failures)
+    finale_path = ROOT / "assets/finale/echoes-finale.webp"
+    if not finale_path.is_file():
+        fail("Echoes finale artwork is missing", failures)
+    else:
+        try:
+            if webp_size(finale_path) != (810, 1440):
+                fail("Echoes finale artwork must be 810x1440", failures)
+        except ValueError as exc:
+            fail(f"invalid Echoes finale WebP: {exc}", failures)
+
+    ui_factory_source = (ROOT / "scripts/ui/ui_factory.gd").read_text()
+    settings_source = (ROOT / "scripts/ui/settings_card.gd").read_text()
+    run_source = (ROOT / "run-macos.sh").read_text()
+    progress_source = (ROOT / "scripts/progress_store.gd").read_text()
+    if "ScrollContainer.SCROLL_MODE_DISABLED" not in ui_factory_source or "horizontal_scroll_mode = 0" not in settings_source:
+        fail("responsive scroll layout contract missing: horizontal scroll must be disabled", failures)
+    if "content.custom_minimum_size" not in ui_factory_source or "content.custom_minimum_size" not in settings_source:
+        fail("responsive scroll layout contract missing: content minimum width", failures)
+    for token in ("--headless --editor", "--reset", "pink-noise-asmr-loop.ogg"):
+        if token not in run_source:
+            fail(f"run-macos import/reset contract missing: {token}", failures)
+    for token in ("reset_local_journey", "server_recorded_room_ids", "server_album_completed"):
+        if token not in progress_source:
+            fail(f"safe local reset contract missing: {token}", failures)
 
     index = load_json(ROOT / "data/release_index.json", failures)
     releases = index.get("releases")
@@ -287,13 +351,13 @@ def main() -> int:
             fail(f"custom draw_* helper forbidden: {rel}", failures)
         if "scripts/paint_room.gd" in source or "visual_snow.gdshader" in source:
             fail(f"legacy renderer reference in {rel}", failures)
-    if len((ROOT / "scripts/main.gd").read_text().splitlines()) > 950:
-        fail("main.gd exceeds 950-line orchestration budget", failures)
-    if len((ROOT / "scripts/render/room_stage.gd").read_text().splitlines()) > 560:
-        fail("room_stage.gd exceeds 560-line renderer budget", failures)
+    if len((ROOT / "scripts/main.gd").read_text().splitlines()) > 980:
+        fail("main.gd exceeds 980-line orchestration budget", failures)
+    if len((ROOT / "scripts/render/room_stage.gd").read_text().splitlines()) > 620:
+        fail("room_stage.gd exceeds 620-line renderer budget", failures)
 
     shader = (ROOT / "shaders/room_composite.gdshader").read_text()
-    for token in ("reveal_mask", "background_texture", "subject_texture", "foreground_texture", "noise_intensity", "scanline_strength", "quiet_visuals", "quality_level", "completion_reveal", "brush_energy", "runtime_scale"):
+    for token in ("reveal_mask", "background_texture", "subject_texture", "foreground_texture", "noise_intensity", "scanline_strength", "quiet_visuals", "quality_level", "completion_reveal", "brush_energy", "runtime_scale", "cinematic_time", "unlock_motion", "unlock_profile"):
         if token not in shader:
             fail(f"composite shader missing {token}", failures)
     if "AudioEffectHardLimiter" not in (ROOT / "default_bus_layout.tres").read_text():

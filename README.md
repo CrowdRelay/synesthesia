@@ -1,8 +1,31 @@
+## 0.11.4 — Cinematic Inner Rooms / UX Pass
+
+- Fixes chapter, act and discovery-toast layouts so long Polish copy keeps a usable horizontal measure instead of collapsing to one-character columns.
+- Restyles story bubbles as asymmetric album panels and keeps them clear of the artwork while painting.
+- Adds a short balloon POP SFX on top of the existing haptic feedback.
+- Makes the pink-noise/music balance directly proportional to reveal: 20% reveal = 80/20 noise/music, 50% = 50/50, 80% = 20/80, and 99% = music only.
+- Adds room-specific post-unlock motion loops and a restrained cinematic left/right camera drift, with reduced-motion support.
+- Dresses every artwork as a subtle “room of consciousness” using edge architecture, threshold perspective and an unlocked doorway without covering the central scene.
+- Replaces room-to-room fades with a door-close → neural inner-corridor teleport → door-open transition.
+- Rebuilds the final “Sygnał dotarł” claim as an album-styled bottom sheet over an animated Echoes Of The Modern Mind dissolving-skull background.
+- Keeps the finale cover dynamically loaded only at the end; active room and current+next memory budgets remain bounded.
+- Extends lifecycle smoke tests to audio POP, chapter/act/toast widths, completion/finale layout and door-transition instantiation.
+
+## 0.11.3 — UX, local reset and runtime asset hotfix
+
+- fixes narrow ScrollContainer layouts that could wrap labels one character per line;
+- adds safe whole-journey local reset from the finished-album UI and Settings;
+- adds `./run-macos.sh --reset` / `--reset-only` for local development;
+- always imports source assets before launching, fixing false missing MP3/OGG warnings after `.godot` cleanup;
+- keeps Godot import cache after validated overlay install;
+- drains threaded preload work and cancels pending reward HTTP on shutdown to avoid exit leaks;
+- overlay carries all 11 music excerpts plus the pink-noise loop as a repair contract.
+
 # VIRYA: Synestezja
 
 A portrait Godot 4.7.1 experience that turns **Echoes Of The Modern Mind** into eleven playable, cover-inspired rooms. The player uncovers each scene with a textured comic brush while Visual Snow, cosmic CRT static and soft ASMR pink noise recede; at 99% the filter disappears and only the full room excerpt remains.
 
-## 0.11.0 — Production Polish / RC pass
+## 0.11.2 — Godot 4.7.1 parser hotfix
 
 This release turns the 0.10 renderer into a tighter production runtime rather than adding another decorative layer:
 

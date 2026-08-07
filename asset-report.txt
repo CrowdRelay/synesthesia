@@ -43,6 +43,7 @@ room-background	assets/rooms/vertical/unmasked-bg.webp	4274
 room-background	assets/rooms/vertical/wave-of-uncertainty-bg.webp	4162
 room-background	assets/rooms/vertical/waves-bg.webp	3958
 audio	assets/audio/README.md	865
+audio	assets/audio/balloon-pop.mp3	6730
 audio	assets/audio/from-the-ashes-room-outro.mp3	477044
 audio	assets/audio/hybrid-room-outro.mp3	477036
 audio	assets/audio/invaluable-room-outro.mp3	477040
@@ -55,4 +56,4 @@ audio	assets/audio/the-calling-room-outro.mp3	477041
 audio	assets/audio/unmasked-room-outro.mp3	477038
 audio	assets/audio/wave-of-uncertainty-room-outro.mp3	477049
 audio	assets/audio/waves-room-outro.mp3	477036
-total	.	8287396
+total	.	8624606

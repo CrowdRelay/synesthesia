@@ -23,8 +23,8 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
         var center: Vector2 = Vector2(BALLOONS[index].x * viewport_size.x, BALLOONS[index].y * viewport_size.y)
         center.y += sin(phase * 4.0 + float(index)) * 5.0
         var color: Color = accent if index % 2 == 0 else secondary
-        canvas.draw_circle(center, 13.0 + float(index % 3) * 2.0, color.with_alpha(0.20 + progress * 0.18))
-        canvas.draw_line(center + Vector2(0.0, 14.0), center + Vector2(sin(float(index)) * 8.0, 45.0), color.with_alpha(0.18), 1.2)
+        canvas.draw_circle(center, 13.0 + float(index % 3) * 2.0, Color(color, 0.20 + progress * 0.18))
+        canvas.draw_line(center + Vector2(0.0, 14.0), center + Vector2(sin(float(index)) * 8.0, 45.0), Color(color, 0.18), 1.2)
 
 func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Array[Dictionary]:
     var popped_value: Variant = state.get("popped", [])

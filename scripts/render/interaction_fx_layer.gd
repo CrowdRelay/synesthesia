@@ -84,15 +84,15 @@ func _draw() -> void:
                 _draw_ring(center, radius, alpha)
 
 func _draw_ring(center: Vector2, radius: float, alpha: float) -> void:
-    draw_arc(center, radius, 0.0, TAU, 36, accent.with_alpha(alpha), 1.6)
-    draw_arc(center, radius * 0.68, 0.0, TAU, 28, secondary.with_alpha(alpha * 0.48), 1.0)
+    draw_arc(center, radius, 0.0, TAU, 36, Color(accent, alpha), 1.6)
+    draw_arc(center, radius * 0.68, 0.0, TAU, 28, Color(secondary, alpha * 0.48), 1.0)
 
 func _draw_shards(center: Vector2, radius: float, alpha: float, seed: int) -> void:
     for index in range(9):
         var angle: float = float(index) * TAU / 9.0 + _hash01(index, seed) * 0.34
         var inner: Vector2 = center + Vector2.from_angle(angle) * radius * 0.12
         var outer: Vector2 = center + Vector2.from_angle(angle) * radius * lerpf(0.56, 1.0, _hash01(index + 19, seed))
-        draw_line(inner, outer, Color.WHITE.with_alpha(alpha * 1.25), 1.1)
+        draw_line(inner, outer, Color(Color.WHITE, alpha * 1.25), 1.1)
 
 func _draw_confetti(center: Vector2, radius: float, alpha: float, seed: int) -> void:
     for index in range(10):
@@ -100,18 +100,18 @@ func _draw_confetti(center: Vector2, radius: float, alpha: float, seed: int) -> 
         var distance: float = radius * lerpf(0.34, 1.0, _hash01(index + 31, seed))
         var point: Vector2 = center + Vector2.from_angle(angle) * distance
         var color: Color = accent if index % 2 == 0 else secondary
-        draw_rect(Rect2(point - Vector2(2.5, 1.0), Vector2(5.0, 2.0)), color.with_alpha(alpha * 1.35), true)
+        draw_rect(Rect2(point - Vector2(2.5, 1.0), Vector2(5.0, 2.0)), Color(color, alpha * 1.35), true)
 
 func _draw_glitch(center: Vector2, radius: float, alpha: float) -> void:
     for index in range(6):
         var offset: float = (float(index) - 2.5) * radius * 0.13
         var width: float = radius * (0.34 + float(index % 3) * 0.11)
-        draw_line(center + Vector2(-width, offset), center + Vector2(width, offset), accent.with_alpha(alpha * (1.0 - float(index) * 0.08)), 1.6)
+        draw_line(center + Vector2(-width, offset), center + Vector2(width, offset), Color(accent, alpha * (1.0 - float(index) * 0.08)), 1.6)
 
 func _draw_rays(center: Vector2, radius: float, alpha: float) -> void:
     for index in range(8):
         var angle: float = float(index) * TAU / 8.0
-        draw_line(center + Vector2.from_angle(angle) * radius * 0.16, center + Vector2.from_angle(angle) * radius, accent.with_alpha(alpha), 1.2)
+        draw_line(center + Vector2.from_angle(angle) * radius * 0.16, center + Vector2.from_angle(angle) * radius, Color(accent, alpha), 1.2)
 
 func _hash01(a: int, b: int) -> float:
     var value: float = sin(float(a * 127 + b * 311) * 0.0179) * 43758.5453

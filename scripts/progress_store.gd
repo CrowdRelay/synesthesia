@@ -99,8 +99,32 @@ static func get_install_id() -> String:
     _write_document(document)
     return current
 
+static func reset_local_journey() -> bool:
+    var document: Dictionary = _load_document()
+    var previous_album_value: Variant = document.get("album", {})
+    var previous_album: Dictionary = previous_album_value if previous_album_value is Dictionary else {}
+    var fresh: Dictionary = _blank_document()
+    fresh["install_id"] = str(document.get("install_id", ""))
+    var previous_run_value: Variant = document.get("run", {})
+    if previous_run_value is Dictionary:
+        fresh["run"] = previous_run_value.duplicate(true)
+    var previous_reward_value: Variant = document.get("reward", {})
+    if previous_reward_value is Dictionary:
+        fresh["reward"] = previous_reward_value.duplicate(true)
+    var fresh_album_value: Variant = fresh.get("album", {})
+    var fresh_album: Dictionary = fresh_album_value if fresh_album_value is Dictionary else {}
+    for key in ["calm_mode", "quiet_mode", "quiet_visuals", "reduced_motion", "haptics_enabled", "quality_profile", "music_level", "noise_level", "server_recorded_room_ids", "server_album_completed"]:
+        if previous_album.has(key):
+            var value: Variant = previous_album[key]
+            fresh_album[key] = value.duplicate(true) if value is Dictionary or value is Array else value
+    fresh_album["started_at_unix"] = int(Time.get_unix_time_from_system())
+    fresh["album"] = fresh_album
+    return _write_document(fresh)
+
 static func reset_all() -> bool:
-    for path in [SAVE_PATH, BACKUP_PATH]:
+    var paths: Array[String] = [SAVE_PATH, BACKUP_PATH, "%s.tmp" % SAVE_PATH]
+    paths.append_array(PREVIOUS_PATHS)
+    for path in paths:
         if FileAccess.file_exists(path):
             var error: Error = DirAccess.remove_absolute(path)
             if error != OK:
