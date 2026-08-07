@@ -56,6 +56,7 @@ func _run() -> void:
     var pop_resource: Resource = load(POP_PATH)
     if not pop_resource is AudioStream:
         _fail("balloon pop did not load as AudioStream")
+    pop_resource = null
 
     var settings = SettingsCardScript.new()
     get_root().add_child(settings)
@@ -222,7 +223,13 @@ func _dispose_node(node: Node) -> void:
         return
     if node.has_method("shutdown"):
         node.call("shutdown")
-    node.queue_free()
+    # Smoke tests should tear objects down synchronously. queue_free() is ideal
+    # in gameplay, but at process shutdown it can leave ObjectDB entries alive
+    # until the final frame and trigger Godot's leak diagnostics.
+    var parent := node.get_parent()
+    if parent != null:
+        parent.remove_child(node)
+    node.free()
     await process_frame
 
 func _require_label_alignment(node: Node, prefix: String, expected: int, context: String) -> void:

@@ -34,7 +34,7 @@ func prepare(manifest_path: String) -> void:
             break
         if path.is_empty() or _queued.has(path) or not ResourceLoader.exists(path):
             continue
-        var error: Error = ResourceLoader.load_threaded_request(path)
+        var error: Error = ResourceLoader.load_threaded_request(path, "", false, ResourceLoader.CACHE_MODE_IGNORE)
         if error == OK:
             _queued[path] = Time.get_ticks_msec()
 

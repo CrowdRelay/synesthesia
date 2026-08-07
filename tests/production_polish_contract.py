@@ -53,6 +53,7 @@ preloader = require(
     "scripts/app/asset_preloader.gd",
     "MAX_QUEUED",
     "load_threaded_request",
+    "CACHE_MODE_IGNORE",
     "load_threaded_get",
     "_prune_finished_failures",
     "func drain()",

@@ -1,3 +1,17 @@
+## Android APK CI pipeline
+
+- adds a dedicated `Android APK` GitHub Actions workflow for every push to `main` and manual dispatch
+- builds an arm64-v8a sideloadable APK with verified Godot 4.7.1 editor/templates, JDK 17 and Android SDK 35
+- verifies the generated APK with ZIP integrity, `apksigner` and `aapt2`, then uploads APK + SHA-256 + package metadata as workflow artifacts
+- supports an optional stable signing identity through repository secrets while keeping secret material out of the repository
+- makes the Android package a normal launcher app and reuses the same project-owned build script for tagged releases
+
+## CI teardown leak fix
+
+- threaded room preloads now use `ResourceLoader.CACHE_MODE_IGNORE`, so assets queued speculatively do not remain in the global resource cache after the lifecycle smoke test
+- lifecycle smoke destroys temporary nodes synchronously after calling their shutdown hooks, avoiding deferred ObjectDB teardown noise at process exit
+- releases the temporary balloon-pop resource immediately after its assertion
+
 ## 0.11.11 — CI lifecycle / validation cleanup
 
 - fixes the lifecycle smoke test to validate the intro CTA as a `Button` instead of incorrectly searching only `Label` nodes

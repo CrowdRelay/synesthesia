@@ -17,6 +17,7 @@ python3 tests/sensory_room_contract.py
 python3 tests/door_transition_contract.py
 python3 tests/cinematic_video_contract.py
 python3 tests/presentation_contract.py
+python3 tests/android_pipeline_contract.py
 python3 tools/asset_report.py
 
 GODOT_BIN="${GODOT_BIN:-godot}"

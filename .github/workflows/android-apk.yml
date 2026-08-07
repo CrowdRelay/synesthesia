@@ -1,0 +1,71 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: synesthesia-android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Build arm64 debug APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      ANDROID_DEBUG_KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+      ANDROID_DEBUG_KEYSTORE_USER_SECRET: ${{ secrets.ANDROID_DEBUG_KEYSTORE_USER }}
+      ANDROID_DEBUG_KEYSTORE_PASSWORD_SECRET: ${{ secrets.ANDROID_DEBUG_KEYSTORE_PASSWORD }}
+      SYNESTHESIA_ANDROID_VERSION_CODE: ${{ github.run_number }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+
+      - name: Configure optional stable signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${ANDROID_DEBUG_KEYSTORE_BASE64}" ]]; then
+            echo "No stable signing secret configured; this run will use an ephemeral debug key."
+            exit 0
+          fi
+          if [[ -z "${ANDROID_DEBUG_KEYSTORE_USER_SECRET}" || -z "${ANDROID_DEBUG_KEYSTORE_PASSWORD_SECRET}" ]]; then
+            echo "ANDROID_DEBUG_KEYSTORE_BASE64 requires USER and PASSWORD secrets too." >&2
+            exit 1
+          fi
+          key_path="${RUNNER_TEMP}/synesthesia-debug.keystore"
+          printf '%s' "${ANDROID_DEBUG_KEYSTORE_BASE64}" | base64 --decode > "${key_path}"
+          chmod 600 "${key_path}"
+          echo "ANDROID_DEBUG_KEYSTORE_PATH=${key_path}" >> "${GITHUB_ENV}"
+          echo "ANDROID_DEBUG_KEYSTORE_USER=${ANDROID_DEBUG_KEYSTORE_USER_SECRET}" >> "${GITHUB_ENV}"
+          echo "ANDROID_DEBUG_KEYSTORE_PASSWORD=${ANDROID_DEBUG_KEYSTORE_PASSWORD_SECRET}" >> "${GITHUB_ENV}"
+
+      - name: Build and verify APK
+        shell: bash
+        run: ./scripts/build-android-apk.sh
+
+      - name: Upload APK
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: synesthesia-android-debug-${{ github.sha }}
+          path: |
+            build/android/synesthesia-debug.apk
+            build/android/synesthesia-debug.apk.sha256
+            build/android/synesthesia-debug.apk.badging.txt
+          if-no-files-found: error
+          retention-days: 14

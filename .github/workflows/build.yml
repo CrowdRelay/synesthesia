@@ -99,40 +99,20 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
 
-      - name: Create development signing key
+      - name: Build and verify Android debug APK
         shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "${HOME}/.android"
-          if [[ ! -f "${HOME}/.android/debug.keystore" ]]; then
-            keytool -genkeypair \
-              -keystore "${HOME}/.android/debug.keystore" \
-              -storepass android \
-              -alias androiddebugkey \
-              -keypass android \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Android Debug,O=Virya,C=PL"
-          fi
-
-      - name: Export Android debug APK
-        id: export
-        uses: firebelley/godot-export@930577654862a320eef793f399ee911b4479efb9 # v7.0.0
-        with:
-          godot_executable_download_url: ${{ env.GODOT_EDITOR_URL }}
-          godot_export_templates_download_url: ${{ env.GODOT_TEMPLATES_URL }}
-          relative_project_path: ${{ env.PROJECT_DIR }}
-          presets_to_export: Android Debug
-          export_debug: true
-          archive_output: true
-          cache: true
+        env:
+          SYNESTHESIA_ANDROID_VERSION_CODE: ${{ github.run_number }}
+        run: ./scripts/build-android-apk.sh
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: synesthesia-android-${{ github.sha }}
-          path: ${{ steps.export.outputs.archive_directory }}/*
+          path: |
+            build/android/synesthesia-debug.apk
+            build/android/synesthesia-debug.apk.sha256
+            build/android/synesthesia-debug.apk.badging.txt
           if-no-files-found: error
           retention-days: 14
 

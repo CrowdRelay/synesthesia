@@ -151,3 +151,29 @@ The game works offline. Network access is used only for the optional physical-al
 ## Rights
 
 Project source follows the repository licence. VIRYA names, logos, recordings, excerpts, lyrics and artwork remain the property of their respective rights holders and are not relicensed by the source-code licence.
+
+## Android APK pipeline
+
+Every push to `main` runs `.github/workflows/android-apk.yml` and publishes a signed **arm64-v8a debug APK** as a GitHub Actions artifact. You can also run the workflow manually from **Actions → Android APK → Run workflow**.
+
+The build uses the verified Godot 4.7.1 editor/export templates, OpenJDK 17 and Android SDK Platform 35 / Build Tools 35.0.1. The output is:
+
+```text
+build/android/synesthesia-debug.apk
+```
+
+By default CI generates an ephemeral debug keystore. That is enough for installing the APK, but an APK from a later run may require uninstalling the previous build because the signing key changes. To keep one stable signing identity, add these optional GitHub repository secrets:
+
+```text
+ANDROID_DEBUG_KEYSTORE_BASE64
+ANDROID_DEBUG_KEYSTORE_USER
+ANDROID_DEBUG_KEYSTORE_PASSWORD
+```
+
+`ANDROID_DEBUG_KEYSTORE_BASE64` is the base64-encoded keystore file. With all three secrets present, every CI build uses that same key and can update an earlier APK signed by it. Do not commit the keystore or its password to the repository.
+
+The same build can be reproduced on a machine with JDK 17 and the Android SDK configured:
+
+```bash
+./scripts/build-android-apk.sh
+```
