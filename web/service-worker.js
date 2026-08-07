@@ -1,5 +1,15 @@
 const CACHE_NAME = "virya-synesthesia-__SYNESTHESIA_VERSION__";
-const CORE = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/register-sw.js"];
+const CORE = [
+  "/",
+  "/index.html",
+  "/manifest.webmanifest",
+  "/icon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/boot-shell.css",
+  "/boot-shell.js",
+  "/register-sw.js",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

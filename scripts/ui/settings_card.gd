@@ -155,7 +155,7 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     var reset_album_button: Button = UIFactory.button(reset_album_label)
     reset_album_button.pressed.connect(func() -> void: reset_album_requested.emit())
     content.add_child(reset_album_button)
-    var reset_note: Label = UIFactory.body("Reset czyści malowanie i czasy 11 pokojów. Nie cofa odebranej nagrody ani stanu po stronie Sygnału.")
+    var reset_note: Label = UIFactory.body("Reset czyści malowanie i czasy 11 pokojów. Nie cofa istniejącego wpisu do losowania ani stanu po stronie Sygnału.")
     reset_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     reset_note.add_theme_font_size_override("font_size", 10)
     reset_note.add_theme_color_override("font_color", Color("718398"))

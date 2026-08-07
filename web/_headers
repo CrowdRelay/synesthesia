@@ -26,5 +26,3 @@
 /*.mp3
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
-/reward/*
-  Cache-Control: no-store

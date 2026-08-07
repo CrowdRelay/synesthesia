@@ -113,7 +113,7 @@ hud = require(
 require("scripts/ui/chapter_card.gd", "Zacznij odkrywać", "99% OTWIERA DRZWI")
 require("scripts/ui/confirm_card.gd", "signal confirmed", "signal cancelled", "UIFactory.modal_content")
 require("scripts/ui/completion_card.gd", "DRZWI OTWARTE", "Zostań i słuchaj")
-require("scripts/ui/signal_finale_card.gd", "Sygnał dotarł.", "ECHOES OF THE MODERN MIND", "Odbierz płytę")
+require("scripts/ui/signal_finale_card.gd", "Sygnał dotarł.", "ECHOES OF THE MODERN MIND", "Dołącz do losowania 5 płyt")
 require("scripts/ui/echoes_finale_background.gd", "echoes-finale.webp", "echoes_finale.gdshader")
 require("scripts/app/transition_director.gd", "travel_out", "travel_in", "DoorTransitionLayerScript")
 require("scripts/render/room_dressing_layer.gd", "_draw_chamber_shell", "_draw_open_doorway")

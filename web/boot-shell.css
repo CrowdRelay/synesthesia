@@ -1,0 +1,46 @@
+:root { color-scheme: dark; }
+html, body { background: #050811; }
+#canvas { image-rendering: auto; filter: none; }
+#synesthesia-boot {
+  position: fixed; inset: 0; z-index: 2147483646; overflow: hidden;
+  display: grid; place-items: center; pointer-events: none;
+  background: radial-gradient(circle at 50% 40%, #14223a 0, #080d17 48%, #020409 100%);
+  color: #edf7ff; opacity: 1; transition: opacity .28s ease;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+#synesthesia-boot[data-ready="true"] { opacity: 0; }
+.synesthesia-boot__title {
+  position: absolute; top: max(8vh, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  margin: 0; white-space: nowrap; font-size: clamp(24px, 7vw, 58px); font-weight: 550;
+  letter-spacing: clamp(.28em, 2.2vw, .46em); text-indent: .46em;
+}
+.synesthesia-boot__sub {
+  position: absolute; top: max(14.5vh, calc(env(safe-area-inset-top) + 64px)); left: 50%; transform: translateX(-50%);
+  width: 90%; text-align: center; color: #8da2ba; font-size: clamp(9px, 2.6vw, 16px);
+  letter-spacing: .28em; text-transform: uppercase;
+}
+.synesthesia-boot__door {
+  position: relative; width: min(38vw, 290px); height: min(54vh, 590px);
+  border: 6px solid rgba(205,220,236,.42); border-radius: 28px 28px 8px 8px;
+  box-shadow: 0 0 70px rgba(107,217,255,.08), inset 0 0 40px rgba(0,0,0,.8);
+  background: #050914;
+}
+.synesthesia-boot__door::before {
+  content: ""; position: absolute; inset: 8% 12% 0; border: 2px solid rgba(115,220,255,.36); background: #080f20;
+}
+.synesthesia-boot__door::after {
+  content: ""; position: absolute; left: 50%; top: 8%; bottom: 0; width: 1px; background: rgba(240,251,255,.08);
+}
+.synesthesia-boot__wave {
+  position: absolute; left: 50%; top: 54%; width: min(72vw, 520px); height: 14%; transform: translate(-50%, -50%) rotate(-10deg);
+  border-top: clamp(7px, 1.8vw, 15px) solid transparent; border-radius: 50%;
+  background: linear-gradient(90deg,#71dcff,#9e82ff 45%,#ef6fbd 72%,#ffb45f) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask-composite: exclude; padding-top: clamp(7px, 1.8vw, 15px); opacity: .95;
+  filter: drop-shadow(0 0 14px rgba(125,198,255,.24));
+}
+.synesthesia-boot__hint {
+  position: absolute; bottom: max(7vh, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  color: #8294aa; font-size: clamp(9px, 2.6vw, 15px); letter-spacing: .34em; text-transform: uppercase;
+}
+@media (prefers-reduced-motion: reduce) { #synesthesia-boot { transition-duration: .08s; } }

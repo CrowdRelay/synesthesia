@@ -67,6 +67,7 @@
     "claim_after_release": "rise",
     "reward_title": "Płyta VIRYA — Echoes Of The Modern Mind",
     "policy_version": "virya-signal-2026-08",
-    "address_page": "https://synesthesia.virya.music/reward/"
+    "draw_size": 5,
+    "entry_policy": "one-completion-one-entry"
   }
 }

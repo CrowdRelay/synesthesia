@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="43%" r="68%"><stop offset="0" stop-color="#14223a"/><stop offset=".52" stop-color="#080d17"/><stop offset="1" stop-color="#020409"/></radialGradient>
+    <linearGradient id="ray" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#69dfff"/><stop offset=".5" stop-color="#aa7dff"/><stop offset=".78" stop-color="#ef6db8"/><stop offset="1" stop-color="#ffb260"/></linearGradient>
+    <filter id="g"><feGaussianBlur stdDeviation="22"/></filter>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <text x="540" y="225" text-anchor="middle" fill="#edf7ff" font-family="Inter,Arial,sans-serif" font-size="78" font-weight="600" letter-spacing="18">SYNESTHESIA</text>
+  <text x="540" y="286" text-anchor="middle" fill="#8da2ba" font-family="Inter,Arial,sans-serif" font-size="24" letter-spacing="8">VIRYA · ECHOES OF THE MODERN MIND</text>
+  <path d="M332 1518V570c0-36 29-65 65-65h286c36 0 65 29 65 65v948" fill="#050914" stroke="#c5d6e8" stroke-opacity=".23" stroke-width="14"/>
+  <path d="M389 1447V624h302v823" fill="#080f20" stroke="#73dcff" stroke-opacity=".26" stroke-width="7"/>
+  <path d="M258 1230c154-281 287-320 406-198 101 104 179 105 315-101" fill="none" stroke="url(#ray)" stroke-opacity=".14" stroke-width="88" stroke-linecap="round" filter="url(#g)"/>
+  <path d="M258 1230c154-281 287-320 406-198 101 104 179 105 315-101" fill="none" stroke="url(#ray)" stroke-width="27" stroke-linecap="round"/>
+  <circle cx="653" cy="1031" r="10" fill="#f0fbff"/>
+  <path d="M540 625v822" stroke="#f0fbff" stroke-opacity=".07" stroke-width="3"/>
+  <text x="540" y="1742" text-anchor="middle" fill="#8294aa" font-family="Inter,Arial,sans-serif" font-size="22" letter-spacing="7">WEJDŹ GŁĘBIEJ</text>
+</svg>

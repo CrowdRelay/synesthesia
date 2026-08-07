@@ -97,7 +97,7 @@ run_godot_checked import --headless --editor --path "$ROOT" --quit
 run_godot_checked runtime-validation --headless --path "$ROOT" --script res://tests/validate_project.gd
 run_godot_checked web-export --headless --path "$ROOT" --export-release Web build/web/index.html
 cp -R web/. build/web/
-cp assets/icon.svg build/web/icon.svg
+cp assets/icon.svg assets/icon-192.png assets/icon-512.png build/web/
 python3 tools/postprocess_web.py
 test -s build/web/index.html
 test -s build/web/manifest.webmanifest

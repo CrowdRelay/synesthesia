@@ -3,7 +3,7 @@ extends Node
 signal run_started(run_id: String, run_token: String, next_room_index: int)
 signal room_recorded(room_id: String, next_room_index: int)
 signal album_recorded()
-signal reward_claimed(status: String, message: String)
+signal draw_entered(status: String, message: String)
 signal request_failed(operation: String, message: String)
 signal retry_scheduled(operation: String, attempt: int)
 signal run_invalidated()
@@ -111,19 +111,17 @@ func complete_album(total_elapsed_ms: int) -> void:
         },
     })
 
-func claim_reward(email: String, city_slug: String, marketing_consent: bool, policy_version: String) -> void:
+func enter_draw(email: String, policy_version: String) -> void:
     if not has_run():
-        request_failed.emit("claim_reward", "Nie udało się połączyć ukończenia z nagrodą.")
+        request_failed.emit("enter_draw", "Nie udało się połączyć ukończenia z losowaniem.")
         return
     _enqueue({
-        "operation": "claim_reward",
+        "operation": "enter_draw",
         "path": "/v1/public/synesthesia/reward-claims",
         "authorized": true,
         "idempotency_key": "synesthesia-claim-%s" % _run_id,
         "payload": {
             "email": email.strip_edges(),
-            "city_slug": city_slug,
-            "marketing_consent": marketing_consent,
             "policy_version": policy_version,
             "locale": TranslationServer.get_locale(),
         },
@@ -186,6 +184,8 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
         var message: String = str(parsed.get("message", "Sygnał jest chwilowo niedostępny. Postęp pozostał zapisany lokalnie."))
+        if operation == "enter_draw" and response_code == 409:
+            message = "Losowanie nie jest teraz otwarte. Ukończenie zostało zapisane — wróć w czasie trwania akcji."
         _handle_failure(active_copy, response_code, message)
         return
 
@@ -203,10 +203,10 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
             room_recorded.emit(str(active_copy.get("room_id", "")), _server_next_room_index)
         "complete_album":
             album_recorded.emit()
-        "claim_reward":
-            reward_claimed.emit(
-                str(parsed.get("status", "pending_email")),
-                str(parsed.get("message", "Sprawdź skrzynkę i potwierdź odbiór nagrody.")),
+        "enter_draw":
+            draw_entered.emit(
+                str(parsed.get("status", "entered_draw")),
+                str(parsed.get("message", "Jesteś w losowaniu jednej z 5 płyt.")),
             )
         _:
             request_failed.emit(operation, "Nieznana odpowiedź Sygnału.")

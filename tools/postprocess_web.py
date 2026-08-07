@@ -15,9 +15,26 @@ if not index_path.is_file():
 
 html = index_path.read_text()
 manifest_tag = '<link rel="manifest" href="/manifest.webmanifest">'
+icon_tag = '<link rel="icon" href="/icon.svg" type="image/svg+xml">'
+apple_icon_tag = '<link rel="apple-touch-icon" href="/icon-192.png">'
+boot_style_tag = '<link rel="stylesheet" href="/boot-shell.css">'
+boot_script_tag = '<script src="/boot-shell.js"></script>'
 register_tag = '<script src="/register-sw.js" defer></script>'
+boot_markup = '''<div id="synesthesia-boot" role="status" aria-label="Ładowanie Synesthesii">
+  <h1 class="synesthesia-boot__title">SYNESTHESIA</h1>
+  <div class="synesthesia-boot__sub">VIRYA · ECHOES OF THE MODERN MIND</div>
+  <div class="synesthesia-boot__door" aria-hidden="true"></div>
+  <div class="synesthesia-boot__wave" aria-hidden="true"></div>
+  <div class="synesthesia-boot__hint">WEJDŹ GŁĘBIEJ</div>
+</div>'''
 if manifest_tag not in html:
     html = html.replace("</head>", f"  {manifest_tag}\n</head>")
+if icon_tag not in html:
+    html = html.replace("</head>", f"  {icon_tag}\n  {apple_icon_tag}\n</head>")
+if boot_style_tag not in html:
+    html = html.replace("</head>", f"  {boot_style_tag}\n  {boot_script_tag}\n</head>")
+if 'id="synesthesia-boot"' not in html:
+    html = html.replace("<body>", f"<body>\n{boot_markup}", 1)
 if register_tag not in html:
     html = html.replace("</body>", f"  {register_tag}\n</body>")
 index_path.write_text(html)
@@ -37,12 +54,9 @@ manifest = {
     "lang": "pl",
     "categories": ["music", "entertainment", "games"],
     "icons": [
-        {
-            "src": "/icon.svg",
-            "sizes": "any",
-            "type": "image/svg+xml",
-            "purpose": "any maskable",
-        }
+        {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+        {"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
     ],
 }
 manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")))

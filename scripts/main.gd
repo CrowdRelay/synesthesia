@@ -17,6 +17,7 @@ const SettingsCardScript := preload("res://scripts/ui/settings_card.gd")
 const ConfirmCardScript := preload("res://scripts/ui/confirm_card.gd")
 const EchoesFinaleBackgroundScript := preload("res://scripts/ui/echoes_finale_background.gd")
 const SignalFinaleCardScript := preload("res://scripts/ui/signal_finale_card.gd")
+const BootSequenceScript := preload("res://scripts/ui/boot_sequence.gd")
 const RoomStageScript := preload("res://scripts/render/room_stage.gd")
 const RELEASE_INDEX_PATH: String = "res://data/release_index.json"
 const VERSION_PATH: String = "res://VERSION"
@@ -128,6 +129,8 @@ func _build_application_shell() -> void:
     save_timer.wait_time = 1.15
     save_timer.timeout.connect(_save_progress)
     add_child(save_timer)
+    var boot := BootSequenceScript.new()
+    add_child(boot)
 func _show_experience_intro() -> void:
     if experience_intro_panel != null or room == null:
         return
@@ -194,7 +197,7 @@ func _configure_reward_client() -> void:
     reward_client.run_started.connect(_on_run_started)
     reward_client.room_recorded.connect(_on_room_recorded)
     reward_client.album_recorded.connect(_on_album_recorded)
-    reward_client.reward_claimed.connect(_on_reward_claimed)
+    reward_client.draw_entered.connect(_on_draw_entered)
     reward_client.request_failed.connect(_on_reward_request_failed)
     reward_client.retry_scheduled.connect(_on_reward_retry_scheduled)
     reward_client.run_invalidated.connect(_on_reward_run_invalidated)
@@ -780,10 +783,10 @@ func _show_reward_panel() -> void:
     reward_panel.name = "SignalFinaleCard"
     add_child(reward_panel)
     reward_panel.configure(bool(album_state.get("server_album_completed", false)), ProgressStoreScript.load_reward())
-    reward_panel.claim_requested.connect(_submit_reward_claim_values)
+    reward_panel.draw_entry_requested.connect(_submit_reward_claim_values)
     reward_panel.reset_requested.connect(_confirm_reset_album)
 
-func _submit_reward_claim_values(email: String, city: String, marketing: bool) -> void:
+func _submit_reward_claim_values(email: String) -> void:
     if reward_client == null:
         reward_panel.set_status("Sygnał jest chwilowo niedostępny. Ukończenie pozostało zapisane lokalnie.")
         return
@@ -795,15 +798,11 @@ func _submit_reward_claim_values(email: String, city: String, marketing: bool) -
     if not _looks_like_email(email):
         reward_panel.set_status("Podaj poprawny adres e-mail.")
         return
-    var city_slug: String = _slugify_city(city)
-    if marketing and city_slug.is_empty():
-        reward_panel.set_status("Przy zapisie do Sygnału podaj swoje miasto.")
-        return
     var config_value: Variant = index_document.get("reward", {})
     var config: Dictionary = config_value if config_value is Dictionary else {}
     reward_panel.set_claim_enabled(false)
-    reward_panel.set_status("Łączę ukończenie z nagrodą…")
-    reward_client.claim_reward(email, city_slug, marketing, str(config.get("policy_version", "virya-signal-2026-08")))
+    reward_panel.set_status("Dodaję ukończenie do losowania…")
+    reward_client.enter_draw(email, str(config.get("policy_version", "virya-signal-2026-08")))
 
 func _on_run_started(_run_id: String, _run_token: String, next_room_index: int) -> void:
     ProgressStoreScript.save_run(reward_client.get_run_state())
@@ -847,17 +846,17 @@ func _on_album_recorded() -> void:
     _save_album_state()
     ProgressStoreScript.save_run(reward_client.get_run_state())
     if reward_panel != null and is_instance_valid(reward_panel):
-        reward_panel.set_status("Ukończenie potwierdzone. Możesz odebrać płytę.")
+        reward_panel.set_status("Ukończenie potwierdzone. Możesz dołączyć do losowania 5 płyt.")
         reward_panel.set_claim_enabled(true)
 
-func _on_reward_claimed(status: String, message: String) -> void:
+func _on_draw_entered(status: String, message: String) -> void:
     ProgressStoreScript.save_reward({"status": status, "message": message, "claimed_at_unix": int(Time.get_unix_time_from_system())})
     if reward_panel != null and is_instance_valid(reward_panel):
         reward_panel.set_status(message)
         reward_panel.set_claim_enabled(false)
 
 func _on_reward_request_failed(operation: String, message: String) -> void:
-    if operation == "claim_reward" and reward_panel != null and is_instance_valid(reward_panel):
+    if operation == "enter_draw" and reward_panel != null and is_instance_valid(reward_panel):
         reward_panel.set_status(message)
         reward_panel.set_claim_enabled(true)
     else:
@@ -865,7 +864,7 @@ func _on_reward_request_failed(operation: String, message: String) -> void:
 
 func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
     var text_value: String = "Ponawiam połączenie z Sygnałem · próba %d/3" % attempt
-    if operation == "claim_reward" and reward_panel != null and is_instance_valid(reward_panel):
+    if operation == "enter_draw" and reward_panel != null and is_instance_valid(reward_panel):
         reward_panel.set_status(text_value)
     else:
         hud.update_discovery(text_value)
@@ -883,24 +882,6 @@ func _looks_like_email(value: String) -> bool:
     var at: int = value.find("@")
     var dot: int = value.rfind(".")
     return at > 0 and dot > at + 1 and dot < value.length() - 1 and value.length() <= 254
-
-func _slugify_city(value: String) -> String:
-    var slug: String = value.strip_edges().to_lower()
-    var replacements: Dictionary = {"ą": "a", "ć": "c", "ę": "e", "ł": "l", "ń": "n", "ó": "o", "ś": "s", "ż": "z", "ź": "z"}
-    for source in replacements.keys():
-        slug = slug.replace(str(source), str(replacements[source]))
-    var output: String = ""
-    var previous_dash: bool = false
-    for index in range(slug.length()):
-        var code: int = slug.unicode_at(index)
-        var allowed: bool = (code >= 97 and code <= 122) or (code >= 48 and code <= 57)
-        if allowed:
-            output += String.chr(code)
-            previous_dash = false
-        elif not previous_dash and not output.is_empty():
-            output += "-"
-            previous_dash = true
-    return output.trim_suffix("-")
 
 func _array_value(value: Variant) -> Array:
     return value.duplicate(true) if value is Array else []

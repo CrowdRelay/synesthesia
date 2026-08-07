@@ -30,7 +30,7 @@ REQUIRED_FILES = [
     "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/render/room_dressing_layer.gd", "scripts/render/room_video_layer.gd", "scripts/brush/brush_engine.gd",
     "scripts/app/quality_manager.gd", "scripts/app/asset_preloader.gd", "scripts/app/adaptive_performance.gd",
     "scripts/app/transition_director.gd", "scripts/app/door_transition_layer.gd", "scripts/app/diagnostics_overlay.gd",
-    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/chapter_card.gd", "scripts/ui/experience_intro_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd",
+    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/chapter_card.gd", "scripts/ui/experience_intro_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd", "scripts/ui/boot_sequence.gd",
     "scripts/rooms/behavior_base.gd", "shaders/room_composite.gdshader", "shaders/echoes_finale.gdshader", "shaders/room_video_postprocess.gdshader",
     "assets/audio/pink-noise-asmr-loop.ogg", "assets/audio/balloon-pop.mp3", "assets/finale/echoes-finale.webp", "default_bus_layout.tres",
     "data/release_index.json", "tests/validate_project.gd",
@@ -39,8 +39,8 @@ REQUIRED_FILES = [
     "tests/new_release_pack_contract.py", "tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py", "assets/video/manifest.json", "tools/update_visual_snapshots.py",
     "tools/perf_budget.py", "tools/memory_budget.py", "tools/audio_mix_budget.py",
     "tools/new_release_pack.py", "tools/asset_report.py", "tools/reset_local_progress.gd", "tests/lifecycle_smoke.gd",
-    "web/reward/index.html", "web/_headers", "web/register-sw.js",
-    "web/service-worker.js", "web/manifest.webmanifest",
+    "web/boot-shell.css", "web/boot-shell.js", "web/_headers", "web/register-sw.js",
+    "web/service-worker.js", "web/manifest.webmanifest", "assets/icon.svg", "assets/icon-192.png", "assets/icon-512.png", "assets/icon-adaptive-432.png", "assets/icon-background-432.png", "assets/branding/boot-splash.png",
     ".github/workflows/ci.yml", ".github/workflows/build.yml",
     ".github/workflows/deploy-web.yml",
 ]
@@ -282,7 +282,7 @@ def main() -> int:
     if (ROOT / "VERSION").read_text().strip() != "0.11.11":
         fail("VERSION must equal 0.11.11", failures)
     project = (ROOT / "project.godot").read_text()
-    for token in ('config/version="0.11.11"', "size/viewport_width=540", "size/viewport_height=960", "size/window_width_override=540", "size/window_height_override=960"):
+    for token in ('config/version="0.11.11"', "size/viewport_width=540", "size/viewport_height=960", "size/window_width_override=540", "size/window_height_override=960", "dpi/allow_hidpi=true", 'stretch/mode="canvas_items"', 'boot_splash/image="res://assets/branding/boot-splash.png"'):
         if token not in project:
             fail(f"project.godot missing {token}", failures)
     if 'version/name="0.11.11"' not in (ROOT / "export_presets.cfg").read_text():
@@ -399,7 +399,7 @@ def main() -> int:
             print(f"FAIL: {message}", file=sys.stderr)
         print(f"SYNESTHESIA_STATIC_VALIDATION=FAIL count={len(failures)}", file=sys.stderr)
         return 1
-    print("SYNESTHESIA_STATIC_VALIDATION=PASS rooms=11 schema=4 viewport=540x960 renderer=mask-gpu-v2")
+    print("SYNESTHESIA_STATIC_VALIDATION=PASS rooms=11 schema=4 logical=540x960 hidpi=true renderer=mask-gpu-v2")
     return 0
 
 

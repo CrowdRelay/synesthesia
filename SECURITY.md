@@ -1,21 +1,19 @@
 # Security
 
-## Client
+## Boundary
 
-- Never place operator keys, Netlify tokens, CrowdRelay staff tokens or mail credentials in this repository.
-- The completion run token is random, scoped to one album run and stored locally. It is not an account credential.
-- The client never stores or receives shipping details.
-- Reward requests use HTTPS and bounded JSON payloads.
-- Gameplay remains functional when the network or reward API fails.
+Synesthesia owns local gameplay state only. CrowdRelay owns the optional completion/draw ledger. Marketing consent, winner selection, inventory and fulfillment are outside the game runtime.
 
-## Reward page
+## Data sent to CrowdRelay
 
-- The confirmation token is removed from the visible URL immediately with `history.replaceState`.
-- The page uses `Cache-Control: no-store`, `noindex` and a restrictive CSP.
-- Shipping data posts directly to CrowdRelay and is not proxied through analytics or the Virya site.
+Before draw entry: random installation identifier hash, run bearer, app version/locale, ordered room IDs and bounded client elapsed times. The game does not upload brush masks, artwork interaction coordinates, device location or contacts.
 
-## Backend expectations
+For an optional draw entry: e-mail, policy version and locale. The endpoint does not update marketing consent or collect address/phone data. Shipping is requested only from selected winners through the existing CrowdRelay fulfillment boundary.
 
-Use the matching CrowdRelay overlay. It hashes run/install/confirmation tokens, validates room order and server elapsed time, separates shipping storage, rate-limits operational delivery through the existing outbox, and keeps address/phone out of webhook payloads.
+## Web
 
-Report vulnerabilities privately to the project owner. Do not open a public issue containing a live run token, confirmation link, address, phone number, staff credential or deployment secret.
+The static host applies CSP, `nosniff`, no-referrer and restrictive permissions. Reward/lifecycle calls are limited to `https://signal-api.virya.music`. The service worker handles static assets only; API writes are never an offline cache authority.
+
+Run tokens are bearer capabilities. They are stored with local progress and must not be logged, placed in URLs, analytics, crash reports or referrers.
+
+Report security issues privately to the repository owner rather than opening a public issue with secrets or personal data.

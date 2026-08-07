@@ -1,7 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#090d18"/>
-  <circle cx="256" cy="256" r="170" fill="none" stroke="#65a8ff" stroke-width="18" opacity=".95"/>
-  <circle cx="256" cy="256" r="105" fill="none" stroke="#c2dcff" stroke-width="10" opacity=".72"/>
-  <path d="M145 286c52-112 170-112 222 0M162 333c46-71 142-71 188 0" fill="none" stroke="#65a8ff" stroke-width="18" stroke-linecap="round"/>
-  <circle cx="256" cy="206" r="21" fill="#eef6ff"/>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="78%">
+      <stop offset="0" stop-color="#172439"/><stop offset="0.56" stop-color="#090d18"/><stop offset="1" stop-color="#05070d"/>
+    </radialGradient>
+    <linearGradient id="spectral" x1="112" y1="336" x2="400" y2="176" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#71dcff"/><stop offset="0.45" stop-color="#9e82ff"/><stop offset="0.72" stop-color="#ef6fbd"/><stop offset="1" stop-color="#ffb45f"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M173 392V120c0-17 13-30 30-30h106c17 0 30 13 30 30v272" fill="#080c14" stroke="#cbd9ea" stroke-opacity=".26" stroke-width="9"/>
+  <path d="M205 355V139h102v216" fill="#0a1020" stroke="#78dfff" stroke-opacity=".34" stroke-width="4"/>
+  <path d="M122 300c59-103 107-118 151-76 38 36 56 40 117-39" fill="none" stroke="url(#spectral)" stroke-width="38" stroke-linecap="round" opacity=".18" filter="url(#glow)"/>
+  <path d="M122 300c59-103 107-118 151-76 38 36 56 40 117-39" fill="none" stroke="url(#spectral)" stroke-width="16" stroke-linecap="round"/>
+  <path d="M126 324c52-58 91-63 126-34 36 30 76 23 136-44" fill="none" stroke="#e8f7ff" stroke-opacity=".18" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="294" cy="244" r="7" fill="#f2fbff"/>
+  <path d="M256 139v216" stroke="#f3fbff" stroke-opacity=".10" stroke-width="2"/>
 </svg>
