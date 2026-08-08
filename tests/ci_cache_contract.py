@@ -20,6 +20,13 @@ for token in ("~/.cargo/registry", "~/.cargo/git", "editor-${{ env.GODOT_VERSION
 for token in ("~/.cargo/bin/cargo-ndk", "android_debug.apk", "android_release.apk"):
     if token not in android:
         failures.append(f"Android bounded tool cache missing: {token}")
+for token in (
+    ".cache/godot-4.7.1-stable/web-templates/4.7.1.stable/.synesthesia-web-templates.sha256",
+    ".cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_dlink_nothreads_debug.zip",
+    ".cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_dlink_nothreads_release.zip",
+):
+    if token not in release:
+        failures.append(f"tagged Web cache must persist bounded selected-template cache: {token}")
 if 'linux_release.x86_64' not in release:
     failures.append("tagged desktop cache should retain only the selected Linux release template")
 if 'firebelley/godot-export' in release:
@@ -30,6 +37,15 @@ if ci.find("./scripts/validate-source.sh") > ci.find("Cache Rust dependency sour
     failures.append("CI source validation must run before cache restore")
 if release.find("./scripts/validate-source.sh") > release.find("Cache bounded Web build inputs"):
     failures.append("tagged Web source validation must run before cache restore")
+
+if 'SYNESTHESIA_RUST_PROFILE=debug ./scripts/build-rust-native.sh host' not in ci:
+    failures.append("CI Godot editor smoke must build the debug host GDExtension selected by linux.debug")
+if 'SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh host' in ci:
+    failures.append("CI editor smoke must not build release-only host GDExtension")
+if "if ! (cd native && cargo ndk --version" not in android:
+    failures.append("Android CI cargo-ndk probe must run from native workspace")
+if "if ! (cd native && cargo ndk --version" not in release:
+    failures.append("Tagged Android cargo-ndk probe must run from native workspace")
 
 if failures:
     for failure in failures:

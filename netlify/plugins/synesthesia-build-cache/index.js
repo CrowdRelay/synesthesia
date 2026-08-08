@@ -9,23 +9,27 @@ const EDITOR_SHA256 = "c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27ad
 const cacheRoot = path.join(".cache", `godot-${VERSION}`);
 const editor = path.join(cacheRoot, "editor.zip");
 
-// Match Godot's Linux data-dir contract exactly:
-//   $XDG_DATA_HOME/godot/export_templates/<version>
-// build-web-preview.sh exports XDG_DATA_HOME=$cacheRoot/godot-data on Netlify.
-const xdgDataHome = path.join(cacheRoot, "godot-data");
-const godotDataDir = path.join(xdgDataHome, "godot");
-const templateDir = path.join(godotDataDir, "export_templates", RELEASE);
+// Cache storage is deliberately separate from Godot's runtime install path.
+// build-web-preview.sh copies these two verified files into the engine's real
+// per-user template directory before export. This keeps Netlify's cache bounded
+// while avoiding any dependency on XDG/GODOT_DATA_DIR interpretation.
+const templateDir = path.join(cacheRoot, "web-templates", RELEASE);
 const manifest = path.join(templateDir, ".synesthesia-web-templates.sha256");
 const templateNames = ["web_dlink_nothreads_debug.zip", "web_dlink_nothreads_release.zip"];
 const templates = templateNames.map((name) => path.join(templateDir, name));
 
-// V3 before the Netlify path fix cached the same verified files one directory
-// too high. Restore that bounded legacy cache once and migrate it so the first
-// fixed deploy does not download the 1.2 GiB official template pack again.
-const legacyTemplateDir = path.join(cacheRoot, "godot-data", "export_templates", RELEASE);
-const legacyManifest = path.join(legacyTemplateDir, ".synesthesia-web-templates.sha256");
-const legacyTemplates = templateNames.map((name) => path.join(legacyTemplateDir, name));
-const restorePaths = [editor, manifest, ...templates, legacyManifest, ...legacyTemplates];
+// Restore both historical layouts so the first fixed deploy can migrate the
+// verified=4 checkpoint created by previous failed Netlify builds without
+// downloading the 1.2 GiB official template pack again.
+const legacyTemplateDirs = [
+  path.join(cacheRoot, "godot-data", "godot", "export_templates", RELEASE),
+  path.join(cacheRoot, "godot-data", "export_templates", RELEASE),
+];
+const legacyPaths = legacyTemplateDirs.flatMap((dir) => [
+  path.join(dir, ".synesthesia-web-templates.sha256"),
+  ...templateNames.map((name) => path.join(dir, name)),
+]);
+const restorePaths = [editor, manifest, ...templates, ...legacyPaths];
 
 async function fileSha256(file) {
   const hash = crypto.createHash("sha256");
@@ -76,18 +80,24 @@ async function verifiedTemplates() {
 
 async function migrateLegacyTemplates() {
   if (await verifiedTemplates()) return false;
-  if (!(await verifiedTemplatesAt(legacyTemplateDir))) return false;
-  await fsp.mkdir(templateDir, { recursive: true });
-  for (const name of templateNames) {
-    await fsp.copyFile(path.join(legacyTemplateDir, name), path.join(templateDir, name));
+  for (const legacyDir of legacyTemplateDirs) {
+    if (!(await verifiedTemplatesAt(legacyDir))) continue;
+    await fsp.mkdir(templateDir, { recursive: true });
+    for (const name of templateNames) {
+      await fsp.copyFile(path.join(legacyDir, name), path.join(templateDir, name));
+    }
+    await fsp.copyFile(
+      path.join(legacyDir, ".synesthesia-web-templates.sha256"),
+      manifest,
+    );
+    if (!(await verifiedTemplates())) {
+      await Promise.allSettled([manifest, ...templates].map((file) => fsp.rm(file, { force: true })));
+      throw new Error("migrated Synesthesia Web templates failed integrity verification");
+    }
+    console.log(`SYNESTHESIA_NETLIFY_CACHE=MIGRATED source=${legacyDir} destination=${templateDir}`);
+    return true;
   }
-  await fsp.copyFile(legacyManifest, manifest);
-  if (!(await verifiedTemplates())) {
-    await Promise.allSettled([manifest, ...templates].map((file) => fsp.rm(file, { force: true })));
-    throw new Error("migrated Synesthesia Web templates failed integrity verification");
-  }
-  console.log("SYNESTHESIA_NETLIFY_CACHE=MIGRATED legacy-path=1 canonical-xdg=1");
-  return true;
+  return false;
 }
 
 module.exports = {
@@ -97,8 +107,7 @@ module.exports = {
     console.log("SYNESTHESIA_NETLIFY_CACHE=RESTORE scope=editor+2-web-templates+integrity-manifest");
   },
   // onEnd also runs after a failed build. Save only independently verified
-  // inputs so a late Rust/Godot failure does not force another 1.2 GiB template
-  // download, while a partial/corrupt download can never poison the next run.
+  // inputs, never target trees or the full template archive.
   onEnd: async ({ utils }) => {
     const save = [];
     if (await verifiedEditor()) save.push(editor);

@@ -35,6 +35,7 @@ python3 tests/application_lifecycle_contract.py
 python3 tests/source_hygiene_contract.py
 python3 tests/export_surface_contract.py
 python3 tests/build_cache_contract.py
+python3 tests/godot_runtime_path_contract.py
 python3 tests/ci_cache_contract.py
 python3 tests/release_pipeline_contract.py
 python3 tests/font_supply_chain_contract.py

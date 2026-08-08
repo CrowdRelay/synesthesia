@@ -74,7 +74,7 @@ fi
 [[ -x "$GODOT_BIN" ]] || { printf 'ERROR: Godot binary is not executable: %s\n' "$GODOT_BIN" >&2; exit 1; }
 export GODOT_BIN
 
-TEMPLATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates/$GODOT_RELEASE_VERSION"
+TEMPLATE_DIR="$(./scripts/godot-runtime-data-dir.sh Linux)/export_templates/$GODOT_RELEASE_VERSION"
 LINUX_TEMPLATE="$TEMPLATE_DIR/linux_release.x86_64"
 if [[ ! -s "$LINUX_TEMPLATE" ]]; then
   mkdir -p "$TEMPLATE_DIR"

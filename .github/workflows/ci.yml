@@ -110,7 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           rustup override set 1.97.1
-          SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh host
+          SYNESTHESIA_RUST_PROFILE=debug ./scripts/build-rust-native.sh host
 
       - name: Run shared hardened Godot validation
         shell: bash

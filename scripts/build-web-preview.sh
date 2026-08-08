@@ -165,31 +165,32 @@ fi
 }
 export GODOT_BIN
 
-if [[ "${NETLIFY:-}" == "true" ]]; then
-  # Godot does not read our private GODOT_DATA_DIR shell variable. On Linux it
-  # resolves export templates from $XDG_DATA_HOME/godot/export_templates. Keep
-  # XDG itself under the repository cache so Netlify can persist only the two
-  # selected Web templates while Godot sees them at its canonical path.
-  export XDG_DATA_HOME="${SYNESTHESIA_XDG_DATA_HOME:-$CACHE_DIR/godot-data}"
-  GODOT_DATA_DIR="${GODOT_DATA_DIR:-$XDG_DATA_HOME/godot}"
-  printf 'SYNESTHESIA_GODOT_DATA=PASS xdg=%s templates=%s\n' "$XDG_DATA_HOME" "$GODOT_DATA_DIR/export_templates/$GODOT_RELEASE_VERSION"
-else
-  case "$(uname -s)" in
-    Darwin)
-      GODOT_DATA_DIR="${GODOT_DATA_DIR:-$HOME/Library/Application Support/Godot}"
-      ;;
-    *)
-      GODOT_DATA_DIR="${GODOT_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/godot}"
-      ;;
-  esac
-fi
-
-TEMPLATE_DIR="$GODOT_DATA_DIR/export_templates/$GODOT_RELEASE_VERSION"
-WEB_TEMPLATE_MANIFEST="$TEMPLATE_DIR/.synesthesia-web-templates.sha256"
+# Keep the bounded download cache separate from Godot's runtime install path.
+# The engine's own diagnostic is authoritative here: on Linux/Netlify Godot
+# 4.7.1 resolves templates from $HOME/.local/share/godot/export_templates,
+# regardless of a private shell-only GODOT_DATA_DIR and (in Netlify's process
+# environment) despite attempts to relocate XDG_DATA_HOME. Cache two verified
+# Web templates under the repository, then atomically install copies where the
+# running editor actually looks for them.
+GODOT_RUNTIME_DATA_DIR="$(./scripts/godot-runtime-data-dir.sh)"
+RUNTIME_TEMPLATE_DIR="$GODOT_RUNTIME_DATA_DIR/export_templates/$GODOT_RELEASE_VERSION"
+CACHE_TEMPLATE_DIR="${SYNESTHESIA_WEB_TEMPLATE_CACHE_DIR:-$CACHE_DIR/web-templates/$GODOT_RELEASE_VERSION}"
+WEB_TEMPLATE_MANIFEST="$CACHE_TEMPLATE_DIR/.synesthesia-web-templates.sha256"
 WEB_TEMPLATE_NAMES=(web_dlink_nothreads_debug.zip web_dlink_nothreads_release.zip)
 
-verify_web_template_manifest() {
-  [[ -s "$WEB_TEMPLATE_MANIFEST" ]] || return 1
+calculate_template_set_sha() {
+  local dir="$1"
+  local name
+  for name in "${WEB_TEMPLATE_NAMES[@]}"; do
+    [[ -s "$dir/$name" ]] || return 1
+    printf '%s  %s\n' "$(calculate_sha256 "$dir/$name")" "$name"
+  done
+}
+
+verify_web_template_manifest_at() {
+  local dir="$1"
+  local manifest="$2"
+  [[ -s "$manifest" ]] || return 1
   local expected name actual count=0
   while read -r expected name; do
     [[ -n "$expected" && -n "$name" ]] || continue
@@ -197,48 +198,105 @@ verify_web_template_manifest() {
       web_dlink_nothreads_debug.zip|web_dlink_nothreads_release.zip) ;;
       *) return 1 ;;
     esac
-    [[ -s "$TEMPLATE_DIR/$name" ]] || return 1
-    actual="$(calculate_sha256 "$TEMPLATE_DIR/$name")"
+    [[ -s "$dir/$name" ]] || return 1
+    actual="$(calculate_sha256 "$dir/$name")"
     [[ "$actual" == "$expected" ]] || return 1
     count=$((count + 1))
-  done < "$WEB_TEMPLATE_MANIFEST"
+  done < "$manifest"
   [[ "$count" == "2" ]]
+}
+
+verify_web_template_manifest() {
+  verify_web_template_manifest_at "$CACHE_TEMPLATE_DIR" "$WEB_TEMPLATE_MANIFEST"
 }
 
 write_web_template_manifest() {
   local tmp="${WEB_TEMPLATE_MANIFEST}.tmp"
-  : > "$tmp"
-  local name
-  for name in "${WEB_TEMPLATE_NAMES[@]}"; do
-    printf '%s  %s\n' "$(calculate_sha256 "$TEMPLATE_DIR/$name")" "$name" >> "$tmp"
-  done
+  mkdir -p "$CACHE_TEMPLATE_DIR"
+  calculate_template_set_sha "$CACHE_TEMPLATE_DIR" > "$tmp"
   mv "$tmp" "$WEB_TEMPLATE_MANIFEST"
 }
 
+migrate_previous_template_cache() {
+  verify_web_template_manifest && return 0
+  local candidate candidate_manifest name
+  for candidate in \
+    "$CACHE_DIR/godot-data/godot/export_templates/$GODOT_RELEASE_VERSION" \
+    "$CACHE_DIR/godot-data/export_templates/$GODOT_RELEASE_VERSION"; do
+    candidate_manifest="$candidate/.synesthesia-web-templates.sha256"
+    if verify_web_template_manifest_at "$candidate" "$candidate_manifest"; then
+      mkdir -p "$CACHE_TEMPLATE_DIR"
+      for name in "${WEB_TEMPLATE_NAMES[@]}"; do
+        cp "$candidate/$name" "$CACHE_TEMPLATE_DIR/$name"
+      done
+      cp "$candidate_manifest" "$WEB_TEMPLATE_MANIFEST"
+      verify_web_template_manifest || {
+        echo 'ERROR: migrated Web template cache failed verification' >&2
+        exit 1
+      }
+      printf 'SYNESTHESIA_WEB_TEMPLATE_CACHE=MIGRATED source=%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+install_web_templates_for_godot() {
+  verify_web_template_manifest || {
+    echo 'ERROR: refusing to install unverified Web templates into Godot data directory' >&2
+    exit 1
+  }
+  mkdir -p "$RUNTIME_TEMPLATE_DIR"
+  local name source target tmp source_sha target_sha
+  for name in "${WEB_TEMPLATE_NAMES[@]}"; do
+    source="$CACHE_TEMPLATE_DIR/$name"
+    target="$RUNTIME_TEMPLATE_DIR/$name"
+    source_sha="$(calculate_sha256 "$source")"
+    if [[ -s "$target" ]]; then
+      target_sha="$(calculate_sha256 "$target")"
+      if [[ "$source_sha" == "$target_sha" ]]; then
+        continue
+      fi
+    fi
+    tmp="${target}.tmp"
+    rm -f "$tmp"
+    cp "$source" "$tmp"
+    [[ "$(calculate_sha256 "$tmp")" == "$source_sha" ]] || {
+      echo "ERROR: Web template copy failed verification: $name" >&2
+      rm -f "$tmp"
+      exit 1
+    }
+    mv "$tmp" "$target"
+  done
+  for name in "${WEB_TEMPLATE_NAMES[@]}"; do
+    [[ -s "$RUNTIME_TEMPLATE_DIR/$name" ]] || {
+      echo "ERROR: Godot runtime Web template missing after install: $RUNTIME_TEMPLATE_DIR/$name" >&2
+      exit 1
+    }
+    [[ "$(calculate_sha256 "$RUNTIME_TEMPLATE_DIR/$name")" == "$(calculate_sha256 "$CACHE_TEMPLATE_DIR/$name")" ]] || {
+      echo "ERROR: Godot runtime Web template checksum differs from verified cache: $name" >&2
+      exit 1
+    }
+  done
+  printf 'SYNESTHESIA_GODOT_TEMPLATE_INSTALL=PASS runtime=%s cache=%s files=2\n' \
+    "$RUNTIME_TEMPLATE_DIR" "$CACHE_TEMPLATE_DIR"
+}
+
+mkdir -p "$CACHE_DIR" "$CACHE_TEMPLATE_DIR"
+migrate_previous_template_cache || true
+
 web_templates_ready=0
-if [[ -s "$TEMPLATE_DIR/web_dlink_nothreads_debug.zip" && -s "$TEMPLATE_DIR/web_dlink_nothreads_release.zip" ]]; then
-  if verify_web_template_manifest; then
-    web_templates_ready=1
-    printf 'SYNESTHESIA_WEB_TEMPLATE_CACHE=HIT verified=manifest\n'
-  elif [[ ! -s "$WEB_TEMPLATE_MANIFEST" && "${NETLIFY:-}" != "true" ]]; then
-    # Legacy local installations came from Godot's verified pack but predate the
-    # selected-template manifest. Adopt only the *absence* of a manifest; an
-    # existing manifest that fails verification is corruption and must refresh.
-    write_web_template_manifest
-    web_templates_ready=1
-    printf 'SYNESTHESIA_WEB_TEMPLATE_CACHE=ADOPTED scope=local-legacy\n'
-  else
-    # Never normalize a hash mismatch into a new baseline. A corrupt/partial
-    # selected cache is discarded and rebuilt from the verified official pack.
-    rm -f "$TEMPLATE_DIR/web_dlink_nothreads_debug.zip" \
-      "$TEMPLATE_DIR/web_dlink_nothreads_release.zip" "$WEB_TEMPLATE_MANIFEST"
-  fi
+if verify_web_template_manifest; then
+  web_templates_ready=1
+  printf 'SYNESTHESIA_WEB_TEMPLATE_CACHE=HIT verified=manifest path=%s\n' "$CACHE_TEMPLATE_DIR"
+else
+  # Never normalize a corrupt manifest into a new baseline.
+  rm -f "$CACHE_TEMPLATE_DIR/web_dlink_nothreads_debug.zip" \
+    "$CACHE_TEMPLATE_DIR/web_dlink_nothreads_release.zip" "$WEB_TEMPLATE_MANIFEST"
 fi
 
 if [[ "$web_templates_ready" != "1" ]]; then
-  mkdir -p "$CACHE_DIR" "$TEMPLATE_DIR"
   template_archive="$CACHE_DIR/templates.tpz"
-
   if [[ ! -s "$template_archive" ]]; then
     curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-all-errors \
       --output "$template_archive" \
@@ -246,16 +304,11 @@ if [[ "$web_templates_ready" != "1" ]]; then
   else
     printf 'SYNESTHESIA_GODOT_TEMPLATE_CACHE=HIT archive=%s\n' "$template_archive"
   fi
+  check_sha256 "$GODOT_TEMPLATES_SHA256" "$template_archive"
 
-  if ! check_sha256 "$GODOT_TEMPLATES_SHA256" "$template_archive"; then
-    printf 'ERROR: cached Godot export template archive failed checksum: %s\n' "$template_archive" >&2
-    exit 1
-  fi
-
-  # Do not inflate the 1.2 GiB multi-platform template pack just to consume two
-  # Web files. Stream only the selected entries into atomic temp files.
+  # Stream only the two Web entries; never inflate the ~1.2 GiB pack.
   for template_name in "${WEB_TEMPLATE_NAMES[@]}"; do
-    target_template="$TEMPLATE_DIR/$template_name"
+    target_template="$CACHE_TEMPLATE_DIR/$template_name"
     tmp_template="${target_template}.tmp"
     rm -f "$tmp_template"
     unzip -p "$template_archive" "templates/$template_name" > "$tmp_template"
@@ -275,10 +328,10 @@ if [[ "$web_templates_ready" != "1" ]]; then
     rm -f "$template_archive"
   fi
 fi
-[[ -f "$TEMPLATE_DIR/web_dlink_nothreads_release.zip" ]] || {
-  echo 'ERROR: Godot Web dynamic-link nothreads export template is missing' >&2
-  exit 1
-}
+
+# Install before Rust/Web compilation so a path/configuration error fails in
+# seconds instead of after a multi-minute wasm32-unknown-emscripten build.
+install_web_templates_for_godot
 
 # First validate the portable fallback with no generated extension state. This
 # prevents a stale local dylib/so from making a clean checkout look healthy.
@@ -304,6 +357,7 @@ fi
 
 rm -rf build/web
 mkdir -p build/web
+install_web_templates_for_godot
 run_godot_checked web-export "" --headless --path "$ROOT" --export-release Web build/web/index.html
 
 if [[ "$RUST_WEB_REQUIRED" == "1" ]]; then

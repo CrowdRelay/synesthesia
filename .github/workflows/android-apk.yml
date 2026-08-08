@@ -49,7 +49,7 @@ jobs:
           rustup toolchain install 1.97.1 --profile minimal
           rustup override set 1.97.1
           rustup target add aarch64-linux-android
-          if ! cargo ndk --version 2>/dev/null | grep -Fq 'cargo-ndk 4.1.2'; then
+          if ! (cd native && cargo ndk --version 2>/dev/null) | grep -Fq 'cargo-ndk 4.1.2'; then
             cargo install cargo-ndk --locked --version 4.1.2
           else
             echo 'SYNESTHESIA_CARGO_NDK_CACHE=HIT version=4.1.2'

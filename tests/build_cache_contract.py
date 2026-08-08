@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bound build caches to reusable inputs, never compiled target trees."""
+"""Bound build caches to reusable verified inputs, never runtime/compiled trees."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,25 +11,31 @@ netlify = (ROOT / "netlify.toml").read_text()
 for token in (
     "SYNESTHESIA_GODOT_EDITOR_CACHE=HIT",
     "WEB_TEMPLATE_NAMES=(web_dlink_nothreads_debug.zip web_dlink_nothreads_release.zip)",
-    "verify_web_template_manifest",
+    "verify_web_template_manifest_at",
     "write_web_template_manifest",
     'unzip -p "$template_archive" "templates/$template_name"',
-    'mkdir -p "$CACHE_DIR" "$TEMPLATE_DIR"',
-    'export XDG_DATA_HOME="${SYNESTHESIA_XDG_DATA_HOME:-$CACHE_DIR/godot-data}"',
-    'GODOT_DATA_DIR="${GODOT_DATA_DIR:-$XDG_DATA_HOME/godot}"',
-    'SYNESTHESIA_GODOT_DATA=PASS',
+    'CACHE_TEMPLATE_DIR="${SYNESTHESIA_WEB_TEMPLATE_CACHE_DIR:-$CACHE_DIR/web-templates/$GODOT_RELEASE_VERSION}"',
+    'GODOT_RUNTIME_DATA_DIR="$(./scripts/godot-runtime-data-dir.sh)"',
+    "install_web_templates_for_godot",
+    "SYNESTHESIA_GODOT_TEMPLATE_INSTALL=PASS",
     'rm -f "$template_archive"',
     "tools/web_bundle_budget.py",
 ):
     if token not in web:
         failures.append(f"Web build cache contract missing: {token}")
 
-for token in ("editor.zip", "web_dlink_nothreads_debug.zip", "web_dlink_nothreads_release.zip", ".synesthesia-web-templates.sha256"):
+for token in (
+    "editor.zip",
+    "web-templates",
+    "web_dlink_nothreads_debug.zip",
+    "web_dlink_nothreads_release.zip",
+    ".synesthesia-web-templates.sha256",
+):
     if token not in plugin:
         failures.append(f"Netlify cache missing selected input: {token}")
-for forbidden in ("native/target", "templates.tpz", "emsdk"):
+for forbidden in ("native/target", "templates.tpz", "emsdk", ".local/share/godot"):
     if forbidden in plugin:
-        failures.append(f"Netlify cache must not retain heavy tree: {forbidden}")
+        failures.append(f"Netlify cache must not retain heavy/runtime tree: {forbidden}")
 for token in (
     "onEnd",
     "verifiedEditor",
@@ -38,7 +44,7 @@ for token in (
     "migrateLegacyTemplates",
     "SYNESTHESIA_NETLIFY_CACHE=MIGRATED",
     "SYNESTHESIA_NETLIFY_CACHE=CHECKPOINT",
-    'path.join(xdgDataHome, "godot")',
+    'path.join(cacheRoot, "web-templates", RELEASE)',
 ):
     if token not in plugin:
         failures.append(f"Netlify verified checkpoint cache missing: {token}")
@@ -50,4 +56,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_BUILD_CACHE=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_BUILD_CACHE=PASS netlify=verified-checkpoint+2-web-templates target=uncached full-template-archive=ephemeral")
+print("SYNESTHESIA_BUILD_CACHE=PASS netlify=verified-selected-inputs runtime-install=separate target=uncached")

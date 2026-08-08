@@ -60,7 +60,7 @@ for token in (
     './scripts/build-rust-native.sh android-arm64',
     'libsynesthesia_gdext\\.so$',
     'SYNESTHESIA_RUST_ANDROID_APK=PASS',
-    'Library/Application Support/Godot',
+    'godot-runtime-data-dir.sh',
     'unzip -p "$template_archive" "templates/$template_name"',
     'SYNESTHESIA_ANDROID_TEMPLATES=PASS scope=android-only',
     'write_sha256',
@@ -74,6 +74,16 @@ if "templates-unpack" in script or 'cp -R "$unpack_dir/templates/."' in script o
     failures.append("Android builder must install only selected templates with portable checksum verification")
 if "\nyes |" in script:
     failures.append("Android license acceptance must not use yes|sdkmanager under pipefail")
+
+rust_builder = (ROOT / "scripts/build-rust-native.sh").read_text()
+for token in (
+    '(cd "$NATIVE" && cargo ndk --version',
+    '(cd "$NATIVE" && cargo ndk "${args[@]}")',
+):
+    if token not in rust_builder:
+        failures.append(f"Android Rust builder must run cargo-ndk from native workspace: {token}")
+if "if ! (cd native && cargo ndk --version" not in workflow:
+    failures.append("Android workflow cargo-ndk probe must run from native workspace")
 
 if "SYNESTHESIA_ENABLE_RUST_NATIVE" in script or "SYNESTHESIA_ENABLE_RUST_NATIVE" in workflow:
     failures.append("Android Rust must be default-on, not opt-in")

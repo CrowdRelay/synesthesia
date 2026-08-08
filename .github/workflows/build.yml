@@ -44,8 +44,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             .cache/godot-4.7.1-stable/editor.zip
-            ~/.local/share/godot/export_templates/4.7.1.stable/web_dlink_nothreads_debug.zip
-            ~/.local/share/godot/export_templates/4.7.1.stable/web_dlink_nothreads_release.zip
+            .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/.synesthesia-web-templates.sha256
+            .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_dlink_nothreads_debug.zip
+            .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_dlink_nothreads_release.zip
             ~/.local/share/godot/export_templates/4.7.1.stable/linux_release.x86_64
           key: ${{ runner.os }}-synesthesia-web-rust-${{ hashFiles('native/Cargo.lock') }}-godot4.7.1-emsdk3.1.74
 
@@ -103,7 +104,7 @@ jobs:
           rustup toolchain install 1.97.1 --profile minimal
           rustup override set 1.97.1
           rustup target add aarch64-linux-android
-          if ! cargo ndk --version 2>/dev/null | grep -Fq 'cargo-ndk 4.1.2'; then
+          if ! (cd native && cargo ndk --version 2>/dev/null) | grep -Fq 'cargo-ndk 4.1.2'; then
             cargo install cargo-ndk --locked --version 4.1.2
           fi
 

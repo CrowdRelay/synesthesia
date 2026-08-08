@@ -127,10 +127,7 @@ if [[ -z "$GODOT_BIN" ]]; then
 fi
 [[ -x "$GODOT_BIN" ]] || { printf 'ERROR: Godot binary is not executable: %s\n' "$GODOT_BIN" >&2; exit 1; }
 
-case "$(uname -s)" in
-  Darwin) GODOT_DATA_DIR="${GODOT_DATA_DIR:-$HOME/Library/Application Support/Godot}" ;;
-  *) GODOT_DATA_DIR="${GODOT_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/godot}" ;;
-esac
+GODOT_DATA_DIR="$(./scripts/godot-runtime-data-dir.sh)"
 TEMPLATE_DIR="$GODOT_DATA_DIR/export_templates/$GODOT_RELEASE_VERSION"
 if [[ ! -f "$TEMPLATE_DIR/android_debug.apk" || ! -f "$TEMPLATE_DIR/android_release.apk" ]]; then
   template_archive="$GODOT_CACHE_DIR/templates.tpz"

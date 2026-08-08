@@ -84,7 +84,7 @@ build_host() {
 
 build_android() {
   require cargo
-  if ! cargo ndk --version >/dev/null 2>&1; then
+  if ! (cd "$NATIVE" && cargo ndk --version >/dev/null 2>&1); then
     echo "cargo-ndk is required for Android Rust builds: cargo install cargo-ndk --locked" >&2
     exit 1
   fi
@@ -93,7 +93,7 @@ build_android() {
   mkdir -p "$output"
   local args=(-t arm64-v8a -o "$output" build --manifest-path "$NATIVE/Cargo.toml" --package synesthesia-gdext)
   if [[ "$PROFILE" == "release" ]]; then args+=(--release); fi
-  cargo ndk "${args[@]}"
+  (cd "$NATIVE" && cargo ndk "${args[@]}")
   local source="$output/arm64-v8a/libsynesthesia_gdext.so"
   if [[ ! -f "$source" ]]; then
     source="$(find "$output" -type f -name 'libsynesthesia_gdext.so' -print -quit)"
