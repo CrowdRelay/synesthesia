@@ -60,6 +60,13 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             return [_interaction_event("presence", 1, "Dwa rytmy nie zniknęły — zaczęły oddychać obok siebie", Vector2(0.5, 0.58), 0.12, 0.88)]
     return []
 
+func mechanic_progress() -> float:
+    if bool(state.get("shared_rhythm", false)):
+        return 1.0
+    var closeness := clampf(float(state.get("closeness", 0.0)), 0.0, 1.0)
+    var presence := 0.24 if bool(state.get("presence", false)) else 0.0
+    return clampf(presence + closeness * 0.76, 0.0, 0.94)
+
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.42 and not bool(state.get("presence", false)) and _near(point_norm, SECOND, radius_norm + 0.12):
         state["presence"] = true

@@ -2,6 +2,7 @@
 """Guard Web deploy size and fail predictable source bloat before expensive builds."""
 from pathlib import Path
 import argparse
+import os
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build" / "web"
@@ -48,11 +49,14 @@ def postbuild() -> None:
     rust_wasms = [path for path in wasms if path.name == "synesthesia_gdext.wasm"]
     engine_wasms = [path for path in wasms if path.name != "synesthesia_gdext.wasm"]
     failures: list[str] = []
+    rust_required = os.environ.get("SYNESTHESIA_RUST_WEB_REQUIRED", "1") == "1"
 
     if len(pcks) != 1:
         failures.append(f"expected exactly one Godot PCK, got {len(pcks)}")
-    if len(rust_wasms) != 1:
+    if rust_required and len(rust_wasms) != 1:
         failures.append(f"expected exactly one Rust GDExtension WASM, got {len(rust_wasms)}")
+    if not rust_required and rust_wasms:
+        failures.append(f"GDScript Web fallback must not ship Rust side-module WASM, got {len(rust_wasms)}")
     for path in pcks:
         if path.stat().st_size > MAX_PCK:
             failures.append(f"PCK exceeds 72 MiB: {path.name}={path.stat().st_size}")
@@ -71,6 +75,7 @@ def postbuild() -> None:
         "SYNESTHESIA_WEB_BUNDLE_BUDGET=PASS "
         f"files={len(files)} total_mib={total / 1048576:.2f} "
         f"pck_mib={max((p.stat().st_size for p in pcks), default=0) / 1048576:.2f} "
+        f"rust_required={str(rust_required).lower()} "
         f"rust_wasm_kib={max((p.stat().st_size for p in rust_wasms), default=0) / 1024:.1f} "
         f"engine_wasm_mib={sum(p.stat().st_size for p in engine_wasms) / 1048576:.2f}"
     )

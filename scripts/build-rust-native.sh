@@ -7,7 +7,7 @@ DESCRIPTOR="$ROOT/synesthesia_rust.gdextension"
 EXTENSION_LIST="$ROOT/.godot/extension_list.cfg"
 MODE="${1:-host}"
 PROFILE="${SYNESTHESIA_RUST_PROFILE:-release}"
-WEB_TOOLCHAIN="${SYNESTHESIA_RUST_WEB_TOOLCHAIN:-nightly}"
+WEB_TOOLCHAIN="${SYNESTHESIA_RUST_WEB_TOOLCHAIN:-nightly-2026-08-07}"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || {

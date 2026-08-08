@@ -63,6 +63,15 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             return [_interaction_event("toast", 0, "Szkło spotkało szkło — los nie musi być samotny", GLASS_TARGET, 0.12, 0.96)]
     return []
 
+func mechanic_progress() -> float:
+    if bool(state.get("toast", false)):
+        return 1.0
+    var poured := 0.36 if bool(state.get("poured", false)) else 0.0
+    var glass := _glass_position()
+    var distance := clampf(glass.distance_to(GLASS_TARGET) / GLASS_START.distance_to(GLASS_TARGET), 0.0, 1.0)
+    var approach := (1.0 - distance) * (0.56 if bool(state.get("poured", false)) else 0.16)
+    return clampf(poured + approach, 0.0, 0.94)
+
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.56 and not bool(state.get("toast", false)) and _near(point_norm, Vector2(0.5, 0.52), radius_norm + 0.16):
         state["toast"] = true

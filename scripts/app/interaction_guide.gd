@@ -90,8 +90,8 @@ func _hints_for(interaction: String) -> Array[String]:
         "raise_phoenix":
             return ["Popiół reaguje na ruch po okręgu.", "Zbierz energię krążąc palcem, potem wyprowadź ruch w górę."]
         "intimate_bedroom":
-            return ["Druga obecność pojawia się po chwili kontaktu.", "Przytrzymaj, a jeśli chcesz — zbliż dwa palce. Pędzel też wystarczy."]
+            return ["Druga obecność pojawia się po chwili kontaktu.", "Przytrzymaj obecność, potem zbliż dwa palce, aż oddechy się zsynchronizują."]
         "rise_atrium":
             return ["Finał przypomina gesty, które już znasz.", "Dotknij światła, przytrzymaj je i zakończ spokojnym ruchem w górę."]
         _:
-            return ["Dotknij elementów sceny — pędzel nadal zawsze działa."]
+            return ["Dotknij elementów sceny i poszukaj gestu właściwego dla tego pokoju."]

@@ -72,6 +72,15 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
                 return [_interaction_event("mask", candidate, "Maska zeszła ze ściany — została obecność", MASKS[candidate], 0.105, 0.94)]
     return []
 
+func mechanic_progress() -> float:
+    var cracks: Array = state.get("cracks", [0.0, 0.0, 0.0])
+    var removed: Array = state.get("removed", [])
+    var score := 0.0
+    for index in range(MASKS.size()):
+        var crack := clampf(float(cracks[index]) if index < cracks.size() else 0.0, 0.0, 1.0)
+        score += 1.0 if removed.has(index) else crack * 0.52
+    return clampf(score / float(MASKS.size()), 0.0, 1.0)
+
 func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Array[Dictionary]:
     var cracks: Array = state.get("cracks", [0.0, 0.0, 0.0])
     var removed: Array = state.get("removed", [])

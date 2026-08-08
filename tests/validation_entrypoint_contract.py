@@ -34,10 +34,21 @@ for name, text in (
 
 if 'if [[ ! -f "$ROOT/synesthesia_rust.gdextension" ]]' not in validate or './scripts/build-rust-native.sh disable >/dev/null' not in validate:
     failures.append('validate.sh: stale generated GDExtension registration is not purged for source-only validation')
+if 'res://tests/gdscript_parse_smoke.gd' not in validate or 'SYNESTHESIA_GDSCRIPT_PARSE=PASS' not in validate:
+    failures.append('validate.sh: repository-wide GDScript parse sweep is missing')
+if 'tests/netlify_artifact_deploy_contract.py' not in source_gate:
+    failures.append('validate-source.sh: zero-build Netlify artifact contract is missing')
 if 'preload("res://scripts/app/diagnostics_overlay.gd")' in (ROOT / 'scripts/main.gd').read_text():
     failures.append('main.gd: optional diagnostics overlay is a hard parser dependency')
 if 'ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH)' not in (ROOT / 'scripts/main.gd').read_text():
     failures.append('main.gd: optional diagnostics overlay lacks guarded dynamic load')
+diagnostics = (ROOT / 'scripts/app/diagnostics_overlay.gd').read_text()
+if 'var preload:' in diagnostics:
+    failures.append('diagnostics_overlay.gd: reserved GDScript preload identifier reused as a variable')
+
+
+if 'tests/font_glyph_smoke.gd' not in validate or 'SYNESTHESIA_FONT_GLYPHS=PASS' not in validate:
+    failures.append('validate.sh: bundled title font Polish glyph coverage is not runtime-gated')
 
 # Tagged/manual release validates once before cache/toolchain setup, then delegates
 # platform-specific work to builders with source validation explicitly skipped.

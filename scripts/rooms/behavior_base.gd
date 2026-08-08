@@ -17,6 +17,14 @@ func particle_style() -> String:
 func interaction_hint() -> String:
     return "DOTKNIJ ŚWIATA"
 
+## V2 progression is mechanic-first: every room owns a different way of
+## reducing interference. The reveal brush only assists/localizes the effect.
+func mechanic_progress() -> float:
+    return 0.0
+
+func brush_assist_weight() -> float:
+    return 0.22
+
 ## Painting remains a fallback/reveal layer for every room. Gesture-driven rooms
 ## can return semantic events from on_gesture without replacing the mask system.
 func on_paint(_point_norm: Vector2, _radius_norm: float, _progress: float) -> Array[Dictionary]:

@@ -10,6 +10,7 @@ signal act_changed(index: int, title: String)
 const BrushEngineScript := preload("res://scripts/brush/brush_engine.gd")
 const InteractionRouterScript := preload("res://scripts/input/interaction_router.gd")
 const RoomInteractionRuntimeScript := preload("res://scripts/input/room_interaction_runtime.gd")
+const MechanicProgress := preload("res://scripts/rooms/mechanic_progress.gd")
 const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const RevealMaskScript := preload("res://scripts/render/reveal_mask.gd")
 const AtmosphereLayerScript := preload("res://scripts/render/atmosphere_layer.gd")
@@ -375,7 +376,7 @@ func get_coverage() -> float:
 func get_normalized_progress() -> float:
     if cinematic_revealed:
         return 1.0
-    return clampf(get_coverage() / completion_threshold, 0.0, 1.0)
+    return MechanicProgress.resolve(clampf(get_coverage() / completion_threshold, 0.0, 1.0), behavior)
 
 func get_current_act() -> int:
     return current_act
@@ -450,8 +451,11 @@ func _gui_input(event: InputEvent) -> void:
     queue_redraw()
 
 func _handle_gestures(gestures: Array) -> void:
-    if interaction_runtime != null and not gestures.is_empty():
-        interaction_runtime.handle_gestures(gestures, current_progress)
+    if interaction_runtime == null or gestures.is_empty():
+        return
+    interaction_runtime.handle_gestures(gestures, current_progress)
+    _set_progress_from_mask()
+    coverage_changed.emit(get_coverage())
 
 func _on_gesture_reveal_changed(point: Vector2, radius: float) -> void:
     _check_collectibles(point, radius)
@@ -556,12 +560,6 @@ func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void:
 func _check_behavior(point_norm: Vector2, radius_norm: float) -> void:
     if interaction_runtime != null:
         interaction_runtime.handle_paint(point_norm, radius_norm, current_progress)
-
-func _normalized_point(local_point: Vector2) -> Vector2:
-    return Vector2(
-        clampf(local_point.x / maxf(size.x, 1.0), 0.0, 1.0),
-        clampf(local_point.y / maxf(size.y, 1.0), 0.0, 1.0),
-    )
 
 func _draw() -> void:
     if behavior != null:

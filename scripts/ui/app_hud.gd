@@ -566,7 +566,7 @@ func _set_palette(room_data: Dictionary) -> void:
             palette_row.add_child(swatch)
     var brush_value: Variant = room_data.get("brush", {})
     var brush: Dictionary = brush_value if brush_value is Dictionary else {}
-    brush_label.text = "PĘDZEL %s · MALOWANIE ODSŁANIA TŁO" % _brush_name(str(brush.get("profile", "soft"))).to_upper()
+    brush_label.text = "PĘDZEL POMOCNICZY %s · GŁÓWNA MECHANIKA ODSZUMIA POKÓJ" % _brush_name(str(brush.get("profile", "soft"))).to_upper()
 
 func _interaction_prompt(interaction: String) -> String:
     var prompts: Dictionary = {

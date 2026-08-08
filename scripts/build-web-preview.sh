@@ -13,7 +13,7 @@ CACHE_DIR="${GODOT_CACHE_DIR:-$ROOT/.cache/godot-$GODOT_VERSION}"
 GODOT_BIN="${GODOT_BIN:-}"
 RUST_WEB_REQUIRED="${SYNESTHESIA_RUST_WEB_REQUIRED:-1}"
 RUST_NATIVE_TOOLCHAIN="${SYNESTHESIA_RUST_NATIVE_TOOLCHAIN:-1.97.1}"
-RUST_WEB_TOOLCHAIN="${SYNESTHESIA_RUST_WEB_TOOLCHAIN:-nightly}"
+RUST_WEB_TOOLCHAIN="${SYNESTHESIA_RUST_WEB_TOOLCHAIN:-nightly-2026-08-07}"
 EMSDK_VERSION="${SYNESTHESIA_EMSDK_VERSION:-3.1.74}"
 EMSDK_MANAGER_COMMIT="3d6d8ee910466516a53e665b86458faa81dae9ba"
 EMSDK_DIR="${EMSDK_DIR:-$CACHE_DIR/emsdk-$EMSDK_VERSION}"
@@ -378,7 +378,7 @@ cp -R web/. build/web/
 mkdir -p build/web/fonts
 cp assets/fonts/generated/SynesthesiaTitle.ttf build/web/fonts/
 cp assets/fonts/generated/SynesthesiaDisplay.ttf build/web/fonts/
-cp assets/fonts/generated/OFL-Knewave.txt build/web/fonts/
+cp assets/fonts/generated/OFL-NewRocker.txt build/web/fonts/
 cp assets/fonts/generated/OFL-BebasNeue.txt build/web/fonts/
 cp assets/icon.svg assets/icon-192.png assets/icon-512.png build/web/
 python3 tools/postprocess_web.py

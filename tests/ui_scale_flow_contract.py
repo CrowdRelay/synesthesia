@@ -28,10 +28,19 @@ require(
     "scripts/main.gd",
     "DebugProfile.fit_macos_window_to_screen()",
     "func _enter_main_menu_mode() -> void:",
-    "MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director, adaptive_performance)",
+    "SoundscapeRuntime.suspend_for_menu",
     "func _resume_room_runtime() -> void:",
-    "MenuRuntimeGuard.resume(room_layer, hud, audio_director, adaptive_performance)",
+    "SoundscapeRuntime.resume_room",
     'if experience_intro_panel == null:\n            call_deferred("_show_completion_panel")',
+)
+
+
+require(
+    "scripts/app/soundscape_runtime.gd",
+    "MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director, adaptive_performance)",
+    "MenuRuntimeGuard.resume(room_layer, hud, audio_director, adaptive_performance)",
+    "soundscape.enter_menu()",
+    "soundscape.leave_soundscape()",
 )
 
 require(

@@ -21,6 +21,8 @@ python3 tests/new_release_pack_contract.py
 python3 tests/production_polish_contract.py
 python3 tests/interactive_album_contract.py
 python3 tests/interaction_guidance_contract.py
+python3 tests/room_mechanics_v2_contract.py
+python3 tests/menu_soundscape_contract.py
 python3 tests/rust_hybrid_contract.py
 python3 tests/gesture_semantics_contract.py
 python3 tests/runtime_resilience_contract.py
@@ -52,6 +54,7 @@ python3 tests/ui_scale_flow_contract.py
 python3 tests/ui_quality_polish_contract.py
 python3 tests/android_pipeline_contract.py
 python3 tests/godot_log_gate_contract.py
+python3 tests/netlify_artifact_deploy_contract.py
 python3 tests/validation_entrypoint_contract.py
 python3 tools/asset_report.py
 

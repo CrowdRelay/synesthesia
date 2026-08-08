@@ -1,29 +1,140 @@
 (() => {
-  const boot = () => document.getElementById('synesthesia-boot');
-  const updateNativeLabel = () => {
-    const label = document.querySelector('.synesthesia-boot__render');
-    if (!label) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    const width = Math.round(window.innerWidth * dpr);
-    const height = Math.round(window.innerHeight * dpr);
-    label.textContent = `ADAPTIVE NATIVE · ${width}×${height} · DPR ${dpr.toFixed(2)}`;
-  };
-  const glitch = () => {
-    const node = boot();
-    if (!node || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    node.dataset.glitch = 'true';
-    window.setTimeout(() => { if (node) node.dataset.glitch = 'false'; }, 260);
-  };
-  const removeBoot = () => {
-    const node = boot();
-    if (!node || node.dataset.ready === 'true') return;
-    glitch();
-    node.dataset.ready = 'true';
-    window.setTimeout(() => node.remove(), 340);
-  };
-  updateNativeLabel();
-  window.addEventListener('resize', updateNativeLabel, { passive: true });
-  window.setInterval(glitch, 4300);
+  const CACHE_PREFIX = "virya-synesthesia-";
+  const CACHE_ID = "__SYNESTHESIA_CACHE_ID__";
+  const CACHE_MARKER = "synesthesia:web-cache-id";
+  let removed = false;
+  let migrationActive = false;
+
+  function readCacheMarker() {
+    try {
+      return window.localStorage.getItem(CACHE_MARKER);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writeCacheMarker(value) {
+    try {
+      window.localStorage.setItem(CACHE_MARKER, value);
+    } catch (_) {
+      // Storage can be disabled; startup must remain functional without it.
+    }
+  }
+
+  async function clearSynesthesiaCaches() {
+    if (!("caches" in window)) return;
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX)).map((key) => caches.delete(key)));
+  }
+
+  async function unregisterSynesthesiaWorkers() {
+    if (!("serviceWorker" in navigator)) return;
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map(async (registration) => {
+      const script = registration.active?.scriptURL || registration.waiting?.scriptURL || registration.installing?.scriptURL || "";
+      if (!script) return;
+      try {
+        const url = new URL(script);
+        if (url.origin === location.origin && url.pathname === "/service-worker.js") {
+          await registration.unregister();
+        }
+      } catch (_) {
+        // Ignore a malformed/opaque registration and leave unrelated workers alone.
+      }
+    }));
+  }
+
+  function migrateControlledDeploy() {
+    if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) {
+      writeCacheMarker(CACHE_ID);
+      return;
+    }
+    if (readCacheMarker() === CACHE_ID) return;
+
+    // A page controlled by the previous worker can otherwise mix an old cached
+    // PCK with the new HTML/JS after a deploy. Clean once per deploy and reload
+    // outside the stale controller before Godot becomes interactive.
+    migrationActive = true;
+    writeCacheMarker(CACHE_ID);
+    Promise.allSettled([clearSynesthesiaCaches(), unregisterSynesthesiaWorkers()])
+      .finally(() => location.reload());
+  }
+
+  function bootElement() {
+    return document.getElementById("synesthesia-boot");
+  }
+
+  function statusElement() {
+    return document.getElementById("synesthesia-boot-status");
+  }
+
+  function updateNativeLabel() {
+    if (removed || migrationActive) return;
+    const el = bootElement();
+    if (!el || el.dataset.stalled === "true") return;
+    const status = statusElement();
+    if (!status) return;
+
+    const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 3);
+    const viewport = window.visualViewport;
+    const cssWidth = Math.max(1, Math.round(viewport?.width || window.innerWidth || document.documentElement.clientWidth || 1));
+    const cssHeight = Math.max(1, Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight || 1));
+    const width = Math.round(cssWidth * dpr);
+    const height = Math.round(cssHeight * dpr);
+    status.textContent = `ADAPTIVE NATIVE · ${width}×${height} · DPR ${dpr.toFixed(2)}`;
+  }
+
+  function showStalled(message) {
+    if (removed || migrationActive) return;
+    const el = bootElement();
+    if (!el) return;
+    el.dataset.stalled = "true";
+    const status = statusElement();
+    if (status) status.textContent = message || "START TRWA DŁUŻEJ NIŻ ZWYKLE";
+  }
+
+  function removeBoot() {
+    if (removed || migrationActive) return;
+    removed = true;
+    const el = bootElement();
+    if (!el) return;
+    el.dataset.ready = "true";
+    window.setTimeout(() => el.remove(), 260);
+  }
+
+  function wireRetry() {
+    const button = document.getElementById("synesthesia-boot-retry");
+    if (!button) return;
+    button.addEventListener("click", () => {
+      if (migrationActive) return;
+      migrationActive = true;
+      button.disabled = true;
+      const status = statusElement();
+      if (status) status.textContent = "CZYSZCZĘ CACHE · URUCHAMIAM PONOWNIE";
+      writeCacheMarker(CACHE_ID);
+      Promise.allSettled([clearSynesthesiaCaches(), unregisterSynesthesiaWorkers()])
+        .finally(() => location.reload());
+    }, { once: true });
+  }
+
+  function wireDom() {
+    wireRetry();
+    updateNativeLabel();
+  }
+
+  migrateControlledDeploy();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", wireDom, { once: true });
+  } else {
+    wireDom();
+  }
+  window.addEventListener("resize", updateNativeLabel, { passive: true });
+  window.visualViewport?.addEventListener("resize", updateNativeLabel, { passive: true });
+
   window.synesthesiaBootReady = removeBoot;
-  window.setTimeout(removeBoot, 30000);
+  window.synesthesiaBootFailed = (message) => showStalled(message);
+
+  // Never silently hide a failed engine boot. Give a deterministic recovery
+  // action instead; a slow but healthy Godot start can still call BootReady.
+  window.setTimeout(() => showStalled("START TRWA DŁUŻEJ NIŻ ZWYKLE"), 12000);
 })();

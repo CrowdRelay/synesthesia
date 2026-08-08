@@ -58,7 +58,7 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             if spread_delta > 0.025:
                 var tune: float = clampf(float(state.get("signal_tune", 0.0)) + spread_delta * 1.45, 0.0, 1.0)
                 state["signal_tune"] = tune
-                if tune >= 0.78 and not bool(state.get("signal_locked", false)):
+                if tune >= 0.78 and state.get("screens", []).size() >= 5 and not bool(state.get("signal_locked", false)):
                     state["signal_locked"] = true
                     return [_interaction_event("screen", 90, "Sygnał złapany — szum przestał wybierać częstotliwość", point, 0.12, 0.95)]
         "drag":
@@ -67,6 +67,14 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
                 var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
                 state["signal_tune"] = clampf(float(state.get("signal_tune", 0.0)) + absf(delta.x) * 0.36, 0.0, 1.0)
     return []
+
+func mechanic_progress() -> float:
+    if bool(state.get("signal_locked", false)):
+        return 1.0
+    var screens: Array = state.get("screens", [])
+    var repair_ratio := float(screens.size()) / float(SCREEN_TARGETS.size())
+    var tune := clampf(float(state.get("signal_tune", 0.0)), 0.0, 1.0)
+    return clampf(repair_ratio * 0.72 + tune * 0.22, 0.0, 0.94)
 
 func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Array[Dictionary]:
     return _repair_near(point_norm, radius_norm + 0.10, 1)

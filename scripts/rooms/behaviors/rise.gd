@@ -61,6 +61,15 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
         events.append(_interaction_event("light", 99, "Wszystkie gesty spotkały się w jednym świetle", Vector2(0.5, 0.34), 0.16, 1.0))
     return events
 
+func mechanic_progress() -> float:
+    if bool(state.get("final_gesture", false)):
+        return 1.0
+    var done := 0
+    done += 1 if bool(state.get("light_tap", false)) else 0
+    done += 1 if bool(state.get("center_hold", false)) else 0
+    done += 1 if bool(state.get("rise_swipe", false)) else 0
+    return clampf(float(done) / 3.0 * 0.94, 0.0, 0.94)
+
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.78 and not bool(state.get("fallback_light", false)) and _near(point_norm, Vector2(0.5, 0.24), radius_norm + 0.18):
         state["fallback_light"] = true

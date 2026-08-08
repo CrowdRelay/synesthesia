@@ -33,7 +33,8 @@ boot_markup = '''<div id="synesthesia-boot" role="status" aria-label="Ładowanie
       <i class="synesthesia-boot__node synesthesia-boot__node--d"></i>
     </div>
   </div>
-  <div class="synesthesia-boot__render">ADAPTIVE NATIVE</div>
+  <div class="synesthesia-boot__render" id="synesthesia-boot-status">ADAPTIVE NATIVE</div>
+  <button class="synesthesia-boot__retry" id="synesthesia-boot-retry" type="button">Wyczyść cache i uruchom ponownie</button>
 </div>'''
 if manifest_tag not in html:
     html = html.replace("</head>", f"  {manifest_tag}\n</head>")
@@ -80,19 +81,29 @@ runtime_files = sorted(
 )
 if not runtime_files:
     raise SystemExit("missing Web runtime files for cache fingerprint")
-runtime_hash = hashlib.sha256()
-runtime_hash.update(VERSION.encode())
-for path in runtime_files:
-    runtime_hash.update(path.name.encode())
+
+# The cache namespace represents the whole deployed surface, not only the engine
+# runtime. Otherwise a new boot shell/icon/header can be served from the previous
+# generation even when CI deployed the right files.
+fingerprint_files = sorted(
+    (path for path in BUILD.rglob("*") if path.is_file() and path.name != "asset-report.txt"),
+    key=lambda path: path.relative_to(BUILD).as_posix(),
+)
+deploy_hash = hashlib.sha256()
+deploy_hash.update(VERSION.encode())
+for path in fingerprint_files:
+    deploy_hash.update(path.relative_to(BUILD).as_posix().encode())
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            runtime_hash.update(chunk)
-cache_id = f"{VERSION}-{runtime_hash.hexdigest()[:12]}"
+            deploy_hash.update(chunk)
+cache_id = f"{VERSION}-{deploy_hash.hexdigest()[:12]}"
 
-service_worker_path = BUILD / "service-worker.js"
-service_worker = service_worker_path.read_text()
-service_worker = service_worker.replace("__SYNESTHESIA_CACHE_ID__", cache_id)
-service_worker_path.write_text(service_worker)
+for relative_path in ("service-worker.js", "boot-shell.js"):
+    target = BUILD / relative_path
+    source = target.read_text()
+    if "__SYNESTHESIA_CACHE_ID__" not in source:
+        raise SystemExit(f"missing cache id placeholder in {relative_path}")
+    target.write_text(source.replace("__SYNESTHESIA_CACHE_ID__", cache_id))
 
 sizes = []
 for path in sorted(BUILD.rglob("*")):
@@ -100,4 +111,7 @@ for path in sorted(BUILD.rglob("*")):
         sizes.append((path.stat().st_size, path.relative_to(BUILD).as_posix()))
 report = BUILD / "asset-report.txt"
 report.write_text("\n".join(f"{size}\t{name}" for size, name in sizes) + "\n")
-print(f"SYNESTHESIA_WEB_POSTPROCESS=PASS version={VERSION} cache={cache_id} runtime_files={len(runtime_files)} files={len(sizes)}")
+print(
+    f"SYNESTHESIA_WEB_POSTPROCESS=PASS version={VERSION} cache={cache_id} "
+    f"runtime_files={len(runtime_files)} fingerprint_files={len(fingerprint_files)} files={len(sizes)}"
+)

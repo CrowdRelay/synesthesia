@@ -81,6 +81,8 @@ run_godot_checked() {
 }
 
 run_godot_checked import "" 0 --headless --editor --path "$ROOT" --quit
+run_godot_checked font-glyphs "SYNESTHESIA_FONT_GLYPHS=PASS" 0 --headless --path "$ROOT" --script res://tests/font_glyph_smoke.gd
+run_godot_checked gdscript-parse "SYNESTHESIA_GDSCRIPT_PARSE=PASS" 0 --headless --path "$ROOT" --script res://tests/gdscript_parse_smoke.gd
 run_godot_checked validation "SYNESTHESIA_VALIDATION=PASS" 0 --headless --path "$ROOT" --script res://tests/validate_project.gd
 # Godot 4.7.1 can emit bounded shutdown-only ObjectDB/Resource diagnostics
 # after a successful --script smoke run. The log gate allows only that exact

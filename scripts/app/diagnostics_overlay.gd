@@ -43,13 +43,13 @@ func _process(delta: float) -> void:
         ]
     var preload_line: String = ""
     if _preloader != null and is_instance_valid(_preloader) and _preloader.has_method("snapshot"):
-        var preload: Dictionary = _preloader.snapshot()
+        var preload_snapshot: Dictionary = _preloader.snapshot()
         preload_line = "\nPRE %d/%d crit · hit %d · wait %d/%dms" % [
-            int(preload.get("queued", 0)),
-            int(preload.get("critical_queued", 0)),
-            int(preload.get("hits", 0)),
-            int(preload.get("blocking_takes", 0)),
-            int(preload.get("max_block_ms", 0)),
+            int(preload_snapshot.get("queued", 0)),
+            int(preload_snapshot.get("critical_queued", 0)),
+            int(preload_snapshot.get("hits", 0)),
+            int(preload_snapshot.get("blocking_takes", 0)),
+            int(preload_snapshot.get("max_block_ms", 0)),
         ]
     label.text = "FPS %d · %.2f ms\nRAM %.1f MB · draw %d%s%s" % [
         fps,

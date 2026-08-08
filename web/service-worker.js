@@ -1,6 +1,5 @@
 const CACHE_PREFIX = "virya-synesthesia-";
 const CACHE_NAME = `${CACHE_PREFIX}__SYNESTHESIA_CACHE_ID__`;
-const NETWORK_HEADER_TIMEOUT_MS = 3500;
 const CORE = [
   "/index.html",
   "/manifest.webmanifest",
@@ -11,6 +10,7 @@ const CORE = [
   "/boot-shell.js",
   "/register-sw.js",
 ];
+const CORE_PATHS = new Set(CORE);
 
 self.addEventListener("install", (event) => {
   // The offline shell is a unit: do not activate a worker with a silently
@@ -20,14 +20,31 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys
-        .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
-        .map((key) => caches.delete(key))
-    ))
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    const staleKeys = keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME);
+    await Promise.all(staleKeys.map((key) => caches.delete(key)));
+    await self.clients.claim();
+
+    // If this activation replaced an older Synesthesia generation, any already
+    // open root-page client may have started under the previous worker. Reload
+    // exactly once at that deploy boundary so it cannot finish booting with a
+    // mixed HTML/JS/PCK generation. First install has no stale cache and does
+    // not reload. The reward flow is deliberately outside this worker scope.
+    if (staleKeys.length > 0) {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      await Promise.all(windows.map(async (client) => {
+        try {
+          const url = new URL(client.url);
+          if (url.origin === self.location.origin && !url.pathname.startsWith("/reward/")) {
+            await client.navigate(client.url);
+          }
+        } catch (_) {
+          // Navigation is best-effort; the new worker still owns future requests.
+        }
+      }));
+    }
+  })());
 });
 
 function sameValidator(cached, response) {
@@ -50,13 +67,10 @@ function fetchForDeliveryAndCache(request) {
   }));
 }
 
-function networkHeaderTimeout() {
-  return new Promise((resolve) => setTimeout(() => resolve(null), NETWORK_HEADER_TIMEOUT_MS));
-}
-
-// Return the network response as soon as headers arrive. CacheStorage consumes
-// the already-cloned response concurrently under event.waitUntil instead of
-// delaying Godot startup until a large PCK/WASM has been fully written to disk.
+// Boot-critical files are strictly network-first. Do not race a cached fallback
+// against a timer: an old worker serving an old PCK to a new HTML/JS generation
+// is worse than waiting for the network. Cache is used only after a real network
+// failure or a transient server failure, preserving offline recovery.
 function networkFirst(request, event, navigationFallback = false) {
   const cachePromise = caches.open(CACHE_NAME);
   const cachedPromise = cachePromise.then((cache) => cache.match(request));
@@ -76,15 +90,7 @@ function networkFirst(request, event, navigationFallback = false) {
     const shell = navigationFallback ? await cache.match("/index.html") : null;
     const fallback = cached || shell;
     try {
-      // A cached generation is already integrity-scoped by CACHE_NAME. On a
-      // flaky connection, do not make a returning player wait indefinitely for
-      // response headers. The real fetch continues under cacheWrite and can
-      // refresh the cache after we immediately serve last-good.
-      const network = fallback
-        ? await Promise.race([networkPromise, networkHeaderTimeout()])
-        : await networkPromise;
-      if (network === null) return fallback;
-      const { response } = network;
+      const { response } = await networkPromise;
       // Preserve the last known-good runtime on transient origin/CDN failures,
       // but never mask a deliberate 4xx/removal with an obsolete cached asset.
       if (response.ok || !fallback || (response.status !== 429 && response.status < 500)) {
@@ -129,7 +135,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(networkFirst(request, event, true));
     return;
   }
-  if (/\.(?:wasm|pck|js)$/.test(url.pathname)) {
+  if (CORE_PATHS.has(url.pathname) || /\.(?:wasm|pck|js)$/.test(url.pathname)) {
     event.respondWith(networkFirst(request, event));
     return;
   }

@@ -67,7 +67,7 @@ require(
 hud = require(
     "scripts/ui/app_hud.gd",
     'progress_label.text = "SZUM"', 'progress_label.text = "SYGNAŁ"',
-    'progress_label.text = "MUZYKA"', "_interaction_prompt", "PĘDZEL %s · MALOWANIE ODSŁANIA TŁO",
+    'progress_label.text = "MUZYKA"', "_interaction_prompt", "PĘDZEL POMOCNICZY %s · GŁÓWNA MECHANIKA ODSZUMIA POKÓJ",
 )
 if "%d%% ·" in hud:
     failures.append("production HUD still exposes numeric/debug reveal percentages")

@@ -59,6 +59,14 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             return [_interaction_event("seed", 9, "Korona wyszła ponad wątpliwość", point, 0.12, 0.94)]
     return []
 
+func mechanic_progress() -> float:
+    if bool(state.get("crown", false)):
+        return 1.0
+    var growth := clampf(float(state.get("growth", 0.0)), 0.0, 1.0)
+    if bool(state.get("seed", false)):
+        growth = maxf(growth, 0.12)
+    return clampf(growth / 0.86, 0.0, 0.94)
+
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.30 and not bool(state.get("seed", false)) and _near(point_norm, SEED_POINT, radius_norm + 0.08):
         state["seed"] = true

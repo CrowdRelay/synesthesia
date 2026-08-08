@@ -30,19 +30,19 @@ The gesture boundary is also deliberately **idle-zero-FFI**: Godot mirrors activ
 
 ## Runtime matrix
 
-| Target | Production backend | Artifact | Fallback policy |
+| Target | Production backend | Artifact | Fallback / verification policy |
 | --- | --- | --- | --- |
 | macOS / Linux | Rust GDExtension | `.dylib` / `.so` | explicit disable only |
 | Android | Rust GDExtension | `arm64-v8a/libsynesthesia_gdext.so` | explicit emergency switch only |
-| Web / Netlify | Rust GDExtension side-module | `synesthesia_gdext.wasm` | explicit emergency switch only |
+| Web / Netlify | GDScript recognizer | no Rust side-module in production | Rust/WASM remains an explicit CI verification path |
 
-`interaction_router.gd` still performs feature detection and keeps the same event contract in GDScript. That fallback is intentionally retained for recovery and editor portability, but release pipelines fail closed when the Rust artifact is required and absent.
+`interaction_router.gd` performs runtime feature detection and keeps the same event contract in both implementations. Native release pipelines fail closed when their required Rust artifact is absent. Web intentionally takes the opposite production tradeoff: the behavior-compatible GDScript backend stays on the browser critical path, while the Rust/WASM adapter is compiled and exported in verification builds so capability does not silently rot.
 
-Web uses `wasm32-unknown-emscripten`, Emscripten 3.1.74 and the Godot dynamic-link **nothreads** template. The build pins both the SDK version and the emsdk manager commit, and bindgen is forced onto the active Emscripten sysroot so Linux CI cannot accidentally mix glibc headers into a Web target.
+Web verification uses `wasm32-unknown-emscripten`, Emscripten 3.1.74 and the Godot dynamic-link **nothreads** template. The build pins both the SDK version and the emsdk manager commit, and bindgen is forced onto the active Emscripten sysroot so Linux CI cannot accidentally mix glibc headers into a Web target. The export remains extension-capable, so Web hosting keeps the cross-origin isolation headers required by Godot even when the production build does not package the side-module.
 
 The generated `synesthesia_rust.gdextension`, its UID sidecar and all native/Web build products are ignored by Git. A clean checkout therefore contains source only; build scripts materialize the descriptor/artifact for the selected target.
 
-The native workspace declares Rust **1.94** as its MSRV (matching godot-rust 0.5) and explicitly compiles against the Godot **4.6 GDExtension API**. Synesthesia targets Godot 4.7.1 at runtime; keeping `API version <= runtime version` is intentional. CI formats/tests/lints with Rust 1.97.1, while the Web side-module uses the pinned nightly required for `-Zbuild-std`.
+The native workspace declares Rust **1.94** as its MSRV (matching godot-rust 0.5) and explicitly compiles against the Godot **4.6 GDExtension API**. Synesthesia targets Godot 4.7.1 at runtime; keeping `API version <= runtime version` is intentional. CI formats/tests/lints with Rust 1.97.1, while the optional Web side-module uses the pinned nightly required for `-Zbuild-std`.
 
 ## Commands
 
@@ -56,10 +56,13 @@ SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh host
 # Android arm64 after cargo-ndk + Android NDK are installed
 SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh android-arm64
 
-# Web/WASM after emsdk activation (build-web-preview bootstraps it when absent)
+# Web/WASM verification after emsdk activation
 SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh web
 
-# Explicit emergency fallback / source-clean state
+# Full Web verification export with the side-module required
+SYNESTHESIA_RUST_WEB_REQUIRED=1 ./scripts/build-web-preview.sh
+
+# Explicit fallback / source-clean state
 ./scripts/build-rust-native.sh disable
 ```
 
@@ -67,8 +70,9 @@ SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh web
 
 - Main CI: format, unit-test, check and `clippy -D warnings`; then build the host extension and run real Godot import/lifecycle smoke.
 - Android: Rust is required, the APK is opened as a ZIP and must physically contain `libsynesthesia_gdext.so`.
-- Web: `build-web-preview.sh` must produce and export `synesthesia_gdext.wasm`; production is single-threaded and bounded by a Web bundle budget.
-- Netlify connected-Git integration is the sole automatic Web deployment authority. Deploy previews/branch builds are intentionally skipped; GitHub Web workflow is manual verification only.
+- Web verification: `build-web-preview.sh` with `SYNESTHESIA_RUST_WEB_REQUIRED=1` must produce and export `synesthesia_gdext.wasm`.
+- Web production: Netlify sets `SYNESTHESIA_RUST_WEB_REQUIRED=0`; the script disables generated native state before import/export and uses the proven GDScript recognizer. This avoids experimental side-module startup failures and removes Rust/emsdk compilation from the production Netlify critical path.
+- Netlify connected-Git integration is the sole automatic Web deployment authority. Deploy previews/branch builds are intentionally skipped; GitHub Web workflow is verification only.
 - Build caches contain dependency sources and selected verified Godot inputs, never `native/target`, full template packs or generated application artifacts.
 
 ## Performance rule

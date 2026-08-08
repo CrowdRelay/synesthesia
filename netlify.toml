@@ -1,18 +1,14 @@
 [build]
-  command = "./scripts/build-web-preview.sh"
   publish = "build/web"
-  ignore = "test \"${CONTEXT:-production}\" != \"production\""
+
+  # GitHub Actions is the only production builder. Netlify's linked Git build
+  # is intentionally skipped; keep Build status set to "Stopped builds" too.
+  ignore = "exit 0"
 
 [build.environment]
   NODE_VERSION = "22"
-  PYTHON_VERSION = "3.13"
-  SYNESTHESIA_RUST_WEB_REQUIRED = "1"
-  SYNESTHESIA_RUST_WEB_TOOLCHAIN = "nightly-2026-08-07"
 
 [[redirects]]
   from = "/reward"
   to = "/reward/"
   status = 301
-
-[[plugins]]
-  package = "./netlify/plugins/synesthesia-build-cache"

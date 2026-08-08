@@ -22,6 +22,7 @@ def main() -> None:
     build = (ROOT / "scripts/build-rust-native.sh").read_text()
     web_build = (ROOT / "scripts/build-web-preview.sh").read_text()
     netlify = (ROOT / "netlify.toml").read_text()
+    web_deploy = (ROOT / ".github/workflows/deploy-web.yml").read_text()
     ignore = (ROOT / ".gitignore").read_text()
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     android_ci = (ROOT / ".github/workflows/android-apk.yml").read_text()
@@ -67,9 +68,13 @@ def main() -> None:
     require(web_build, 'RUST_WEB_REQUIRED="${SYNESTHESIA_RUST_WEB_REQUIRED:-1}"', "web-rust-default-required")
     require(web_build, "web_dlink_nothreads_release.zip", "web-dlink-template")
     require(web_build, "SYNESTHESIA_RUST_WEB_EXPORT=PASS", "web-export-verification")
-    require(netlify, 'PYTHON_VERSION = "3.13"', "netlify-python")
-    require(netlify, 'SYNESTHESIA_RUST_WEB_REQUIRED = "1"', "netlify-rust-required")
-    require(netlify, 'SYNESTHESIA_RUST_WEB_TOOLCHAIN = "nightly-2026-08-07"', "netlify-nightly-pinned")
+    require(netlify, 'ignore = "exit 0"', "netlify-build-stop-guard")
+    if "command =" in netlify or "[[plugins]]" in netlify:
+        raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL netlify-build-path-still-enabled")
+    if re.search(r"(?m)^\s*SYNESTHESIA_RUST_WEB_REQUIRED:\s*(?:0|\"0\"|'0')\s*(?:#.*)?$", web_deploy) is None:
+        raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL missing=github-web-gdscript-production-fallback")
+    require(web_deploy, "netlify-cli@26.2.0 deploy", "github-netlify-cli-promotion")
+    require(web_deploy, "--no-build", "github-netlify-no-build")
 
     require(android_build, 'SYNESTHESIA_DISABLE_RUST_NATIVE:-0', "android-rust-default-required")
     require(android_build, "./scripts/build-rust-native.sh android-arm64", "android-native-package")
@@ -101,7 +106,7 @@ def main() -> None:
 
     print(
         "SYNESTHESIA_RUST_HYBRID=PASS core=pure-rust "
-        "web=wasm-primary+nothreads android=native-primary fallback=explicit-gdscript"
+        "web=wasm-verified+gdscript-production android=native-primary fallback=explicit"
     )
 
 

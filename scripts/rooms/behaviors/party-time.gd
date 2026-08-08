@@ -89,8 +89,14 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             _push_near(point, gesture)
     return []
 
-func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Array[Dictionary]:
-    return _pop_near(point_norm, radius_norm + 0.055, 1)
+func mechanic_progress() -> float:
+    var popped: Array = state.get("popped", [])
+    return clampf(float(popped.size()) / float(BALLOONS.size()), 0.0, 1.0)
+
+func on_paint(_point_norm: Vector2, _radius_norm: float, _progress: float) -> Array[Dictionary]:
+    # Party Time is deliberately tap/swipe driven in V2; brushing the scene must
+    # not silently turn the balloon micro-game back into the generic reveal loop.
+    return []
 
 func _pop_near(point: Vector2, radius: float, limit: int) -> Array[Dictionary]:
     var events: Array[Dictionary] = []

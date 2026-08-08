@@ -13,6 +13,7 @@ const AdaptivePerformanceScript := preload("res://scripts/app/adaptive_performan
 const NativeExperienceSurfaceScript := preload("res://scripts/app/native_experience_surface.gd")
 const InteractiveUiRootScript := preload("res://scripts/app/interactive_ui_root.gd")
 const MenuRuntimeGuard := preload("res://scripts/app/menu_runtime_guard.gd")
+const SoundscapeRuntime := preload("res://scripts/app/soundscape_runtime.gd")
 const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
 const ChapterCardScript := preload("res://scripts/ui/chapter_card.gd")
@@ -52,6 +53,7 @@ var noise_level: float = 1.0
 var quality: Dictionary = {}
 var room
 var audio_director
+var menu_soundscape
 var haptics
 var reward_client
 var experience_surface
@@ -143,6 +145,7 @@ func _build_application_shell() -> void:
     add_child(adaptive_performance)
     adaptive_performance.budget_changed.connect(_on_runtime_budget_changed)
     adaptive_performance.configure(quality_profile)
+    menu_soundscape = SoundscapeRuntime.install(self, music_level, noise_level, quiet_mode)
     if ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH):
         var diagnostics_script: Script = load(DIAGNOSTICS_OVERLAY_PATH) as Script
         if diagnostics_script != null:
@@ -220,15 +223,13 @@ func _begin_experience() -> void:
         room.set_interaction_enabled(true)
     transition_running = false
 func _enter_main_menu_mode() -> void:
-    # Preserve the room for instant Continue, but make menu entry a hard state
-    # boundary: no room-owned toast/HUD/audio/transition may survive above it.
     _remove_modal(intro_panel)
     intro_panel = null
     _remove_modal(completion_panel)
     completion_panel = null
-    MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director, adaptive_performance)
+    SoundscapeRuntime.suspend_for_menu(menu_soundscape, room_layer, room, hud, audio_director, transition_director, adaptive_performance, music_level, noise_level, quiet_mode)
 func _resume_room_runtime() -> void:
-    MenuRuntimeGuard.resume(room_layer, hud, audio_director, adaptive_performance)
+    SoundscapeRuntime.resume_room(menu_soundscape, room_layer, hud, audio_director, adaptive_performance)
 func _configure_reward_client() -> void:
     var config_value: Variant = index_document.get("reward", {})
     if not config_value is Dictionary:
@@ -552,9 +553,7 @@ func _show_completion_panel() -> void:
     else:
         completion_panel.continue_requested.connect(_transition_to_reward)
     completion_panel.stay_requested.connect(func() -> void:
-        # CompletionCard keeps a compact persistent DALEJ action while the
-        # listener enjoys the fully revealed room. Never turn listen mode into
-        # a dead end.
+        # Keep a persistent DALEJ action while the listener stays in the revealed room.
         if room != null and is_instance_valid(room):
             room.set_interaction_enabled(false)
     )
@@ -748,7 +747,7 @@ func _apply_sensory_mode() -> void:
     if audio_director != null:
         audio_director.set_calm_mode(calm_mode)
         audio_director.set_quiet(quiet_mode)
-        audio_director.set_user_levels(music_level, noise_level)
+    SoundscapeRuntime.apply_audio_levels(menu_soundscape, audio_director, music_level, noise_level, quiet_mode)
     if haptics != null:
         haptics.set_calm_mode(calm_mode)
         haptics.set_enabled(haptics_enabled and not quiet_mode)
@@ -757,8 +756,7 @@ func _apply_sensory_mode() -> void:
     if finale_background != null and is_instance_valid(finale_background):
         finale_background.configure(reduced_motion, quiet_visuals)
 func _apply_audio_levels() -> void:
-    if audio_director != null:
-        audio_director.set_user_levels(music_level, noise_level)
+    SoundscapeRuntime.apply_audio_levels(menu_soundscape, audio_director, music_level, noise_level, quiet_mode)
 func _on_runtime_budget_changed(scale: float, _reason: String) -> void:
     if room != null and is_instance_valid(room):
         room.set_runtime_budget(scale)
@@ -813,6 +811,7 @@ func _show_reward_panel() -> void:
     if reward_panel != null:
         return
     _prepare_finale_background()
+    SoundscapeRuntime.enter_outro(menu_soundscape, music_level, noise_level, quiet_mode)
     hud.visible = false
     reward_panel = SignalFinaleCardScript.new()
     reward_panel.name = "SignalFinaleCard"

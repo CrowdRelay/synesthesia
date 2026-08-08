@@ -61,6 +61,11 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             return [_interaction_event("duel", 0, "Strzał jest wyborem — cudzy plan traci kształt", OPPONENT, 0.12, 0.96)]
     return []
 
+func mechanic_progress() -> float:
+    if bool(state.get("duel", false)):
+        return 1.0
+    return clampf(float(state.get("aim_strength", 0.0)) * 0.92, 0.0, 0.94)
+
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.58 and not bool(state.get("duel", false)) and _near(point_norm, OPPONENT, radius_norm + 0.13):
         state["duel"] = true

@@ -12,12 +12,12 @@ Godot 4.7.1 portrait album experience for **Echoes Of The Modern Mind**. Eleven 
 - cinematic loops are runtime FHD `1080×1920 @ 24 fps`, deterministically upscaled 1.5× from the supplied 720×1280 masters with Lanczos + low-strength CAS; no frame interpolation or generative detail is used;
 - adaptive performance lowers mask upload cadence, particles and motion before dropping functionality;
 - room progress persists locally as bounded PNG reveal masks;
-- custom native/Web boot uses the blinking doorway-eye sequence and resolves the native viewport while loading; no stock Godot splash is exposed;
+- the Web boot shell owns browser startup and suppresses the stock Godot image with a Web feature override; native targets can retain their branded splash;
 - Android/PWA icons, menu, chapter rails, transitions and finale share the doorway + eye + neural-activation mark.
 
 The source art stays asymmetrical by intent: background 405×720, scene/subject 675×1200, foreground 540×960. Those are texture-source sizes, not the runtime viewport. The runtime never stretches a fixed 540×960 application canvas; it fits/crops the portrait art inside a native-resolution shell while UI remains pixel-sharp.
 
-The original video provenance is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). Runtime files are FHD and the complete cinematic pack remains below 40 MiB. Web runtime files (`.pck/.wasm/.js`) use network-first + HTTP revalidation with CacheStorage fallback, preventing mixed-version PCK/WASM after a deploy while retaining offline recovery.
+The original video provenance is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). Runtime files are FHD and the complete cinematic pack remains below 40 MiB. Web runtime files (`.pck/.wasm/.js`) use strict network-first + HTTP revalidation with CacheStorage fallback only after a real network/transient-origin failure. The cache namespace fingerprints the whole deploy surface, and returning clients perform a one-time clean worker/cache handoff when the deploy generation changes, preventing mixed-version PCK/WASM after a release while retaining offline recovery.
 
 ## CrowdRelay integration
 
@@ -36,7 +36,7 @@ Draw rules are server-enforced: 5 winners, 1 CD each, one completion/e-mail = on
 
 Synesthesia uses Godot + Rust with a deliberately narrow boundary. The editor, scenes, UI, audio, haptics and GPU reveal renderer stay in Godot; deterministic gameplay primitives live in the pure `native/synesthesia-core` crate and are exposed through the thin `native/synesthesia-gdext` adapter. The first migrated slice is gesture recognition.
 
-Production builds are Rust-primary on all supported targets: macOS/Linux load the native GDExtension, Android packages an `arm64-v8a` `.so`, and Web/Netlify exports a single-threaded Emscripten side-module (`synesthesia_gdext.wasm`). The GDScript recognizer remains behavior-compatible as an explicit emergency fallback, not a silent production default. A clean checkout still opens without committed native binaries because the descriptor and build products are generated locally and ignored by Git. See [`docs/RUST_HYBRID_ARCHITECTURE.md`](docs/RUST_HYBRID_ARCHITECTURE.md). Runtime budgets, idle-work rules and save/cache boundaries are documented in [`docs/PERFORMANCE_ARCHITECTURE.md`](docs/PERFORMANCE_ARCHITECTURE.md).
+Native production builds are Rust-primary: macOS/Linux load the native GDExtension and Android packages an `arm64-v8a` `.so`. Web/Netlify deliberately uses the behavior-compatible GDScript recognizer in production so an experimental Emscripten side-module is not part of the browser's critical startup path. The Rust/WASM path (`synesthesia_gdext.wasm`) remains a fail-closed CI/verification target and can be enabled explicitly with `SYNESTHESIA_RUST_WEB_REQUIRED=1`. This keeps the Web experience resilient and also avoids paying the Rust+emsdk compile cost on every production Netlify build. A clean checkout still opens without committed native binaries because the descriptor and build products are generated locally and ignored by Git. See [`docs/RUST_HYBRID_ARCHITECTURE.md`](docs/RUST_HYBRID_ARCHITECTURE.md). Runtime budgets, idle-work rules and save/cache boundaries are documented in [`docs/PERFORMANCE_ARCHITECTURE.md`](docs/PERFORMANCE_ARCHITECTURE.md).
 
 ## Build and validation
 
@@ -47,11 +47,14 @@ Production builds are Rust-primary on all supported targets: macOS/Linux load th
 # Source gates + real Godot import/runtime smoke when Godot is installed
 ./validate.sh
 
-# Rust-primary production artifacts
+# Production artifacts (Web uses GDScript gesture fallback; native stays Rust-primary)
 ./scripts/build-web-preview.sh
 ./scripts/build-android-apk.sh
 # Linux x86_64 release runner only:
 ./scripts/build-linux-release.sh
+
+# Explicit Rust/WASM Web verification path
+SYNESTHESIA_RUST_WEB_REQUIRED=1 ./scripts/build-web-preview.sh
 ```
 
 To share/review the repository without local build caches, use the clean-tree exporter instead of zipping the working directory:

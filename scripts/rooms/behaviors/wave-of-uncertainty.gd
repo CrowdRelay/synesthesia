@@ -49,6 +49,11 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             return [_interaction_event("wave", 0, "Niepewność została falą, nie ścianą", Vector2(0.5, 0.43), 0.11, 0.92)]
     return []
 
+func mechanic_progress() -> float:
+    if bool(state.get("horizon", false)):
+        return 1.0
+    return clampf(float(state.get("calmness", 0.0)) / 0.72, 0.0, 0.94)
+
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.72 and not bool(state.get("horizon", false)) and point_norm.y < 0.44 + radius_norm:
         state["horizon"] = true

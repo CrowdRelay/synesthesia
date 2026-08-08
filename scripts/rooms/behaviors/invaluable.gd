@@ -56,6 +56,12 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
         return [_interaction_event("mirror", index + 20, "Tafla zeszła ze ściany — miara została bez głosu", MIRRORS[index], 0.12, 0.96)]
     return []
 
+func mechanic_progress() -> float:
+    var cracked: Array = state.get("cracked", [])
+    var shattered: Array = state.get("shattered", [])
+    var score := float(cracked.size()) * 0.42 + float(shattered.size()) * 0.58
+    return clampf(score / float(MIRRORS.size()), 0.0, 1.0)
+
 func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Array[Dictionary]:
     var cracked: Array = state.get("cracked", [])
     for index in range(MIRRORS.size()):

@@ -68,6 +68,11 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             return [_interaction_event("phoenix", 0, "Feniks dostał kierunek — w górę", CENTER, 0.14, 0.98)]
     return []
 
+func mechanic_progress() -> float:
+    if bool(state.get("phoenix", false)):
+        return 1.0
+    return clampf(float(state.get("swirl", 0.0)) / 0.52 * 0.88, 0.0, 0.94)
+
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.72 and not bool(state.get("phoenix", false)) and _near(point_norm, Vector2(0.5, 0.48), radius_norm + 0.16):
         state["phoenix"] = true

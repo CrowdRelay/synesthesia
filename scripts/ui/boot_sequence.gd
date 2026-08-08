@@ -22,9 +22,17 @@ func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     z_index = 100
     _build()
-    if OS.has_feature("web"):
-        JavaScriptBridge.eval("window.synesthesiaBootReady && window.synesthesiaBootReady();", true)
+    call_deferred("_release_web_shell_after_first_frame")
     call_deferred("_play")
+
+func _release_web_shell_after_first_frame() -> void:
+    if not OS.has_feature("web"):
+        return
+    # The HTML shell must cover the browser until Godot has actually presented
+    # one frame. main.gd still performs synchronous startup work after attaching
+    # this node; releasing in _ready() exposed the stale native splash/canvas.
+    await RenderingServer.frame_post_draw
+    JavaScriptBridge.eval("window.synesthesiaBootReady && window.synesthesiaBootReady();", true)
 
 func _build() -> void:
     var viewport_size: Vector2 = get_viewport_rect().size
