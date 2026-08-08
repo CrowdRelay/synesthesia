@@ -190,7 +190,9 @@ impl GestureEngine {
 
     #[must_use]
     pub fn has_pointer(&self, pointer_id: i64) -> bool {
-        self.pointers.iter().any(|slot| slot.pointer_id == pointer_id)
+        self.pointers
+            .iter()
+            .any(|slot| slot.pointer_id == pointer_id)
     }
 
     #[must_use]

@@ -93,7 +93,12 @@ if [[ -z "$sdkmanager_bin" ]]; then
 fi
 
 if [[ "${SYNESTHESIA_SKIP_ANDROID_SDK_INSTALL:-0}" != "1" ]]; then
-  yes | "$sdkmanager_bin" --sdk_root="$ANDROID_HOME" --licenses >/dev/null 2>&1 || true
+  # Avoid an unbounded `yes` producer under pipefail: sdkmanager closes stdin once all
+  # prompts are answered, which makes `yes` die with SIGPIPE/Broken pipe. Feed
+  # a bounded answer buffer through a here-string so license acceptance is
+  # deterministic and any real sdkmanager failure still fails the build.
+  license_answers="$(printf 'y\n%.0s' {1..100})"
+  "$sdkmanager_bin" --sdk_root="$ANDROID_HOME" --licenses <<<"$license_answers" >/dev/null
   "$sdkmanager_bin" --sdk_root="$ANDROID_HOME" \
     "platform-tools" \
     "build-tools;$BUILD_TOOLS_VERSION" \
