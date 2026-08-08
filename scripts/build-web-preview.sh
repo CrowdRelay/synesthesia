@@ -166,10 +166,13 @@ fi
 export GODOT_BIN
 
 if [[ "${NETLIFY:-}" == "true" ]]; then
-  # Keep the small, selected Web templates under the repository cache so the
-  # Netlify build plugin can persist them without retaining the 1.2 GiB source
-  # archive or every unrelated platform template.
-  GODOT_DATA_DIR="${GODOT_DATA_DIR:-$CACHE_DIR/godot-data}"
+  # Godot does not read our private GODOT_DATA_DIR shell variable. On Linux it
+  # resolves export templates from $XDG_DATA_HOME/godot/export_templates. Keep
+  # XDG itself under the repository cache so Netlify can persist only the two
+  # selected Web templates while Godot sees them at its canonical path.
+  export XDG_DATA_HOME="${SYNESTHESIA_XDG_DATA_HOME:-$CACHE_DIR/godot-data}"
+  GODOT_DATA_DIR="${GODOT_DATA_DIR:-$XDG_DATA_HOME/godot}"
+  printf 'SYNESTHESIA_GODOT_DATA=PASS xdg=%s templates=%s\n' "$XDG_DATA_HOME" "$GODOT_DATA_DIR/export_templates/$GODOT_RELEASE_VERSION"
 else
   case "$(uname -s)" in
     Darwin)

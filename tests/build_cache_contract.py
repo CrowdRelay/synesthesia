@@ -15,6 +15,9 @@ for token in (
     "write_web_template_manifest",
     'unzip -p "$template_archive" "templates/$template_name"',
     'mkdir -p "$CACHE_DIR" "$TEMPLATE_DIR"',
+    'export XDG_DATA_HOME="${SYNESTHESIA_XDG_DATA_HOME:-$CACHE_DIR/godot-data}"',
+    'GODOT_DATA_DIR="${GODOT_DATA_DIR:-$XDG_DATA_HOME/godot}"',
+    'SYNESTHESIA_GODOT_DATA=PASS',
     'rm -f "$template_archive"',
     "tools/web_bundle_budget.py",
 ):
@@ -27,7 +30,16 @@ for token in ("editor.zip", "web_dlink_nothreads_debug.zip", "web_dlink_nothread
 for forbidden in ("native/target", "templates.tpz", "emsdk"):
     if forbidden in plugin:
         failures.append(f"Netlify cache must not retain heavy tree: {forbidden}")
-for token in ("onEnd", "verifiedEditor", "verifiedTemplates", "SYNESTHESIA_NETLIFY_CACHE=CHECKPOINT"):
+for token in (
+    "onEnd",
+    "verifiedEditor",
+    "verifiedTemplates",
+    "verifiedTemplatesAt",
+    "migrateLegacyTemplates",
+    "SYNESTHESIA_NETLIFY_CACHE=MIGRATED",
+    "SYNESTHESIA_NETLIFY_CACHE=CHECKPOINT",
+    'path.join(xdgDataHome, "godot")',
+):
     if token not in plugin:
         failures.append(f"Netlify verified checkpoint cache missing: {token}")
 if './netlify/plugins/synesthesia-build-cache' not in netlify:
