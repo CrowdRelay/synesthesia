@@ -74,7 +74,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(cacheFirst(request));
     return;
   }
-  if (/\.(?:mp3|svg|png|webp|woff2?)$/.test(url.pathname)) {
+  if (/\.(?:mp3|svg|png|webp|woff2?|ttf)$/.test(url.pathname)) {
     event.respondWith(staleWhileRevalidate(request));
   }
 });

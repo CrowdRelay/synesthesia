@@ -37,6 +37,16 @@ boot = text("scripts/ui/boot_sequence.gd")
 if "boot.released.connect(_show_experience_intro)" not in main or "released.emit()" not in boot:
     failures.append("startup still overlaps boot/menu animated eye layers")
 
+stage = text("scripts/render/room_stage.gd")
+for token in (
+    "next_cinematic_mix",
+    "next_brush_energy",
+    "is_equal_approx(next_cinematic_mix, _cinematic_mix)",
+    "is_equal_approx(next_brush_energy, _brush_energy)",
+):
+    if token not in stage:
+        failures.append(f"room stage idle shader-write gate missing: {token}")
+
 surface = text("scripts/app/native_experience_surface.gd")
 if "    size = viewport_size\n    position = Vector2.ZERO" in surface:
     failures.append("native full-rect root is still manually resized; GUI hit testing can desync")

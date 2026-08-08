@@ -46,8 +46,12 @@ func apply_stamp(stamp: Dictionary, _remember: bool = true) -> bool:
     var seed: int = int(stamp.get("seed", 0))
     var profile: String = str(stamp.get("profile", "soft"))
     var stretch: Vector2 = _profile_stretch(profile)
-    var extent_x: int = int(ceil(radius_px * stretch.x * 1.18))
-    var extent_y: int = int(ceil(radius_px * stretch.y * 1.18))
+    var radius_x: float = maxf(radius_px * stretch.x, 0.01)
+    var radius_y: float = maxf(radius_px * stretch.y, 0.01)
+    var inverse_radius_x: float = 1.0 / radius_x
+    var inverse_radius_y: float = 1.0 / radius_y
+    var extent_x: int = int(ceil(radius_x * 1.18))
+    var extent_y: int = int(ceil(radius_y * 1.18))
     var min_x: int = maxi(0, int(floor(center_x)) - extent_x)
     var max_x: int = mini(width - 1, int(ceil(center_x)) + extent_x)
     var min_y: int = maxi(0, int(floor(center_y)) - extent_y)
@@ -60,8 +64,8 @@ func apply_stamp(stamp: Dictionary, _remember: bool = true) -> bool:
         for x in range(min_x, max_x + 1):
             var dx: float = float(x) - center_x
             var dy: float = float(y) - center_y
-            var local_x: float = (dx * cosine + dy * sine) / maxf(radius_px * stretch.x, 0.01)
-            var local_y: float = (-dx * sine + dy * cosine) / maxf(radius_px * stretch.y, 0.01)
+            var local_x: float = (dx * cosine + dy * sine) * inverse_radius_x
+            var local_y: float = (-dx * sine + dy * cosine) * inverse_radius_y
             var distance_squared: float = local_x * local_x + local_y * local_y
             if distance_squared >= 1.0:
                 continue

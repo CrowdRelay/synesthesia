@@ -16,6 +16,9 @@ def require(rel: str, *tokens: str) -> None:
 require(
     "scripts/ui/ui_factory.gd",
     "SystemFont.new()",
+    "BUNDLED_TITLE_FONT_PATH",
+    "BUNDLED_DISPLAY_FONT_PATH",
+    "_load_bundled_font",
     '"Impact"',
     '"Chalkduster"',
     "static func apply_title_font(control: Control)",
@@ -44,6 +47,13 @@ for token in (
         failures.append(f"completion_card.gd: missing polish {token}")
 if "DoorEyeMotif" in completion:
     failures.append("completion_card.gd: decorative blinking eye returned to bottom CTA sheet")
+
+require(
+    "scripts/ui/app_hud.gd",
+    "_apply_mobile_safe_area()",
+    "settings_button.custom_minimum_size = Vector2(48.0, 48.0)",
+    "var max_safe_inset: int = maxi(48, roundi(64.0 * _ui_scale))",
+)
 
 require(
     "scripts/ui/settings_card.gd",

@@ -83,6 +83,7 @@ if [[ ! -f "$TEMPLATE_DIR/web_release.zip" ]]; then
   cp -R "$CACHE_DIR/templates-unpack/templates/." "$TEMPLATE_DIR/"
 fi
 
+./scripts/prepare-bundled-fonts.sh
 python3 -m compileall -q tests tools
 python3 tests/static_validate.py
 python3 tests/adaptive_viewport_contract.py
@@ -98,6 +99,11 @@ run_godot_checked import --headless --editor --path "$ROOT" --quit
 run_godot_checked runtime-validation --headless --path "$ROOT" --script res://tests/validate_project.gd
 run_godot_checked web-export --headless --path "$ROOT" --export-release Web build/web/index.html
 cp -R web/. build/web/
+mkdir -p build/web/fonts
+cp assets/fonts/generated/SynesthesiaTitle.ttf build/web/fonts/
+cp assets/fonts/generated/SynesthesiaDisplay.ttf build/web/fonts/
+cp assets/fonts/generated/OFL-Knewave.txt build/web/fonts/
+cp assets/fonts/generated/OFL-BebasNeue.txt build/web/fonts/
 cp assets/icon.svg assets/icon-192.png assets/icon-512.png build/web/
 python3 tools/postprocess_web.py
 test -s build/web/index.html

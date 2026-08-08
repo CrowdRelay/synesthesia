@@ -11,6 +11,9 @@ static var _texture_cache: Dictionary = {}
 static var _display_font: Font
 static var _title_font: Font
 
+const BUNDLED_DISPLAY_FONT_PATH := "res://assets/fonts/generated/SynesthesiaDisplay.ttf"
+const BUNDLED_TITLE_FONT_PATH := "res://assets/fonts/generated/SynesthesiaTitle.ttf"
+
 static func _texture(path: String) -> Texture2D:
     var cached: Variant = _texture_cache.get(path)
     if cached is Texture2D:
@@ -29,6 +32,10 @@ static func _texture(path: String) -> Texture2D:
 
 static func display_font() -> Font:
     if _display_font != null:
+        return _display_font
+    var bundled := _load_bundled_font(BUNDLED_DISPLAY_FONT_PATH)
+    if bundled != null:
+        _display_font = bundled
         return _display_font
     # Menu/UI face: deliberately poster-like and compressed rather than a clean
     # product/tech sans. The cascade stays system-only so the overlay ships no
@@ -53,6 +60,10 @@ static func display_font() -> Font:
 static func title_font() -> Font:
     if _title_font != null:
         return _title_font
+    var bundled := _load_bundled_font(BUNDLED_TITLE_FONT_PATH)
+    if bundled != null:
+        _title_font = bundled
+        return _title_font
     # Main headings can be rougher than controls. On macOS this lands on a
     # hand-inked face; elsewhere it falls through to the heavy poster cascade.
     var font := SystemFont.new()
@@ -71,6 +82,14 @@ static func title_font() -> Font:
     font.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
     _title_font = font
     return _title_font
+
+static func _load_bundled_font(path: String) -> Font:
+    if not ResourceLoader.exists(path):
+        return null
+    var resource := load(path)
+    if resource is Font:
+        return resource as Font
+    return null
 
 static func apply_display_font(control: Control) -> void:
     control.add_theme_font_override("font", display_font())

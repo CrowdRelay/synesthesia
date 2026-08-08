@@ -55,8 +55,6 @@ func _ready() -> void:
     _toast_timer = _timer(2.7, _hide_toast)
     _act_timer = _timer(1.65, _hide_act_banner)
     call_deferred("_apply_ui_scale")
-    call_deferred("_apply_mobile_safe_area")
-    call_deferred("_layout_story_overlays")
 
 func suspend_for_menu() -> void:
     clear_transient_overlays()
@@ -99,6 +97,7 @@ func _apply_ui_scale() -> void:
         top_panel.custom_minimum_size.y = 146.0 * _ui_scale
     if bottom_panel != null:
         bottom_panel.custom_minimum_size.y = 146.0 * _ui_scale
+    _apply_mobile_safe_area()
     _layout_story_overlays()
 
 func _timer(wait: float, callback: Callable) -> Timer:
@@ -153,7 +152,7 @@ func _build_top() -> void:
     var content: VBoxContainer = top_content
 
     var row := HBoxContainer.new()
-    row.custom_minimum_size = Vector2(0.0, 30.0)
+    row.custom_minimum_size = Vector2(0.0, 48.0)
     row.add_theme_constant_override("separation", 7)
     content.add_child(row)
 
@@ -180,7 +179,7 @@ func _build_top() -> void:
     settings_gear.mouse_filter = Control.MOUSE_FILTER_IGNORE
     settings_gear.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     settings_button.add_child(settings_gear)
-    settings_button.custom_minimum_size = Vector2(38.0, 30.0)
+    settings_button.custom_minimum_size = Vector2(48.0, 48.0)
     settings_button.size_flags_horizontal = Control.SIZE_SHRINK_END
     settings_button.mouse_filter = Control.MOUSE_FILTER_STOP
     settings_button.tooltip_text = "Ustawienia doświadczenia"
@@ -583,7 +582,8 @@ func _apply_mobile_safe_area() -> void:
     if screen_size.x <= 0 or screen_size.y <= 0 or viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
         return
     var scale_y: float = viewport_size.y / float(screen_size.y)
-    var top_extra: int = clampi(int(round(float(safe.position.y) * scale_y)), 0, 48)
+    var max_safe_inset: int = maxi(48, roundi(64.0 * _ui_scale))
+    var top_extra: int = clampi(int(round(float(safe.position.y) * scale_y)), 0, max_safe_inset)
     if header_row != null:
         header_row.offset_top = 12.0 * _ui_scale + float(top_extra)
         header_row.offset_bottom = 166.0 * _ui_scale + float(top_extra)
@@ -591,8 +591,6 @@ func _apply_mobile_safe_area() -> void:
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         call_deferred("_apply_ui_scale")
-        call_deferred("_apply_mobile_safe_area")
-        call_deferred("_layout_story_overlays")
 
 func _bar_style(color: Color) -> StyleBoxFlat:
     var style := StyleBoxFlat.new()

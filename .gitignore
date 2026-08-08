@@ -12,3 +12,7 @@ PACKAGE_CHECKSUMS.txt
 *.badging.txt
 __pycache__/
 *.pyc
+
+# Build-fetched OFL fonts; source package stays binary-free.
+assets/fonts/generated/*.ttf
+assets/fonts/generated/OFL-*.txt

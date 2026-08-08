@@ -61,6 +61,7 @@ var _last_parallax_sent: Vector2 = Vector2(99.0, 99.0)
 var _last_coverage_emitted: float = -1.0
 var _cinematic_elapsed: float = 0.0
 var _unlock_profile: int = 0
+var _accent_color: Color = Color("72afff")
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
     focus_mode = Control.FOCUS_NONE
@@ -130,20 +131,20 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
             item["found"] = false
             collectibles.append(item)
 
+    _accent_color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
+    var secondary_color: Color = Color.from_string(str(room_data.get("secondary_color", "#FF6680")), Color("ff6680"))
     _configure_behavior(room_data)
     _configure_art(room_data, asset_source)
-    var accent_color: Color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
-    var secondary_color: Color = Color.from_string(str(room_data.get("secondary_color", "#FF6680")), Color("ff6680"))
     atmosphere.configure(
         str(room_data.get("visual_style", "uncertainty")),
-        accent_color,
+        _accent_color,
         secondary_color,
         quality,
     )
-    interaction_fx.configure(accent_color, secondary_color)
+    interaction_fx.configure(_accent_color, secondary_color)
     interaction_fx.set_sensory(calm_mode, reduced_motion)
     var visual_style: String = str(room_data.get("visual_style", "uncertainty"))
-    room_dressing.configure(visual_style, accent_color, secondary_color)
+    room_dressing.configure(visual_style, _accent_color, secondary_color)
     room_dressing.set_reduced_motion(reduced_motion)
     video_layer.configure(visual_style, reduced_motion, quiet_visuals, calm_mode)
     _unlock_profile = _unlock_profile_index(visual_style)
@@ -174,7 +175,7 @@ func _configure_art(room_data: Dictionary, asset_source = null) -> void:
     composite_material.set_shader_parameter("subject_texture", subject_texture)
     composite_material.set_shader_parameter("foreground_texture", foreground_texture)
     composite_material.set_shader_parameter("reveal_mask", reveal_mask.texture())
-    composite_material.set_shader_parameter("accent_color", Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff")))
+    composite_material.set_shader_parameter("accent_color", _accent_color)
     composite_material.set_shader_parameter("noise_tint", Color.from_string(str(sensory.get("visual_snow_tint", "#E5C9E8")), Color("e5c9e8")))
     composite_material.set_shader_parameter("scene_parallax", float(art.get("scene_parallax", 0.018)))
     composite_material.set_shader_parameter("background_parallax", float(art.get("background_parallax", 0.008)))
@@ -229,13 +230,16 @@ func _process(delta: float) -> void:
         _last_parallax_sent = smoothed_parallax
         composite_material.set_shader_parameter("parallax", smoothed_parallax)
 
-    _cinematic_mix = move_toward(_cinematic_mix, _cinematic_target, delta * (1.05 if reduced_motion else 1.42))
-    composite_material.set_shader_parameter("completion_reveal", _cinematic_mix)
-    composite_material.set_shader_parameter("unlock_motion", _cinematic_mix * (0.10 if reduced_motion else 1.0))
-    if room_dressing != null:
-        room_dressing.set_cinematic(_cinematic_mix)
-    _brush_energy = move_toward(_brush_energy, 0.0, delta * (2.8 if calm_mode else 3.8))
-    composite_material.set_shader_parameter("brush_energy", _brush_energy)
+    var next_cinematic_mix: float = move_toward(_cinematic_mix, _cinematic_target, delta * (1.05 if reduced_motion else 1.42))
+    if not is_equal_approx(next_cinematic_mix, _cinematic_mix):
+        _cinematic_mix = next_cinematic_mix
+        composite_material.set_shader_parameter("completion_reveal", _cinematic_mix)
+        composite_material.set_shader_parameter("unlock_motion", _cinematic_mix * (0.10 if reduced_motion else 1.0))
+        if room_dressing != null: room_dressing.set_cinematic(_cinematic_mix)
+    var next_brush_energy: float = move_toward(_brush_energy, 0.0, delta * (2.8 if calm_mode else 3.8))
+    if not is_equal_approx(next_brush_energy, _brush_energy):
+        _brush_energy = next_brush_energy
+        composite_material.set_shader_parameter("brush_energy", _brush_energy)
 
     _upload_accumulator += delta
     if _upload_accumulator >= 1.0 / _texture_upload_hz:
@@ -297,6 +301,9 @@ func set_cinematic_reveal(value: bool, instant: bool = false) -> void:
     elif instant:
         _cinematic_mix = 0.0
         composite_material.set_shader_parameter("completion_reveal", 0.0)
+    if instant:
+        composite_material.set_shader_parameter("unlock_motion", _cinematic_mix * (0.10 if reduced_motion else 1.0))
+        if room_dressing != null: room_dressing.set_cinematic(_cinematic_mix)
     queue_redraw()
 
 func set_runtime_budget(scale: float) -> void:
@@ -320,10 +327,7 @@ func reset_room() -> void:
         behavior.configure(manifest_room)
     for item in collectibles:
         item["found"] = false
-    cinematic_revealed = false
-    video_layer.set_cinematic(false, true)
-    _cinematic_mix = 0.0
-    _cinematic_target = 0.0
+    set_cinematic_reveal(false, true)
     _cinematic_elapsed = 0.0
     target_parallax = Vector2.ZERO
     _brush_energy = 0.0
@@ -486,7 +490,7 @@ func _apply_stamps(stamps: Array[Dictionary]) -> void:
     composite_material.set_shader_parameter("brush_point", pointer_norm)
     _set_progress_from_mask()
     var coverage_value: float = get_coverage()
-    if _last_coverage_emitted < 0.0 or absf(coverage_value - _last_coverage_emitted) >= 0.0008 or get_normalized_progress() >= 0.99:
+    if _last_coverage_emitted < 0.0 or absf(coverage_value - _last_coverage_emitted) >= 0.0008 or current_progress >= 0.99:
         _last_coverage_emitted = coverage_value
         coverage_changed.emit(coverage_value)
     var now_ms: int = Time.get_ticks_msec()
@@ -528,7 +532,8 @@ func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void:
         if not position_value is Array or position_value.size() != 2:
             continue
         var target: Vector2 = Vector2(float(position_value[0]), float(position_value[1]))
-        if point_norm.distance_to(target) <= radius_norm + 0.065:
+        var hit_radius: float = radius_norm + 0.065
+        if point_norm.distance_squared_to(target) <= hit_radius * hit_radius:
             item["found"] = true
             interaction_fx.spawn(target, "discovery")
             collectible_found.emit(item.duplicate(true))
@@ -562,7 +567,6 @@ func _draw() -> void:
     _render_doors()
 
 func _render_collectibles() -> void:
-    var accent: Color = Color.from_string(str(manifest_room.get("accent_color", "#72AFFF")), Color("72afff"))
     for item in collectibles:
         if bool(item.get("found", false)):
             continue
@@ -571,7 +575,7 @@ func _render_collectibles() -> void:
             continue
         var center: Vector2 = Vector2(float(position_value[0]) * size.x, float(position_value[1]) * size.y)
         var pulse: float = 0.5 + 0.5 * sin(_phase * 4.0 + float(center.x))
-        draw_arc(center, 11.0 + pulse * 3.0, 0.0, TAU, 22, Color(accent, 0.10 + pulse * 0.08), 1.4)
+        draw_arc(center, 11.0 + pulse * 3.0, 0.0, TAU, 22, Color(_accent_color, 0.10 + pulse * 0.08), 1.4)
 
 func _render_cursor() -> void:
     if not interaction_enabled:
@@ -580,14 +584,13 @@ func _render_cursor() -> void:
     var brush: Dictionary = brush_value if brush_value is Dictionary else {}
     var width_px: float = float(brush.get("min_width", 22.0)) * 0.55
     var center: Vector2 = Vector2(pointer_norm.x * size.x, pointer_norm.y * size.y)
-    var accent: Color = Color.from_string(str(manifest_room.get("accent_color", "#72AFFF")), Color("72afff"))
     var polygon: PackedVector2Array = PackedVector2Array()
     for index in range(12):
         var angle: float = float(index) * TAU / 12.0
         var jitter: float = 0.82 + 0.18 * sin(float(index * 7) + _phase * 2.0)
         polygon.append(center + Vector2.from_angle(angle) * width_px * jitter)
     polygon.append(polygon[0])
-    draw_polyline(polygon, Color(accent, 0.22), 1.2, true)
+    draw_polyline(polygon, Color(_accent_color, 0.22), 1.2, true)
 
 func _render_doors() -> void:
     # The persistent room shell/doorway is rendered by RoomDressingLayer so the
@@ -597,8 +600,7 @@ func _render_doors() -> void:
         return
     var threshold_half: float = size.x * 0.18 * door_open_amount
     var y: float = size.y - 43.0
-    var accent: Color = Color.from_string(str(manifest_room.get("accent_color", "#72AFFF")), Color("72afff"))
-    draw_line(Vector2(size.x * 0.5 - threshold_half, y), Vector2(size.x * 0.5 + threshold_half, y), Color(accent, 0.10 + door_open_amount * 0.16), 1.2)
+    draw_line(Vector2(size.x * 0.5 - threshold_half, y), Vector2(size.x * 0.5 + threshold_half, y), Color(_accent_color, 0.10 + door_open_amount * 0.16), 1.2)
 
 func _unlock_profile_index(style: String) -> int:
     match style:
