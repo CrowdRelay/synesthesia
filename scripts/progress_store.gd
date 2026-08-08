@@ -145,6 +145,7 @@ static func _blank_document() -> Dictionary:
             "pending_room_completions": [],
             "room_elapsed_ms": {},
             "album_completed": false,
+            "echo_archive": {},
             "calm_mode": true,
             "quiet_mode": false,
             "quiet_visuals": false,

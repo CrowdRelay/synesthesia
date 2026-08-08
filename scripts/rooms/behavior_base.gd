@@ -13,7 +13,19 @@ func acts() -> Array[String]:
 func particle_style() -> String:
     return str(room_data.get("visual_style", "uncertainty"))
 
+## Short diegetic prompt. It is intentionally a verb, not a tutorial sentence.
+func interaction_hint() -> String:
+    return "DOTKNIJ ŚWIATA"
+
+## Painting remains a fallback/reveal layer for every room. Gesture-driven rooms
+## can return semantic events from on_gesture without replacing the mask system.
 func on_paint(_point_norm: Vector2, _radius_norm: float, _progress: float) -> Array[Dictionary]:
+    return []
+
+## Semantic gesture API. Gesture dictionaries are produced by InteractionRouter
+## and always use normalized coordinates. Returned events may include:
+## kind/index/message/reveal_radius/reveal_strength/point.
+func on_gesture(_kind: String, _gesture: Dictionary, _progress: float) -> Array[Dictionary]:
     return []
 
 func render(_canvas, _viewport_size: Vector2, _progress: float, _phase: float) -> void:
@@ -42,4 +54,30 @@ func restore_state(saved: Dictionary) -> void:
     state = saved.duplicate(true)
 
 func _near(point: Vector2, target: Vector2, radius: float) -> bool:
-    return point.distance_to(target) <= radius
+    return point.distance_squared_to(target) <= radius * radius
+
+func _gesture_point(gesture: Dictionary) -> Vector2:
+    var value: Variant = gesture.get("point", Vector2(0.5, 0.5))
+    return value if value is Vector2 else Vector2(0.5, 0.5)
+
+func _gesture_start(gesture: Dictionary) -> Vector2:
+    var value: Variant = gesture.get("start", _gesture_point(gesture))
+    return value if value is Vector2 else _gesture_point(gesture)
+
+func _distance_to_segment(point: Vector2, start: Vector2, finish: Vector2) -> float:
+    var segment: Vector2 = finish - start
+    var length_squared: float = segment.length_squared()
+    if length_squared <= 0.000001:
+        return point.distance_to(start)
+    var t: float = clampf((point - start).dot(segment) / length_squared, 0.0, 1.0)
+    return point.distance_to(start + segment * t)
+
+func _interaction_event(kind: String, index: int, message: String, point: Vector2, reveal_radius: float = 0.075, reveal_strength: float = 0.84) -> Dictionary:
+    return {
+        "kind": kind,
+        "index": index,
+        "message": message,
+        "point": point,
+        "reveal_radius": reveal_radius,
+        "reveal_strength": reveal_strength,
+    }

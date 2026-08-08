@@ -30,6 +30,27 @@ const INTERACTION_SFX: Dictionary = {
     "wave": "res://assets/audio/sfx/wave-slap.wav",
     "light": "res://assets/audio/sfx/light-rise.wav",
     "presence": "res://assets/audio/sfx/presence-wind.wav",
+    "pour": "res://assets/audio/sfx/glass-clink.wav",
+    "root": "res://assets/audio/sfx/wood-creak.wav",
+    "aim": "res://assets/audio/sfx/presence-wind.wav",
+    "ember": "res://assets/audio/sfx/wing-whoosh.wav",
+}
+const INTERACTION_BLOOM: Dictionary = {
+    "balloon": 0.42,
+    "mask": 0.34,
+    "toast": 0.48,
+    "pour": 0.28,
+    "seed": 0.30,
+    "root": 0.36,
+    "aim": 0.20,
+    "duel": 0.54,
+    "screen": 0.38,
+    "mirror": 0.50,
+    "ember": 0.32,
+    "phoenix": 0.62,
+    "presence": 0.24,
+    "wave": 0.26,
+    "light": 0.46,
 }
 const CINEMATIC_SFX: Dictionary = {
     "uncertainty": "res://assets/audio/sfx/wave-slap.wav",
@@ -74,6 +95,8 @@ var _noise_user_gain_db: float = 0.0
 var _lowpass_start_hz: float = 950.0
 var _last_filter_hz: float = -1.0
 var _last_reverb_wet: float = -1.0
+var _interaction_bloom_target: float = 0.0
+var _interaction_bloom_smoothed: float = 0.0
 var _suspended: bool = false
 
 func _ready() -> void:
@@ -138,6 +161,7 @@ func _play_sfx_stream(stream: AudioStream, pitch: float = 1.0, volume_db: float 
     player.play()
 
 func play_interaction_sfx(kind: String, index: int = 0) -> void:
+    _interaction_bloom_target = maxf(_interaction_bloom_target, float(INTERACTION_BLOOM.get(kind, 0.22)))
     if kind == "balloon":
         _play_sfx_stream(_balloon_pop_stream, 0.96 + float(index % 5) * 0.018, -9.0)
         return
@@ -188,6 +212,8 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
     _coverage_smoothed = 0.0
     _collectibles_target = 0.0
     _collectibles_smoothed = 0.0
+    _interaction_bloom_target = 0.0
+    _interaction_bloom_smoothed = 0.0
     _completion_active = false
     _music_available = false
     _load_room_ambience()
@@ -290,6 +316,8 @@ func _process(delta: float) -> void:
     _coverage_smoothed = move_toward(_coverage_smoothed, _coverage_target, delta * 0.72)
     _collectibles_smoothed = move_toward(_collectibles_smoothed, _collectibles_target, delta * 0.90)
     _quiet_smoothed = move_toward(_quiet_smoothed, _quiet_target, delta * 1.80)
+    _interaction_bloom_target = move_toward(_interaction_bloom_target, 0.0, delta * 0.58)
+    _interaction_bloom_smoothed = move_toward(_interaction_bloom_smoothed, _interaction_bloom_target, delta * 5.8)
 
     var reveal_mix: float = clampf(_coverage_smoothed, 0.0, 1.0)
     if _completion_active or _coverage_target >= COMPLETION_THRESHOLD:
@@ -314,14 +342,14 @@ func _process(delta: float) -> void:
             _music_player.play()
         var music_target_db: float = SILENCE_DB
         if music_ratio > 0.0001:
-            music_target_db = _completion_music_db + linear_to_db(music_ratio) + _music_user_gain_db
+            music_target_db = _completion_music_db + linear_to_db(music_ratio) + _music_user_gain_db + _interaction_bloom_smoothed * 2.4
         music_target_db -= quiet_cut_db
         _music_player.volume_db = move_toward(_music_player.volume_db, music_target_db, delta * 17.0)
 
     if _ambient_player != null and _ambient_player.stream != null:
         if not _ambient_player.playing:
             _ambient_player.play()
-        var ambient_target_db: float = (-31.0 if _calm_mode else -27.0) + reveal_mix * 2.5 - quiet_cut_db
+        var ambient_target_db: float = (-31.0 if _calm_mode else -27.0) + reveal_mix * 2.5 + _interaction_bloom_smoothed * 1.2 - quiet_cut_db
         _ambient_player.volume_db = move_toward(_ambient_player.volume_db, ambient_target_db, delta * 9.0)
 
     _apply_filter(reveal_mix)
@@ -329,13 +357,14 @@ func _process(delta: float) -> void:
 func _apply_filter(reveal_mix: float) -> void:
     var clamped_mix: float = clampf(reveal_mix, 0.0, 1.0)
     if _music_lowpass != null:
-        var filter_curve: float = pow(clamped_mix, 0.72)
+        var reactive_mix: float = clampf(clamped_mix + _interaction_bloom_smoothed * 0.10, 0.0, 1.0)
+        var filter_curve: float = pow(reactive_mix, 0.72)
         var target_hz: float = lerpf(_lowpass_start_hz, MAX_FILTER_HZ, filter_curve)
         if _last_filter_hz < 0.0 or absf(target_hz - _last_filter_hz) >= 18.0:
             _last_filter_hz = target_hz
             _music_lowpass.cutoff_hz = target_hz
     if _music_reverb != null:
-        var target_wet: float = lerpf(0.22, 0.035, clamped_mix)
+        var target_wet: float = lerpf(0.22, 0.035, clampf(clamped_mix + _interaction_bloom_smoothed * 0.06, 0.0, 1.0))
         if _last_reverb_wet < 0.0 or absf(target_wet - _last_reverb_wet) >= 0.002:
             _last_reverb_wet = target_wet
             _music_reverb.wet = target_wet

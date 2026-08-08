@@ -17,6 +17,8 @@ const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
 const ChapterCardScript := preload("res://scripts/ui/chapter_card.gd")
 const ExperienceIntroCardScript := preload("res://scripts/ui/experience_intro_card.gd")
+const AlbumModeControllerScript := preload("res://scripts/app/album_mode_controller.gd")
+const EchoArchive := preload("res://scripts/app/echo_archive.gd")
 const CompletionCardScript := preload("res://scripts/ui/completion_card.gd")
 const SettingsCardScript := preload("res://scripts/ui/settings_card.gd")
 const ConfirmCardScript := preload("res://scripts/ui/confirm_card.gd")
@@ -69,6 +71,7 @@ var confirmation_panel
 var reward_panel
 var finale_background
 var settings_panel
+var album_mode_controller
 func _ready() -> void:
     DebugProfile.fit_macos_window_to_screen()
     index_document = ReleaseReader.load_json(RELEASE_INDEX_PATH)
@@ -125,6 +128,14 @@ func _build_application_shell() -> void:
     transition_director.name = "TransitionDirector"
     experience_surface.add_child(transition_director)
     transition_director.install(experience_surface)
+    transition_director.set_memory_count(_array_value(album_state.get("completed_room_ids", [])).size())
+    album_mode_controller = AlbumModeControllerScript.new()
+    add_child(album_mode_controller)
+    album_mode_controller.configure(ui_root, room_layer, hud, transition_director, release_entries)
+    album_mode_controller.room_requested.connect(_enter_album_mode_room)
+    album_mode_controller.corridor_requested.connect(_show_album_archive)
+    album_mode_controller.finale_requested.connect(_show_reward_panel)
+    album_mode_controller.menu_requested.connect(_show_experience_intro)
     asset_preloader = AssetPreloaderScript.new()
     asset_preloader.name = "AssetPreloader"
     add_child(asset_preloader)
@@ -165,6 +176,23 @@ func _show_experience_intro() -> void:
     experience_intro_panel.begin_requested.connect(_begin_experience)
     experience_intro_panel.new_journey_requested.connect(_confirm_reset_album)
     experience_intro_panel.settings_requested.connect(_show_settings)
+    experience_intro_panel.album_mode_requested.connect(_show_album_archive)
+func _show_album_archive() -> void:
+    if not bool(album_state.get("album_completed", false)):
+        return
+    _remove_modal(experience_intro_panel)
+    experience_intro_panel = null
+    _remove_modal(reward_panel)
+    reward_panel = null
+    if room != null and is_instance_valid(room):
+        _clear_room_runtime()
+    album_mode_controller.show_archive(album_state, current_room_index, finale_background)
+func _enter_album_mode_room(index: int) -> void:
+    if transition_running:
+        return
+    transition_running = true
+    await album_mode_controller.enter_room(index, finale_background, Callable(self, "_load_room"))
+    transition_running = false
 func _begin_experience() -> void:
     if transition_running:
         return
@@ -200,7 +228,6 @@ func _enter_main_menu_mode() -> void:
     MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director)
 func _resume_room_runtime() -> void:
     MenuRuntimeGuard.resume(room_layer, hud, audio_director)
-
 func _configure_reward_client() -> void:
     var config_value: Variant = index_document.get("reward", {})
     if not config_value is Dictionary:
@@ -265,6 +292,7 @@ func _load_room(index: int, show_intro: bool) -> void:
     room.collectible_found.connect(_on_collectible_found)
     room.paint_pulse.connect(_on_paint_pulse)
     room.special_interaction.connect(_on_special_interaction)
+    room.interaction_feedback.connect(_on_interaction_feedback)
     room.interaction_started.connect(func() -> void: hud.set_painting(true))
     room.interaction_ended.connect(func() -> void: hud.set_painting(false))
     room.act_changed.connect(_on_act_changed)
@@ -342,6 +370,19 @@ func _restore_room_after_layout(show_intro: bool) -> void:
         completion_announced = bool(saved.get("completed", false))
         room_elapsed_before_start_ms = maxi(room_elapsed_before_start_ms, int(saved.get("elapsed_ms", 0)))
     _apply_sensory_mode()
+    if album_mode_controller != null and album_mode_controller.is_listening():
+        completion_announced = true
+        room_timer_running = false
+        room.set_cinematic_reveal(true, true)
+        room.set_door_open(false)
+        room.set_interaction_enabled(true)
+        var listen_progress: float = float(room.get_normalized_progress())
+        var listen_found: int = int(room.get_found_count())
+        audio_director.set_progress(listen_progress, listen_found)
+        audio_director.reveal_release_excerpt()
+        hud.visible = false
+        restoring_progress = false
+        return
     room.set_interaction_enabled(not completion_announced)
     if restored:
         current_coverage = float(room.get_coverage())
@@ -350,7 +391,7 @@ func _restore_room_after_layout(show_intro: bool) -> void:
         audio_director.set_progress(normalized, found)
         if hud != null and is_instance_valid(hud):
             hud.update_reveal(normalized)
-            hud.update_discovery("%d/%d ślady · pokój pamięta poprzedni dotyk" % [found, _collectible_total()])
+            hud.update_discovery("ECHA %d/%d · pokój pamięta poprzedni dotyk" % [found, _collectible_total()])
     room_timer_running = not completion_announced
     if completion_announced:
         room.set_cinematic_reveal(true)
@@ -413,42 +454,28 @@ func _on_collectible_found(item: Dictionary) -> void:
     if room == null:
         return
     var count: int = int(room.get_found_count())
-    hud.update_discovery("%d/%d · %s — %s" % [count, _collectible_total(), str(item.get("title", "Ślad")), str(item.get("message", ""))])
+    EchoArchive.remember(album_state, str(manifest.get("release_id", "")), item, count)
+    hud.update_discovery("ECHO %d/%d · %s — %s" % [count, _collectible_total(), str(item.get("title", "Echo")), str(item.get("message", ""))])
     if haptics != null:
         haptics.discovery()
     if audio_director != null:
         audio_director.set_progress(float(room.get_normalized_progress()), count)
     _schedule_save()
-
 func _on_act_changed(index: int, title: String) -> void:
     hud.update_act(index, title)
     if haptics != null and index > 0:
         haptics.discovery()
-
 func _on_paint_pulse(speed_normalized: float) -> void:
     if haptics != null:
         haptics.paint_tick(speed_normalized)
-
 func _on_special_interaction(kind: String, index: int) -> void:
     if haptics != null:
         haptics.special(kind)
     if audio_director != null and audio_director.has_method("play_interaction_sfx"):
         audio_director.play_interaction_sfx(kind, index)
-    var messages: Dictionary = {
-        "balloon": "POP! Balon pękł · scena nabiera koloru",
-        "mirror": "Tafla pękła · odbicie traci władzę",
-        "toast": "Toast uniesiony · czerwień została w winie",
-        "duel": "Przeciwnik traci kształt · własna droga zostaje",
-        "mask": "Maska pękła · została twarz",
-        "screen": "Ekran wygaszony · sygnał wraca do Ciebie",
-        "seed": "Ziarno pękło · korzenie już pracują",
-        "phoenix": "Feniks złapał oddech",
-        "presence": "Druga obecność przestała być cieniem",
-        "light": "Światło prowadzi dalej",
-        "wave": "Horyzont przestał się cofać",
-    }
-    hud.update_discovery(str(messages.get(kind, "Scena odpowiedziała na gest")))
-
+func _on_interaction_feedback(message: String) -> void:
+    if hud != null and is_instance_valid(hud):
+        hud.update_discovery(message)
 func _complete_current_room() -> void:
     if completion_announced or room == null:
         return
@@ -466,15 +493,15 @@ func _complete_current_room() -> void:
         audio_director.play_cinematic_sfx()
     if hud != null and is_instance_valid(hud):
         hud.update_reveal(1.0)
-        hud.update_discovery("%d/%d ślady · drzwi są otwarte" % [_collectible_total(), _collectible_total()])
+        hud.update_discovery("ECHA %d/%d · drzwi są otwarte" % [_collectible_total(), _collectible_total()])
     if haptics != null:
         haptics.cinematic_reveal()
-
     var release_id: String = str(manifest.get("release_id", ""))
     var completed_ids: Array = _array_value(album_state.get("completed_room_ids", []))
     if not completed_ids.has(release_id):
         completed_ids.append(release_id)
     album_state["completed_room_ids"] = completed_ids
+    transition_director.set_memory_count(completed_ids.size())
     var elapsed_value: Variant = album_state.get("room_elapsed_ms", {})
     var elapsed: Dictionary = elapsed_value if elapsed_value is Dictionary else {}
     elapsed[release_id] = maxi(int(elapsed.get(release_id, 0)), elapsed_at_completion)
@@ -485,16 +512,14 @@ func _complete_current_room() -> void:
     if current_room_index == release_entries.size() - 1:
         album_state["album_completed"] = true
     _save_progress()
-
     if reward_client != null and reward_client.has_run():
         reward_client.record_room(release_id, current_room_index, elapsed_at_completion)
         if current_room_index == release_entries.size() - 1:
             reward_client.complete_album(int(album_state.get("total_elapsed_ms", 0)))
     call_deferred("_show_completion_panel")
-
 func _show_completion_panel() -> void:
     await get_tree().create_timer(1.28).timeout
-    if completion_panel != null or transition_running or reward_panel != null:
+    if completion_panel != null or transition_running or reward_panel != null or experience_intro_panel != null or not room_layer.visible:
         return
     var room_value: Variant = manifest.get("room", {})
     var room_data: Dictionary = room_value if room_value is Dictionary else {}
@@ -512,7 +537,6 @@ func _show_completion_panel() -> void:
         next_label = "Dalej · %s" % next_name
     else:
         next_label = "Przejdź przez ostatnie drzwi"
-
     completion_panel = CompletionCardScript.new()
     completion_panel.name = "CompletionCard"
     ui_root.attach(completion_panel, 30)
@@ -533,7 +557,6 @@ func _show_completion_panel() -> void:
         if room != null and is_instance_valid(room):
             room.set_interaction_enabled(false)
     )
-
 func _transition_to_room(next_index: int) -> void:
     if transition_running:
         return
@@ -550,7 +573,6 @@ func _transition_to_room(next_index: int) -> void:
     if transition_director != null:
         await transition_director.travel_in()
     transition_running = false
-
 func _transition_to_reward() -> void:
     if transition_running:
         return
@@ -569,12 +591,10 @@ func _transition_to_reward() -> void:
         await transition_director.travel_in()
     transition_running = false
     _show_reward_panel()
-
 func _accent_for_release(index: int) -> Color:
     if index < 0 or index >= release_entries.size():
         return Color("72afff")
     return ReleaseReader.accent_for_entry(release_entries[index])
-
 func _show_settings() -> void:
     if settings_panel != null:
         return
@@ -648,7 +668,6 @@ func _show_settings() -> void:
         _apply_audio_levels()
         _mark_settings_dirty()
     )
-
 func _close_settings() -> void:
     _remove_modal(settings_panel)
     settings_panel = null
@@ -657,10 +676,8 @@ func _close_settings() -> void:
         settings_dirty = false
     if room != null and not completion_announced and experience_intro_panel == null:
         room.set_interaction_enabled(true)
-
 func _mark_settings_dirty() -> void:
     settings_dirty = true
-
 func _reload_current_room() -> void:
     _save_progress()
     if adaptive_performance != null:
@@ -670,10 +687,8 @@ func _reload_current_room() -> void:
     _load_room(index, false)
     await get_tree().process_frame
     await transition_director.fade_in(0.28)
-
 func _confirm_reset_room() -> void:
     _show_confirmation("Zacząć pokój od nowa?", "Zniknie tylko lokalny postęp bieżącego pokoju. Pozostałe rozdziały albumu zostają bez zmian.", "Tak, wyczyść ten pokój", Callable(self, "_reset_room"))
-
 func _reset_room() -> void:
     if room == null:
         return
@@ -682,6 +697,7 @@ func _reset_room() -> void:
     var completed_ids: Array = _array_value(album_state.get("completed_room_ids", []))
     completed_ids.erase(release_id)
     album_state["completed_room_ids"] = completed_ids
+    transition_director.set_memory_count(completed_ids.size())
     completion_announced = false
     var elapsed_value: Variant = album_state.get("room_elapsed_ms", {})
     var elapsed: Dictionary = elapsed_value if elapsed_value is Dictionary else {}
@@ -697,16 +713,14 @@ func _reset_room() -> void:
     current_coverage = 0.0
     room_started_ms = Time.get_ticks_msec()
     hud.update_reveal(0.0)
-    hud.update_discovery("0/%d ślady · odkrywaj scenę spod szumu" % _collectible_total())
+    hud.update_discovery("ECHA 0/%d · odkrywaj scenę spod szumu" % _collectible_total())
     if audio_director != null:
         audio_director.set_progress(0.0, 0)
         audio_director.reset_release_excerpt()
     _apply_sensory_mode()
     _save_album_state()
-
 func _confirm_reset_album() -> void:
     _show_confirmation("Zagrać od nowa?", "Wyczyścimy lokalne malowanie, odkrycia i czasy wszystkich 11 pokojów. Ustawienia zostają. Nagroda i stan po stronie Sygnału nie są cofane.", "Tak, zacznij świeżą podróż", Callable(self, "_reset_album_local"))
-
 func _show_confirmation(title: String, message: String, confirm_text: String, action: Callable) -> void:
     var card = ConfirmCardScript.new()
     confirmation_panel = card
@@ -714,7 +728,6 @@ func _show_confirmation(title: String, message: String, confirm_text: String, ac
     card.configure(title, message, confirm_text)
     card.confirmed.connect(action)
     card.tree_exited.connect(func() -> void: confirmation_panel = null)
-
 func _reset_album_local() -> void:
     if save_timer != null and not save_timer.is_stopped():
         save_timer.stop()
@@ -724,7 +737,6 @@ func _reset_album_local() -> void:
         get_tree().reload_current_scene()
     else:
         hud.update_discovery("Nie udało się wyczyścić lokalnego postępu")
-
 func _apply_sensory_mode() -> void:
     if room != null and is_instance_valid(room):
         room.set_calm_mode(calm_mode)
@@ -741,20 +753,20 @@ func _apply_sensory_mode() -> void:
         transition_director.set_reduced_motion(reduced_motion)
     if finale_background != null and is_instance_valid(finale_background):
         finale_background.configure(reduced_motion, quiet_visuals)
-
 func _apply_audio_levels() -> void:
     if audio_director != null:
         audio_director.set_user_levels(music_level, noise_level)
-
 func _on_runtime_budget_changed(scale: float, _reason: String) -> void:
     if room != null and is_instance_valid(room):
         room.set_runtime_budget(scale)
-
 func _schedule_save() -> void:
+    if album_mode_controller != null and album_mode_controller.is_listening():
+        return
     if not restoring_progress and save_timer != null:
         save_timer.start()
-
 func _save_progress() -> void:
+    if album_mode_controller != null and album_mode_controller.is_listening():
+        return
     if room == null or manifest.is_empty():
         return
     var release_id: String = str(manifest.get("release_id", ""))
@@ -770,7 +782,6 @@ func _save_progress() -> void:
         "elapsed_ms": elapsed_ms,
         "room": room.export_state(),
     }, album_state)
-
 func _populate_settings_state() -> void:
     album_state["current_room_index"] = current_room_index
     album_state["calm_mode"] = calm_mode
@@ -781,11 +792,11 @@ func _populate_settings_state() -> void:
     album_state["quality_profile"] = quality_profile
     album_state["music_level"] = music_level
     album_state["noise_level"] = noise_level
-
 func _save_album_state() -> void:
+    if album_mode_controller != null and album_mode_controller.is_listening():
+        return
     _populate_settings_state()
     ProgressStoreScript.save_album(album_state)
-
 func _prepare_finale_background() -> void:
     if finale_background != null and is_instance_valid(finale_background):
         return
@@ -795,7 +806,6 @@ func _prepare_finale_background() -> void:
     finale_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     finale_background.configure(reduced_motion, quiet_visuals)
     move_child(finale_background, game_surface.get_index() + 1)
-
 func _show_reward_panel() -> void:
     if reward_panel != null:
         return
@@ -807,7 +817,7 @@ func _show_reward_panel() -> void:
     reward_panel.configure(bool(album_state.get("server_album_completed", false)), ProgressStoreScript.load_reward())
     reward_panel.draw_entry_requested.connect(_submit_reward_claim_values)
     reward_panel.reset_requested.connect(_confirm_reset_album)
-
+    reward_panel.album_mode_requested.connect(_show_album_archive)
 func _submit_reward_claim_values(email: String) -> void:
     if reward_client == null:
         reward_panel.set_status("Sygnał jest chwilowo niedostępny. Ukończenie pozostało zapisane lokalnie.")
@@ -825,11 +835,9 @@ func _submit_reward_claim_values(email: String) -> void:
     reward_panel.set_claim_enabled(false)
     reward_panel.set_status("Dodaję ukończenie do losowania…")
     reward_client.enter_draw(email, str(config.get("policy_version", "virya-signal-2026-08")))
-
 func _on_run_started(_run_id: String, _run_token: String, next_room_index: int) -> void:
     ProgressStoreScript.save_run(reward_client.get_run_state())
     _sync_completed_rooms_to_server(next_room_index)
-
 func _sync_completed_rooms_to_server(next_room_index: int) -> void:
     if reward_client == null or not reward_client.has_run():
         return
@@ -853,7 +861,6 @@ func _sync_completed_rooms_to_server(next_room_index: int) -> void:
             reward_client.record_room(room_id_value, index, elapsed_ms)
         else:
             break
-
 func _on_room_recorded(room_id_value: String, next_room_index: int) -> void:
     var recorded_ids: Array = _array_value(album_state.get("server_recorded_room_ids", []))
     if not recorded_ids.has(room_id_value):
@@ -862,7 +869,6 @@ func _on_room_recorded(room_id_value: String, next_room_index: int) -> void:
     _save_album_state()
     ProgressStoreScript.save_run(reward_client.get_run_state())
     _sync_completed_rooms_to_server(next_room_index)
-
 func _on_album_recorded() -> void:
     album_state["server_album_completed"] = true
     _save_album_state()
@@ -870,27 +876,23 @@ func _on_album_recorded() -> void:
     if reward_panel != null and is_instance_valid(reward_panel):
         reward_panel.set_status("Ukończenie potwierdzone. Możesz dołączyć do losowania 5 płyt.")
         reward_panel.set_claim_enabled(true)
-
 func _on_draw_entered(status: String, message: String) -> void:
     ProgressStoreScript.save_reward({"status": status, "message": message, "claimed_at_unix": int(Time.get_unix_time_from_system())})
     if reward_panel != null and is_instance_valid(reward_panel):
         reward_panel.set_status(message)
         reward_panel.set_claim_enabled(false)
-
 func _on_reward_request_failed(operation: String, message: String) -> void:
     if operation == "enter_draw" and reward_panel != null and is_instance_valid(reward_panel):
         reward_panel.set_status(message)
         reward_panel.set_claim_enabled(true)
     else:
         hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")
-
 func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
     var text_value: String = "Ponawiam połączenie z Sygnałem · próba %d/3" % attempt
     if operation == "enter_draw" and reward_panel != null and is_instance_valid(reward_panel):
         reward_panel.set_status(text_value)
     else:
         hud.update_discovery(text_value)
-
 func _on_reward_run_invalidated() -> void:
     ProgressStoreScript.clear_run()
     album_state["server_recorded_room_ids"] = []
@@ -899,35 +901,35 @@ func _on_reward_run_invalidated() -> void:
     if reward_panel != null and is_instance_valid(reward_panel):
         reward_panel.set_status("Odnawiam bezpieczne połączenie z Sygnałem…")
         reward_panel.set_claim_enabled(false)
-
 func _looks_like_email(value: String) -> bool:
     var at: int = value.find("@")
     var dot: int = value.rfind(".")
     return at > 0 and dot > at + 1 and dot < value.length() - 1 and value.length() <= 254
-
 func _array_value(value: Variant) -> Array:
     return value.duplicate(true) if value is Array else []
-
 func _current_room_elapsed_ms() -> int:
     if room_started_ms <= 0 or not room_timer_running:
         return room_elapsed_before_start_ms
     return room_elapsed_before_start_ms + maxi(0, Time.get_ticks_msec() - room_started_ms)
-
 func _sum_elapsed_ms(elapsed: Dictionary) -> int:
     var total: int = 0
     for value in elapsed.values():
         total += maxi(0, int(value))
     return total
-
 func _remove_modal(panel: Control) -> void:
     if panel != null and is_instance_valid(panel):
-        panel.queue_free()
-
+        panel.hide(); panel.queue_free()
 func _unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed(&"ui_cancel") and _handle_back_request():
         get_viewport().set_input_as_handled()
-
 func _handle_back_request() -> bool:
+    if album_mode_controller != null and album_mode_controller.has_archive():
+        album_mode_controller.close_archive()
+        _show_experience_intro()
+        return true
+    if album_mode_controller != null and album_mode_controller.is_listening() and room != null and is_instance_valid(room):
+        _show_album_archive()
+        return true
     if experience_intro_panel != null:
         return true
     if confirmation_panel != null:
@@ -950,7 +952,6 @@ func _handle_back_request() -> bool:
         _show_settings()
         return true
     return false
-
 func _notification(what: int) -> void:
     if what == NOTIFICATION_WM_GO_BACK_REQUEST:
         _handle_back_request()
@@ -960,7 +961,6 @@ func _notification(what: int) -> void:
             _save_progress()
         else:
             _save_album_state()
-
 func _exit_tree() -> void:
     if save_timer != null and not save_timer.is_stopped():
         save_timer.stop()
@@ -968,7 +968,6 @@ func _exit_tree() -> void:
         reward_client.shutdown()
     if asset_preloader != null and is_instance_valid(asset_preloader) and asset_preloader.has_method("drain"):
         asset_preloader.drain()
-
 func _show_fatal_error(message: String) -> void:
     var label: Label = Label.new()
     label.text = message

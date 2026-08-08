@@ -46,6 +46,10 @@ require(
 )
 
 main = source("scripts/main.gd")
+if "reward_panel != null or experience_intro_panel != null or not room_layer.visible" not in main:
+    failures.append("main.gd: delayed completion card can resurrect above the main menu")
+if "panel.hide(); panel.queue_free()" not in main:
+    failures.append("main.gd: modal removal is not visually immediate before deferred queue_free")
 stay_start = main.find("completion_panel.stay_requested.connect")
 stay_end = main.find("func _transition_to_room", stay_start)
 stay_block = main[stay_start:stay_end]

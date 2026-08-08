@@ -90,6 +90,15 @@ jobs:
           python3 tests/visual_snapshot_contract.py
           python3 tests/new_release_pack_contract.py
 
+      - name: Set up Rust Android toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.97.1 --profile minimal
+          rustup override set 1.97.1
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk --locked --version 4.1.2
+
       - name: Set up JDK 17
         uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
@@ -103,6 +112,7 @@ jobs:
         shell: bash
         env:
           SYNESTHESIA_ANDROID_VERSION_CODE: ${{ github.run_number }}
+          SYNESTHESIA_ENABLE_RUST_NATIVE: "1"
         run: ./scripts/build-android-apk.sh
 
       - name: Upload Android artifact

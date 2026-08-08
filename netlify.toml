@@ -4,6 +4,9 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  PYTHON_VERSION = "3.13"
+  SYNESTHESIA_RUST_WEB_REQUIRED = "1"
+  SYNESTHESIA_RUST_WEB_TOOLCHAIN = "nightly-2026-08-07"
 
 [[redirects]]
   from = "/reward"

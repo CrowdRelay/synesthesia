@@ -8,6 +8,7 @@ var _warp_mix: float = 0.0
 var _flash_mix: float = 0.0
 var _phase: float = 0.0
 var _reduced_motion: bool = false
+var _memory_count: int = 0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -29,6 +30,10 @@ func set_accents(current: Color, next: Color = Color.TRANSPARENT) -> void:
 
 func set_reduced_motion(value: bool) -> void:
     _reduced_motion = value
+
+func set_memory_count(value: int) -> void:
+    _memory_count = clampi(value, 0, 11)
+    queue_redraw()
 
 func set_door_open_mix(value: float) -> void:
     _door_open_mix = clampf(value, 0.0, 1.0)
@@ -100,6 +105,7 @@ func _draw() -> void:
     )
 
     _draw_threshold_shadow(w, h, doorway, approach, warp)
+    _draw_corridor_memory(w, h, doorway, approach, warp)
     _draw_doorway_frame(doorway, approach, warp)
     _draw_hinged_door(doorway, _smooth01(_door_open_mix), approach)
 
@@ -110,6 +116,54 @@ func _draw() -> void:
         var flash: float = pow(_smooth01(_flash_mix), 1.7)
         draw_rect(Rect2(Vector2.ZERO, size), Color(_accent.lerp(_next_accent, 0.5), 0.08 * flash), true)
         draw_circle(center, minf(w, h) * (0.12 + flash * 0.92), Color(Color.WHITE, 0.075 * flash))
+
+func _draw_corridor_memory(w: float, h: float, doorway: Rect2, approach: float, warp: float) -> void:
+    if _memory_count <= 0 or warp > 0.82:
+        return
+    var alpha: float = (0.055 + approach * 0.045) * (1.0 - warp)
+    var floor_y: float = minf(h * 0.94, doorway.end.y + h * 0.05)
+    var center_x: float = doorway.get_center().x
+    if _memory_count >= 1:
+        for line in range(3):
+            var y: float = floor_y - 20.0 - float(line) * 13.0
+            draw_arc(Vector2(center_x - w * 0.28, y), 34.0 + float(line) * 9.0, 0.1, PI - 0.1, 20, Color(_accent, alpha), 1.0)
+    if _memory_count >= 2:
+        for dot in range(8):
+            var p := Vector2(w * (0.12 + float(dot) * 0.095), floor_y - 52.0 - float(dot % 3) * 16.0)
+            draw_circle(p, 2.0 + float(dot % 2), Color(_accent.lerp(Color("ef6fbd"), 0.45), alpha * 1.35))
+    if _memory_count >= 3:
+        var mask_center := Vector2(w * 0.19, h * 0.34)
+        draw_arc(mask_center, 22.0, 0.15, PI - 0.15, 18, Color(_accent, alpha * 1.25), 1.5)
+    if _memory_count >= 4:
+        var glass := Vector2(w * 0.80, h * 0.42)
+        draw_arc(glass, 15.0, 0.0, PI, 16, Color("b91346", alpha * 1.45), 1.2)
+        draw_line(glass + Vector2(0.0, 15.0), glass + Vector2(0.0, 38.0), Color("b91346", alpha), 1.0)
+    if _memory_count >= 5:
+        var root := Vector2(center_x, floor_y - 4.0)
+        for side in [-1.0, 1.0]:
+            draw_polyline(PackedVector2Array([root, root + Vector2(side * 28.0, -18.0), root + Vector2(side * 52.0, -30.0)]), Color("72d79a", alpha), 1.2)
+    if _memory_count >= 6:
+        var aim := Vector2(w * 0.74, h * 0.30)
+        draw_arc(aim, 16.0, 0.0, TAU, 18, Color("f4c36a", alpha), 1.0)
+        draw_line(aim - Vector2(24.0, 0.0), aim + Vector2(24.0, 0.0), Color("f4c36a", alpha * 0.8), 1.0)
+    if _memory_count >= 7:
+        for screen in range(3):
+            draw_rect(Rect2(Vector2(w * (0.11 + float(screen) * 0.07), h * 0.56), Vector2(30.0, 19.0)), Color("66c9ff", alpha * 0.8), false, 1.0)
+    if _memory_count >= 8:
+        var mirror := Vector2(w * 0.86, h * 0.60)
+        for shard in range(5):
+            draw_line(mirror, mirror + Vector2.from_angle(float(shard) * 1.31) * 34.0, Color("d4e4ff", alpha), 1.0)
+    if _memory_count >= 9:
+        for ash in range(9):
+            draw_circle(Vector2(w * 0.42 + float(ash % 3) * 18.0, h * 0.26 + float(ash / 3) * 17.0), 1.5, Color("ff9e58", alpha * 1.2))
+    if _memory_count >= 10:
+        draw_circle(Vector2(w * 0.43, h * 0.68), 9.0, Color("94a9ff", alpha))
+        draw_circle(Vector2(w * 0.57, h * 0.68), 9.0, Color("d890b8", alpha))
+        draw_line(Vector2(w * 0.43, h * 0.68), Vector2(w * 0.57, h * 0.68), Color("b99bdc", alpha * 0.7), 1.0)
+    if _memory_count >= 11:
+        var light := Vector2(center_x, h * 0.15)
+        for ray in range(5):
+            draw_line(light, Vector2(w * (0.24 + float(ray) * 0.13), h * 0.78), Color("ffd56d", alpha * 0.75), 1.0)
 
 func _draw_threshold_shadow(w: float, h: float, doorway: Rect2, approach: float, warp: float) -> void:
     var dim_alpha: float = 0.06 + approach * 0.17 + warp * 0.50

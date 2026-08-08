@@ -152,6 +152,10 @@ if ! grep -Fqx 'textures/vram_compression/import_etc2_astc=true' "$ROOT/project.
   exit 1
 fi
 
+# Validate a clean portable source tree first; never let a stale local host descriptor
+# make the Android pipeline depend on whatever was built previously on this machine.
+./scripts/build-rust-native.sh disable >/dev/null
+
 # Validate the exact source tree that will be exported. validate.sh runs Godot import + lifecycle smoke when GODOT_BIN is provided.
 export SYNESTHESIA_GODOT_LOG_DIR="${SYNESTHESIA_GODOT_LOG_DIR:-$ROOT/build/ci-logs}"
 mkdir -p "$SYNESTHESIA_GODOT_LOG_DIR"
@@ -171,6 +175,21 @@ if ! grep -q '^SYNESTHESIA_GODOT_RUNTIME=PASS$' "$validation_log"; then
   exit 1
 fi
 rm -f "$validation_log"
+
+# Android is Rust-primary. A GDScript-only APK is available solely as an explicit
+# emergency escape hatch; production/CI builds fail if the Rust library cannot be built.
+rust_android_required=1
+if [[ "${SYNESTHESIA_DISABLE_RUST_NATIVE:-0}" == "1" ]]; then
+  rust_android_required=0
+  ./scripts/build-rust-native.sh disable >/dev/null
+  printf '%s\n' 'SYNESTHESIA_RUST_ANDROID=DISABLED reason=explicit-emergency-fallback'
+else
+  require_cmd cargo
+  export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
+  export NDK_HOME="$ANDROID_NDK_HOME"
+  [[ -d "$ANDROID_NDK_HOME" ]] || { printf 'ERROR: Android NDK directory missing: %s\n' "$ANDROID_NDK_HOME" >&2; exit 1; }
+  SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh android-arm64
+fi
 
 mkdir -p "$(dirname "$APK_PATH")"
 rm -f "$APK_PATH" "${APK_PATH}.sha256"
@@ -207,6 +226,15 @@ fi
 sha256sum "$APK_PATH" > "${APK_PATH}.sha256"
 unzip -tq "$APK_PATH" >/dev/null
 
+if [[ "$rust_android_required" == "1" ]]; then
+  rust_apk_entry="$(unzip -Z1 "$APK_PATH" | grep -E '(^|/)libsynesthesia_gdext\.so$' | head -n 1 || true)"
+  [[ -n "$rust_apk_entry" ]] || {
+    printf '%s\n' 'ERROR: Android APK was exported without libsynesthesia_gdext.so' >&2
+    exit 1
+  }
+  printf 'SYNESTHESIA_RUST_ANDROID_APK=PASS entry=%s\n' "$rust_apk_entry"
+fi
+
 apksigner="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
 if [[ -x "$apksigner" ]]; then
   "$apksigner" verify --verbose --print-certs "$APK_PATH" >/dev/null
@@ -218,7 +246,8 @@ if [[ -x "$aapt2" ]]; then
   grep -q "package: name='music.virya.synesthesia'" "${APK_PATH}.badging.txt"
 fi
 
-printf 'SYNESTHESIA_ANDROID_APK=PASS output=%s bytes=%s sha256=%s\n' \
+printf 'SYNESTHESIA_ANDROID_APK=PASS output=%s bytes=%s sha256=%s rust=%s\n' \
   "$APK_PATH" \
   "$(wc -c < "$APK_PATH" | tr -d ' ')" \
-  "$(cut -d' ' -f1 < "${APK_PATH}.sha256")"
+  "$(cut -d' ' -f1 < "${APK_PATH}.sha256")" \
+  "$rust_android_required"

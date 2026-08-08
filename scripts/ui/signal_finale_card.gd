@@ -2,6 +2,7 @@ extends Control
 
 signal draw_entry_requested(email: String)
 signal reset_requested
+signal album_mode_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
@@ -80,10 +81,16 @@ func configure(server_completed: bool, saved_reward: Dictionary) -> void:
     _visual.add_child(_motif)
     _motif.configure(_accent, "menu", Color("71dcff"))
 
-    _body = UIFactory.body("Jedenaście zakątków świadomości zostało odsłoniętych. Jedno pełne ukończenie może dać jeden los w zamkniętej puli 5 fizycznych płyt VIRYA.")
+    _body = UIFactory.body("Jedenaście zakątków świadomości wraca teraz jako jeden obraz: fala, maska, korzenie, szkło, żar, oddech i światło. Sygnał dotarł. Jedno pełne ukończenie może dać jeden los w zamkniętej puli 5 fizycznych płyt VIRYA.")
     _body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     _body.add_theme_font_size_override("font_size", 11)
     _visual.add_child(_body)
+    var memory_line := Label.new()
+    memory_line.text = "FALA · KONFETTI · MASKA · WINO · KORZEŃ · POJEDYNEK · SYGNAŁ · LUSTRO · POPIÓŁ · ODDECH · ŚWIATŁO"
+    memory_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    memory_line.add_theme_font_size_override("font_size", 8)
+    memory_line.add_theme_color_override("font_color", Color("8fdff0"))
+    _visual.add_child(memory_line)
 
     _form = VBoxContainer.new()
     _form.custom_minimum_size = Vector2(340.0, 0.0)
@@ -119,6 +126,10 @@ func configure(server_completed: bool, saved_reward: Dictionary) -> void:
     var signal_button := UIFactory.menu_button("WZMOCNIJ SYGNAŁ VIRYA", Color("71dcff"))
     signal_button.pressed.connect(func() -> void: OS.shell_open("https://virya.music/pl/signal/?source=synesthesia"))
     _form.add_child(signal_button)
+
+    var album_mode := UIFactory.menu_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
+    album_mode.pressed.connect(func() -> void: album_mode_requested.emit())
+    _form.add_child(album_mode)
 
     var reset_journey := UIFactory.menu_button("PRZEJDŹ ALBUM JESZCZE RAZ", Color("73869d"))
     reset_journey.pressed.connect(func() -> void: reset_requested.emit())

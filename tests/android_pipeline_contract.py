@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static contract for the reproducible Android APK GitHub Actions pipeline."""
+"""Static contract for the reproducible Rust-primary Android APK pipeline."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,20 +10,15 @@ build_script_path = ROOT / "scripts/build-android-apk.sh"
 preset_path = ROOT / "export_presets.cfg"
 project_path = ROOT / "project.godot"
 
-if not workflow_path.is_file():
-    failures.append(".github/workflows/android-apk.yml missing")
-    workflow = ""
-else:
-    workflow = workflow_path.read_text()
-
-if not build_script_path.is_file():
-    failures.append("scripts/build-android-apk.sh missing")
-    script = ""
-else:
-    script = build_script_path.read_text()
-
+workflow = workflow_path.read_text() if workflow_path.is_file() else ""
+script = build_script_path.read_text() if build_script_path.is_file() else ""
 preset = preset_path.read_text()
 project = project_path.read_text()
+
+if not workflow:
+    failures.append(".github/workflows/android-apk.yml missing")
+if not script:
+    failures.append("scripts/build-android-apk.sh missing")
 
 for token in (
     "branches: [main]",
@@ -37,6 +32,7 @@ for token in (
     "SYNESTHESIA_ANDROID_VERSION_CODE",
     "synesthesia-android-godot-logs-",
     "if: always()",
+    'SYNESTHESIA_DISABLE_RUST_NATIVE: "0"',
 ):
     if token not in workflow:
         failures.append(f"Android workflow missing token: {token}")
@@ -60,9 +56,16 @@ for token in (
     'SYNESTHESIA_GODOT_RUNTIME=PASS',
     'shared Synesthesia validation failed before Android export',
     'SYNESTHESIA_GODOT_LOG_DIR',
+    'SYNESTHESIA_DISABLE_RUST_NATIVE:-0',
+    './scripts/build-rust-native.sh android-arm64',
+    'libsynesthesia_gdext\\.so$',
+    'SYNESTHESIA_RUST_ANDROID_APK=PASS',
 ):
     if token not in script:
         failures.append(f"Android build script missing token: {token}")
+
+if "SYNESTHESIA_ENABLE_RUST_NATIVE" in script or "SYNESTHESIA_ENABLE_RUST_NATIVE" in workflow:
+    failures.append("Android Rust must be default-on, not opt-in")
 
 for token in (
     'name="Android Debug"',
@@ -86,4 +89,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_ANDROID_PIPELINE=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_ANDROID_PIPELINE=PASS target=arm64 apk=debug sdk=35 signing=ephemeral-or-secret artifact=on-main")
+print("SYNESTHESIA_ANDROID_PIPELINE=PASS target=arm64 rust=required apk=verified sdk=35 artifact=on-main")

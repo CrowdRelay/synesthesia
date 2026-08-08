@@ -1,0 +1,23 @@
+[package]
+name = "synesthesia-gdext"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+synesthesia-core.workspace = true
+
+[target.'cfg(not(target_os = "emscripten"))'.dependencies]
+godot = { workspace = true, features = ["api-4-6"] }
+
+[target.'cfg(target_os = "emscripten")'.dependencies]
+godot = { workspace = true, features = ["api-custom", "experimental-wasm", "lazy-function-tables"] }
+
+[features]
+default = []
+nothreads = ["godot/experimental-wasm-nothreads"]

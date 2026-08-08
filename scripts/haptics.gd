@@ -65,6 +65,9 @@ func special(kind: String) -> void:
         "toast":
             Input.vibrate_handheld(24 if calm_mode else 34, clampf(base * 0.9, 0.08, 0.42))
             _pulse_after_delay(95, 17, clampf(base * 0.62, 0.06, 0.30))
+        "pour":
+            Input.vibrate_handheld(10 if calm_mode else 15, clampf(base * 0.42, 0.04, 0.22))
+            _pulse_after_delay(56, 8, clampf(base * 0.34, 0.04, 0.18))
         "duel":
             Input.vibrate_handheld(42 if calm_mode else 58, clampf(base * 1.38, 0.12, 0.68))
             _pulse_after_delay(115, 26 if calm_mode else 38, clampf(base * 1.05, 0.10, 0.58))
@@ -78,6 +81,15 @@ func special(kind: String) -> void:
         "seed":
             Input.vibrate_handheld(24 if calm_mode else 34, clampf(base * 0.88, 0.07, 0.42))
             _pulse_after_delay(84, 18, clampf(base * 0.70, 0.06, 0.34))
+        "root":
+            Input.vibrate_handheld(18 if calm_mode else 26, clampf(base * 0.56, 0.05, 0.30))
+            _pulse_after_delay(72, 14, clampf(base * 0.48, 0.04, 0.26))
+            _pulse_after_delay(132, 18, clampf(base * 0.62, 0.05, 0.32))
+        "aim":
+            Input.vibrate_handheld(7, clampf(base * 0.34, 0.03, 0.18))
+        "ember":
+            Input.vibrate_handheld(14 if calm_mode else 21, clampf(base * 0.48, 0.04, 0.26))
+            _pulse_after_delay(58, 20, clampf(base * 0.58, 0.05, 0.30))
         "phoenix":
             Input.vibrate_handheld(32 if calm_mode else 46, clampf(base * 1.08, 0.09, 0.54))
             _pulse_after_delay(92, 44 if calm_mode else 58, clampf(base * 1.34, 0.11, 0.66))

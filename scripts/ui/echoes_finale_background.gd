@@ -59,6 +59,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
     if size.x <= 1.0 or size.y <= 1.0:
         return
+    _draw_memory_constellation()
     var count: int = 12 if _reduced_motion else 58
     for index in range(count):
         var seed: float = float(index) * 17.173
@@ -71,6 +72,25 @@ func _draw() -> void:
         draw_circle(Vector2(x - drift, y), radius, Color(0.48, 0.84, 1.0, alpha))
         if not _reduced_motion and index % 3 == 0:
             draw_line(Vector2(x - drift, y), Vector2(x - drift - 12.0 - float(index % 5) * 4.0, y + 1.5), Color(0.48, 0.84, 1.0, alpha * 0.42), 0.8)
+
+func _draw_memory_constellation() -> void:
+    var center := Vector2(size.x * 0.5, size.y * 0.49)
+    var orbit_x: float = size.x * 0.39
+    var orbit_y: float = size.y * 0.34
+    var accents: Array[Color] = [Color("64e8d9"), Color("ef6fbd"), Color("ffb970"), Color("b91346"), Color("72d79a"), Color("f4c36a"), Color("66c9ff"), Color("d4e4ff"), Color("ff9e58"), Color("94a9ff"), Color("ffd56d")]
+    for index in range(11):
+        var angle: float = -PI * 0.78 + float(index) * TAU / 11.0 + _phase * (0.008 if _reduced_motion else 0.018)
+        var p := center + Vector2(cos(angle) * orbit_x, sin(angle) * orbit_y)
+        var pulse: float = 0.72 + 0.28 * sin(_phase * 1.7 + float(index) * 0.9)
+        var c: Color = accents[index]
+        draw_circle(p, 14.0 + pulse * 5.0, Color(c, 0.018 if _quiet_visuals else 0.038))
+        draw_arc(p, 7.0 + float(index % 3) * 2.0, float(index) * 0.31, float(index) * 0.31 + PI * 1.35, 14, Color(c, (0.10 if _quiet_visuals else 0.19) * pulse), 1.2)
+        if index > 0:
+            var prev_angle: float = -PI * 0.78 + float(index - 1) * TAU / 11.0 + _phase * (0.008 if _reduced_motion else 0.018)
+            var prev := center + Vector2(cos(prev_angle) * orbit_x, sin(prev_angle) * orbit_y)
+            draw_line(prev, p, Color(c, 0.018 if _quiet_visuals else 0.035), 0.8)
+    var signal_pulse: float = 0.5 + 0.5 * sin(_phase * 2.2)
+    draw_circle(center, minf(size.x, size.y) * (0.055 + signal_pulse * 0.012), Color("71dcff", 0.018 if _quiet_visuals else 0.042))
 
 func _exit_tree() -> void:
     if _video_layer != null and _video_layer.has_method("shutdown"):

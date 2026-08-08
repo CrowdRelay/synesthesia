@@ -152,6 +152,8 @@ func _validate_room(position: int, expected_id: String, manifest: Dictionary) ->
         room_node.call("set_reduced_motion", true)
         room_node.call("set_runtime_budget", 0.68)
         room_node.call("set_quiet_visuals", true)
+        room_node.call("set_interaction_enabled", true)
+        _exercise_room_gesture_boundary(room_node)
         room_node.call("set_interaction_enabled", false)
         var exported_value: Variant = room_node.call("export_state")
         if not exported_value is Dictionary:
@@ -169,6 +171,20 @@ func _validate_room(position: int, expected_id: String, manifest: Dictionary) ->
 
     room_node.queue_free()
     await process_frame
+
+
+func _exercise_room_gesture_boundary(room_node: Node) -> void:
+    var press := InputEventMouseButton.new()
+    press.button_index = MOUSE_BUTTON_LEFT
+    press.button_mask = MOUSE_BUTTON_MASK_LEFT
+    press.position = Vector2(270.0, 480.0)
+    press.pressed = true
+    room_node.call("_gui_input", press)
+    var release := InputEventMouseButton.new()
+    release.button_index = MOUSE_BUTTON_LEFT
+    release.position = press.position
+    release.pressed = false
+    room_node.call("_gui_input", release)
 
 func _validate_mask_roundtrip() -> void:
     var mask_script: Resource = load(REVEAL_MASK_PATH)

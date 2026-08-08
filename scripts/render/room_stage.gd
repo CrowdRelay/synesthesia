@@ -4,11 +4,14 @@ signal coverage_changed(value: float)
 signal collectible_found(item: Dictionary)
 signal paint_pulse(speed_normalized: float)
 signal special_interaction(kind: String, index: int)
+signal interaction_feedback(message: String)
 signal interaction_started
 signal interaction_ended
 signal act_changed(index: int, title: String)
 
 const BrushEngineScript := preload("res://scripts/brush/brush_engine.gd")
+const InteractionRouterScript := preload("res://scripts/input/interaction_router.gd")
+const RoomInteractionRuntimeScript := preload("res://scripts/input/room_interaction_runtime.gd")
 const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const RevealMaskScript := preload("res://scripts/render/reveal_mask.gd")
 const AtmosphereLayerScript := preload("res://scripts/render/atmosphere_layer.gd")
@@ -25,6 +28,8 @@ var quality: Dictionary = {}
 var collectibles: Array[Dictionary] = []
 var behavior
 var brush_engine
+var interaction_router
+var interaction_runtime
 var reveal_mask
 var composite: TextureRect
 var composite_material: ShaderMaterial
@@ -46,6 +51,7 @@ var pointer_norm: Vector2 = Vector2(0.5, 0.5)
 var target_parallax: Vector2 = Vector2.ZERO
 var smoothed_parallax: Vector2 = Vector2.ZERO
 var drawing: bool = false
+var _drawing_pointer_id: int = -999
 var _phase: float = 0.0
 var _redraw_accumulator: float = 0.0
 var _upload_accumulator: float = 0.0
@@ -117,6 +123,8 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     var brush_value: Variant = room_data.get("brush", {})
     var brush: Dictionary = brush_value if brush_value is Dictionary else {}
     brush_engine.configure(DebugProfile.tune_debug_brush(brush))
+    interaction_router = InteractionRouterScript.new()
+    interaction_router.reset()
 
     reveal_mask = RevealMaskScript.new()
     reveal_mask.configure(
@@ -143,6 +151,11 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     )
     interaction_fx.configure(_accent_color, secondary_color)
     interaction_fx.set_sensory(calm_mode, reduced_motion)
+    interaction_runtime = RoomInteractionRuntimeScript.new()
+    interaction_runtime.configure(behavior, reveal_mask, interaction_fx)
+    interaction_runtime.reveal_changed.connect(_on_gesture_reveal_changed)
+    interaction_runtime.special_interaction.connect(func(kind: String, index: int) -> void: special_interaction.emit(kind, index))
+    interaction_runtime.feedback.connect(func(message: String) -> void: interaction_feedback.emit(message))
     var visual_style: String = str(room_data.get("visual_style", "uncertainty"))
     room_dressing.configure(visual_style, _accent_color, secondary_color)
     room_dressing.set_reduced_motion(reduced_motion)
@@ -210,6 +223,8 @@ func _take_texture(path: String, asset_source = null) -> Texture2D:
 func _process(delta: float) -> void:
     if behavior != null and behavior.has_method("advance"):
         behavior.advance(delta)
+    if interaction_enabled and interaction_router != null:
+        _handle_gestures(interaction_router.advance(Time.get_ticks_msec()))
     var target: float = 1.0 if door_target_open else 0.0
     door_open_amount = move_toward(door_open_amount, target, delta * 0.82)
     if room_dressing != null:
@@ -280,6 +295,8 @@ func set_interaction_enabled(value: bool) -> void:
     interaction_enabled = value
     if not value and drawing:
         _end_stroke()
+    if not value and interaction_router != null:
+        interaction_router.reset()
 
 func set_cinematic_reveal(value: bool, instant: bool = false) -> void:
     var was_revealed: bool = cinematic_revealed
@@ -320,11 +337,14 @@ func set_door_open(value: bool) -> void:
 
 func get_door_open_amount() -> float:
     return door_open_amount
-
 func reset_room() -> void:
     reveal_mask.clear()
     if behavior != null:
         behavior.configure(manifest_room)
+    if interaction_router != null:
+        interaction_router.reset()
+    if interaction_runtime != null:
+        interaction_runtime.reset()
     for item in collectibles:
         item["found"] = false
     set_cinematic_reveal(false, true)
@@ -413,45 +433,39 @@ func reveal_remaining_collectibles() -> Array[Dictionary]:
     return revealed
 
 func _gui_input(event: InputEvent) -> void:
-    if not interaction_enabled or size.x <= 1.0 or size.y <= 1.0:
+    if not interaction_enabled or interaction_router == null:
         return
-    if event is InputEventScreenTouch:
-        var touch: InputEventScreenTouch = event as InputEventScreenTouch
-        pointer_norm = _normalized_point(touch.position)
-        target_parallax = (pointer_norm - Vector2(0.5, 0.5)) * 2.0
-        if touch.pressed:
-            _begin_stroke(pointer_norm)
-        else:
-            _end_stroke()
-        accept_event()
-    elif event is InputEventScreenDrag:
-        var drag: InputEventScreenDrag = event as InputEventScreenDrag
-        pointer_norm = _normalized_point(drag.position)
-        target_parallax = (pointer_norm - Vector2(0.5, 0.5)) * 2.0
-        _continue_stroke(pointer_norm)
-        accept_event()
-    elif event is InputEventMouseButton:
-        var button: InputEventMouseButton = event as InputEventMouseButton
-        if button.button_index != MOUSE_BUTTON_LEFT:
-            return
-        pointer_norm = _normalized_point(button.position)
-        if button.pressed:
-            _begin_stroke(pointer_norm)
-        else:
-            _end_stroke()
-        accept_event()
-    elif event is InputEventMouseMotion:
-        var motion_event: InputEventMouseMotion = event as InputEventMouseMotion
-        pointer_norm = _normalized_point(motion_event.position)
-        target_parallax = (pointer_norm - Vector2(0.5, 0.5)) * 2.0
-        if drawing:
-            _continue_stroke(pointer_norm)
-        queue_redraw()
+    var routed: Dictionary = interaction_router.route_input(event, size, Time.get_ticks_msec(), drawing, _drawing_pointer_id)
+    if not bool(routed.get("handled", false)):
+        return
+    var point_value: Variant = routed.get("point", pointer_norm)
+    pointer_norm = point_value if point_value is Vector2 else pointer_norm
+    target_parallax = (pointer_norm - Vector2(0.5, 0.5)) * 2.0
+    _handle_gestures(routed.get("gestures", []))
+    match str(routed.get("stroke", "")):
+        "begin": _begin_stroke(pointer_norm, int(routed.get("pointer_id", -1)))
+        "continue": _continue_stroke(pointer_norm)
+        "end": _end_stroke()
+    accept_event()
+    queue_redraw()
 
-func _begin_stroke(point_norm: Vector2) -> void:
+func _handle_gestures(gestures: Array) -> void:
+    if interaction_runtime != null and not gestures.is_empty():
+        interaction_runtime.handle_gestures(gestures, current_progress)
+
+func _on_gesture_reveal_changed(point: Vector2, radius: float) -> void:
+    _check_collectibles(point, radius)
+    _brush_energy = maxf(_brush_energy, 0.72)
+    composite_material.set_shader_parameter("brush_point", point)
+    _set_progress_from_mask()
+    _last_coverage_emitted = get_coverage()
+    coverage_changed.emit(_last_coverage_emitted)
+
+func _begin_stroke(point_norm: Vector2, pointer_id: int = -1) -> void:
     if drawing:
         return
     drawing = true
+    _drawing_pointer_id = pointer_id
     interaction_started.emit()
     var stamps: Array[Dictionary] = brush_engine.begin(point_norm, Time.get_ticks_msec(), minf(size.x, size.y))
     _apply_stamps(stamps)
@@ -466,6 +480,7 @@ func _end_stroke() -> void:
     if not drawing:
         return
     drawing = false
+    _drawing_pointer_id = -999
     brush_engine.end()
     reveal_mask.upload_if_dirty()
     interaction_ended.emit()
@@ -539,19 +554,8 @@ func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void:
             collectible_found.emit(item.duplicate(true))
 
 func _check_behavior(point_norm: Vector2, radius_norm: float) -> void:
-    if behavior == null:
-        return
-    var events: Array[Dictionary] = behavior.on_paint(point_norm, radius_norm, current_progress)
-    for event in events:
-        var kind: String = str(event.get("kind", "interaction"))
-        var index: int = int(event.get("index", 0))
-        var now_ms: int = Time.get_ticks_msec()
-        var key: String = "%s:%d" % [kind, index]
-        if now_ms - int(_last_special_ms.get(key, 0)) < 180:
-            continue
-        _last_special_ms[key] = now_ms
-        interaction_fx.spawn(point_norm, kind)
-        special_interaction.emit(kind, index)
+    if interaction_runtime != null:
+        interaction_runtime.handle_paint(point_norm, radius_norm, current_progress)
 
 func _normalized_point(local_point: Vector2) -> Vector2:
     return Vector2(
@@ -593,9 +597,6 @@ func _render_cursor() -> void:
     draw_polyline(polygon, Color(_accent_color, 0.22), 1.2, true)
 
 func _render_doors() -> void:
-    # The persistent room shell/doorway is rendered by RoomDressingLayer so the
-    # cover art stays unobstructed. Full door leaves only appear during travel
-    # in TransitionDirector.
     if door_open_amount <= 0.001:
         return
     var threshold_half: float = size.x * 0.18 * door_open_amount

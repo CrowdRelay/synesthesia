@@ -16,3 +16,12 @@ __pycache__/
 # Build-fetched OFL fonts; source package stays binary-free.
 assets/fonts/generated/*.ttf
 assets/fonts/generated/OFL-*.txt
+
+# Generated optional native Rust/GDExtension descriptor; never commit it.
+synesthesia_rust.gdextension
+/.cache/
+/build/
+/native/target/
+/native/bin/
+/.godot/
+/synesthesia_rust.gdextension

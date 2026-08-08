@@ -3,6 +3,7 @@ extends Control
 signal begin_requested
 signal new_journey_requested
 signal settings_requested
+signal album_mode_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
@@ -122,7 +123,7 @@ func _build() -> void:
     _motif.configure(_accent, "menu", Color("ef6fbd"))
     _motif.call_deferred("restart_authored_animation")
 
-    _description = UIFactory.body("Interaktywny album w 11 pokojach. Odsłaniasz obrazy ruchem dłoni, a szum ustępuje muzyce. To nie zagadka ani test — po prostu wejdź i maluj.")
+    _description = UIFactory.body("Interaktywny album w 11 pokojach. Dotykasz, przesuwasz, przytrzymujesz i odsłaniasz świat ruchem dłoni, a szum ustępuje muzyce. To nie zagadka ani test — wejdź i sprawdź, jak pokój odpowiada.")
     _description.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     _description.add_theme_font_size_override("font_size", 13)
     _visual_column.add_child(_description)
@@ -151,6 +152,11 @@ func _build() -> void:
     var continue_button := UIFactory.menu_button(continue_label, _accent, true)
     continue_button.pressed.connect(func() -> void: begin_requested.emit())
     _action_column.add_child(continue_button)
+
+    var album_mode_button := UIFactory.menu_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
+    album_mode_button.visible = _album_completed
+    album_mode_button.pressed.connect(func() -> void: album_mode_requested.emit())
+    _action_column.add_child(album_mode_button)
 
     var new_button := UIFactory.menu_button("NOWA PODRÓŻ", _accent)
     new_button.visible = _has_progress or _album_completed
@@ -292,7 +298,7 @@ func _show_creators() -> void:
     _description.text = "VIRYA · Echoes Of The Modern Mind. Muzyka staje się przestrzenią, a każdy pokój przekłada emocję utworu na obraz, ruch, dźwięk i dotyk. Synesthesia jest częścią ekosystemu VIRYA Signal."
 
 func _restore_description() -> void:
-    _description.text = "Interaktywny album w 11 pokojach. Odsłaniasz obrazy ruchem dłoni, a szum ustępuje muzyce. To nie zagadka ani test — po prostu wejdź i maluj."
+    _description.text = "Interaktywny album w 11 pokojach. Dotykasz, przesuwasz, przytrzymujesz i odsłaniasz świat ruchem dłoni, a szum ustępuje muzyce. To nie zagadka ani test — wejdź i sprawdź, jak pokój odpowiada."
 
 func _exit_requested() -> void:
     if OS.has_feature("web"):

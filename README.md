@@ -31,6 +31,13 @@ Campaign: `virya-synesthesia-album-v1`.
 
 Draw rules are server-enforced: 5 winners, 1 CD each, one completion/e-mail = one entry, no referral/check-in weighting. The five-CD draw does not set marketing consent and does not collect shipping data. The start menu also exposes a separate, explicit Signal signup (email + city + marketing consent) through the normal `/fans` contract; that signup never creates a Synesthesia draw entry.
 
+
+## Optional native Rust core
+
+Synesthesia uses a native-first, Web-safe Godot + Rust architecture. The editor, scenes, UI, audio and GPU reveal renderer stay in Godot; deterministic gameplay primitives can live in the pure `native/synesthesia-core` crate and are exposed through the thin `native/synesthesia-gdext` adapter. The first migrated slice is gesture recognition.
+
+The extension is **not required** to open or export the project. Web keeps the proven GDScript fallback; native builds can enable the Rust backend explicitly with `./scripts/build-rust-native.sh`. See [`docs/RUST_HYBRID_ARCHITECTURE.md`](docs/RUST_HYBRID_ARCHITECTURE.md).
+
 ## Build and validation
 
 ```bash

@@ -5,6 +5,7 @@ signal settings_requested
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
+const InteractionGuide := preload("res://scripts/app/interaction_guide.gd")
 
 var header_row: HBoxContainer
 var top_margin: MarginContainer
@@ -38,6 +39,7 @@ var _context_seen: bool = false
 var _restore_timer: Timer
 var _toast_timer: Timer
 var _act_timer: Timer
+var _interaction_guide: Node
 var _room_index: int = 0
 var _room_total: int = 11
 var _accent: Color = Color("72afff")
@@ -54,10 +56,14 @@ func _ready() -> void:
     _restore_timer = _timer(0.72, func() -> void: set_painting(false))
     _toast_timer = _timer(2.7, _hide_toast)
     _act_timer = _timer(1.65, _hide_act_banner)
+    _interaction_guide = InteractionGuide.new()
+    _interaction_guide.hint_ready.connect(update_discovery)
+    add_child(_interaction_guide)
     call_deferred("_apply_ui_scale")
 
 func suspend_for_menu() -> void:
     clear_transient_overlays()
+    _interaction_guide.suspend()
     _painting = false
     if top_panel != null:
         top_panel.modulate.a = 1.0
@@ -67,6 +73,7 @@ func suspend_for_menu() -> void:
 
 func resume_for_room() -> void:
     clear_transient_overlays()
+    _interaction_guide.resume()
     visible = true
     _apply_ui_scale()
 
@@ -420,15 +427,14 @@ func _set_reveal_ui(normalized: float) -> void:
         progress_bar.value = clampf(normalized, 0.0, 1.0)
     if not is_instance_valid(progress_label):
         return
-    var percent: int = 100 if normalized >= 0.99 else int(floor(normalized * 100.0))
     if normalized >= 0.99:
-        progress_label.text = "100% · tylko muzyka"
+        progress_label.text = "OTWARTE · tylko muzyka"
     elif normalized >= 0.70:
-        progress_label.text = "%d%% · muzyka prowadzi" % percent
+        progress_label.text = "MUZYKA"
     elif normalized >= 0.30:
-        progress_label.text = "%d%% · sygnał wraca" % percent
+        progress_label.text = "SYGNAŁ"
     else:
-        progress_label.text = "%d%% · szum prowadzi" % percent
+        progress_label.text = "SZUM"
 
 func configure_room(title: String, subtitle: String, room_index: int, room_total: int, _album_progress: float, room_data: Dictionary) -> void:
     _repair_runtime_refs()
@@ -454,12 +460,16 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     if toast_accent_bar != null:
         toast_accent_bar.color = _accent
     _set_palette(room_data)
+    var interaction := str(room_data.get("interaction", "paint"))
+    instruction_label.text = _interaction_prompt(interaction)
+    _interaction_guide.configure(interaction)
     _rebuild_journey()
     _hide_toast()
     _hide_act_banner()
 
 func update_reveal(normalized: float) -> void:
     _set_reveal_ui(normalized)
+    _interaction_guide.note_progress(normalized)
 
 func update_discovery(text_value: String) -> void:
     if text_value.is_empty() or not visible:
@@ -497,9 +507,10 @@ func set_painting(value: bool) -> void:
     _painting = value
     if value:
         _context_seen = true
+        _interaction_guide.note_interaction()
         _restore_timer.start()
-    var target_alpha: float = 0.82 if value else 1.0
-    var target_bottom_alpha: float = 0.78 if value else 1.0
+    var target_alpha: float = 0.82 if value else (0.90 if _context_seen else 1.0)
+    var target_bottom_alpha: float = 0.78 if value else (0.84 if _context_seen else 1.0)
     var tween: Tween = create_tween()
     tween.set_parallel(true)
     tween.set_trans(Tween.TRANS_SINE)
@@ -555,7 +566,23 @@ func _set_palette(room_data: Dictionary) -> void:
             palette_row.add_child(swatch)
     var brush_value: Variant = room_data.get("brush", {})
     var brush: Dictionary = brush_value if brush_value is Dictionary else {}
-    brush_label.text = "%s · przeciągnij palcem po szumie" % _brush_name(str(brush.get("profile", "soft")))
+    brush_label.text = "PĘDZEL %s · MALOWANIE ODSŁANIA TŁO" % _brush_name(str(brush.get("profile", "soft"))).to_upper()
+
+func _interaction_prompt(interaction: String) -> String:
+    var prompts: Dictionary = {
+        "paint": "PROWADŹ FALĘ W BOK · NIE WALCZ Z NIĄ",
+        "pop_balloons": "DOTKNIJ · ODEPCHNIJ · PRZEBIJ",
+        "venetian_masks": "PUKNIJ W MASKĘ · ZSUŃ JĄ",
+        "toast_table": "PRZYTRZYMAJ WINO · PRZYSUŃ KIELISZEK",
+        "grow_tree": "PRZYTRZYMAJ ZIARNO · PROWADŹ WZROST",
+        "western_duel": "PRZYTRZYMAJ CEL · PUŚĆ",
+        "repair_glitches": "DOTKNIJ EKRANÓW · DOSTRÓJ SYGNAŁ",
+        "crack_mirrors": "PUKNIJ W TAFLĘ · ZRZUĆ JĄ RUCHEM",
+        "raise_phoenix": "ZAKRĘĆ POPIOŁEM · UNIEŚ RUCH",
+        "intimate_bedroom": "PRZYTRZYMAJ OBECNOŚĆ · ZBLIŻ DWA PUNKTY",
+        "rise_atrium": "DOTKNIJ ŚWIATŁA · PRZYTRZYMAJ · UNIEŚ",
+    }
+    return str(prompts.get(interaction, "DOTKNIJ ŚWIATA · PĘDZEL NADAL DZIAŁA"))
 
 func _hide_toast() -> void:
     if toast_panel == null or not toast_panel.visible:

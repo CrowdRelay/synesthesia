@@ -1,0 +1,1 @@
+# Keep Cargo sources and build output out of Godot's resource scanner.

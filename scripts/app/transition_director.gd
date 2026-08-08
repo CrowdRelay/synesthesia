@@ -77,6 +77,10 @@ func set_reduced_motion(value: bool) -> void:
     if door_layer != null:
         door_layer.set_reduced_motion(value)
 
+func set_memory_count(value: int) -> void:
+    if door_layer != null and door_layer.has_method("set_memory_count"):
+        door_layer.set_memory_count(value)
+
 func force_idle() -> void:
     if overlay != null:
         overlay.visible = false

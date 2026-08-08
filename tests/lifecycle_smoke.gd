@@ -23,6 +23,7 @@ const POP_PATH: String = "res://assets/audio/balloon-pop.mp3"
 var _failed: bool = false
 var _test_viewport: SubViewport
 var _test_host: Control
+var _viewport_mouse_entered: bool = false
 
 func _initialize() -> void:
     call_deferred("_run")
@@ -337,11 +338,11 @@ func _set_test_viewport(size: Vector2i) -> void:
 
         _test_host = Control.new()
         _test_host.name = "LifecycleHost"
-        _test_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        _test_host.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
         _test_viewport.add_child(_test_host)
 
     _test_viewport.size = size
-    _test_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _test_host.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
     _test_host.position = Vector2.ZERO
     _test_host.size = Vector2(float(size.x), float(size.y))
 
@@ -363,7 +364,9 @@ func _click_button(node: Node, prefix: String, context: String) -> void:
     # signal directly. This catches a full-screen ancestor accidentally using
     # MOUSE_FILTER_STOP, which blocks child _gui_input() in Godot 4.7.
     var center: Vector2 = button.get_global_rect().get_center()
-    _test_viewport.notify_mouse_entered()
+    if not _viewport_mouse_entered:
+        _test_viewport.notify_mouse_entered()
+        _viewport_mouse_entered = true
 
     var motion := InputEventMouseMotion.new()
     motion.position = center

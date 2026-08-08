@@ -41,6 +41,21 @@ jobs:
           test -d tests
           test ! -d virya-synestezja
 
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.97.1 --profile minimal --component rustfmt,clippy
+
+      - name: Validate pure Rust core and GDExtension adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo +1.97.1 fmt --manifest-path native/Cargo.toml --all -- --check
+          cargo +1.97.1 test --manifest-path native/Cargo.toml --package synesthesia-core
+          cargo +1.97.1 check --manifest-path native/Cargo.toml --package synesthesia-gdext
+          cargo +1.97.1 clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
+
       - name: Validate Python tools and project contracts
         run: |
           set -euo pipefail
@@ -88,6 +103,13 @@ jobs:
       - name: Print engine version
         run: |
           "${GODOT_BIN}" --version
+
+      - name: Build native Rust backend for engine smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup override set 1.97.1
+          SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh host
 
       - name: Run shared hardened Godot validation
         shell: bash
