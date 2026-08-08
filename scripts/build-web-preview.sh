@@ -135,6 +135,10 @@ if [[ "${SYNESTHESIA_SKIP_SOURCE_VALIDATION:-0}" != "1" ]]; then
   ./scripts/validate-source.sh
 fi
 
+# Cheap deterministic size gate before Godot/templates/Rust. This protects Netlify
+# build minutes from source/runtime growth that can be known without exporting.
+python3 tools/web_bundle_budget.py --preflight
+
 if [[ -z "$GODOT_BIN" ]]; then
   if command -v godot >/dev/null 2>&1; then
     GODOT_BIN="$(command -v godot)"
