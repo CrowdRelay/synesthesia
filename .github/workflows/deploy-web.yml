@@ -49,7 +49,7 @@ jobs:
           ref: ${{ steps.source.outputs.sha }}
 
       - name: Setup Node.js for Netlify CLI
-        uses: actions/setup-node@1e60f620b9541d13594db2436a2aafb6e9be50c8 # v6.0.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'
 
