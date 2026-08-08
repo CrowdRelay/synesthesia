@@ -63,6 +63,16 @@ jobs:
             .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_dlink_nothreads_release.zip
           key: ${{ runner.os }}-synesthesia-godot-web-4.7.1-v4
 
+      - name: Prepare pinned bundled fonts
+        run: |
+          set -euo pipefail
+          ./scripts/prepare-bundled-fonts.sh
+          test -s assets/fonts/generated/SynesthesiaTitle.ttf
+          test -s assets/fonts/generated/SynesthesiaDisplay.ttf
+          test -s assets/fonts/generated/OFL-NewRocker.txt
+          test -s assets/fonts/generated/OFL-BebasNeue.txt
+          echo "SYNESTHESIA_DEPLOY_FONTS=PASS"
+
       - name: Build production Web artifact on GitHub
         env:
           SYNESTHESIA_SKIP_SOURCE_VALIDATION: ${{ github.event_name == 'workflow_run' && '1' || '0' }}
