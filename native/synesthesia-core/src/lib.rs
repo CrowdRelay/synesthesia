@@ -171,7 +171,12 @@ impl GestureEngine {
             .map(|(pointer_id, state)| (*pointer_id, state.last))
     }
 
-    pub fn pointer_down(&mut self, pointer_id: i64, point: Point, now_ms: i64) -> Vec<GestureEvent> {
+    pub fn pointer_down(
+        &mut self,
+        pointer_id: i64,
+        point: Point,
+        now_ms: i64,
+    ) -> Vec<GestureEvent> {
         self.pointers.insert(
             pointer_id,
             PointerState {
@@ -203,7 +208,12 @@ impl GestureEngine {
         events
     }
 
-    pub fn pointer_move(&mut self, pointer_id: i64, point: Point, now_ms: i64) -> Vec<GestureEvent> {
+    pub fn pointer_move(
+        &mut self,
+        pointer_id: i64,
+        point: Point,
+        now_ms: i64,
+    ) -> Vec<GestureEvent> {
         let pointer_count = self.pointers.len();
         let Some(state) = self.pointers.get_mut(&pointer_id) else {
             return Vec::new();
@@ -363,7 +373,10 @@ mod tests {
         let mut engine = GestureEngine::default();
         engine.pointer_down(1, p(0.5, 0.5), 100);
         let events = engine.pointer_up(1, p(0.51, 0.5), 250);
-        assert_eq!(events.iter().map(|event| event.kind).collect::<Vec<_>>(), vec![GestureKind::Tap, GestureKind::Release]);
+        assert_eq!(
+            events.iter().map(|event| event.kind).collect::<Vec<_>>(),
+            vec![GestureKind::Tap, GestureKind::Release]
+        );
     }
 
     #[test]
@@ -390,9 +403,15 @@ mod tests {
         let mut engine = GestureEngine::default();
         engine.pointer_down(9, p(0.2, 0.5), 0);
         let start = engine.pointer_down(3, p(0.8, 0.5), 1);
-        assert_eq!(start.last().map(|event| event.kind), Some(GestureKind::TwoFingerStart));
+        assert_eq!(
+            start.last().map(|event| event.kind),
+            Some(GestureKind::TwoFingerStart)
+        );
         let moved = engine.pointer_move(3, p(0.9, 0.5), 10);
-        let spread = moved.iter().find(|event| event.kind == GestureKind::TwoFinger).expect("two finger event");
+        let spread = moved
+            .iter()
+            .find(|event| event.kind == GestureKind::TwoFinger)
+            .expect("two finger event");
         assert!(spread.spread_delta > 0.09);
     }
 

@@ -40,18 +40,37 @@ impl SynesthesiaGestureCore {
     }
 
     #[func]
-    fn pointer_down(&mut self, pointer_id: i64, point: Vector2, now_ms: i64) -> Array<VarDictionary> {
-        events_to_array(self.engine.pointer_down(pointer_id, from_vector(point), now_ms))
+    fn pointer_down(
+        &mut self,
+        pointer_id: i64,
+        point: Vector2,
+        now_ms: i64,
+    ) -> Array<VarDictionary> {
+        events_to_array(
+            self.engine
+                .pointer_down(pointer_id, from_vector(point), now_ms),
+        )
     }
 
     #[func]
-    fn pointer_move(&mut self, pointer_id: i64, point: Vector2, now_ms: i64) -> Array<VarDictionary> {
-        events_to_array(self.engine.pointer_move(pointer_id, from_vector(point), now_ms))
+    fn pointer_move(
+        &mut self,
+        pointer_id: i64,
+        point: Vector2,
+        now_ms: i64,
+    ) -> Array<VarDictionary> {
+        events_to_array(
+            self.engine
+                .pointer_move(pointer_id, from_vector(point), now_ms),
+        )
     }
 
     #[func]
     fn pointer_up(&mut self, pointer_id: i64, point: Vector2, now_ms: i64) -> Array<VarDictionary> {
-        events_to_array(self.engine.pointer_up(pointer_id, from_vector(point), now_ms))
+        events_to_array(
+            self.engine
+                .pointer_up(pointer_id, from_vector(point), now_ms),
+        )
     }
 
     #[func]
@@ -86,7 +105,10 @@ fn event_to_dictionary(event: GestureEvent) -> VarDictionary {
     result.set("duration_ms", event.duration_ms);
     result.set("distance", event.distance);
     result.set("velocity", event.velocity);
-    result.set("pointer_count", i64::try_from(event.pointer_count).unwrap_or(i64::MAX));
+    result.set(
+        "pointer_count",
+        i64::try_from(event.pointer_count).unwrap_or(i64::MAX),
+    );
     if event.kind.as_str().starts_with("two_finger") {
         result.set("spread", event.spread);
         result.set("spread_delta", event.spread_delta);

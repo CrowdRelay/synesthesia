@@ -4,6 +4,11 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 cd "$ROOT"
 
+# Generated OFL font binaries are intentionally not stored in Git. Fetch them
+# before the first Godot import so a clean CI checkout cannot retain stale
+# .godot import metadata pointing at missing .fontdata files.
+./scripts/prepare-bundled-fonts.sh
+
 python3 -m compileall -q tests tools
 python3 tests/static_validate.py
 python3 tests/adaptive_viewport_contract.py

@@ -122,6 +122,28 @@ build_web() {
   godot_bin="$(resolve_godot_bin)"
   export GDRUST_GODOT_BIN="$godot_bin"
 
+  # bindgen runs as a host build dependency even though the generated bindings
+  # describe the Web target. On Linux it otherwise discovers /usr/include and
+  # mixes glibc headers with wasm32-unknown-emscripten. Force the same
+  # Emscripten sysroot used by emcc so macOS, GitHub Actions and Netlify agree.
+  local emscripten_sysroot=""
+  if [[ -n "${EMSDK:-}" && -d "$EMSDK/upstream/emscripten/cache/sysroot/include" ]]; then
+    emscripten_sysroot="$EMSDK/upstream/emscripten/cache/sysroot"
+  else
+    local emcc_dir
+    emcc_dir="$(cd "$(dirname "$(command -v emcc)")" && pwd -P)"
+    if [[ -d "$emcc_dir/cache/sysroot/include" ]]; then
+      emscripten_sysroot="$emcc_dir/cache/sysroot"
+    fi
+  fi
+  [[ -n "$emscripten_sysroot" ]] || {
+    echo "Emscripten sysroot not found after emcc activation" >&2
+    exit 1
+  }
+  export BINDGEN_EXTRA_CLANG_ARGS="--target=wasm32-unknown-emscripten --sysroot=$emscripten_sysroot"
+  export C_INCLUDE_PATH="$emscripten_sysroot/include${C_INCLUDE_PATH:+:$C_INCLUDE_PATH}"
+  printf 'SYNESTHESIA_RUST_WEB_SYSROOT=PASS path=%s\n' "$emscripten_sysroot"
+
   local cargo_args=(
     "+$WEB_TOOLCHAIN" build
     -Zbuild-std

@@ -1,6 +1,7 @@
 [build]
   command = "./scripts/build-web-preview.sh"
   publish = "build/web"
+  ignore = "test \"${CONTEXT:-production}\" != \"production\""
 
 [build.environment]
   NODE_VERSION = "22"
