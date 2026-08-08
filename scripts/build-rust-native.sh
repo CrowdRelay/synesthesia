@@ -122,10 +122,8 @@ build_web() {
   godot_bin="$(resolve_godot_bin)"
   export GDRUST_GODOT_BIN="$godot_bin"
 
-  # bindgen runs as a host build dependency even though the generated bindings
-  # describe the Web target. On Linux it otherwise discovers /usr/include and
-  # mixes glibc headers with wasm32-unknown-emscripten. Force the same
-  # Emscripten sysroot used by emcc so macOS, GitHub Actions and Netlify agree.
+  # bindgen is a host build dependency but generates headers for the Web target.
+  # On Linux it otherwise discovers /usr/include and mixes glibc with Emscripten.
   local emscripten_sysroot=""
   if [[ -n "${EMSDK:-}" && -d "$EMSDK/upstream/emscripten/cache/sysroot/include" ]]; then
     emscripten_sysroot="$EMSDK/upstream/emscripten/cache/sysroot"

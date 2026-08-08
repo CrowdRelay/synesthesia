@@ -7,6 +7,9 @@ static func recommended() -> String:
         return "balanced"
     return "high"
 
+static func frame_cap(profile_name: String) -> int:
+    return 60 if profile_name == "battery" else 0
+
 static func resolve(profile_name: String) -> Dictionary:
     match profile_name:
         "battery":

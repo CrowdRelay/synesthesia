@@ -17,39 +17,36 @@ const DRAG_MIN_STEP: float = 0.0035
 
 var _native_backend: RefCounted = RustGestureBackend.new()
 var _pointers: Dictionary = {}
+var _active_points: Dictionary = {}
 var _two_finger_start_spread: float = 0.0
 var _two_finger_active: bool = false
 
 func reset() -> void:
+    _active_points.clear()
+    _pointers.clear()
     if _native_backend.available():
         _native_backend.reset()
-        return
-    _pointers.clear()
     _two_finger_start_spread = 0.0
     _two_finger_active = false
 
 func active_pointer_count() -> int:
-    if _native_backend.available():
-        return _native_backend.active_pointer_count()
-    return _pointers.size()
+    return _active_points.size()
 
 func has_pointer(pointer_id: int) -> bool:
-    if _native_backend.available():
-        return _native_backend.has_pointer(pointer_id)
-    return _pointers.has(pointer_id)
+    return _active_points.has(pointer_id)
+
+func needs_tick() -> bool:
+    return not _active_points.is_empty()
 
 func single_pointer() -> Dictionary:
-    if _native_backend.available():
-        return _native_backend.single_pointer()
-    if _pointers.size() != 1:
+    if _active_points.size() != 1:
         return {}
-    var raw_id: Variant = _pointers.keys()[0]
-    var value: Variant = _pointers.get(raw_id, {})
-    var state: Dictionary = value if value is Dictionary else {}
-    return {"pointer_id": int(raw_id), "point": _point(state.get("last", Vector2(0.5, 0.5)))}
+    var raw_id: Variant = _active_points.keys()[0]
+    return {"pointer_id": int(raw_id), "point": _point(_active_points.get(raw_id, Vector2(0.5, 0.5)))}
 
 func pointer_down(pointer_id: int, point: Vector2, now_ms: int) -> Array:
     var p: Vector2 = _clamp_point(point)
+    _active_points[pointer_id] = p
     if _native_backend.available():
         return _native_backend.pointer_down(pointer_id, p, now_ms)
     _pointers[pointer_id] = {
@@ -72,9 +69,12 @@ func pointer_down(pointer_id: int, point: Vector2, now_ms: int) -> Array:
 
 func pointer_move(pointer_id: int, point: Vector2, now_ms: int) -> Array:
     var native_point: Vector2 = _clamp_point(point)
+    if _active_points.has(pointer_id):
+        _active_points[pointer_id] = native_point
     if _native_backend.available():
         return _native_backend.pointer_move(pointer_id, native_point, now_ms)
     if not _pointers.has(pointer_id):
+        _active_points.erase(pointer_id)
         return []
     var state_value: Variant = _pointers[pointer_id]
     var state: Dictionary = state_value if state_value is Dictionary else {}
@@ -111,29 +111,38 @@ func pointer_move(pointer_id: int, point: Vector2, now_ms: int) -> Array:
 func pointer_up(pointer_id: int, point: Vector2, now_ms: int) -> Array:
     var native_point: Vector2 = _clamp_point(point)
     if _native_backend.available():
-        return _native_backend.pointer_up(pointer_id, native_point, now_ms)
+        var native_events: Array = _native_backend.pointer_up(pointer_id, native_point, now_ms)
+        _active_points.erase(pointer_id)
+        return native_events
     if not _pointers.has(pointer_id):
+        _active_points.erase(pointer_id)
         return []
     var state_value: Variant = _pointers[pointer_id]
     var state: Dictionary = state_value if state_value is Dictionary else {}
     var current: Vector2 = native_point
     var start: Vector2 = _point(state.get("start", current))
-    var distance: float = maxf(float(state.get("distance", 0.0)), start.distance_to(current))
+    var displacement: float = start.distance_to(current)
+    var path_distance: float = maxf(float(state.get("distance", 0.0)), displacement)
     var elapsed_ms: int = maxi(0, now_ms - int(state.get("start_ms", now_ms)))
     var delta: Vector2 = current - start
-    var velocity: float = distance / maxf(0.001, float(maxi(1, elapsed_ms)) / 1000.0)
+    var elapsed_seconds: float = maxf(0.001, float(maxi(1, elapsed_ms)) / 1000.0)
+    var path_velocity: float = path_distance / elapsed_seconds
+    var swipe_velocity: float = displacement / elapsed_seconds
     var events: Array[Dictionary] = []
 
-    if elapsed_ms <= TAP_MAX_MS and distance <= TAP_DISTANCE:
-        events.append(_event("tap", pointer_id, start, current, delta, elapsed_ms, distance, velocity))
-    elif elapsed_ms <= SWIPE_MAX_MS and distance >= SWIPE_DISTANCE:
-        events.append(_event("swipe", pointer_id, start, current, delta, elapsed_ms, distance, velocity))
-    events.append(_event("release", pointer_id, start, current, delta, elapsed_ms, distance, velocity))
+    # Match the Rust core exactly: travelled path rejects scribbles as taps,
+    # while net displacement is what makes a gesture a directional swipe.
+    if elapsed_ms <= TAP_MAX_MS and path_distance <= TAP_DISTANCE:
+        events.append(_event("tap", pointer_id, start, current, delta, elapsed_ms, path_distance, path_velocity))
+    elif elapsed_ms <= SWIPE_MAX_MS and displacement >= SWIPE_DISTANCE:
+        events.append(_event("swipe", pointer_id, start, current, delta, elapsed_ms, displacement, swipe_velocity))
+    events.append(_event("release", pointer_id, start, current, delta, elapsed_ms, path_distance, path_velocity))
 
     var was_two_finger: bool = _two_finger_active and _pointers.size() >= 2
     if was_two_finger:
         events.append(_two_finger_event("two_finger_end", now_ms))
     _pointers.erase(pointer_id)
+    _active_points.erase(pointer_id)
     if _pointers.size() < 2:
         _two_finger_active = false
         _two_finger_start_spread = 0.0
@@ -215,11 +224,13 @@ func _clamp_point(value: Vector2) -> Vector2:
 func route_input(event: InputEvent, room_size: Vector2, now_ms: int, drawing: bool, drawing_pointer_id: int) -> Dictionary:
     if room_size.x <= 1.0 or room_size.y <= 1.0:
         return {}
-    var result: Dictionary = {"handled": false, "gestures": [], "stroke": "", "pointer_id": -999}
+    var result: Dictionary = {"handled": false, "stroke": "", "pointer_id": -999}
     if event is InputEventScreenTouch:
         var touch: InputEventScreenTouch = event as InputEventScreenTouch
         var point: Vector2 = _normalize_local(touch.position, room_size)
-        result.merge({"handled": true, "point": point, "pointer_id": touch.index}, true)
+        result["handled"] = true
+        result["point"] = point
+        result["pointer_id"] = touch.index
         if touch.pressed:
             result["gestures"] = pointer_down(touch.index, point, now_ms)
             result["stroke"] = "begin" if active_pointer_count() == 1 else ("end" if drawing else "")
@@ -234,7 +245,9 @@ func route_input(event: InputEvent, room_size: Vector2, now_ms: int, drawing: bo
     elif event is InputEventScreenDrag:
         var drag: InputEventScreenDrag = event as InputEventScreenDrag
         var point: Vector2 = _normalize_local(drag.position, room_size)
-        result.merge({"handled": true, "point": point, "pointer_id": drag.index}, true)
+        result["handled"] = true
+        result["point"] = point
+        result["pointer_id"] = drag.index
         result["gestures"] = pointer_move(drag.index, point, now_ms)
         result["stroke"] = "continue" if drawing and drawing_pointer_id == drag.index and active_pointer_count() == 1 else ""
     elif event is InputEventMouseButton:
@@ -242,7 +255,9 @@ func route_input(event: InputEvent, room_size: Vector2, now_ms: int, drawing: bo
         if button.button_index != MOUSE_BUTTON_LEFT:
             return result
         var point: Vector2 = _normalize_local(button.position, room_size)
-        result.merge({"handled": true, "point": point, "pointer_id": -1}, true)
+        result["handled"] = true
+        result["point"] = point
+        result["pointer_id"] = -1
         if button.pressed:
             result["gestures"] = pointer_down(-1, point, now_ms)
             result["stroke"] = "begin"
@@ -252,7 +267,9 @@ func route_input(event: InputEvent, room_size: Vector2, now_ms: int, drawing: bo
     elif event is InputEventMouseMotion:
         var motion: InputEventMouseMotion = event as InputEventMouseMotion
         var point: Vector2 = _normalize_local(motion.position, room_size)
-        result.merge({"handled": true, "point": point, "pointer_id": -1}, true)
+        result["handled"] = true
+        result["point"] = point
+        result["pointer_id"] = -1
         result["gestures"] = pointer_move(-1, point, now_ms) if has_pointer(-1) else []
         result["stroke"] = "continue" if drawing else ""
     return result

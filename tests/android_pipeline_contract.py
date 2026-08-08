@@ -60,9 +60,16 @@ for token in (
     './scripts/build-rust-native.sh android-arm64',
     'libsynesthesia_gdext\\.so$',
     'SYNESTHESIA_RUST_ANDROID_APK=PASS',
+    'Library/Application Support/Godot',
+    'unzip -p "$template_archive" "templates/$template_name"',
+    'SYNESTHESIA_ANDROID_TEMPLATES=PASS scope=android-only',
+    'write_sha256',
 ):
     if token not in script:
         failures.append(f"Android build script missing token: {token}")
+
+if "templates-unpack" in script or 'cp -R "$unpack_dir/templates/."' in script or 'sha256sum --check --strict' in script:
+    failures.append("Android builder must install only selected templates with portable checksum verification")
 
 if "SYNESTHESIA_ENABLE_RUST_NATIVE" in script or "SYNESTHESIA_ENABLE_RUST_NATIVE" in workflow:
     failures.append("Android Rust must be default-on, not opt-in")

@@ -91,6 +91,13 @@ static func _load_bundled_font(path: String) -> Font:
         return resource as Font
     return null
 
+static func release_runtime_caches() -> void:
+    # Static helper caches outlive individual cards. Release them explicitly at
+    # application/test shutdown so Godot can finish ObjectDB teardown cleanly.
+    _texture_cache.clear()
+    _display_font = null
+    _title_font = null
+
 static func apply_display_font(control: Control) -> void:
     control.add_theme_font_override("font", display_font())
 

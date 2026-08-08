@@ -17,11 +17,11 @@ __pycache__/
 assets/fonts/generated/*.ttf
 assets/fonts/generated/OFL-*.txt
 
-# Generated optional native Rust/GDExtension descriptor; never commit it.
+# Generated optional Rust/GDExtension state; source-only by contract.
 synesthesia_rust.gdextension
+synesthesia_rust.gdextension.uid
 /.cache/
-/build/
 /native/target/
 /native/bin/
-/.godot/
-/synesthesia_rust.gdextension
+/native/android-out/
+/.ci-cache/

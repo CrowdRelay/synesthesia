@@ -4,36 +4,10 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 cd "$ROOT"
 
-# Generated OFL font binaries are intentionally not stored in Git. Fetch them
-# before the first Godot import so a clean CI checkout cannot retain stale
-# .godot import metadata pointing at missing .fontdata files.
-./scripts/prepare-bundled-fonts.sh
-
-python3 -m compileall -q tests tools
-python3 tests/static_validate.py
-python3 tests/adaptive_viewport_contract.py
-python3 tools/perf_budget.py
-python3 tools/memory_budget.py
-python3 tools/audio_mix_budget.py
-python3 tests/room_pipeline_contract.py
-python3 tests/visual_snapshot_contract.py
-python3 tests/new_release_pack_contract.py
-python3 tests/production_polish_contract.py
-python3 tests/interactive_album_contract.py
-python3 tests/interaction_guidance_contract.py
-python3 tests/rust_hybrid_contract.py
-python3 tests/sensory_room_contract.py
-python3 tests/door_transition_contract.py
-python3 tests/cinematic_video_contract.py
-python3 tests/presentation_contract.py
-python3 tests/comic_skin_contract.py
-python3 tests/ui_input_contract.py
-python3 tests/ui_performance_contract.py
-python3 tests/ui_scale_flow_contract.py
-python3 tests/ui_quality_polish_contract.py
-python3 tests/android_pipeline_contract.py
-python3 tests/godot_log_gate_contract.py
-python3 tools/asset_report.py
+# Keep source-level gates identical across local, CI, Netlify and Android.
+if [[ "${SYNESTHESIA_SKIP_SOURCE_VALIDATION:-0}" != "1" ]]; then
+  ./scripts/validate-source.sh
+fi
 
 GODOT_BIN="${GODOT_BIN:-godot}"
 GODOT_LOG_DIR="${SYNESTHESIA_GODOT_LOG_DIR:-}"
@@ -52,6 +26,14 @@ persist_godot_log() {
 if ! command -v "$GODOT_BIN" >/dev/null 2>&1; then
   echo "SYNESTHESIA_GODOT_RUNTIME=SKIPPED reason=godot-not-installed"
   exit 0
+fi
+
+# A source-only checkout may inherit .godot/extension_list.cfg from an earlier
+# native build even after the generated descriptor was removed. Purge only that
+# stale registration; a present generated descriptor remains untouched so native
+# Rust runtime validation still works after ./scripts/build-rust-native.sh host.
+if [[ ! -f "$ROOT/synesthesia_rust.gdextension" ]]; then
+  ./scripts/build-rust-native.sh disable >/dev/null
 fi
 
 run_godot_checked() {

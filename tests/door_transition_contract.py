@@ -20,8 +20,8 @@ required_layer = [
     "camera_scale",
 ]
 required_director = [
-    "DOOR_OPEN_SFX",
-    "TELEPORT_SFX",
+    "DOOR_OPEN_STREAM",
+    "TELEPORT_STREAM",
     'Callable(door_layer, "set_door_open_mix")',
     'Callable(door_layer, "set_approach_mix")',
     'Callable(door_layer, "set_warp_mix")',

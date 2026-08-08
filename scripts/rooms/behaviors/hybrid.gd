@@ -15,6 +15,9 @@ func acts() -> Array[String]:
 func interaction_hint() -> String:
     return "PRZYTRZYMAJ CEL · PUŚĆ, GDY JESTEŚ GOTÓW"
 
+func needs_tick() -> bool:
+    return cinematic_active() or (bool(state.get("duel", false)) and float(state.get("duel_elapsed", 0.0)) < 3.0)
+
 func advance(delta: float) -> void:
     super.advance(delta)
     if bool(state.get("duel", false)):

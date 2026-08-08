@@ -15,24 +15,28 @@ RUST_WEB_REQUIRED="${SYNESTHESIA_RUST_WEB_REQUIRED:-1}"
 RUST_NATIVE_TOOLCHAIN="${SYNESTHESIA_RUST_NATIVE_TOOLCHAIN:-1.97.1}"
 RUST_WEB_TOOLCHAIN="${SYNESTHESIA_RUST_WEB_TOOLCHAIN:-nightly}"
 EMSDK_VERSION="${SYNESTHESIA_EMSDK_VERSION:-3.1.74}"
+EMSDK_MANAGER_COMMIT="3d6d8ee910466516a53e665b86458faa81dae9ba"
 EMSDK_DIR="${EMSDK_DIR:-$CACHE_DIR/emsdk-$EMSDK_VERSION}"
+
+calculate_sha256() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+  else
+    printf 'ERROR: neither sha256sum nor shasum is available\n' >&2
+    return 1
+  fi
+}
 
 check_sha256() {
   local expected="$1"
   local file="$2"
   local actual
-
-  if command -v sha256sum >/dev/null 2>&1; then
-    actual="$(sha256sum "$file" | awk '{print $1}')"
-  elif command -v shasum >/dev/null 2>&1; then
-    actual="$(shasum -a 256 "$file" | awk '{print $1}')"
-  else
-    printf 'ERROR: neither sha256sum nor shasum is available\n' >&2
-    return 1
-  fi
-
+  actual="$(calculate_sha256 "$file")"
   [[ "$actual" == "$expected" ]] || {
-    printf 'ERROR: checksum mismatch for %s\nexpected=%s\nactual=%s\n'       "$file" "$expected" "$actual" >&2
+    printf 'ERROR: checksum mismatch for %s\nexpected=%s\nactual=%s\n' "$file" "$expected" "$actual" >&2
     return 1
   }
 }
@@ -85,10 +89,26 @@ import sys
 if sys.version_info < (3, 10):
     raise SystemExit(f"ERROR: emsdk requires Python >=3.10, got {sys.version.split()[0]}")
 PY
-  if [[ ! -x "$EMSDK_DIR/emsdk" ]]; then
-    rm -rf "$EMSDK_DIR"
-    git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$EMSDK_DIR"
+  local cached_emsdk_head=""
+  if [[ -x "$EMSDK_DIR/emsdk" && -d "$EMSDK_DIR/.git" ]]; then
+    cached_emsdk_head="$(git -C "$EMSDK_DIR" rev-parse HEAD 2>/dev/null || true)"
   fi
+  if [[ "$cached_emsdk_head" != "$EMSDK_MANAGER_COMMIT" ]]; then
+    if [[ -n "$cached_emsdk_head" ]]; then
+      printf 'SYNESTHESIA_EMSDK_MANAGER=REFRESH expected=%s actual=%s\n' \
+        "$EMSDK_MANAGER_COMMIT" "$cached_emsdk_head"
+    fi
+    rm -rf "$EMSDK_DIR"
+    git clone --depth 1 --branch "$EMSDK_VERSION" https://github.com/emscripten-core/emsdk.git "$EMSDK_DIR"
+  fi
+  local emsdk_head
+  emsdk_head="$(git -C "$EMSDK_DIR" rev-parse HEAD)"
+  [[ "$emsdk_head" == "$EMSDK_MANAGER_COMMIT" ]] || {
+    printf 'ERROR: emsdk manager drift for %s: expected=%s actual=%s\n' \
+      "$EMSDK_VERSION" "$EMSDK_MANAGER_COMMIT" "$emsdk_head" >&2
+    exit 1
+  }
+  printf 'SYNESTHESIA_EMSDK_MANAGER=PASS version=%s commit=%s\n' "$EMSDK_VERSION" "$emsdk_head"
   export EMSDK_PYTHON="$py"
   export EMSDK_QUIET=1
   "$EMSDK_DIR/emsdk" install "$EMSDK_VERSION"
@@ -110,6 +130,11 @@ ensure_rust_web_toolchain() {
   cargo "+$RUST_WEB_TOOLCHAIN" --version
 }
 
+# Fail source contracts before downloading Godot/templates/toolchains.
+if [[ "${SYNESTHESIA_SKIP_SOURCE_VALIDATION:-0}" != "1" ]]; then
+  ./scripts/validate-source.sh
+fi
+
 if [[ -z "$GODOT_BIN" ]]; then
   if command -v godot >/dev/null 2>&1; then
     GODOT_BIN="$(command -v godot)"
@@ -120,9 +145,13 @@ if [[ -z "$GODOT_BIN" ]]; then
     archive="$CACHE_DIR/editor.zip"
     GODOT_BIN="$CACHE_DIR/Godot_v${GODOT_VERSION}_linux.x86_64"
     if [[ ! -x "$GODOT_BIN" ]]; then
-      curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-all-errors \
-        --output "$archive" \
-        "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+      if [[ ! -s "$archive" ]]; then
+        curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-all-errors \
+          --output "$archive" \
+          "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+      else
+        printf 'SYNESTHESIA_GODOT_EDITOR_CACHE=HIT archive=%s\n' "$archive"
+      fi
       check_sha256 "$GODOT_EDITOR_SHA256" "$archive"
       unzip -q -o "$archive" -d "$CACHE_DIR"
       chmod +x "$GODOT_BIN"
@@ -136,18 +165,75 @@ fi
 }
 export GODOT_BIN
 
-case "$(uname -s)" in
-  Darwin)
-    GODOT_DATA_DIR="${GODOT_DATA_DIR:-$HOME/Library/Application Support/Godot}"
-    ;;
-  *)
-    GODOT_DATA_DIR="${GODOT_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/godot}"
-    ;;
-esac
+if [[ "${NETLIFY:-}" == "true" ]]; then
+  # Keep the small, selected Web templates under the repository cache so the
+  # Netlify build plugin can persist them without retaining the 1.2 GiB source
+  # archive or every unrelated platform template.
+  GODOT_DATA_DIR="${GODOT_DATA_DIR:-$CACHE_DIR/godot-data}"
+else
+  case "$(uname -s)" in
+    Darwin)
+      GODOT_DATA_DIR="${GODOT_DATA_DIR:-$HOME/Library/Application Support/Godot}"
+      ;;
+    *)
+      GODOT_DATA_DIR="${GODOT_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/godot}"
+      ;;
+  esac
+fi
 
 TEMPLATE_DIR="$GODOT_DATA_DIR/export_templates/$GODOT_RELEASE_VERSION"
-if [[ ! -f "$TEMPLATE_DIR/web_release.zip" || ! -f "$TEMPLATE_DIR/web_dlink_nothreads_release.zip" ]]; then
-  mkdir -p "$CACHE_DIR/templates-unpack" "$TEMPLATE_DIR"
+WEB_TEMPLATE_MANIFEST="$TEMPLATE_DIR/.synesthesia-web-templates.sha256"
+WEB_TEMPLATE_NAMES=(web_dlink_nothreads_debug.zip web_dlink_nothreads_release.zip)
+
+verify_web_template_manifest() {
+  [[ -s "$WEB_TEMPLATE_MANIFEST" ]] || return 1
+  local expected name actual count=0
+  while read -r expected name; do
+    [[ -n "$expected" && -n "$name" ]] || continue
+    case "$name" in
+      web_dlink_nothreads_debug.zip|web_dlink_nothreads_release.zip) ;;
+      *) return 1 ;;
+    esac
+    [[ -s "$TEMPLATE_DIR/$name" ]] || return 1
+    actual="$(calculate_sha256 "$TEMPLATE_DIR/$name")"
+    [[ "$actual" == "$expected" ]] || return 1
+    count=$((count + 1))
+  done < "$WEB_TEMPLATE_MANIFEST"
+  [[ "$count" == "2" ]]
+}
+
+write_web_template_manifest() {
+  local tmp="${WEB_TEMPLATE_MANIFEST}.tmp"
+  : > "$tmp"
+  local name
+  for name in "${WEB_TEMPLATE_NAMES[@]}"; do
+    printf '%s  %s\n' "$(calculate_sha256 "$TEMPLATE_DIR/$name")" "$name" >> "$tmp"
+  done
+  mv "$tmp" "$WEB_TEMPLATE_MANIFEST"
+}
+
+web_templates_ready=0
+if [[ -s "$TEMPLATE_DIR/web_dlink_nothreads_debug.zip" && -s "$TEMPLATE_DIR/web_dlink_nothreads_release.zip" ]]; then
+  if verify_web_template_manifest; then
+    web_templates_ready=1
+    printf 'SYNESTHESIA_WEB_TEMPLATE_CACHE=HIT verified=manifest\n'
+  elif [[ ! -s "$WEB_TEMPLATE_MANIFEST" && "${NETLIFY:-}" != "true" ]]; then
+    # Legacy local installations came from Godot's verified pack but predate the
+    # selected-template manifest. Adopt only the *absence* of a manifest; an
+    # existing manifest that fails verification is corruption and must refresh.
+    write_web_template_manifest
+    web_templates_ready=1
+    printf 'SYNESTHESIA_WEB_TEMPLATE_CACHE=ADOPTED scope=local-legacy\n'
+  else
+    # Never normalize a hash mismatch into a new baseline. A corrupt/partial
+    # selected cache is discarded and rebuilt from the verified official pack.
+    rm -f "$TEMPLATE_DIR/web_dlink_nothreads_debug.zip" \
+      "$TEMPLATE_DIR/web_dlink_nothreads_release.zip" "$WEB_TEMPLATE_MANIFEST"
+  fi
+fi
+
+if [[ "$web_templates_ready" != "1" ]]; then
+  mkdir -p "$CACHE_DIR" "$TEMPLATE_DIR"
   template_archive="$CACHE_DIR/templates.tpz"
 
   if [[ ! -s "$template_archive" ]]; then
@@ -163,27 +249,33 @@ if [[ ! -f "$TEMPLATE_DIR/web_release.zip" || ! -f "$TEMPLATE_DIR/web_dlink_noth
     exit 1
   fi
 
-  rm -rf "$CACHE_DIR/templates-unpack"
-  mkdir -p "$CACHE_DIR/templates-unpack"
-  unzip -q "$template_archive" -d "$CACHE_DIR/templates-unpack"
-  cp -R "$CACHE_DIR/templates-unpack/templates/." "$TEMPLATE_DIR/"
+  # Do not inflate the 1.2 GiB multi-platform template pack just to consume two
+  # Web files. Stream only the selected entries into atomic temp files.
+  for template_name in "${WEB_TEMPLATE_NAMES[@]}"; do
+    target_template="$TEMPLATE_DIR/$template_name"
+    tmp_template="${target_template}.tmp"
+    rm -f "$tmp_template"
+    unzip -p "$template_archive" "templates/$template_name" > "$tmp_template"
+    [[ -s "$tmp_template" ]] || {
+      printf 'ERROR: expected Godot Web template missing from archive: %s\n' "$template_name" >&2
+      rm -f "$tmp_template"
+      exit 1
+    }
+    mv "$tmp_template" "$target_template"
+  done
+  write_web_template_manifest
+  verify_web_template_manifest || {
+    echo 'ERROR: selected Web templates failed post-extraction integrity verification' >&2
+    exit 1
+  }
+  if [[ "${NETLIFY:-}" == "true" ]]; then
+    rm -f "$template_archive"
+  fi
 fi
 [[ -f "$TEMPLATE_DIR/web_dlink_nothreads_release.zip" ]] || {
   echo 'ERROR: Godot Web dynamic-link nothreads export template is missing' >&2
   exit 1
 }
-
-./scripts/prepare-bundled-fonts.sh
-python3 -m compileall -q tests tools
-python3 tests/static_validate.py
-python3 tests/adaptive_viewport_contract.py
-python3 tools/perf_budget.py
-python3 tools/audio_mix_budget.py
-python3 tests/room_pipeline_contract.py
-python3 tests/visual_snapshot_contract.py
-python3 tests/new_release_pack_contract.py
-python3 tests/rust_hybrid_contract.py
-python3 tools/asset_report.py
 
 # First validate the portable fallback with no generated extension state. This
 # prevents a stale local dylib/so from making a clean checkout look healthy.
@@ -229,6 +321,7 @@ cp assets/fonts/generated/OFL-Knewave.txt build/web/fonts/
 cp assets/fonts/generated/OFL-BebasNeue.txt build/web/fonts/
 cp assets/icon.svg assets/icon-192.png assets/icon-512.png build/web/
 python3 tools/postprocess_web.py
+python3 tools/web_bundle_budget.py
 test -s build/web/index.html
 test -s build/web/manifest.webmanifest
 test -s build/web/service-worker.js

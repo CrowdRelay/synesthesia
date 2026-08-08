@@ -28,9 +28,9 @@ require(
     "scripts/main.gd",
     "DebugProfile.fit_macos_window_to_screen()",
     "func _enter_main_menu_mode() -> void:",
-    "MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director)",
+    "MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director, adaptive_performance)",
     "func _resume_room_runtime() -> void:",
-    "MenuRuntimeGuard.resume(room_layer, hud, audio_director)",
+    "MenuRuntimeGuard.resume(room_layer, hud, audio_director, adaptive_performance)",
     'if experience_intro_panel == null:\n            call_deferred("_show_completion_panel")',
 )
 
@@ -39,10 +39,12 @@ require(
     "hud.suspend_for_menu()",
     "room_layer.process_mode = Node.PROCESS_MODE_DISABLED",
     "audio_director.set_suspended(true)",
+    "adaptive_performance.set_suspended(true)",
     "transition_director.force_idle()",
     "room_layer.process_mode = Node.PROCESS_MODE_INHERIT",
     "hud.resume_for_room()",
     "audio_director.set_suspended(false)",
+    "adaptive_performance.set_suspended(false)",
 )
 
 main = source("scripts/main.gd")

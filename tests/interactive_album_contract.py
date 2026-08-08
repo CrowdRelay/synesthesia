@@ -23,11 +23,11 @@ runtime = require(
     "scripts/input/room_interaction_runtime.gd",
     "handle_gestures", "handle_paint", "special_interaction", "feedback", "reveal_changed",
 )
-stage = require("scripts/render/room_stage.gd", '_handle_gestures(routed.get("gestures", []))')
+stage = require("scripts/render/room_stage.gd", '_handle_gestures(routed["gestures"])')
 if "func _handle_gestures(gestures: Array[Dictionary])" in stage:
-    failures.append("RoomStage gesture boundary must accept untyped Array from Dictionary.get")
+    failures.append("RoomStage gesture boundary must accept untyped Array from routed Dictionary")
 if "func handle_gestures(gestures: Array[Dictionary]" in runtime:
-    failures.append("RoomInteractionRuntime gesture boundary must accept untyped Array from Dictionary.get")
+    failures.append("RoomInteractionRuntime gesture boundary must accept untyped Array from routed Dictionary")
 if "gesture_value if gesture_value is Dictionary else {}" not in runtime:
     failures.append("RoomInteractionRuntime must validate gesture elements after untyped boundary")
 require(

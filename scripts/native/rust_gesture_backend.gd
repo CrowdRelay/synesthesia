@@ -31,21 +31,18 @@ func single_pointer() -> Dictionary:
     return value if value is Dictionary else {}
 
 func pointer_down(pointer_id: int, point: Vector2, now_ms: int) -> Array:
-    return _call_events("pointer_down", [pointer_id, point, now_ms])
+    return _events(_backend.call(&"pointer_down", pointer_id, point, now_ms) if _backend != null else null)
 
 func pointer_move(pointer_id: int, point: Vector2, now_ms: int) -> Array:
-    return _call_events("pointer_move", [pointer_id, point, now_ms])
+    return _events(_backend.call(&"pointer_move", pointer_id, point, now_ms) if _backend != null else null)
 
 func pointer_up(pointer_id: int, point: Vector2, now_ms: int) -> Array:
-    return _call_events("pointer_up", [pointer_id, point, now_ms])
+    return _events(_backend.call(&"pointer_up", pointer_id, point, now_ms) if _backend != null else null)
 
 func advance(now_ms: int) -> Array:
-    return _call_events("advance", [now_ms])
+    return _events(_backend.call(&"advance", now_ms) if _backend != null else null)
 
-func _call_events(method: StringName, arguments: Array) -> Array:
-    if _backend == null:
-        return []
-    var value: Variant = _backend.callv(method, arguments)
+func _events(value: Variant) -> Array:
     return value if value is Array else []
 
 func _report_runtime_once() -> void:

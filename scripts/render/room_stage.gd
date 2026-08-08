@@ -1,5 +1,4 @@
 extends Control
-
 signal coverage_changed(value: float)
 signal collectible_found(item: Dictionary)
 signal paint_pulse(speed_normalized: float)
@@ -8,7 +7,6 @@ signal interaction_feedback(message: String)
 signal interaction_started
 signal interaction_ended
 signal act_changed(index: int, title: String)
-
 const BrushEngineScript := preload("res://scripts/brush/brush_engine.gd")
 const InteractionRouterScript := preload("res://scripts/input/interaction_router.gd")
 const RoomInteractionRuntimeScript := preload("res://scripts/input/room_interaction_runtime.gd")
@@ -19,7 +17,6 @@ const InteractionFxLayerScript := preload("res://scripts/render/interaction_fx_l
 const RoomDressingLayerScript := preload("res://scripts/render/room_dressing_layer.gd")
 const RoomVideoLayerScript := preload("res://scripts/render/room_video_layer.gd")
 const CompositeShader := preload("res://shaders/room_composite.gdshader")
-
 @export var room_id: String = ""
 
 var manifest_room: Dictionary = {}
@@ -27,6 +24,7 @@ var sensory: Dictionary = {}
 var quality: Dictionary = {}
 var collectibles: Array[Dictionary] = []
 var behavior
+var _behavior_tick_gated: bool = false
 var brush_engine
 var interaction_router
 var interaction_runtime
@@ -168,6 +166,7 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     queue_redraw()
 func _configure_behavior(room_data: Dictionary) -> void:
     behavior = null
+    _behavior_tick_gated = false
     var behavior_path: String = str(room_data.get("behavior_script", ""))
     if behavior_path.is_empty() or not ResourceLoader.exists(behavior_path):
         push_warning("Missing room behavior: %s" % behavior_path)
@@ -176,6 +175,7 @@ func _configure_behavior(room_data: Dictionary) -> void:
     if resource is Script:
         behavior = (resource as Script).new()
         behavior.configure(room_data)
+        _behavior_tick_gated = behavior.has_method("needs_tick")
 func _configure_art(room_data: Dictionary, asset_source = null) -> void:
     var art_value: Variant = room_data.get("art_direction", {})
     var art: Dictionary = art_value if art_value is Dictionary else {}
@@ -221,9 +221,9 @@ func _take_texture(path: String, asset_source = null) -> Texture2D:
         resource = load(path)
     return resource as Texture2D if resource is Texture2D else null
 func _process(delta: float) -> void:
-    if behavior != null and behavior.has_method("advance"):
+    if behavior != null and (not _behavior_tick_gated or behavior.needs_tick()):
         behavior.advance(delta)
-    if interaction_enabled and interaction_router != null:
+    if interaction_enabled and interaction_router != null and interaction_router.needs_tick():
         _handle_gestures(interaction_router.advance(Time.get_ticks_msec()))
     var target: float = 1.0 if door_target_open else 0.0
     door_open_amount = move_toward(door_open_amount, target, delta * 0.82)
@@ -441,7 +441,7 @@ func _gui_input(event: InputEvent) -> void:
     var point_value: Variant = routed.get("point", pointer_norm)
     pointer_norm = point_value if point_value is Vector2 else pointer_norm
     target_parallax = (pointer_norm - Vector2(0.5, 0.5)) * 2.0
-    _handle_gestures(routed.get("gestures", []))
+    _handle_gestures(routed["gestures"])
     match str(routed.get("stroke", "")):
         "begin": _begin_stroke(pointer_norm, int(routed.get("pointer_id", -1)))
         "continue": _continue_stroke(pointer_norm)

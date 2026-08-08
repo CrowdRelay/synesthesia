@@ -8,7 +8,7 @@ const AppHudScript := preload("res://scripts/ui/app_hud.gd")
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const TransitionDirectorScript := preload("res://scripts/app/transition_director.gd")
 const AssetPreloaderScript := preload("res://scripts/app/asset_preloader.gd")
-const DiagnosticsOverlayScript := preload("res://scripts/app/diagnostics_overlay.gd")
+const DIAGNOSTICS_OVERLAY_PATH: String = "res://scripts/app/diagnostics_overlay.gd"
 const AdaptivePerformanceScript := preload("res://scripts/app/adaptive_performance.gd")
 const NativeExperienceSurfaceScript := preload("res://scripts/app/native_experience_surface.gd")
 const InteractiveUiRootScript := preload("res://scripts/app/interactive_ui_root.gd")
@@ -97,6 +97,7 @@ func _ready() -> void:
     music_level = clampf(float(album_state.get("music_level", 1.0)), 0.0, 1.0)
     noise_level = clampf(float(album_state.get("noise_level", 1.0)), 0.0, 1.0)
     quality = QualityManager.resolve(quality_profile)
+    Engine.max_fps = QualityManager.frame_cap(quality_profile)
     if not album_state.has("started_at_unix"):
         album_state["started_at_unix"] = int(Time.get_unix_time_from_system())
     if not album_state.has("total_elapsed_ms"):
@@ -136,17 +137,17 @@ func _build_application_shell() -> void:
     album_mode_controller.corridor_requested.connect(_show_album_archive)
     album_mode_controller.finale_requested.connect(_show_reward_panel)
     album_mode_controller.menu_requested.connect(_show_experience_intro)
-    asset_preloader = AssetPreloaderScript.new()
-    asset_preloader.name = "AssetPreloader"
+    asset_preloader = AssetPreloaderScript.new(); asset_preloader.name = "AssetPreloader"
     add_child(asset_preloader)
-    adaptive_performance = AdaptivePerformanceScript.new()
-    adaptive_performance.name = "AdaptivePerformance"
+    adaptive_performance = AdaptivePerformanceScript.new(); adaptive_performance.name = "AdaptivePerformance"
     add_child(adaptive_performance)
     adaptive_performance.budget_changed.connect(_on_runtime_budget_changed)
     adaptive_performance.configure(quality_profile)
-    var diagnostics: Node = DiagnosticsOverlayScript.new()
-    diagnostics.name = "Diagnostics"
-    add_child(diagnostics)
+    if ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH):
+        var diagnostics_script: Script = load(DIAGNOSTICS_OVERLAY_PATH) as Script
+        if diagnostics_script != null:
+            var diagnostics: Node = diagnostics_script.new(); diagnostics.name = "Diagnostics"
+            add_child(diagnostics); diagnostics.configure(adaptive_performance, asset_preloader)
     save_timer = Timer.new()
     save_timer.name = "ProgressSaveTimer"
     save_timer.one_shot = true
@@ -225,9 +226,9 @@ func _enter_main_menu_mode() -> void:
     intro_panel = null
     _remove_modal(completion_panel)
     completion_panel = null
-    MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director)
+    MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director, adaptive_performance)
 func _resume_room_runtime() -> void:
-    MenuRuntimeGuard.resume(room_layer, hud, audio_director)
+    MenuRuntimeGuard.resume(room_layer, hud, audio_director, adaptive_performance)
 func _configure_reward_client() -> void:
     var config_value: Variant = index_document.get("reward", {})
     if not config_value is Dictionary:
@@ -568,6 +569,7 @@ func _transition_to_room(next_index: int) -> void:
     if transition_director != null:
         transition_director.set_next_accent(_accent_for_release(next_index))
         await transition_director.travel_out()
+    if asset_preloader != null: await asset_preloader.wait_for_queued()
     _load_room(next_index, true)
     await get_tree().process_frame
     if transition_director != null:
@@ -680,6 +682,7 @@ func _mark_settings_dirty() -> void:
     settings_dirty = true
 func _reload_current_room() -> void:
     _save_progress()
+    Engine.max_fps = QualityManager.frame_cap(quality_profile)
     if adaptive_performance != null:
         adaptive_performance.configure(quality_profile)
     var index: int = current_room_index
@@ -953,21 +956,19 @@ func _handle_back_request() -> bool:
         return true
     return false
 func _notification(what: int) -> void:
-    if what == NOTIFICATION_WM_GO_BACK_REQUEST:
-        _handle_back_request()
-        return
+    if what == NOTIFICATION_WM_GO_BACK_REQUEST: _handle_back_request(); return
     if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
-        if room != null and is_instance_valid(room):
-            _save_progress()
-        else:
-            _save_album_state()
+        if room != null and is_instance_valid(room): _save_progress()
+        else: _save_album_state()
+    if what == NOTIFICATION_APPLICATION_PAUSED: MenuRuntimeGuard.suspend_for_background(experience_surface, ui_root, room_layer, audio_director, adaptive_performance)
+    elif what == NOTIFICATION_APPLICATION_RESUMED: MenuRuntimeGuard.resume_from_background(experience_surface, ui_root, room_layer, audio_director, adaptive_performance)
 func _exit_tree() -> void:
     if save_timer != null and not save_timer.is_stopped():
         save_timer.stop()
     if reward_client != null and is_instance_valid(reward_client) and reward_client.has_method("shutdown"):
         reward_client.shutdown()
-    if asset_preloader != null and is_instance_valid(asset_preloader) and asset_preloader.has_method("drain"):
-        asset_preloader.drain()
+    if asset_preloader != null and is_instance_valid(asset_preloader) and asset_preloader.has_method("drain"): asset_preloader.drain()
+    UIFactory.release_runtime_caches()
 func _show_fatal_error(message: String) -> void:
     var label: Label = Label.new()
     label.text = message

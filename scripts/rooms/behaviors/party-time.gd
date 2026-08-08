@@ -10,6 +10,7 @@ func configure(data: Dictionary) -> void:
     state["popped"] = []
     state["offsets"] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
     state["velocities"] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+    state["motion_active"] = false
 
 func acts() -> Array[String]:
     return ["WEJDŹ NA IMPREZĘ", "PRZEBIJ POWŁOKĘ", "ZRÓB KOLOROWY BAŁAGAN"]
@@ -17,12 +18,18 @@ func acts() -> Array[String]:
 func interaction_hint() -> String:
     return "DOTKNIJ · ODEPCHNIJ · PRZEBIJ"
 
+func needs_tick() -> bool:
+    return cinematic_active() or bool(state.get("motion_active", false))
+
 func advance(delta: float) -> void:
     super.advance(delta)
+    if not bool(state.get("motion_active", false)):
+        return
     var offsets: Array = state.get("offsets", [])
     var velocities: Array = state.get("velocities", [])
     if offsets.size() != BALLOONS.size() or velocities.size() != BALLOONS.size():
         return
+    var still_moving: bool = false
     for index in range(BALLOONS.size()):
         var offset: Vector2 = _pair_vec(offsets[index])
         var velocity: Vector2 = _pair_vec(velocities[index])
@@ -31,10 +38,16 @@ func advance(delta: float) -> void:
         velocity = velocity.lerp(Vector2.ZERO, clampf(delta * 3.1, 0.0, 1.0))
         offset.x = clampf(offset.x, -0.11, 0.11)
         offset.y = clampf(offset.y, -0.08, 0.10)
+        if offset.length_squared() < 0.00000008 and velocity.length_squared() < 0.0000008:
+            offset = Vector2.ZERO
+            velocity = Vector2.ZERO
+        else:
+            still_moving = true
         offsets[index] = [offset.x, offset.y]
         velocities[index] = [velocity.x, velocity.y]
     state["offsets"] = offsets
     state["velocities"] = velocities
+    state["motion_active"] = still_moving
 
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#FFDB63")), Color("ffdb63"))
@@ -129,6 +142,7 @@ func _push_near(point: Vector2, gesture: Dictionary) -> void:
         var impulse: Vector2 = away.normalized() * 0.13 + drag_delta * 3.4
         var velocity: Vector2 = _pair_vec(velocities[index]) + impulse
         velocities[index] = [velocity.x, velocity.y]
+        state["motion_active"] = true
     state["velocities"] = velocities
 
 func _offset(index: int) -> Vector2:
@@ -137,3 +151,13 @@ func _offset(index: int) -> Vector2:
 
 func _pair_vec(value: Variant) -> Vector2:
     return Vector2(float(value[0]), float(value[1])) if value is Array and value.size() >= 2 else Vector2.ZERO
+
+func restore_state(saved: Dictionary) -> void:
+    super.restore_state(saved)
+    var velocities: Array = state.get("velocities", [])
+    var active: bool = false
+    for raw_velocity in velocities:
+        if _pair_vec(raw_velocity).length_squared() >= 0.0000008:
+            active = true
+            break
+    state["motion_active"] = bool(state.get("motion_active", false)) or active

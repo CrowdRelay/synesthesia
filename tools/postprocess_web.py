@@ -2,6 +2,7 @@
 """Post-process the Godot Web export for safe caching and installable preview."""
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -68,9 +69,29 @@ manifest = {
 }
 manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")))
 
+static_shell_js = {"service-worker.js", "register-sw.js", "boot-shell.js"}
+runtime_files = sorted(
+    path for path in BUILD.iterdir()
+    if path.is_file()
+    and (
+        path.suffix.lower() in {".pck", ".wasm"}
+        or (path.suffix.lower() == ".js" and path.name not in static_shell_js)
+    )
+)
+if not runtime_files:
+    raise SystemExit("missing Web runtime files for cache fingerprint")
+runtime_hash = hashlib.sha256()
+runtime_hash.update(VERSION.encode())
+for path in runtime_files:
+    runtime_hash.update(path.name.encode())
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            runtime_hash.update(chunk)
+cache_id = f"{VERSION}-{runtime_hash.hexdigest()[:12]}"
+
 service_worker_path = BUILD / "service-worker.js"
 service_worker = service_worker_path.read_text()
-service_worker = service_worker.replace("__SYNESTHESIA_VERSION__", VERSION)
+service_worker = service_worker.replace("__SYNESTHESIA_CACHE_ID__", cache_id)
 service_worker_path.write_text(service_worker)
 
 sizes = []
@@ -79,4 +100,4 @@ for path in sorted(BUILD.rglob("*")):
         sizes.append((path.stat().st_size, path.relative_to(BUILD).as_posix()))
 report = BUILD / "asset-report.txt"
 report.write_text("\n".join(f"{size}\t{name}" for size, name in sizes) + "\n")
-print(f"SYNESTHESIA_WEB_POSTPROCESS=PASS version={VERSION} files={len(sizes)}")
+print(f"SYNESTHESIA_WEB_POSTPROCESS=PASS version={VERSION} cache={cache_id} runtime_files={len(runtime_files)} files={len(sizes)}")

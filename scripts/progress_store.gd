@@ -8,9 +8,12 @@ const PREVIOUS_PATHS: Array[String] = [
 ]
 const BACKUP_PATH: String = "user://synesthesia-progress-v4.backup.json"
 const SCHEMA_VERSION: int = 4
+const MAX_SAVE_BYTES: int = 24 * 1024 * 1024
 
 static var _cached_document: Dictionary = {}
 static var _cache_loaded: bool = false
+static var _loaded_from_backup: bool = false
+static var _ephemeral_install_id: String = ""
 
 static func load_release(release_id: String) -> Dictionary:
     if release_id.is_empty():
@@ -25,7 +28,7 @@ static func load_release(release_id: String) -> Dictionary:
 static func save_release(release_id: String, state: Dictionary) -> bool:
     if release_id.is_empty():
         return false
-    var document: Dictionary = _load_document()
+    var document: Dictionary = _document_for_write()
     var releases_value: Variant = document.get("releases", {})
     var releases: Dictionary = releases_value if releases_value is Dictionary else {}
     releases[release_id] = state.duplicate(true)
@@ -35,7 +38,7 @@ static func save_release(release_id: String, state: Dictionary) -> bool:
 static func save_checkpoint(release_id: String, release_state: Dictionary, album_state: Dictionary) -> bool:
     if release_id.is_empty():
         return false
-    var document: Dictionary = _load_document()
+    var document: Dictionary = _document_for_write()
     var releases_value: Variant = document.get("releases", {})
     var releases: Dictionary = releases_value if releases_value is Dictionary else {}
     releases[release_id] = release_state.duplicate(true)
@@ -46,7 +49,7 @@ static func save_checkpoint(release_id: String, release_state: Dictionary, album
 static func clear_release(release_id: String) -> bool:
     if release_id.is_empty():
         return false
-    var document: Dictionary = _load_document()
+    var document: Dictionary = _document_for_write()
     var releases_value: Variant = document.get("releases", {})
     var releases: Dictionary = releases_value if releases_value is Dictionary else {}
     releases.erase(release_id)
@@ -58,7 +61,7 @@ static func load_album() -> Dictionary:
     return album_value.duplicate(true) if album_value is Dictionary else {}
 
 static func save_album(state: Dictionary) -> bool:
-    var document: Dictionary = _load_document()
+    var document: Dictionary = _document_for_write()
     document["album"] = state.duplicate(true)
     return _write_document(document)
 
@@ -67,12 +70,12 @@ static func load_run() -> Dictionary:
     return value.duplicate(true) if value is Dictionary else {}
 
 static func save_run(state: Dictionary) -> bool:
-    var document: Dictionary = _load_document()
+    var document: Dictionary = _document_for_write()
     document["run"] = state.duplicate(true)
     return _write_document(document)
 
 static func clear_run() -> bool:
-    var document: Dictionary = _load_document()
+    var document: Dictionary = _document_for_write()
     document["run"] = {}
     return _write_document(document)
 
@@ -81,26 +84,33 @@ static func load_reward() -> Dictionary:
     return value.duplicate(true) if value is Dictionary else {}
 
 static func save_reward(state: Dictionary) -> bool:
-    var document: Dictionary = _load_document()
+    var document: Dictionary = _document_for_write()
     document["reward"] = state.duplicate(true)
     return _write_document(document)
 
 static func get_install_id() -> String:
-    var document: Dictionary = _load_document()
-    var current: String = str(document.get("install_id", ""))
+    var persisted: Dictionary = _load_document()
+    var current: String = str(persisted.get("install_id", ""))
     if not current.is_empty():
+        _ephemeral_install_id = ""
         return current
+    if not _ephemeral_install_id.is_empty():
+        return _ephemeral_install_id
     var crypto: Crypto = Crypto.new()
     var random_bytes: PackedByteArray = crypto.generate_random_bytes(16)
     current = random_bytes.hex_encode()
     if current.is_empty():
         current = "%x-%x" % [Time.get_ticks_usec(), randi()]
+    var document: Dictionary = persisted.duplicate(true)
     document["install_id"] = current
-    _write_document(document)
+    if not _write_document(document):
+        # Keep one stable identity for this process even when persistent storage
+        # is unavailable. A later launch will generate a new one, as expected.
+        _ephemeral_install_id = current
     return current
 
 static func reset_local_journey() -> bool:
-    var document: Dictionary = _load_document()
+    var document: Dictionary = _document_for_write()
     var previous_album_value: Variant = document.get("album", {})
     var previous_album: Dictionary = previous_album_value if previous_album_value is Dictionary else {}
     var fresh: Dictionary = _blank_document()
@@ -131,7 +141,14 @@ static func reset_all() -> bool:
                 return false
     _cached_document = {}
     _cache_loaded = false
+    _loaded_from_backup = false
+    _ephemeral_install_id = ""
     return true
+
+static func _document_for_write() -> Dictionary:
+    # Dictionaries are reference types. Mutations must happen on a deep copy so
+    # a failed disk commit cannot make the in-memory read cache claim success.
+    return _load_document().duplicate(true)
 
 static func _blank_document() -> Dictionary:
     return {
@@ -167,32 +184,52 @@ static func _load_document() -> Dictionary:
         _cached_document = _migrate_previous()
         _cache_loaded = true
         return _cached_document
-    var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.READ)
-    if file == null:
-        _cached_document = _blank_document()
-        _cache_loaded = true
-        return _cached_document
-    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    var parsed: Variant = _read_json_document(SAVE_PATH)
     if not parsed is Dictionary:
-        _cached_document = _blank_document()
-        _cache_loaded = true
-        return _cached_document
+        var backup: Variant = _read_json_document(BACKUP_PATH)
+        if backup is Dictionary:
+            push_warning("Recovered Synestezja progress from last-good backup")
+            parsed = backup
+            _loaded_from_backup = true
+        else:
+            _cached_document = _blank_document()
+            _cache_loaded = true
+            return _cached_document
     var document: Dictionary = parsed
     if int(document.get("schema_version", 0)) != SCHEMA_VERSION:
         _cached_document = _migrate_document(document)
     else:
         _cached_document = _normalize_document(document)
     _cache_loaded = true
+    if _loaded_from_backup:
+        # Heal a corrupt current generation immediately. Otherwise a read-only
+        # session would recover from BACKUP_PATH on every launch until gameplay
+        # happened to trigger a later save. Failure is non-fatal: the valid
+        # backup remains authoritative and in-memory state stays usable.
+        var recovered: Dictionary = _cached_document.duplicate(true)
+        if not _write_document(recovered):
+            _cached_document = recovered
+            _cache_loaded = true
+            _loaded_from_backup = true
     return _cached_document
+
+
+static func _read_json_document(path: String) -> Variant:
+    if not FileAccess.file_exists(path):
+        return null
+    var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+    if file == null:
+        return null
+    if file.get_length() > MAX_SAVE_BYTES:
+        push_warning("Ignoring oversized Synestezja progress file: %s" % path)
+        return null
+    return JSON.parse_string(file.get_as_text())
 
 static func _migrate_previous() -> Dictionary:
     for source_path in PREVIOUS_PATHS:
         if not FileAccess.file_exists(source_path):
             continue
-        var file: FileAccess = FileAccess.open(source_path, FileAccess.READ)
-        if file == null:
-            continue
-        var parsed: Variant = JSON.parse_string(file.get_as_text())
+        var parsed: Variant = _read_json_document(source_path)
         if parsed is Dictionary:
             var migrated: Dictionary = _migrate_document(parsed)
             _write_document(migrated)
@@ -245,21 +282,36 @@ static func _write_document(document: Dictionary) -> bool:
     var temporary_path: String = "%s.tmp" % SAVE_PATH
     if FileAccess.file_exists(temporary_path):
         DirAccess.remove_absolute(temporary_path)
+    var serialized: String = JSON.stringify(document)
+    if serialized.to_utf8_buffer().size() > MAX_SAVE_BYTES:
+        push_warning("Refusing oversized local Synestezja progress write")
+        return false
     var file: FileAccess = FileAccess.open(temporary_path, FileAccess.WRITE)
     if file == null:
         push_warning("Could not write local Synestezja progress")
         return false
-    file.store_string(JSON.stringify(document))
+    file.store_string(serialized)
+    file.flush()
     file.close()
 
-    if FileAccess.file_exists(BACKUP_PATH):
-        DirAccess.remove_absolute(BACKUP_PATH)
-    if FileAccess.file_exists(SAVE_PATH):
-        var backup_error: Error = DirAccess.rename_absolute(SAVE_PATH, BACKUP_PATH)
-        if backup_error != OK:
-            push_warning("Could not create Synestezja progress backup")
-            DirAccess.remove_absolute(temporary_path)
-            return false
+    if _loaded_from_backup:
+        # The current SAVE_PATH is known-bad. Preserve the valid last-good backup
+        # instead of rotating the corrupt file over it.
+        if FileAccess.file_exists(SAVE_PATH):
+            var remove_error: Error = DirAccess.remove_absolute(SAVE_PATH)
+            if remove_error != OK:
+                push_warning("Could not remove corrupt Synestezja progress before recovery commit")
+                DirAccess.remove_absolute(temporary_path)
+                return false
+    else:
+        if FileAccess.file_exists(BACKUP_PATH):
+            DirAccess.remove_absolute(BACKUP_PATH)
+        if FileAccess.file_exists(SAVE_PATH):
+            var backup_error: Error = DirAccess.rename_absolute(SAVE_PATH, BACKUP_PATH)
+            if backup_error != OK:
+                push_warning("Could not create Synestezja progress backup")
+                DirAccess.remove_absolute(temporary_path)
+                return false
 
     var rename_error: Error = DirAccess.rename_absolute(temporary_path, SAVE_PATH)
     if rename_error != OK:
@@ -267,8 +319,11 @@ static func _write_document(document: Dictionary) -> bool:
         if FileAccess.file_exists(BACKUP_PATH):
             DirAccess.rename_absolute(BACKUP_PATH, SAVE_PATH)
         return false
-    if FileAccess.file_exists(BACKUP_PATH):
-        DirAccess.remove_absolute(BACKUP_PATH)
+    # Keep BACKUP_PATH as the previous known-good generation. It is tiny next
+    # to the media payload and turns partial/corrupt saves into recoverable state.
+    _loaded_from_backup = false
     _cached_document = document
     _cache_loaded = true
+    if not str(document.get("install_id", "")).is_empty():
+        _ephemeral_install_id = ""
     return true

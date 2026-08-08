@@ -32,6 +32,11 @@ for token in ('redraw_hz: float = 60.0 if _profile == "splash" else (24.0 if _vi
         failures.append(f"eye redraw/process budget missing: {token}")
 
 
+finale = text("scripts/ui/echoes_finale_background.gd")
+for token in ("visibility_changed.connect(_sync_processing)", "set_process(active)", "_video_layer.set_cinematic(active, false)", "_video_layer.set_cinematic(is_visible_in_tree(), false)"):
+    if token not in finale:
+        failures.append(f"finale hidden-processing contract missing: {token}")
+
 main = text("scripts/main.gd")
 boot = text("scripts/ui/boot_sequence.gd")
 if "boot.released.connect(_show_experience_intro)" not in main or "released.emit()" not in boot:
@@ -56,4 +61,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_UI_PERFORMANCE=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_UI_PERFORMANCE=PASS idle-video=sleep idle-transition=sleep idle-fx=sleep eye=24fps-video/36fps-static startup=single-eye-decoder native-hit-test=anchor-owned")
+print("SYNESTHESIA_UI_PERFORMANCE=PASS idle-video=sleep idle-transition=sleep idle-fx=sleep finale=visibility-gated eye=24fps-video/36fps-static startup=single-eye-decoder native-hit-test=anchor-owned")

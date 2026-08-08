@@ -37,8 +37,11 @@ func set_cinematic(value: bool) -> void:
     if value and not previous:
         state["_cinematic_time"] = 0.0
 
+func needs_tick() -> bool:
+    return cinematic_active()
+
 func advance(delta: float) -> void:
-    if bool(state.get("_cinematic", false)):
+    if cinematic_active():
         state["_cinematic_time"] = float(state.get("_cinematic_time", 0.0)) + delta
 
 func cinematic_active() -> bool:

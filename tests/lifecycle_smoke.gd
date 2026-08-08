@@ -17,6 +17,7 @@ const NativeExperienceSurfaceScript := preload("res://scripts/app/native_experie
 const InteractiveUiRootScript := preload("res://scripts/app/interactive_ui_root.gd")
 const TransitionDirectorScript := preload("res://scripts/app/transition_director.gd")
 const BootSequenceScript := preload("res://scripts/ui/boot_sequence.gd")
+const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const MANIFEST_PATH: String = "res://data/releases/wave-of-uncertainty/manifest.json"
 const POP_PATH: String = "res://assets/audio/balloon-pop.mp3"
 
@@ -60,11 +61,26 @@ func _run() -> void:
     if collectibles_value is Array:
         collectible_count = maxi(1, collectibles_value.size())
     audio.configure(manifest.get("sensory", {}), manifest.get("audio", {}), collectible_count, preloader, "uncertainty")
-    await process_frame
-    if not audio.reveal_release_excerpt():
-        _fail("room music excerpt was not available after configure")
+    # completion_excerpt is deliberately non-critical: configure() must never
+    # join an in-flight threaded audio load. Exercise the real contract instead
+    # of assuming one headless frame is enough for decode on every CI runner.
+    var music_ready: bool = audio.reveal_release_excerpt()
+    for _attempt in range(150):
+        if music_ready:
+            break
+        await create_timer(0.01).timeout
+        music_ready = audio.reveal_release_excerpt()
+    if not music_ready:
+        _fail("room music excerpt did not become available within deferred preload budget")
     audio.reset_release_excerpt()
     audio.set_progress(0.20, 1)
+    await process_frame
+    audio.set_suspended(true)
+    if audio.is_processing():
+        _fail("audio director kept processing while suspended")
+    audio.set_suspended(false)
+    if not audio.is_processing():
+        _fail("audio director did not resume processing")
     await process_frame
     audio.play_interaction_sfx("balloon", 2)
     var pop_resource: Resource = load(POP_PATH)
@@ -253,6 +269,7 @@ func _run() -> void:
     await _dispose_node(audio)
     preloader.drain()
     await _dispose_node(preloader)
+    UIFactory.release_runtime_caches()
     if _test_viewport != null and is_instance_valid(_test_viewport):
         var viewport_parent := _test_viewport.get_parent()
         if viewport_parent != null:

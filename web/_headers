@@ -18,10 +18,13 @@
 
 /*.wasm
   Content-Type: application/wasm
-  Cache-Control: public, max-age=3600, must-revalidate
+  Cache-Control: public, max-age=0, must-revalidate
 
 /*.pck
-  Cache-Control: public, max-age=3600, must-revalidate
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*.js
+  Cache-Control: public, max-age=0, must-revalidate
 
 /*.mp3
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800

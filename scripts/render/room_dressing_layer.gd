@@ -23,15 +23,23 @@ func configure(style: String, accent: Color, secondary: Color) -> void:
 
 func set_progress(value: float) -> void:
     _progress = clampf(value, 0.0, 1.0)
+    if _reduced_motion:
+        queue_redraw()
 
 func set_cinematic(value: float) -> void:
     _cinematic = clampf(value, 0.0, 1.0)
+    if _reduced_motion:
+        queue_redraw()
 
 func set_door_open_amount(value: float) -> void:
     _door_open = clampf(value, 0.0, 1.0)
+    if _reduced_motion:
+        queue_redraw()
 
 func set_reduced_motion(value: bool) -> void:
     _reduced_motion = value
+    set_process(not _reduced_motion)
+    queue_redraw()
 
 func set_runtime_scale(value: float) -> void:
     _runtime_scale = clampf(value, 0.55, 1.0)

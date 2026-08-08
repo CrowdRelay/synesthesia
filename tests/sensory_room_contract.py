@@ -28,7 +28,7 @@ SFX = [
 TOKENS = {
     "scripts/ui/app_hud.gd": ["HeaderRow", "size_flags_stretch_ratio = 1.18", "size_flags_stretch_ratio = 0.82", "panel_bottom + 8.0"],
     "scripts/app/door_transition_layer.gd": ["set_door_open_mix", "set_approach_mix", "set_warp_mix", "_draw_hinged_door", "_draw_supersonic_tunnel"],
-    "scripts/app/transition_director.gd": ["TELEPORT_SFX", "DOOR_OPEN_SFX", "set_approach_mix", "set_warp_mix"],
+    "scripts/app/transition_director.gd": ["TELEPORT_STREAM", "DOOR_OPEN_STREAM", "set_approach_mix", "set_warp_mix"],
     "scripts/rooms/behaviors/wave-of-uncertainty.gd": ["lateral", "direction"],
     "scripts/rooms/behaviors/party-time.gd": ["fly_t", "rise", "glow"],
     "scripts/rooms/behaviors/unmasked.gd": ["eye_y", "mouth_open"],

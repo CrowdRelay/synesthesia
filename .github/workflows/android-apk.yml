@@ -27,6 +27,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Validate canonical source contracts
+        run: ./scripts/validate-source.sh
+
+      - name: Cache bounded Rust and Godot build inputs
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-ndk
+            ~/.cache/synesthesia/godot-4.7.1-stable/editor.zip
+            ~/.local/share/godot/export_templates/4.7.1.stable/android_debug.apk
+            ~/.local/share/godot/export_templates/4.7.1.stable/android_release.apk
+          key: ${{ runner.os }}-synesthesia-android-rust1.97.1-ndk4.1.2-godot4.7.1-${{ hashFiles('native/Cargo.lock') }}
+
       - name: Set up Rust Android toolchain
         shell: bash
         run: |
@@ -34,7 +49,11 @@ jobs:
           rustup toolchain install 1.97.1 --profile minimal
           rustup override set 1.97.1
           rustup target add aarch64-linux-android
-          cargo install cargo-ndk --locked --version 4.1.2
+          if ! cargo ndk --version 2>/dev/null | grep -Fq 'cargo-ndk 4.1.2'; then
+            cargo install cargo-ndk --locked --version 4.1.2
+          else
+            echo 'SYNESTHESIA_CARGO_NDK_CACHE=HIT version=4.1.2'
+          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
@@ -69,6 +88,7 @@ jobs:
         env:
           SYNESTHESIA_GODOT_LOG_DIR: build/ci-logs
           SYNESTHESIA_DISABLE_RUST_NATIVE: "0"
+          SYNESTHESIA_SKIP_SOURCE_VALIDATION: "1"
         run: ./scripts/build-android-apk.sh
 
       - name: Upload Godot validation diagnostics

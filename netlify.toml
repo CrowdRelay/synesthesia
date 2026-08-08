@@ -13,3 +13,6 @@
   from = "/reward"
   to = "/reward/"
   status = 301
+
+[[plugins]]
+  package = "./netlify/plugins/synesthesia-build-cache"

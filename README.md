@@ -17,7 +17,7 @@ Godot 4.7.1 portrait album experience for **Echoes Of The Modern Mind**. Eleven 
 
 The source art stays asymmetrical by intent: background 405×720, scene/subject 675×1200, foreground 540×960. Those are texture-source sizes, not the runtime viewport. The runtime never stretches a fixed 540×960 application canvas; it fits/crops the portrait art inside a native-resolution shell while UI remains pixel-sharp.
 
-The original video provenance is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). Runtime files are FHD and the complete cinematic pack remains below 40 MiB. Web runtime files (`.pck/.wasm/.js`) use a versioned cache-first policy after the first successful load; navigation stays network-first.
+The original video provenance is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). Runtime files are FHD and the complete cinematic pack remains below 40 MiB. Web runtime files (`.pck/.wasm/.js`) use network-first + HTTP revalidation with CacheStorage fallback, preventing mixed-version PCK/WASM after a deploy while retaining offline recovery.
 
 ## CrowdRelay integration
 
@@ -32,19 +32,35 @@ Campaign: `virya-synesthesia-album-v1`.
 Draw rules are server-enforced: 5 winners, 1 CD each, one completion/e-mail = one entry, no referral/check-in weighting. The five-CD draw does not set marketing consent and does not collect shipping data. The start menu also exposes a separate, explicit Signal signup (email + city + marketing consent) through the normal `/fans` contract; that signup never creates a Synesthesia draw entry.
 
 
-## Optional native Rust core
+## Rust hybrid core
 
-Synesthesia uses a native-first, Web-safe Godot + Rust architecture. The editor, scenes, UI, audio and GPU reveal renderer stay in Godot; deterministic gameplay primitives can live in the pure `native/synesthesia-core` crate and are exposed through the thin `native/synesthesia-gdext` adapter. The first migrated slice is gesture recognition.
+Synesthesia uses Godot + Rust with a deliberately narrow boundary. The editor, scenes, UI, audio, haptics and GPU reveal renderer stay in Godot; deterministic gameplay primitives live in the pure `native/synesthesia-core` crate and are exposed through the thin `native/synesthesia-gdext` adapter. The first migrated slice is gesture recognition.
 
-The extension is **not required** to open or export the project. Web keeps the proven GDScript fallback; native builds can enable the Rust backend explicitly with `./scripts/build-rust-native.sh`. See [`docs/RUST_HYBRID_ARCHITECTURE.md`](docs/RUST_HYBRID_ARCHITECTURE.md).
+Production builds are Rust-primary on all supported targets: macOS/Linux load the native GDExtension, Android packages an `arm64-v8a` `.so`, and Web/Netlify exports a single-threaded Emscripten side-module (`synesthesia_gdext.wasm`). The GDScript recognizer remains behavior-compatible as an explicit emergency fallback, not a silent production default. A clean checkout still opens without committed native binaries because the descriptor and build products are generated locally and ignored by Git. See [`docs/RUST_HYBRID_ARCHITECTURE.md`](docs/RUST_HYBRID_ARCHITECTURE.md). Runtime budgets, idle-work rules and save/cache boundaries are documented in [`docs/PERFORMANCE_ARCHITECTURE.md`](docs/PERFORMANCE_ARCHITECTURE.md).
 
 ## Build and validation
 
 ```bash
+# Fast canonical source/contracts gate (shared by CI, Netlify and Android)
+./scripts/validate-source.sh
+
+# Source gates + real Godot import/runtime smoke when Godot is installed
 ./validate.sh
+
+# Rust-primary production artifacts
 ./scripts/build-web-preview.sh
 ./scripts/build-android-apk.sh
+# Linux x86_64 release runner only:
+./scripts/build-linux-release.sh
 ```
+
+To share/review the repository without local build caches, use the clean-tree exporter instead of zipping the working directory:
+
+```bash
+./scripts/export-source.sh
+```
+
+It uses `git archive`, records the exact SHA/ref and refuses dirty trees, generated build/cache paths or oversized tracked source blobs. `native/target`, `.cache`, `.godot`, APK/WASM/native products and Godot template packs never belong in a source package.
 
 For local macOS development:
 

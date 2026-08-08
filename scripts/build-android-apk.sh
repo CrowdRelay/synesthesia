@@ -22,7 +22,28 @@ CMAKE_VERSION="3.10.2.4988404"
 check_sha256() {
   local expected="$1"
   local file="$2"
-  printf '%s  %s\n' "$expected" "$file" | sha256sum --check --strict
+  local actual
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual="$(sha256sum "$file" | awk '{print $1}')"
+  elif command -v shasum >/dev/null 2>&1; then
+    actual="$(shasum -a 256 "$file" | awk '{print $1}')"
+  else
+    printf 'ERROR: neither sha256sum nor shasum is available\n' >&2
+    return 1
+  fi
+  [[ "$actual" == "$expected" ]] || {
+    printf 'ERROR: checksum mismatch for %s\nexpected=%s\nactual=%s\n' "$file" "$expected" "$actual" >&2
+    return 1
+  }
+}
+
+write_sha256() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file"
+  else
+    shasum -a 256 "$file"
+  fi
 }
 
 require_cmd() {
@@ -34,7 +55,14 @@ require_cmd() {
 
 require_cmd curl
 require_cmd unzip
-require_cmd sha256sum
+
+# Cheap, platform-independent gates run before Android SDK/Godot/template setup.
+# CI may run the canonical source suite immediately after checkout and skip this
+# duplicate invocation when entering the platform-specific builder.
+if [[ "${SYNESTHESIA_SKIP_SOURCE_VALIDATION:-0}" != "1" ]]; then
+  ./scripts/validate-source.sh
+fi
+
 require_cmd keytool
 
 if [[ -z "$ANDROID_HOME" ]]; then
@@ -80,9 +108,13 @@ if [[ -z "$GODOT_BIN" ]]; then
   archive="$GODOT_CACHE_DIR/editor.zip"
   GODOT_BIN="$GODOT_CACHE_DIR/Godot_v${GODOT_VERSION}_linux.x86_64"
   if [[ ! -x "$GODOT_BIN" ]]; then
-    curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-all-errors \
-      --output "$archive" \
-      "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+    if [[ ! -s "$archive" ]]; then
+      curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-all-errors \
+        --output "$archive" \
+        "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+    else
+      printf 'SYNESTHESIA_GODOT_EDITOR_CACHE=HIT archive=%s\n' "$archive"
+    fi
     check_sha256 "$GODOT_EDITOR_SHA256" "$archive"
     unzip -q -o "$archive" -d "$GODOT_CACHE_DIR"
     chmod +x "$GODOT_BIN"
@@ -90,18 +122,32 @@ if [[ -z "$GODOT_BIN" ]]; then
 fi
 [[ -x "$GODOT_BIN" ]] || { printf 'ERROR: Godot binary is not executable: %s\n' "$GODOT_BIN" >&2; exit 1; }
 
-TEMPLATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates/$GODOT_RELEASE_VERSION"
+case "$(uname -s)" in
+  Darwin) GODOT_DATA_DIR="${GODOT_DATA_DIR:-$HOME/Library/Application Support/Godot}" ;;
+  *) GODOT_DATA_DIR="${GODOT_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/godot}" ;;
+esac
+TEMPLATE_DIR="$GODOT_DATA_DIR/export_templates/$GODOT_RELEASE_VERSION"
 if [[ ! -f "$TEMPLATE_DIR/android_debug.apk" || ! -f "$TEMPLATE_DIR/android_release.apk" ]]; then
   template_archive="$GODOT_CACHE_DIR/templates.tpz"
-  unpack_dir="$GODOT_CACHE_DIR/templates-unpack"
-  curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-all-errors \
-    --output "$template_archive" \
-    "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+  if [[ ! -s "$template_archive" ]]; then
+    curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-all-errors \
+      --output "$template_archive" \
+      "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+  else
+    printf 'SYNESTHESIA_ANDROID_TEMPLATE_CACHE=HIT archive=%s\n' "$template_archive"
+  fi
   check_sha256 "$GODOT_TEMPLATES_SHA256" "$template_archive"
-  rm -rf "$unpack_dir"
-  mkdir -p "$unpack_dir" "$TEMPLATE_DIR"
-  unzip -q "$template_archive" -d "$unpack_dir"
-  cp -R "$unpack_dir/templates/." "$TEMPLATE_DIR/"
+  mkdir -p "$TEMPLATE_DIR"
+  for template_name in android_debug.apk android_release.apk; do
+    target_template="$TEMPLATE_DIR/$template_name"
+    tmp_template="${target_template}.tmp"
+    rm -f "$tmp_template"
+    unzip -p "$template_archive" "templates/$template_name" > "$tmp_template"
+    [[ -s "$tmp_template" ]] || { printf 'ERROR: missing Android template: %s\n' "$template_name" >&2; rm -f "$tmp_template"; exit 1; }
+    mv "$tmp_template" "$target_template"
+  done
+  if [[ "${CI:-}" == "true" ]]; then rm -f "$template_archive"; fi
+  printf 'SYNESTHESIA_ANDROID_TEMPLATES=PASS scope=android-only\n'
 fi
 
 keystore_path="${ANDROID_DEBUG_KEYSTORE_PATH:-}"
@@ -161,7 +207,7 @@ export SYNESTHESIA_GODOT_LOG_DIR="${SYNESTHESIA_GODOT_LOG_DIR:-$ROOT/build/ci-lo
 mkdir -p "$SYNESTHESIA_GODOT_LOG_DIR"
 validation_log="$(mktemp "${TMPDIR:-/tmp}/synesthesia-android-validation.XXXXXX.log")"
 set +e
-GODOT_BIN="$GODOT_BIN" ./validate.sh 2>&1 | tee "$validation_log"
+SYNESTHESIA_SKIP_SOURCE_VALIDATION=1 GODOT_BIN="$GODOT_BIN" ./validate.sh 2>&1 | tee "$validation_log"
 validation_status=${PIPESTATUS[0]}
 set -e
 if (( validation_status != 0 )); then
@@ -223,7 +269,7 @@ fi
 "$GODOT_BIN" --headless --path "$ROOT" --export-debug "Android Debug" "$APK_PATH"
 [[ -s "$APK_PATH" ]] || { printf 'ERROR: Godot did not produce APK: %s\n' "$APK_PATH" >&2; exit 1; }
 
-sha256sum "$APK_PATH" > "${APK_PATH}.sha256"
+write_sha256 "$APK_PATH" > "${APK_PATH}.sha256"
 unzip -tq "$APK_PATH" >/dev/null
 
 if [[ "$rust_android_required" == "1" ]]; then

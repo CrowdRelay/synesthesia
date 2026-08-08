@@ -4,6 +4,7 @@ const PINK_NOISE_PATH: String = "res://assets/audio/pink-noise-asmr-loop.ogg"
 const BALLOON_POP_PATH: String = "res://assets/audio/balloon-pop.mp3"
 const SILENCE_DB: float = -60.0
 const COMPLETION_THRESHOLD: float = 0.99
+const CONTROL_INTERVAL: float = 1.0 / 60.0
 const MIN_FILTER_HZ: float = 820.0
 const MAX_FILTER_HZ: float = 19500.0
 const AMBIENCE_PATHS: Dictionary = {
@@ -98,6 +99,9 @@ var _last_reverb_wet: float = -1.0
 var _interaction_bloom_target: float = 0.0
 var _interaction_bloom_smoothed: float = 0.0
 var _suspended: bool = false
+var _control_accumulator: float = 0.0
+var _pending_excerpt_path: String = ""
+var _pending_asset_source
 
 func _ready() -> void:
     _noise_player = AudioStreamPlayer.new()
@@ -218,30 +222,28 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
     _music_available = false
     _load_room_ambience()
 
+    _pending_excerpt_path = ""
+    _pending_asset_source = null
     var excerpt_path: String = str(audio.get("completion_excerpt", ""))
     if excerpt_path.is_empty() or not excerpt_path.begins_with("res://") or not ResourceLoader.exists(excerpt_path):
         push_warning("Room music resource is missing: %s" % excerpt_path)
         return
     var resource: Resource = null
-    if asset_source != null and asset_source.has_method("take"):
+    if asset_source != null and asset_source.has_method("is_queued") and asset_source.is_queued(excerpt_path):
+        if asset_source.has_method("take_if_ready"):
+            resource = asset_source.take_if_ready(excerpt_path)
+        if resource == null:
+            # The excerpt is intentionally deferred. Do not turn a non-critical
+            # threaded audio decode into a room-transition main-thread join.
+            _pending_excerpt_path = excerpt_path
+            _pending_asset_source = asset_source
+            _apply_filter(0.0)
+            return
+    elif asset_source != null and asset_source.has_method("take"):
         resource = asset_source.take(excerpt_path)
     if resource == null:
         resource = load(excerpt_path)
-    if not resource is AudioStream:
-        push_warning("Room music excerpt is not an AudioStream: %s" % excerpt_path)
-        return
-    if resource is AudioStreamMP3:
-        var mp3_stream: AudioStreamMP3 = resource as AudioStreamMP3
-        mp3_stream.loop = true
-        mp3_stream.loop_offset = 0.0
-    elif resource is AudioStreamOggVorbis:
-        var ogg_stream: AudioStreamOggVorbis = resource as AudioStreamOggVorbis
-        ogg_stream.loop = true
-        ogg_stream.loop_offset = 0.0
-    _music_player.stream = resource as AudioStream
-    _music_player.volume_db = SILENCE_DB
-    _music_player.play()
-    _music_available = true
+    _attach_music_stream(resource, excerpt_path)
     _apply_filter(0.0)
 
 func _load_room_ambience() -> void:
@@ -274,6 +276,48 @@ func set_user_levels(music_linear: float, noise_linear: float) -> void:
     _music_user_gain_db = linear_to_db(clampf(music_linear, 0.001, 1.0)) if music_linear > 0.0 else SILENCE_DB
     _noise_user_gain_db = linear_to_db(clampf(noise_linear, 0.0, 1.0)) if noise_linear > 0.0 else SILENCE_DB
 
+func _attach_music_stream(resource: Resource, excerpt_path: String) -> bool:
+    if not resource is AudioStream:
+        push_warning("Room music excerpt is not an AudioStream: %s" % excerpt_path)
+        return false
+    if resource is AudioStreamMP3:
+        var mp3_stream: AudioStreamMP3 = resource as AudioStreamMP3
+        mp3_stream.loop = true
+        mp3_stream.loop_offset = 0.0
+    elif resource is AudioStreamOggVorbis:
+        var ogg_stream: AudioStreamOggVorbis = resource as AudioStreamOggVorbis
+        ogg_stream.loop = true
+        ogg_stream.loop_offset = 0.0
+    _music_player.stream = resource as AudioStream
+    _music_player.volume_db = SILENCE_DB
+    _music_player.play()
+    _music_available = true
+    return true
+
+func _resolve_pending_excerpt() -> void:
+    if _pending_excerpt_path.is_empty() or _pending_asset_source == null:
+        return
+    if not is_instance_valid(_pending_asset_source):
+        _pending_excerpt_path = ""
+        _pending_asset_source = null
+        return
+    var path: String = _pending_excerpt_path
+    var resource: Resource = null
+    if _pending_asset_source.has_method("take_if_ready"):
+        resource = _pending_asset_source.take_if_ready(path)
+    if resource == null:
+        if _pending_asset_source.has_method("is_queued") and _pending_asset_source.is_queued(path):
+            return
+        # A failed threaded request should not stall gameplay with an immediate
+        # synchronous retry. Leave music unavailable; the sensory bed still works.
+        push_warning("Deferred room music failed to preload: %s" % path)
+        _pending_excerpt_path = ""
+        _pending_asset_source = null
+        return
+    _pending_excerpt_path = ""
+    _pending_asset_source = null
+    _attach_music_stream(resource, path)
+
 func set_suspended(value: bool) -> void:
     if _suspended == value:
         return
@@ -285,16 +329,22 @@ func set_suspended(value: bool) -> void:
     for player in _sfx_players:
         if player != null and player.stream != null:
             player.stream_paused = value
+    _control_accumulator = 0.0
     if not value:
-        # Apply targets on the next frame instead of burning CPU behind menus.
+        # Apply targets on the next control tick instead of burning CPU behind menus.
         _last_filter_hz = -1.0
         _last_reverb_wet = -1.0
 
 func reveal_release_excerpt() -> bool:
-    if not _music_available:
-        return false
     _completion_active = true
     _coverage_target = 1.0
+    # Completion can happen between 60 Hz audio-control ticks. If the deferred
+    # worker already finished, attach it here without ever joining an in-flight
+    # ResourceLoader request on the main thread.
+    if not _music_available and not _pending_excerpt_path.is_empty():
+        _resolve_pending_excerpt()
+    if not _music_available:
+        return false
     if not _music_player.playing:
         _music_player.play()
     return true
@@ -313,11 +363,17 @@ func get_release_title() -> String:
     return _release_title
 
 func _process(delta: float) -> void:
-    _coverage_smoothed = move_toward(_coverage_smoothed, _coverage_target, delta * 0.72)
-    _collectibles_smoothed = move_toward(_collectibles_smoothed, _collectibles_target, delta * 0.90)
-    _quiet_smoothed = move_toward(_quiet_smoothed, _quiet_target, delta * 1.80)
-    _interaction_bloom_target = move_toward(_interaction_bloom_target, 0.0, delta * 0.58)
-    _interaction_bloom_smoothed = move_toward(_interaction_bloom_smoothed, _interaction_bloom_target, delta * 5.8)
+    _control_accumulator += minf(delta, 0.10)
+    if _control_accumulator < CONTROL_INTERVAL:
+        return
+    var control_delta: float = minf(_control_accumulator, 0.05)
+    _control_accumulator = 0.0
+    _resolve_pending_excerpt()
+    _coverage_smoothed = move_toward(_coverage_smoothed, _coverage_target, control_delta * 0.72)
+    _collectibles_smoothed = move_toward(_collectibles_smoothed, _collectibles_target, control_delta * 0.90)
+    _quiet_smoothed = move_toward(_quiet_smoothed, _quiet_target, control_delta * 1.80)
+    _interaction_bloom_target = move_toward(_interaction_bloom_target, 0.0, control_delta * 0.58)
+    _interaction_bloom_smoothed = move_toward(_interaction_bloom_smoothed, _interaction_bloom_target, control_delta * 5.8)
 
     var reveal_mix: float = clampf(_coverage_smoothed, 0.0, 1.0)
     if _completion_active or _coverage_target >= COMPLETION_THRESHOLD:
@@ -335,7 +391,7 @@ func _process(delta: float) -> void:
         if noise_ratio > 0.0001:
             noise_target_db = start_db + linear_to_db(noise_ratio)
         noise_target_db -= quiet_cut_db
-        _noise_player.volume_db = move_toward(_noise_player.volume_db, noise_target_db, delta * 20.0)
+        _noise_player.volume_db = move_toward(_noise_player.volume_db, noise_target_db, control_delta * 20.0)
 
     if _music_player != null and _music_available:
         if not _music_player.playing:
@@ -344,13 +400,13 @@ func _process(delta: float) -> void:
         if music_ratio > 0.0001:
             music_target_db = _completion_music_db + linear_to_db(music_ratio) + _music_user_gain_db + _interaction_bloom_smoothed * 2.4
         music_target_db -= quiet_cut_db
-        _music_player.volume_db = move_toward(_music_player.volume_db, music_target_db, delta * 17.0)
+        _music_player.volume_db = move_toward(_music_player.volume_db, music_target_db, control_delta * 17.0)
 
     if _ambient_player != null and _ambient_player.stream != null:
         if not _ambient_player.playing:
             _ambient_player.play()
         var ambient_target_db: float = (-31.0 if _calm_mode else -27.0) + reveal_mix * 2.5 + _interaction_bloom_smoothed * 1.2 - quiet_cut_db
-        _ambient_player.volume_db = move_toward(_ambient_player.volume_db, ambient_target_db, delta * 9.0)
+        _ambient_player.volume_db = move_toward(_ambient_player.volume_db, ambient_target_db, control_delta * 9.0)
 
     _apply_filter(reveal_mix)
 

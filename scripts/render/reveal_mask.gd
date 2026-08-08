@@ -4,6 +4,13 @@ const COVERAGE_ALPHA: int = 54
 const STATE_FORMAT: String = "png-mask-v2"
 const MAX_ENCODED_STATE_CHARS: int = 1_000_000
 const MAX_PNG_STATE_BYTES: int = 750_000
+const GRAIN_DEFAULT: int = 0
+const GRAIN_DRY_INK: int = 1
+const GRAIN_GLITCH: int = 2
+const GRAIN_GLASS: int = 3
+const GRAIN_CONFETTI: int = 4
+const GRAIN_EMBER: int = 5
+const GRAIN_ORGANIC: int = 6
 
 var width: int = 270
 var height: int = 480
@@ -12,6 +19,11 @@ var _image: Image
 var _texture: ImageTexture
 var _covered_pixels: int = 0
 var _dirty: bool = false
+var _revision: int = 0
+var _cached_revision: int = -1
+var _cached_state: Dictionary = {}
+var _cached_png_bytes: int = 0
+var _state_encode_count: int = 0
 
 func configure(mask_width: int, mask_height: int) -> void:
     width = clampi(mask_width, 90, 540)
@@ -23,6 +35,9 @@ func configure(mask_width: int, mask_height: int) -> void:
     _texture = ImageTexture.create_from_image(_image)
     _covered_pixels = 0
     _dirty = false
+    _revision = 0
+    _invalidate_export_cache()
+    _state_encode_count = 0
 
 func texture() -> Texture2D:
     return _texture
@@ -31,6 +46,7 @@ func clear() -> void:
     _alpha.fill(0)
     _covered_pixels = 0
     _dirty = true
+    _mark_changed()
     upload_if_dirty()
 
 func apply_stamp(stamp: Dictionary, _remember: bool = true) -> bool:
@@ -46,6 +62,7 @@ func apply_stamp(stamp: Dictionary, _remember: bool = true) -> bool:
     var seed: int = int(stamp.get("seed", 0))
     var profile: String = str(stamp.get("profile", "soft"))
     var stretch: Vector2 = _profile_stretch(profile)
+    var grain_mode: int = _grain_mode(profile)
     var radius_x: float = maxf(radius_px * stretch.x, 0.01)
     var radius_y: float = maxf(radius_px * stretch.y, 0.01)
     var inverse_radius_x: float = 1.0 / radius_x
@@ -72,7 +89,7 @@ func apply_stamp(stamp: Dictionary, _remember: bool = true) -> bool:
             var distance: float = sqrt(distance_squared)
             var falloff: float = 1.0 - distance
             falloff = falloff * falloff * (3.0 - 2.0 * falloff)
-            var grain: float = _grain(x, y, seed, profile)
+            var grain: float = _grain(x, y, seed, grain_mode)
             var textured: float = clampf(falloff * lerpf(1.0, grain, texture_strength), 0.0, 1.0)
             var value: int = clampi(int(round(255.0 * strength * textured)), 0, 255)
             var index: int = y * width + x
@@ -86,6 +103,7 @@ func apply_stamp(stamp: Dictionary, _remember: bool = true) -> bool:
 
     if changed:
         _dirty = true
+        _mark_changed()
     return changed
 
 func upload_if_dirty() -> bool:
@@ -100,25 +118,16 @@ func coverage() -> float:
     return float(_covered_pixels) / float(maxi(1, width * height))
 
 func export_state() -> Dictionary:
-    _sync_image_data()
-    var png: PackedByteArray = _image.save_png_to_buffer()
-    if png.is_empty():
-        return {
-            "format": "threshold-bitmap-v2-fallback",
-            "mask_size": [width, height],
-            "covered": _export_threshold_runs(),
-        }
-    return {
-        "format": STATE_FORMAT,
-        "mask_size": [width, height],
-        "png_base64": Marshalls.raw_to_base64(png),
-    }
+    _ensure_export_cache()
+    return _cached_state.duplicate(true)
 
 func restore_state(state: Dictionary, fallback_profile: String) -> bool:
-    clear()
     var state_format: String = str(state.get("format", ""))
+    # A valid PNG fully replaces the mask, so do not upload an empty clear frame
+    # first. Invalid/legacy formats still start from a known-empty mask.
     if state_format == STATE_FORMAT and _restore_png_state(state):
         return true
+    clear()
     if state_format == "threshold-bitmap-v2-fallback" and _restore_threshold_runs(state):
         return true
 
@@ -175,9 +184,42 @@ func restore_state(state: Dictionary, fallback_profile: String) -> bool:
     return false
 
 func estimated_state_bytes() -> int:
+    _ensure_export_cache()
+    return _cached_png_bytes
+
+func state_encode_count() -> int:
+    return _state_encode_count
+
+func _ensure_export_cache() -> void:
+    if _cached_revision == _revision and not _cached_state.is_empty():
+        return
     _sync_image_data()
     var png: PackedByteArray = _image.save_png_to_buffer()
-    return png.size()
+    _state_encode_count += 1
+    if png.is_empty():
+        _cached_state = {
+            "format": "threshold-bitmap-v2-fallback",
+            "mask_size": [width, height],
+            "covered": _export_threshold_runs(),
+        }
+        _cached_png_bytes = _alpha.size()
+    else:
+        _cached_state = {
+            "format": STATE_FORMAT,
+            "mask_size": [width, height],
+            "png_base64": Marshalls.raw_to_base64(png),
+        }
+        _cached_png_bytes = png.size()
+    _cached_revision = _revision
+
+func _mark_changed() -> void:
+    _revision += 1
+    _invalidate_export_cache()
+
+func _invalidate_export_cache() -> void:
+    _cached_revision = -1
+    _cached_state.clear()
+    _cached_png_bytes = 0
 
 func _restore_png_state(state: Dictionary) -> bool:
     var encoded: String = str(state.get("png_base64", ""))
@@ -190,6 +232,11 @@ func _restore_png_state(state: Dictionary) -> bool:
     var error: Error = restored.load_png_from_buffer(png)
     if error != OK or restored.is_empty():
         return false
+    var reusable_png: bool = (
+        restored.get_format() == Image.FORMAT_L8
+        and restored.get_width() == width
+        and restored.get_height() == height
+    )
     if restored.get_format() != Image.FORMAT_L8:
         restored.convert(Image.FORMAT_L8)
     if restored.get_width() != width or restored.get_height() != height:
@@ -201,6 +248,18 @@ func _restore_png_state(state: Dictionary) -> bool:
     _recount_coverage()
     _texture.update(_image)
     _dirty = false
+    _mark_changed()
+    if reusable_png:
+        # The validated source bytes already represent this exact mask revision.
+        # Reuse them until the next brush mutation instead of PNG-encoding again
+        # on the first autosave after resume.
+        _cached_state = {
+            "format": STATE_FORMAT,
+            "mask_size": [width, height],
+            "png_base64": encoded,
+        }
+        _cached_png_bytes = png.size()
+        _cached_revision = _revision
     return true
 
 func _export_threshold_runs() -> Array:
@@ -231,6 +290,7 @@ func _restore_threshold_runs(state: Dictionary) -> bool:
         any_run = any_run or length > 0
     _recount_coverage()
     _dirty = true
+    _mark_changed()
     upload_if_dirty()
     return any_run
 
@@ -262,24 +322,38 @@ func _profile_stretch(profile: String) -> Vector2:
         _:
             return Vector2.ONE
 
-func _grain(x: int, y: int, seed: int, profile: String) -> float:
-    var base: float = _hash01(x, y, seed)
+func _grain_mode(profile: String) -> int:
     match profile:
-        "dry_ink":
-            return 0.30 + 0.70 * _threshold(base, 0.28)
-        "glitch":
+        "dry_ink": return GRAIN_DRY_INK
+        "glitch": return GRAIN_GLITCH
+        "glass": return GRAIN_GLASS
+        "confetti": return GRAIN_CONFETTI
+        "ember": return GRAIN_EMBER
+        "organic": return GRAIN_ORGANIC
+        _: return GRAIN_DEFAULT
+
+func _grain(x: int, y: int, seed: int, mode: int) -> float:
+    # Select the profile once per stamp. Glitch/glass/organic never used the
+    # old base hash, so avoid a per-pixel sine/hash that was pure dead work.
+    match mode:
+        GRAIN_GLITCH:
             var stripe_x: int = int(floor(float(x) / 5.0))
             var stripe_y: int = int(floor(float(y) / 2.0))
             var stripe: float = _hash01(stripe_x, stripe_y, seed + 91)
             return 0.18 + 0.82 * _threshold(stripe, 0.22)
-        "glass":
+        GRAIN_GLASS:
             return 0.50 + 0.50 * abs(sin(float(x + y + seed) * 0.31))
-        "confetti":
-            return 0.35 + 0.65 * _threshold(base, 0.36)
-        "ember":
-            return 0.38 + 0.62 * pow(base, 0.45)
-        "organic":
+        GRAIN_ORGANIC:
             return 0.48 + 0.52 * (0.5 + 0.5 * sin(float(x * 3 + y * 2 + seed) * 0.11))
+
+    var base: float = _hash01(x, y, seed)
+    match mode:
+        GRAIN_DRY_INK:
+            return 0.30 + 0.70 * _threshold(base, 0.28)
+        GRAIN_CONFETTI:
+            return 0.35 + 0.65 * _threshold(base, 0.36)
+        GRAIN_EMBER:
+            return 0.38 + 0.62 * pow(base, 0.45)
         _:
             return 0.58 + 0.42 * base
 

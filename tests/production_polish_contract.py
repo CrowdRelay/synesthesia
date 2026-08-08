@@ -62,8 +62,10 @@ adaptive = require(
     "scripts/app/adaptive_performance.gd",
     "MEMORY_SOFT_MB",
     '"frame-pressure"',
-    '"sustained-pressure"',
-    '"recovery"',
+    '"frame-hitches"',
+    '"memory-pressure"',
+    '"stable-recovery"',
+    "CHANGE_COOLDOWN_SECONDS",
 )
 audio = require(
     "scripts/audio_director.gd",
@@ -133,8 +135,9 @@ require("scripts/render/room_video_layer.gd", "VideoStreamPlayer.new()", "VideoS
 memory = require("tools/memory_budget.py", "stdlib-webp", "MAX_CURRENT_PLUS_NEXT")
 if "PIL" in memory or "pillow" in memory.lower():
     failures.append("memory budget must remain stdlib-only")
-require("validate.sh", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py", "lifecycle_smoke.gd")
-require(".github/workflows/ci.yml", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py")
+require("scripts/validate-source.sh", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py")
+require("validate.sh", "./scripts/validate-source.sh", "lifecycle_smoke.gd")
+require(".github/workflows/ci.yml", "./scripts/validate-source.sh")
 
 if len(main.splitlines()) > 980:
     failures.append(f"main controller grew above 980 lines: {len(main.splitlines())}")

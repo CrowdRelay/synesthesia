@@ -8,7 +8,8 @@ var calm_mode: bool = true
 var reduced_motion: bool = false
 var particle_count: int = 42
 var redraw_hz: float = 24.0
-var _particles: Array[Dictionary] = []
+var _particles: PackedVector4Array = PackedVector4Array()
+var _particle_phases: PackedFloat32Array = PackedFloat32Array()
 var _accumulator: float = 0.0
 var _time: float = 0.0
 var _runtime_scale: float = 1.0
@@ -23,23 +24,28 @@ func configure(room_style: String, accent_color: Color, secondary_color: Color, 
     secondary = secondary_color
     particle_count = clampi(int(quality.get("particle_count", 42)), 12, 96)
     redraw_hz = clampf(float(quality.get("atmosphere_hz", 24.0)), 8.0, 36.0)
-    _particles.clear()
+    _particles.resize(particle_count)
+    _particle_phases.resize(particle_count)
     for index in range(particle_count):
-        _particles.append({
-            "x": _hash01(index, 11),
-            "y": _hash01(index, 23),
-            "speed": lerpf(0.015, 0.085, _hash01(index, 37)),
-            "size": lerpf(0.8, 3.6, _hash01(index, 41)),
-            "phase": _hash01(index, 53) * TAU,
-        })
+        _particles[index] = Vector4(
+            _hash01(index, 11),
+            _hash01(index, 23),
+            lerpf(0.015, 0.085, _hash01(index, 37)),
+            lerpf(0.8, 3.6, _hash01(index, 41))
+        )
+        _particle_phases[index] = _hash01(index, 53) * TAU
     queue_redraw()
 
 func set_progress(value: float) -> void:
     progress = clampf(value, 0.0, 1.0)
+    if reduced_motion:
+        queue_redraw()
 
 func set_sensory(calm: bool, reduced: bool) -> void:
     calm_mode = calm
     reduced_motion = reduced
+    set_process(not reduced_motion)
+    queue_redraw()
 
 func set_runtime_scale(value: float) -> void:
     _runtime_scale = clampf(value, 0.55, 1.0)
@@ -61,13 +67,13 @@ func _draw() -> void:
     var visible_ratio: float = 0.20 + progress * 0.80
     var active_count: int = clampi(int(round(float(_particles.size()) * _runtime_scale)), 1, _particles.size())
     for index in range(active_count):
-        var particle: Dictionary = _particles[index]
-        var x: float = float(particle.get("x", 0.5))
-        var y: float = fmod(float(particle.get("y", 0.5)) + _time * float(particle.get("speed", 0.03)), 1.0)
-        var phase: float = float(particle.get("phase", 0.0))
+        var particle: Vector4 = _particles[index]
+        var x: float = particle.x
+        var y: float = fmod(particle.y + _time * particle.z, 1.0)
+        var phase: float = _particle_phases[index]
         var drift: float = sin(_time * 1.7 + phase) * 0.018
         var point: Vector2 = Vector2((x + drift) * size.x, y * size.y)
-        var radius: float = float(particle.get("size", 1.5))
+        var radius: float = particle.w
         var alpha: float = (0.035 + 0.10 * visible_ratio) * (0.55 + 0.45 * sin(_time * 2.0 + phase))
         match style:
             "ashes":

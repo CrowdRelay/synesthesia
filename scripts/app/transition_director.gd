@@ -1,9 +1,9 @@
 extends Node
 
 const DoorTransitionLayerScript := preload("res://scripts/app/door_transition_layer.gd")
-const DOOR_CLOSE_SFX: String = "res://assets/audio/sfx/door-close.wav"
-const DOOR_OPEN_SFX: String = "res://assets/audio/sfx/door-open.wav"
-const TELEPORT_SFX: String = "res://assets/audio/sfx/teleport-suck.wav"
+const DOOR_CLOSE_STREAM: AudioStream = preload("res://assets/audio/sfx/door-close.wav")
+const DOOR_OPEN_STREAM: AudioStream = preload("res://assets/audio/sfx/door-open.wav")
+const TELEPORT_STREAM: AudioStream = preload("res://assets/audio/sfx/teleport-suck.wav")
 
 var overlay: ColorRect
 var accent_line: ColorRect
@@ -49,14 +49,11 @@ func install(host: Control) -> void:
     transition_audio.volume_db = -13.0
     add_child(transition_audio)
 
-func _play_transition_sfx(path: String, volume_db: float = -13.0) -> void:
-    if transition_audio == null or path.is_empty() or not ResourceLoader.exists(path):
-        return
-    var resource: Resource = load(path)
-    if not resource is AudioStream:
+func _play_transition_sfx(stream: AudioStream, volume_db: float = -13.0) -> void:
+    if transition_audio == null or stream == null:
         return
     transition_audio.stop()
-    transition_audio.stream = resource as AudioStream
+    transition_audio.stream = stream
     transition_audio.volume_db = volume_db
     transition_audio.play()
 
@@ -141,7 +138,7 @@ func travel_out() -> void:
     door_layer.set_warp_mix(0.0)
     door_layer.set_flash_mix(0.0)
 
-    _play_transition_sfx(DOOR_OPEN_SFX, -13.0)
+    _play_transition_sfx(DOOR_OPEN_STREAM, -13.0)
     var door_duration: float = 0.18 if _reduced_motion else 0.34
     var threshold_tween: Tween = create_tween()
     threshold_tween.set_parallel(true)
@@ -151,7 +148,7 @@ func travel_out() -> void:
     threshold_tween.tween_method(Callable(door_layer, "set_approach_mix"), 0.0, 0.18, door_duration)
     await threshold_tween.finished
 
-    _play_transition_sfx(TELEPORT_SFX, -10.5)
+    _play_transition_sfx(TELEPORT_STREAM, -10.5)
     var boost_duration: float = 0.11 if _reduced_motion else 0.27
     var boost_tween: Tween = create_tween()
     boost_tween.set_parallel(true)
@@ -208,5 +205,5 @@ func travel_in() -> void:
 
     # A quiet close behind the listener sells the physical doorway while the
     # visible door is already out of the camera's path.
-    _play_transition_sfx(DOOR_CLOSE_SFX, -19.0)
+    _play_transition_sfx(DOOR_CLOSE_STREAM, -19.0)
     door_layer.reset()

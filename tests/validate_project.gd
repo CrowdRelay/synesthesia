@@ -210,6 +210,11 @@ func _validate_mask_roundtrip() -> void:
     var state: Dictionary = state_value
     if str(state.get("format", "")) != "png-mask-v2":
         _fail("mask state format is not png-mask-v2")
+    var first_encode_count: int = int(first.state_encode_count())
+    first.export_state()
+    first.estimated_state_bytes()
+    if int(first.state_encode_count()) != first_encode_count:
+        _fail("mask re-encoded unchanged state")
     var second: Variant = (mask_script as Script).new()
     second.configure(90, 160)
     if not bool(second.restore_state(state, "ink")):
@@ -218,8 +223,12 @@ func _validate_mask_roundtrip() -> void:
     var after: float = float(second.coverage())
     if absf(before - after) > 0.002:
         _fail("mask coverage changed after png roundtrip")
+    var restored_encode_count: int = int(second.state_encode_count())
     if int(second.estimated_state_bytes()) <= 0:
         _fail("mask state byte estimate is empty")
+    second.export_state()
+    if int(second.state_encode_count()) != restored_encode_count:
+        _fail("restored png state was re-encoded without a mask mutation")
 
 func _load_json(path: String) -> Dictionary:
     if path.is_empty() or not FileAccess.file_exists(path):
