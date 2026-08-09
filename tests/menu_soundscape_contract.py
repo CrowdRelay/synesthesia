@@ -3,7 +3,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "scripts" / "audio" / "menu_soundscape.gd").read_text()
-main = (ROOT / "scripts" / "main.gd").read_text()
+main = "\n".join((ROOT / path).read_text() for path in ("scripts/main.gd", "scripts/app/main_room_flow.gd", "scripts/app/main_settings_flow.gd", "scripts/app/main_reward_flow.gd"))
 runtime = (ROOT / "scripts" / "app" / "soundscape_runtime.gd").read_text()
 
 tracks = re.findall(r'"res://assets/audio/[^\"]+-room-outro\.mp3"', source)

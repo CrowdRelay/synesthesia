@@ -1,5 +1,7 @@
 extends Node
 
+const ReleaseReader := preload("res://scripts/app/release_reader.gd")
+
 const MAX_QUEUED: int = 8
 const DEFAULT_TRANSITION_WAIT_MS: int = 320
 
@@ -15,13 +17,9 @@ func prepare(manifest_path: String) -> void:
     _prune_finished_failures()
     if manifest_path.is_empty() or not FileAccess.file_exists(manifest_path):
         return
-    var file: FileAccess = FileAccess.open(manifest_path, FileAccess.READ)
-    if file == null:
+    var manifest: Dictionary = ReleaseReader.load_json(manifest_path)
+    if manifest.is_empty():
         return
-    var parsed: Variant = JSON.parse_string(file.get_as_text())
-    if not parsed is Dictionary:
-        return
-    var manifest: Dictionary = parsed
     var room_value: Variant = manifest.get("room", {})
     var room: Dictionary = room_value if room_value is Dictionary else {}
     var art_value: Variant = room.get("art_direction", {})
@@ -37,6 +35,9 @@ func prepare(manifest_path: String) -> void:
     ]
     for path in critical_paths:
         _queue(path, true)
+    # Audio is intentionally non-critical: queue it during menu/room time, but
+    # never let a decoder join delay the covered door transition.
+    _queue(str(audio.get("ambience", "")), false)
     _queue(str(audio.get("completion_excerpt", "")), false)
 
 func _queue(path: String, critical: bool) -> void:

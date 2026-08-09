@@ -4,9 +4,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 failures: list[str] = []
 
-hud = (ROOT / "scripts/ui/app_hud.gd").read_text(errors="replace")
+hud = (ROOT / "scripts/ui/app_hud.gd").read_text(errors="replace") + "\n" + (ROOT / "scripts/ui/hud_layout_flow.gd").read_text(errors="replace")
 intro = (ROOT / "scripts/ui/experience_intro_card.gd").read_text(errors="replace")
 main = (ROOT / "scripts/main.gd").read_text(errors="replace")
+room_flow = (ROOT / "scripts/app/main_room_flow.gd").read_text(errors="replace")
+main_flow = main + "\n" + room_flow
 transition = (ROOT / "scripts/app/transition_director.gd").read_text(errors="replace")
 video = (ROOT / "scripts/render/room_video_layer.gd").read_text(errors="replace")
 
@@ -48,7 +50,7 @@ for token in (
     'await transition_director.travel_out()',
     'await transition_director.travel_in()',
 ):
-    if token not in main:
+    if token not in main_flow:
         failures.append(f"main intro/door flow token missing: {token}")
 
 for token in ('overlay.z_index = 930', 'door_layer.z_index = 940'):
@@ -58,14 +60,14 @@ for token in ('overlay.z_index = 930', 'door_layer.z_index = 940'):
 if 'UnmaskedEyeGlow' in video or 'unmasked_eye_glow_layer' in video:
     failures.append("Unmasked synthetic eye glow must stay removed; use supplied source video")
 
-coverage_start = main.find('func _on_coverage_changed')
-coverage_end = main.find('func _on_collectible_found', coverage_start)
-coverage_block = main[coverage_start:coverage_end]
+coverage_start = room_flow.find('func _on_coverage_changed')
+coverage_end = room_flow.find('func _on_collectible_found', coverage_start)
+coverage_block = room_flow[coverage_start:coverage_end]
 if coverage_block.find('audio_director.set_progress') > coverage_block.find('hud.update_reveal'):
     failures.append("audio progress must update before HUD so UI failures cannot mute music")
-complete_start = main.find('func _complete_current_room')
-complete_end = main.find('var release_id:', complete_start)
-complete_block = main[complete_start:complete_end]
+complete_start = room_flow.find('func _complete_current_room')
+complete_end = room_flow.find('var release_id:', complete_start)
+complete_block = room_flow[complete_start:complete_end]
 if complete_block.find('audio_director.reveal_release_excerpt') > complete_block.find('hud.update_reveal'):
     failures.append("completion music must start before HUD updates")
 

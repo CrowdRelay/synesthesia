@@ -61,9 +61,10 @@ func _on_visibility_changed() -> void:
         call_deferred("restart_authored_animation")
 
 func restart_authored_animation() -> void:
-    # Menu is created only after the boot layer is freed. Starting one frame
-    # later guarantees that the VideoStreamPlayer is visible, sized and inside
-    # the active tree before Theora playback begins.
+    # The authored decoder is menu-only. Splash deliberately stays on the
+    # lightweight bitmap/procedural eye so Web can present the first Godot frame
+    # without opening Theora. Starting one frame later also guarantees valid UI
+    # geometry before playback begins.
     if not is_inside_tree() or not is_visible_in_tree() or not _wants_menu_video():
         return
     _sync_video_mode()
@@ -75,7 +76,7 @@ func restart_authored_animation() -> void:
     _last_video_position = 0.0
 
 func _wants_menu_video() -> bool:
-    return (_profile == "menu" or _profile == "splash") and not _reduced_motion
+    return _profile == "menu" and not _reduced_motion
 
 func _video_is_active() -> bool:
     return _video_player != null and _video_player.visible and _video_player.stream != null and _video_player.is_playing()

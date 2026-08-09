@@ -25,7 +25,7 @@ Room transitions distinguish **critical preload** (scene + authored art needed t
 
 Godot runtime filenames are stable across releases. Therefore `.js`, `.wasm` and `.pck` use network-first service-worker handling plus `max-age=0, must-revalidate` browser caching. Unchanged files can validate via ETag/304, but a new HTML shell cannot silently pair with an old PCK/WASM. Navigation alone may fall back to cached HTML; runtime/media requests never receive an HTML response with the wrong MIME type. Transient 429/5xx responses can use an already-cached last-good runtime, while deliberate 4xx/removals are never hidden by stale binaries.
 
-The CacheStorage namespace is fingerprinted from the final runtime PCK/WASM/generated JS, not only the semantic app version. A runtime change therefore creates a new bounded cache generation even if the marketing version string did not move. Revalidation also compares ETag/Last-Modified before writing, avoiding repeated 40+ MiB PCK rewrites when the asset is unchanged. CacheStorage writes run via `event.waitUntil()` on a cloned response, so the engine receives the network response immediately instead of waiting for a large PCK/WASM cache write to finish.
+The CacheStorage namespace is fingerprinted from the final runtime PCK/WASM/generated JS, not only the semantic app version. A runtime change therefore creates a new bounded cache generation even if the marketing version string did not move. Revalidation also compares ETag/Last-Modified before writing, avoiding repeated large PCK rewrites when the asset is unchanged. CacheStorage writes run via `event.waitUntil()` on a cloned response, so the engine receives the network response immediately instead of waiting for a large PCK/WASM cache write to finish.
 
 ## Build/cache policy
 
@@ -35,7 +35,7 @@ Production export presets explicitly exclude `tests/*` and `tools/*`. The Web bu
 
 ## Media policy
 
-Current cinematic runtime files are already encoded assets. Do not transcode the 1080×1920 runtime OGV files again merely to shrink them: their recorded provenance is 720×1280, so another lossy generation would trade quality for size. A future media pass should start from original masters and benchmark decode time, thermal load, payload and visual quality on representative Android devices.
+Cinematic runtime files stay at the supplied 720×1280 source geometry. Do not reintroduce a 1080×1920 upscale: it adds download/decode cost without source detail. New source clips should stay as native 24 fps masters and be encoded directly to forward→reverse Ogg Theora ping-pong loops with duplicated turn-around endpoints removed; benchmark payload, decode time, thermal load and visual quality on representative Android/Web devices before raising the media budget.
 
 ## Measurement before further migration
 

@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""Static guard for the cheap-first-frame startup architecture."""
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+main = (ROOT / "scripts/main.gd").read_text()
+room_flow = (ROOT / "scripts/app/main_room_flow.gd").read_text()
+reward_flow = (ROOT / "scripts/app/main_reward_flow.gd").read_text()
+boot = (ROOT / "scripts/ui/boot_sequence.gd").read_text()
+eye = (ROOT / "scripts/ui/door_eye_motif.gd").read_text()
+failures: list[str] = []
+
+ready = main[main.index("func _ready()"):main.index("func _build_application_shell()")]
+intro = main[main.index("func _show_experience_intro()"):main.index("func _show_album_archive()")]
+begin = main[main.index("func _begin_experience()"):main.index("func _enter_main_menu_mode()")]
+reward_config = reward_flow[reward_flow.index("func _configure_reward_client()"):reward_flow.index("func _prepare_finale_background()")]
+if "_load_room(" in ready:
+    failures.append("_ready still constructs a room before the first usable frame")
+if "reward_client.start_run()" in reward_config:
+    failures.append("reward networking still starts during boot configuration")
+if "asset_preloader.prepare" not in intro:
+    failures.append("menu does not thread-warm the current room")
+if "_load_room(current_room_index, false)" not in begin:
+    failures.append("first room is not instantiated behind the begin transition")
+if "await asset_preloader.wait_for_queued()" not in begin:
+    failures.append("first-room threaded warmup is not given a covered transition grace period")
+if begin.index("await transition_director.travel_out()") > begin.index("_load_room(current_room_index, false)"):
+    failures.append("first room is constructed before the door transition covers the screen")
+if "reward_client.start_run()" not in begin:
+    failures.append("reward networking is not gated on explicit experience start")
+if "app.room.set_interaction_enabled(false)" not in room_flow:
+    failures.append("new room can receive input before restore/layout completion")
+if 'return _profile == "menu" and not _reduced_motion' not in eye:
+    failures.append("splash may open the menu Theora decoder")
+for token in (
+    "const BOOT_HOLD: float = 0.16",
+    "const DOOR_DURATION: float = 0.46",
+    "const FADE_DURATION: float = 0.16",
+):
+    if token not in boot:
+        failures.append(f"bounded branded boot timing missing: {token}")
+
+if failures:
+    for failure in failures:
+        print(f"FAIL: {failure}")
+    raise SystemExit(f"SYNESTHESIA_STARTUP_LATENCY=FAIL count={len(failures)}")
+print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=menu-only room=thread-warm+door-wait+load network=interaction-gated splash-video=off branded-boot=0.78s")

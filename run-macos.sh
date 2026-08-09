@@ -50,9 +50,9 @@ for name in "${required_audio[@]}"; do
   [[ -s "$ROOT/assets/audio/$name" ]] || { echo "Missing audio asset: assets/audio/$name" >&2; exit 4; }
 done
 required_sensory_audio=(
-  ambience/uncertainty.wav ambience/party.wav ambience/unmasked.wav ambience/calling.wav
-  ambience/seed.wav ambience/hybrid.wav ambience/technophobia.wav ambience/invaluable.wav
-  ambience/ashes.wav ambience/waves.wav ambience/rise.wav
+  ambience/uncertainty.ogg ambience/party.ogg ambience/unmasked.ogg ambience/calling.ogg
+  ambience/seed.ogg ambience/hybrid.ogg ambience/technophobia.ogg ambience/invaluable.ogg
+  ambience/ashes.ogg ambience/waves.ogg ambience/rise.ogg
   sfx/glass-clink.wav sfx/wood-creak.wav sfx/gunshot.wav sfx/mirror-shatter.wav
   sfx/wing-whoosh.wav sfx/electric-bzz.wav sfx/mask-whisper.wav sfx/wave-slap.wav
   sfx/light-rise.wav sfx/presence-wind.wav sfx/door-close.wav sfx/door-open.wav sfx/teleport-suck.wav

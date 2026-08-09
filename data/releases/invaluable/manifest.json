@@ -79,6 +79,7 @@
     "mode": "pink_noise_reveal_mix",
     "title": "Invaluable",
     "completion_excerpt": "res://assets/audio/invaluable-room-outro.mp3",
+    "ambience": "res://assets/audio/ambience/invaluable.ogg",
     "completion_volume_db": -8.0,
     "source": "VIRYA — Echoes Of The Modern Mind",
     "note": "Painting reveals volume, frequency range and stereo space; at 99% the ASMR noise and filtering are gone.",

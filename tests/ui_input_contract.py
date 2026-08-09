@@ -70,12 +70,17 @@ main = (ROOT / "scripts/main.gd").read_text()
 for token in (
     "InteractiveUiRootScript.new()",
     "ui_root.attach(experience_intro_panel, 20)",
-    "ui_root.attach(settings_panel, 60)",
-    "ui_root.attach(reward_panel, 40)",
     "boot.released.connect(_show_experience_intro)",
 ):
     if token not in main:
         failures.append(f"main.gd: missing dedicated interactive UI attachment {token}")
+
+for rel, token in (
+    ("scripts/app/main_settings_flow.gd", "app.ui_root.attach(app.settings_panel, 60)"),
+    ("scripts/app/main_reward_flow.gd", "app.ui_root.attach(app.reward_panel, 40)"),
+):
+    if token not in (ROOT / rel).read_text():
+        failures.append(f"{rel}: missing dedicated interactive UI attachment {token}")
 
 boot = (ROOT / "scripts/ui/boot_sequence.gd").read_text()
 for token in (

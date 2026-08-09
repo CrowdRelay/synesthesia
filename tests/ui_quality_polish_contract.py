@@ -51,8 +51,11 @@ if "DoorEyeMotif" in completion:
 require(
     "scripts/ui/app_hud.gd",
     "_apply_mobile_safe_area()",
-    "settings_button.custom_minimum_size = Vector2(48.0, 48.0)",
-    "var max_safe_inset: int = maxi(48, roundi(64.0 * _ui_scale))",
+)
+require(
+    "scripts/ui/hud_layout_flow.gd",
+    "app.settings_button.custom_minimum_size = Vector2(48.0, 48.0)",
+    "var max_safe_inset: int = maxi(48, roundi(64.0 * app._ui_scale))",
 )
 
 require(
@@ -69,10 +72,12 @@ require(
     '_video_player.stop()',
     '_video_player.play()',
 )
-require(
-    "scripts/ui/experience_intro_card.gd",
-    '_motif.call_deferred("restart_authored_animation")',
-)
+intro = read("scripts/ui/experience_intro_card.gd")
+for token in ('_motif.configure(_accent, "menu", Color("ef6fbd"))',):
+    if token not in intro:
+        failures.append(f"experience_intro_card.gd: missing lazy eye setup {token}")
+if '_motif.call_deferred("restart_authored_animation")' in intro:
+    failures.append("experience_intro_card.gd: menu must not force authored decoder restart on first presentation")
 
 require(
     "scripts/app/door_transition_layer.gd",
@@ -94,7 +99,7 @@ require(
     "scripts/ui/completion_card.gd",
     '_ui_scale = minf(UiMetrics.scale_for_viewport(viewport), 1.45)',
     'var width: float = clampf(viewport.x * 0.88, 320.0, 760.0)',
-    '_next_button.custom_minimum_size = Vector2(280.0, 48.0)',
+    '_next_button.custom_minimum_size = Vector2(280.0, 54.0)',
     '_stay_button.custom_minimum_size = Vector2(220.0, 40.0)',
     'custom minimum sizes\n    # are never multiplied twice',
 )

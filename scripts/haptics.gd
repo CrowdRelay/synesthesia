@@ -51,6 +51,14 @@ func discovery() -> void:
     var base: float = calm_amplitude if calm_mode else full_amplitude
     Input.vibrate_handheld(30 if calm_mode else 46, clampf(base * 1.28, 0.08, 0.62))
 
+func confirmation(strength: float = 0.6) -> void:
+    if not enabled:
+        return
+    var amount: float = clampf(strength, 0.2, 1.0)
+    var base: float = calm_amplitude if calm_mode else full_amplitude
+    var duration: int = roundi(lerpf(7.0, 16.0 if calm_mode else 22.0, amount))
+    Input.vibrate_handheld(duration, clampf(base * lerpf(0.48, 0.92, amount), 0.04, 0.42))
+
 func special(kind: String) -> void:
     if not enabled:
         return

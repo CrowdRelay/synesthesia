@@ -41,6 +41,8 @@ main = text("scripts/main.gd")
 boot = text("scripts/ui/boot_sequence.gd")
 if "boot.released.connect(_show_experience_intro)" not in main or "released.emit()" not in boot:
     failures.append("startup still overlaps boot/menu animated eye layers")
+if 'return _profile == "menu" and not _reduced_motion' not in motif:
+    failures.append("splash still opens the authored Theora decoder before the first menu frame")
 
 stage = text("scripts/render/room_stage.gd")
 for token in (
@@ -61,4 +63,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_UI_PERFORMANCE=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_UI_PERFORMANCE=PASS idle-video=sleep idle-transition=sleep idle-fx=sleep finale=visibility-gated eye=24fps-video/36fps-static startup=single-eye-decoder native-hit-test=anchor-owned")
+print("SYNESTHESIA_UI_PERFORMANCE=PASS idle-video=sleep idle-transition=sleep idle-fx=sleep finale=visibility-gated eye=24fps-video/36fps-static startup=zero-video-decoders native-hit-test=anchor-owned")

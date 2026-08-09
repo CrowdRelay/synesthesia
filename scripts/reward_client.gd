@@ -2,7 +2,7 @@ extends Node
 
 signal run_started(run_id: String, run_token: String, next_room_index: int)
 signal room_recorded(room_id: String, next_room_index: int)
-signal album_recorded()
+signal album_recorded(context: Dictionary)
 signal draw_entered(status: String, message: String)
 signal request_failed(operation: String, message: String)
 signal retry_scheduled(operation: String, attempt: int)
@@ -202,7 +202,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
             _server_next_room_index = maxi(0, int(parsed.get("next_room_index", _server_next_room_index)))
             room_recorded.emit(str(active_copy.get("room_id", "")), _server_next_room_index)
         "complete_album":
-            album_recorded.emit()
+            album_recorded.emit(parsed.duplicate(true))
         "enter_draw":
             draw_entered.emit(
                 str(parsed.get("status", "entered_draw")),

@@ -2,24 +2,12 @@ extends Node
 
 const PINK_NOISE_PATH: String = "res://assets/audio/pink-noise-asmr-loop.ogg"
 const BALLOON_POP_PATH: String = "res://assets/audio/balloon-pop.mp3"
+const CONFIRM_SFX_PATH: String = "res://assets/audio/sfx/light-rise.wav"
 const SILENCE_DB: float = -60.0
 const COMPLETION_THRESHOLD: float = 0.99
 const CONTROL_INTERVAL: float = 1.0 / 60.0
 const MIN_FILTER_HZ: float = 820.0
 const MAX_FILTER_HZ: float = 19500.0
-const AMBIENCE_PATHS: Dictionary = {
-    "uncertainty": "res://assets/audio/ambience/uncertainty.wav",
-    "party": "res://assets/audio/ambience/party.wav",
-    "unmasked": "res://assets/audio/ambience/unmasked.wav",
-    "calling": "res://assets/audio/ambience/calling.wav",
-    "seed": "res://assets/audio/ambience/seed.wav",
-    "hybrid": "res://assets/audio/ambience/hybrid.wav",
-    "technophobia": "res://assets/audio/ambience/technophobia.wav",
-    "invaluable": "res://assets/audio/ambience/invaluable.wav",
-    "ashes": "res://assets/audio/ambience/ashes.wav",
-    "waves": "res://assets/audio/ambience/waves.wav",
-    "rise": "res://assets/audio/ambience/rise.wav",
-}
 const INTERACTION_SFX: Dictionary = {
     "toast": "res://assets/audio/sfx/glass-clink.wav",
     "seed": "res://assets/audio/sfx/wood-creak.wav",
@@ -53,6 +41,7 @@ const INTERACTION_BLOOM: Dictionary = {
     "wave": 0.26,
     "light": 0.46,
 }
+const AudioAssetRuntimeScript := preload("res://scripts/audio/audio_asset_runtime.gd")
 const CINEMATIC_SFX: Dictionary = {
     "uncertainty": "res://assets/audio/sfx/wave-slap.wav",
     "party": "res://assets/audio/sfx/light-rise.wav",
@@ -98,12 +87,18 @@ var _last_filter_hz: float = -1.0
 var _last_reverb_wet: float = -1.0
 var _interaction_bloom_target: float = 0.0
 var _interaction_bloom_smoothed: float = 0.0
+var _foreground_duck_target: float = 0.0
+var _foreground_duck_smoothed: float = 0.0
+var _transition_duck_target: float = 0.0
 var _suspended: bool = false
 var _control_accumulator: float = 0.0
 var _pending_excerpt_path: String = ""
+var _pending_ambience_path: String = ""
 var _pending_asset_source
+var _asset_runtime: Node
 
 func _ready() -> void:
+    _asset_runtime = AudioAssetRuntimeScript.new(); _asset_runtime.bind(self); add_child(_asset_runtime)
     _noise_player = AudioStreamPlayer.new()
     _noise_player.name = "PinkNoiseASMR"
     _noise_player.bus = &"Sensory"
@@ -138,21 +133,9 @@ func _build_sfx_pool() -> void:
         _sfx_players.append(player)
 
 func _load_audio_stream(path: String) -> AudioStream:
-    if path.is_empty() or not ResourceLoader.exists(path):
-        return null
-    var resource: Resource = load(path)
-    return resource as AudioStream if resource is AudioStream else null
-
+    return _asset_runtime._load_audio_stream(path)
 func _stream_for_sfx(path: String) -> AudioStream:
-    if path.is_empty():
-        return null
-    if _sfx_streams.has(path):
-        return _sfx_streams[path] as AudioStream
-    var stream: AudioStream = _load_audio_stream(path)
-    if stream != null:
-        _sfx_streams[path] = stream
-    return stream
-
+    return _asset_runtime._stream_for_sfx(path)
 func _play_sfx_stream(stream: AudioStream, pitch: float = 1.0, volume_db: float = -10.0) -> void:
     if stream == null or _sfx_players.is_empty():
         return
@@ -166,6 +149,7 @@ func _play_sfx_stream(stream: AudioStream, pitch: float = 1.0, volume_db: float 
 
 func play_interaction_sfx(kind: String, index: int = 0) -> void:
     _interaction_bloom_target = maxf(_interaction_bloom_target, float(INTERACTION_BLOOM.get(kind, 0.22)))
+    _foreground_duck_target = maxf(_foreground_duck_target, 0.72)
     if kind == "balloon":
         _play_sfx_stream(_balloon_pop_stream, 0.96 + float(index % 5) * 0.018, -9.0)
         return
@@ -173,24 +157,26 @@ func play_interaction_sfx(kind: String, index: int = 0) -> void:
     var volume: float = -12.0 if kind in ["duel", "mirror"] else -15.0
     _play_sfx_stream(_stream_for_sfx(path), 0.98 + float(index % 3) * 0.015, volume)
 
+func play_confirmation_tick(strength: float = 0.6) -> void:
+    var amount: float = clampf(strength, 0.2, 1.0)
+    _foreground_duck_target = maxf(_foreground_duck_target, 0.44 + amount * 0.22)
+    _play_sfx_stream(_stream_for_sfx(CONFIRM_SFX_PATH), 0.96 + amount * 0.045, -27.0 + amount * 4.0)
+
+func begin_transition_out() -> void:
+    _transition_duck_target = 1.0
+
+func begin_transition_in() -> void:
+    _transition_duck_target = 0.72
+
+func end_transition_in() -> void:
+    _transition_duck_target = 0.0
+
 func play_cinematic_sfx() -> void:
     var path: String = str(CINEMATIC_SFX.get(_visual_style, ""))
     _play_sfx_stream(_stream_for_sfx(path), 1.0, -16.0)
 
 func _load_noise_loop() -> void:
-    if not ResourceLoader.exists(PINK_NOISE_PATH):
-        push_warning("Pink-noise resource is missing: %s" % PINK_NOISE_PATH)
-        return
-    var resource: Resource = load(PINK_NOISE_PATH)
-    if not resource is AudioStream:
-        push_warning("Pink-noise loop is not an AudioStream")
-        return
-    if resource is AudioStreamOggVorbis:
-        var ogg_stream: AudioStreamOggVorbis = resource as AudioStreamOggVorbis
-        ogg_stream.loop = true
-        ogg_stream.loop_offset = 0.0
-    _noise_player.stream = resource as AudioStream
-    _noise_player.play()
+    _asset_runtime._load_noise_loop()
 
 func _resolve_bus_effects() -> void:
     var bus_index: int = AudioServer.get_bus_index(&"Music")
@@ -220,10 +206,11 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
     _interaction_bloom_smoothed = 0.0
     _completion_active = false
     _music_available = false
-    _load_room_ambience()
-
     _pending_excerpt_path = ""
-    _pending_asset_source = null
+    _pending_ambience_path = ""
+    _pending_asset_source = asset_source
+    _load_room_ambience(audio, asset_source)
+
     var excerpt_path: String = str(audio.get("completion_excerpt", ""))
     if excerpt_path.is_empty() or not excerpt_path.begins_with("res://") or not ResourceLoader.exists(excerpt_path):
         push_warning("Room music resource is missing: %s" % excerpt_path)
@@ -246,20 +233,10 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
     _attach_music_stream(resource, excerpt_path)
     _apply_filter(0.0)
 
-func _load_room_ambience() -> void:
-    if _ambient_player == null:
-        return
-    _ambient_player.stop()
-    _ambient_player.stream = null
-    var path: String = str(AMBIENCE_PATHS.get(_visual_style, ""))
-    var stream: AudioStream = _load_audio_stream(path)
-    if stream == null:
-        push_warning("Room ambience resource is missing: %s" % path)
-        return
-    _ambient_player.stream = stream
-    _ambient_player.volume_db = SILENCE_DB
-    _ambient_player.play()
-
+func _load_room_ambience(audio: Dictionary, asset_source = null) -> void:
+    _asset_runtime._load_room_ambience(audio, asset_source)
+func _attach_ambience_stream(resource: Resource, path: String) -> bool:
+    return _asset_runtime._attach_ambience_stream(resource, path)
 func set_progress(coverage: float, found_count: int) -> void:
     _coverage_target = clampf(coverage, 0.0, 1.0)
     _collectibles_target = clampf(float(found_count) / float(_collectible_total), 0.0, 1.0)
@@ -277,47 +254,13 @@ func set_user_levels(music_linear: float, noise_linear: float) -> void:
     _noise_user_gain_db = linear_to_db(clampf(noise_linear, 0.0, 1.0)) if noise_linear > 0.0 else SILENCE_DB
 
 func _attach_music_stream(resource: Resource, excerpt_path: String) -> bool:
-    if not resource is AudioStream:
-        push_warning("Room music excerpt is not an AudioStream: %s" % excerpt_path)
-        return false
-    if resource is AudioStreamMP3:
-        var mp3_stream: AudioStreamMP3 = resource as AudioStreamMP3
-        mp3_stream.loop = true
-        mp3_stream.loop_offset = 0.0
-    elif resource is AudioStreamOggVorbis:
-        var ogg_stream: AudioStreamOggVorbis = resource as AudioStreamOggVorbis
-        ogg_stream.loop = true
-        ogg_stream.loop_offset = 0.0
-    _music_player.stream = resource as AudioStream
-    _music_player.volume_db = SILENCE_DB
-    _music_player.play()
-    _music_available = true
-    return true
-
+    return _asset_runtime._attach_music_stream(resource, excerpt_path)
+func _resolve_pending_ambience() -> void:
+    _asset_runtime._resolve_pending_ambience()
 func _resolve_pending_excerpt() -> void:
-    if _pending_excerpt_path.is_empty() or _pending_asset_source == null:
-        return
-    if not is_instance_valid(_pending_asset_source):
-        _pending_excerpt_path = ""
-        _pending_asset_source = null
-        return
-    var path: String = _pending_excerpt_path
-    var resource: Resource = null
-    if _pending_asset_source.has_method("take_if_ready"):
-        resource = _pending_asset_source.take_if_ready(path)
-    if resource == null:
-        if _pending_asset_source.has_method("is_queued") and _pending_asset_source.is_queued(path):
-            return
-        # A failed threaded request should not stall gameplay with an immediate
-        # synchronous retry. Leave music unavailable; the sensory bed still works.
-        push_warning("Deferred room music failed to preload: %s" % path)
-        _pending_excerpt_path = ""
-        _pending_asset_source = null
-        return
-    _pending_excerpt_path = ""
-    _pending_asset_source = null
-    _attach_music_stream(resource, path)
-
+    _asset_runtime._resolve_pending_excerpt()
+func _release_pending_asset_source_if_idle() -> void:
+    _asset_runtime._release_pending_asset_source_if_idle()
 func set_suspended(value: bool) -> void:
     if _suspended == value:
         return
@@ -368,12 +311,15 @@ func _process(delta: float) -> void:
         return
     var control_delta: float = minf(_control_accumulator, 0.05)
     _control_accumulator = 0.0
+    _resolve_pending_ambience()
     _resolve_pending_excerpt()
     _coverage_smoothed = move_toward(_coverage_smoothed, _coverage_target, control_delta * 0.72)
     _collectibles_smoothed = move_toward(_collectibles_smoothed, _collectibles_target, control_delta * 0.90)
     _quiet_smoothed = move_toward(_quiet_smoothed, _quiet_target, control_delta * 1.80)
     _interaction_bloom_target = move_toward(_interaction_bloom_target, 0.0, control_delta * 0.58)
     _interaction_bloom_smoothed = move_toward(_interaction_bloom_smoothed, _interaction_bloom_target, control_delta * 5.8)
+    _foreground_duck_target = move_toward(_foreground_duck_target, 0.0, control_delta * 2.8)
+    _foreground_duck_smoothed = move_toward(_foreground_duck_smoothed, _foreground_duck_target, control_delta * 10.0)
 
     var reveal_mix: float = clampf(_coverage_smoothed, 0.0, 1.0)
     if _completion_active or _coverage_target >= COMPLETION_THRESHOLD:
@@ -399,13 +345,13 @@ func _process(delta: float) -> void:
         var music_target_db: float = SILENCE_DB
         if music_ratio > 0.0001:
             music_target_db = _completion_music_db + linear_to_db(music_ratio) + _music_user_gain_db + _interaction_bloom_smoothed * 2.4
-        music_target_db -= quiet_cut_db
+        music_target_db -= quiet_cut_db + _foreground_duck_smoothed * 1.8 + _transition_duck_target * 4.5
         _music_player.volume_db = move_toward(_music_player.volume_db, music_target_db, control_delta * 17.0)
 
     if _ambient_player != null and _ambient_player.stream != null:
         if not _ambient_player.playing:
             _ambient_player.play()
-        var ambient_target_db: float = (-31.0 if _calm_mode else -27.0) + reveal_mix * 2.5 + _interaction_bloom_smoothed * 1.2 - quiet_cut_db
+        var ambient_target_db: float = (-31.0 if _calm_mode else -27.0) + reveal_mix * 2.5 + _interaction_bloom_smoothed * 1.2 - quiet_cut_db - _foreground_duck_smoothed * 4.0 - _transition_duck_target * 7.0
         _ambient_player.volume_db = move_toward(_ambient_player.volume_db, ambient_target_db, control_delta * 9.0)
 
     _apply_filter(reveal_mix)

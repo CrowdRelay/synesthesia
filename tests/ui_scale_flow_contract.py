@@ -31,7 +31,12 @@ require(
     "SoundscapeRuntime.suspend_for_menu",
     "func _resume_room_runtime() -> void:",
     "SoundscapeRuntime.resume_room",
-    'if experience_intro_panel == null:\n            call_deferred("_show_completion_panel")',
+)
+
+require(
+    "scripts/app/main_room_flow.gd",
+    'if app.experience_intro_panel == null:\n            app.call_deferred("_show_completion_panel")',
+    "app.reward_panel != null or app.experience_intro_panel != null or not app.room_layer.visible",
 )
 
 
@@ -57,8 +62,9 @@ require(
 )
 
 main = source("scripts/main.gd")
-if "reward_panel != null or experience_intro_panel != null or not room_layer.visible" not in main:
-    failures.append("main.gd: delayed completion card can resurrect above the main menu")
+room_flow = source("scripts/app/main_room_flow.gd")
+if "app.reward_panel != null or app.experience_intro_panel != null or not app.room_layer.visible" not in room_flow:
+    failures.append("main_room_flow.gd: delayed completion card can resurrect above the main menu")
 if "panel.hide(); panel.queue_free()" not in main:
     failures.append("main.gd: modal removal is not visually immediate before deferred queue_free")
 stay_start = main.find("completion_panel.stay_requested.connect")
@@ -73,7 +79,11 @@ require(
     "func resume_for_room() -> void:",
     "func clear_transient_overlays() -> void:",
     "if text_value.is_empty() or not visible:",
-    "UiMetrics.apply_tree(self, _ui_scale)",
+    "_layout_flow._apply_ui_scale()",
+)
+require(
+    "scripts/ui/hud_layout_flow.gd",
+    "UiMetrics.apply_tree(app, app._ui_scale)",
 )
 
 require(
@@ -123,8 +133,8 @@ require(
 )
 
 video = ROOT / "assets/comic/menu_eye_loop.ogv"
-if not video.is_file() or video.stat().st_size < 300_000 or video.stat().st_size > 3_000_000:
-    failures.append("assets/comic/menu_eye_loop.ogv: missing or outside 0.3..3 MB menu animation budget")
+if not video.is_file() or video.stat().st_size < 300_000 or video.stat().st_size > 1_250_000:
+    failures.append("assets/comic/menu_eye_loop.ogv: missing or outside 0.3..1.25 MB menu animation budget")
 
 for rel in (
     "scripts/ui/experience_intro_card.gd",

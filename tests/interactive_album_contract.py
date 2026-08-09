@@ -23,7 +23,7 @@ runtime = require(
     "scripts/input/room_interaction_runtime.gd",
     "handle_gestures", "handle_paint", "special_interaction", "feedback", "reveal_changed",
 )
-stage = require("scripts/render/room_stage.gd", '_handle_gestures(routed["gestures"])')
+stage = require("scripts/render/room_interaction_flow.gd", '_handle_gestures(routed["gestures"])')
 if "func _handle_gestures(gestures: Array[Dictionary])" in stage:
     failures.append("RoomStage gesture boundary must accept untyped Array from routed Dictionary")
 if "func handle_gestures(gestures: Array[Dictionary]" in runtime:
@@ -83,14 +83,25 @@ require(
     "is_listening", "show_archive", "enter_room", "AlbumModeCorridorButton", "corridor_requested",
     "AlbumModeCaptureButton", "ZAPISZ KADR", "I FOUND THE SIGNAL", "JavaScriptBridge.eval",
 )
-main = require(
-    "scripts/main.gd",
+main = "\n".join(
+    text(path) for path in (
+        "scripts/main.gd",
+        "scripts/app/main_room_flow.gd",
+        "scripts/app/main_settings_flow.gd",
+        "scripts/app/main_reward_flow.gd",
+    )
+)
+for token in (
     "AlbumModeControllerScript", "EchoArchive.remember", "album_mode_controller.is_listening()",
     "album_mode_controller.show_archive", "album_mode_controller.enter_room",
     "transition_director.set_memory_count", "album_mode_controller.is_listening():\n        return",
-)
-if len(main.splitlines()) > 980:
-    failures.append(f"main orchestration budget regressed: {len(main.splitlines())}/980")
+):
+    if token not in main:
+        failures.append(f"main orchestration missing {token!r}")
+for path in ("scripts/main.gd", "scripts/app/main_room_flow.gd", "scripts/app/main_settings_flow.gd", "scripts/app/main_reward_flow.gd"):
+    lines = len(text(path).splitlines())
+    if lines > 420:
+        failures.append(f"orchestration module budget regressed: {path}={lines}/420")
 
 require(
     "scripts/app/door_transition_layer.gd",

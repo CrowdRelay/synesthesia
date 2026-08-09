@@ -7,14 +7,14 @@ def text(path): return Path(path).read_text()
 
 router=text('scripts/input/interaction_router.gd')
 backend=text('scripts/native/rust_gesture_backend.gd')
-stage=text('scripts/render/room_stage.gd')
+stage=text('scripts/render/room_stage.gd')+'\n'+text('scripts/render/room_interaction_flow.gd')
 base=text('scripts/rooms/behavior_base.gd')
 party=text('scripts/rooms/behaviors/party-time.gd')
 hybrid=text('scripts/rooms/behaviors/hybrid.gd')
 audio=text('scripts/audio_director.gd')
 adaptive=text('scripts/app/adaptive_performance.gd')
 quality=text('scripts/app/quality_manager.gd')
-main=text('scripts/main.gd')
+main=text('scripts/main.gd')+'\n'+text('scripts/app/main_settings_flow.gd')
 rust=text('native/synesthesia-core/src/lib.rs')
 
 transition=text('scripts/app/transition_director.gd')
@@ -45,7 +45,7 @@ for name,ok in checks.items():
 
 if 'return 60 if profile_name == "battery" else 0' not in quality:
     failures.append("battery profile does not cap high-refresh rendering at 60 FPS")
-if main.count("Engine.max_fps = QualityManager.frame_cap(quality_profile)") != 2:
+if "Engine.max_fps = QualityManager.frame_cap(quality_profile)" not in main or "Engine.max_fps = app.QualityManager.frame_cap(app.quality_profile)" not in main:
     failures.append("quality frame cap is not applied at boot and profile reload")
 
 if failures:

@@ -323,6 +323,8 @@ def main() -> int:
     ui_factory_source = (ROOT / "scripts/ui/ui_factory.gd").read_text()
     settings_source = (ROOT / "scripts/ui/settings_card.gd").read_text()
     hud_source = (ROOT / "scripts/ui/app_hud.gd").read_text()
+    hud_layout_source = (ROOT / "scripts/ui/hud_layout_flow.gd").read_text()
+    hud_contract_source = hud_source + "\n" + hud_layout_source
     video_shader_source = (ROOT / "shaders/room_video_postprocess.gdshader").read_text()
     gear_path = ROOT / "assets/ui/settings-gear.svg"
     gear_script = ROOT / "scripts/ui/settings_gear_icon.gd"
@@ -334,10 +336,10 @@ def main() -> int:
     if not gear_ignore.is_file():
         fail("assets/ui/.gdignore must suppress legacy SVG imports on overlay installs", failures)
     for token in ('SettingsGearIcon', 'SettingsGearIcon.new()', 'SettingsGearIcon'):
-        if token not in hud_source:
+        if token not in hud_contract_source:
             fail(f"procedural settings gear button contract missing: {token}", failures)
     for token in ('instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM → MUZYKA"', 'top_accent_bar', 'bottom_accent_bar', 'subtitle_label.visible = true'):
-        if token not in hud_source:
+        if token not in hud_contract_source:
             fail(f"persistent HUD information/style contract missing: {token}", failures)
     intro_source = (ROOT / "scripts/ui/experience_intro_card.gd").read_text()
     for token in ('SYNESTHESIA', 'WEJDŹ DO ŚRODKA', 'NOWA PODRÓŻ', 'USTAWIENIA', 'SYGNAŁ', 'TWÓRCY', 'Interaktywny album w 11 pokojach', 'SignalSignupClient', 'nie daje losu w puli 5 płyt', 'begin_requested'):
@@ -396,10 +398,10 @@ def main() -> int:
             fail(f"custom draw_* helper forbidden: {rel}", failures)
         if "scripts/paint_room.gd" in source or "visual_snow.gdshader" in source:
             fail(f"legacy renderer reference in {rel}", failures)
-    if len((ROOT / "scripts/main.gd").read_text().splitlines()) > 980:
-        fail("main.gd exceeds 980-line orchestration budget", failures)
-    if len((ROOT / "scripts/render/room_stage.gd").read_text().splitlines()) > 620:
-        fail("room_stage.gd exceeds 620-line renderer budget", failures)
+    for path in sorted((ROOT / "scripts").rglob("*.gd")):
+        lines = len(path.read_text().splitlines())
+        if lines > 420:
+            fail(f"production GDScript exceeds 420-line readability budget: {path.relative_to(ROOT)}={lines}", failures)
 
     shader = (ROOT / "shaders/room_composite.gdshader").read_text()
     for token in ("reveal_mask", "background_texture", "subject_texture", "foreground_texture", "noise_intensity", "scanline_strength", "quiet_visuals", "quality_level", "completion_reveal", "brush_energy", "runtime_scale", "cinematic_time", "unlock_motion", "unlock_profile"):

@@ -121,7 +121,6 @@ func _build() -> void:
     _motif.size_flags_vertical = Control.SIZE_EXPAND_FILL
     _visual_column.add_child(_motif)
     _motif.configure(_accent, "menu", Color("ef6fbd"))
-    _motif.call_deferred("restart_authored_animation")
 
     _description = UIFactory.body("Interaktywny album w 11 pokojach. Dotykasz, przesuwasz, przytrzymujesz i odsłaniasz świat ruchem dłoni, a szum ustępuje muzyce. To nie zagadka ani test — wejdź i sprawdź, jak pokój odpowiada.")
     _description.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT

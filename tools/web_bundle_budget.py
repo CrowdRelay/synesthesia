@@ -6,10 +6,10 @@ import os
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build" / "web"
-MAX_PCK = 72 * 1024 * 1024
+MAX_PCK = 56 * 1024 * 1024
 MAX_RUST_WASM = 2 * 1024 * 1024
-MAX_TOTAL = 128 * 1024 * 1024
-MAX_SOURCE_RUNTIME = 64 * 1024 * 1024
+MAX_TOTAL = 112 * 1024 * 1024
+MAX_SOURCE_RUNTIME = 42 * 1024 * 1024
 
 RUNTIME_SOURCE_ROOTS = ("assets", "scenes", "scripts", "shaders")
 RUNTIME_SOURCE_FILES = ("project.godot", "default_bus_layout.tres")
@@ -59,12 +59,12 @@ def postbuild() -> None:
         failures.append(f"GDScript Web fallback must not ship Rust side-module WASM, got {len(rust_wasms)}")
     for path in pcks:
         if path.stat().st_size > MAX_PCK:
-            failures.append(f"PCK exceeds 72 MiB: {path.name}={path.stat().st_size}")
+            failures.append(f"PCK exceeds 56 MiB: {path.name}={path.stat().st_size}")
     for path in rust_wasms:
         if path.stat().st_size > MAX_RUST_WASM:
             failures.append(f"Rust GDExtension WASM exceeds 2 MiB: {path.name}={path.stat().st_size}")
     if total > MAX_TOTAL:
-        failures.append(f"Web artifact exceeds 128 MiB: total={total}")
+        failures.append(f"Web artifact exceeds 112 MiB: total={total}")
 
     if failures:
         for failure in failures:

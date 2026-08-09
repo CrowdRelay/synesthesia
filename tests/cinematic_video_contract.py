@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract for lazy FHD cinematic loops and deterministic source sharpening."""
+"""Contract for lazy native-resolution cinematic loops and bounded Web payload."""
 from __future__ import annotations
 
 import hashlib
@@ -12,6 +12,13 @@ STYLES = [
     "uncertainty", "party", "unmasked", "calling", "seed", "hybrid",
     "technophobia", "invaluable", "ashes", "waves", "rise", "finale",
 ]
+SOURCE_NAMES = {
+    "uncertainty": "wave.mp4", "party": "party.mp4", "unmasked": "unmasked.mp4",
+    "calling": "calling.mp4", "seed": "seed.mp4", "hybrid": "hybrid.mp4",
+    "technophobia": "technophobia.mp4", "invaluable": "invaluable.mp4",
+    "ashes": "fromtheashes.mp4", "waves": "waves.mp4", "rise": "rise.mp4",
+    "finale": "echoes.mp4",
+}
 failures: list[str] = []
 
 manifest_path = VIDEO_DIR / "manifest.json"
@@ -26,10 +33,12 @@ if manifest.get("codec") != "Ogg Theora":
     failures.append("cinematic codec must be Ogg Theora")
 if manifest.get("source_resolution") != "720x1280":
     failures.append("cinematic source provenance must remain 720x1280")
-if manifest.get("resolution") != "1080x1920" or manifest.get("fps") != 24:
-    failures.append("cinematics must be 1080x1920 at 24 fps")
-if manifest.get("upscale_profile") != "zscale-lanczos+cas-0.10":
-    failures.append("cinematic upscale profile must stay deterministic and reproducible")
+if manifest.get("resolution") != "720x1280" or manifest.get("fps") != 24:
+    failures.append("cinematics must stay at native 720x1280 source resolution and 24 fps")
+if manifest.get("runtime_profile") != "native-source-resolution-theora-q5":
+    failures.append("cinematic runtime profile must explicitly forbid the old FHD upscale")
+if manifest.get("loop_endpoint_policy") != "forward-full+reverse-without-duplicated-endpoints":
+    failures.append("cinematic loop endpoint policy must prevent ping-pong turn-around stutter")
 if sorted(clips) != sorted(STYLES):
     failures.append("cinematic manifest must contain exact 11 rooms + finale")
 total_bytes = 0
@@ -43,12 +52,14 @@ for style in STYLES:
     total_bytes += len(data)
     if data[:4] != b"OggS":
         failures.append(f"{style}.ogv is not an Ogg stream")
-    if len(data) < 500_000:
+    if len(data) < 300_000:
         failures.append(f"{style}.ogv unexpectedly tiny: {len(data)}")
-    if len(data) > 7_500_000:
+    if len(data) > 4_000_000:
         failures.append(f"{style}.ogv exceeds per-clip budget: {len(data)}")
-    if meta.get("width") != 1080 or meta.get("height") != 1920 or meta.get("fps") != 24:
+    if meta.get("width") != 720 or meta.get("height") != 1280 or meta.get("fps") != 24:
         failures.append(f"{style}: manifest geometry/fps mismatch")
+    if meta.get("source") != SOURCE_NAMES[style]:
+        failures.append(f"{style}: original 720p source provenance mismatch")
     if meta.get("bytes") != len(data):
         failures.append(f"{style}: manifest byte count mismatch")
     if meta.get("sha256") != hashlib.sha256(data).hexdigest():
@@ -57,8 +68,8 @@ for style in STYLES:
     if not 3.2 <= duration <= 8.1:
         failures.append(f"{style}: duration outside 3.2..8.1s: {duration}")
 
-if total_bytes > 40 * 1024 * 1024:
-    failures.append(f"cinematic pack exceeds 40 MiB: {total_bytes}")
+if total_bytes > 24 * 1024 * 1024:
+    failures.append(f"cinematic pack exceeds 24 MiB: {total_bytes}")
 if list(VIDEO_DIR.glob("*.mp4")):
     failures.append("runtime pack must not contain MP4; Godot uses Ogg Theora")
 
@@ -105,6 +116,6 @@ if failures:
 
 print(
     "SYNESTHESIA_CINEMATIC_VIDEO=PASS "
-    f"clips=12 resolution=1080x1920 source=720x1280 fps=24 bytes={total_bytes} "
+    f"clips=12 resolution=720x1280 source=720x1280 fps=24 bytes={total_bytes} "
     "lazy=load+unload post=themed unmasked=source-video finale=covered"
 )

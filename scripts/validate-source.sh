@@ -25,6 +25,7 @@ python3 tests/room_mechanics_v2_contract.py
 python3 tests/menu_soundscape_contract.py
 python3 tests/rust_hybrid_contract.py
 python3 tests/gesture_semantics_contract.py
+python3 tests/startup_latency_contract.py
 python3 tests/runtime_resilience_contract.py
 python3 tests/runtime_hot_path_contract.py
 python3 tests/save_state_cache_contract.py
@@ -33,6 +34,8 @@ python3 tests/service_worker_consistency_contract.py
 python3 tests/release_hardening_v3_contract.py
 python3 tests/web_cache_fingerprint_contract.py
 python3 tests/web_bundle_budget_contract.py
+python3 tests/player_experience_evolution_contract.py
+python3 tests/ecosystem_v4_player_context_contract.py
 python3 tests/application_lifecycle_contract.py
 python3 tests/source_hygiene_contract.py
 python3 tests/export_surface_contract.py

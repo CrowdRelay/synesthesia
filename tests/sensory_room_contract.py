@@ -7,17 +7,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 AMBIENCE = {
-    "uncertainty": "uncertainty.wav",
-    "party": "party.wav",
-    "unmasked": "unmasked.wav",
-    "calling": "calling.wav",
-    "seed": "seed.wav",
-    "hybrid": "hybrid.wav",
-    "technophobia": "technophobia.wav",
-    "invaluable": "invaluable.wav",
-    "ashes": "ashes.wav",
-    "waves": "waves.wav",
-    "rise": "rise.wav",
+    "uncertainty": "uncertainty.ogg",
+    "party": "party.ogg",
+    "unmasked": "unmasked.ogg",
+    "calling": "calling.ogg",
+    "seed": "seed.ogg",
+    "hybrid": "hybrid.ogg",
+    "technophobia": "technophobia.ogg",
+    "invaluable": "invaluable.ogg",
+    "ashes": "ashes.ogg",
+    "waves": "waves.ogg",
+    "rise": "rise.ogg",
 }
 SFX = [
     "glass-clink.wav", "wood-creak.wav", "gunshot.wav", "mirror-shatter.wav",
@@ -26,7 +26,7 @@ SFX = [
     "teleport-suck.wav",
 ]
 TOKENS = {
-    "scripts/ui/app_hud.gd": ["HeaderRow", "size_flags_stretch_ratio = 1.18", "size_flags_stretch_ratio = 0.82", "panel_bottom + 8.0"],
+    "scripts/ui/hud_layout_flow.gd": ["HeaderRow", "size_flags_stretch_ratio = 1.18", "size_flags_stretch_ratio = 0.82", "panel_bottom + 8.0"],
     "scripts/app/door_transition_layer.gd": ["set_door_open_mix", "set_approach_mix", "set_warp_mix", "_draw_hinged_door", "_draw_supersonic_tunnel"],
     "scripts/app/transition_director.gd": ["TELEPORT_STREAM", "DOOR_OPEN_STREAM", "set_approach_mix", "set_warp_mix"],
     "scripts/rooms/behaviors/wave-of-uncertainty.gd": ["lateral", "direction"],
@@ -46,6 +46,17 @@ TOKENS = {
 failures: list[str] = []
 
 
+def check_ogg(path: Path) -> None:
+    if not path.is_file():
+        failures.append(f"missing audio {path.relative_to(ROOT)}")
+        return
+    payload = path.read_bytes()
+    if len(payload) <= 1024:
+        failures.append(f"{path.name}: audio is effectively empty")
+    if not payload.startswith(b"OggS") or b"vorbis" not in payload[:4096]:
+        failures.append(f"{path.name}: ambience must be Ogg/Vorbis")
+
+
 def check_wav(path: Path) -> None:
     if not path.is_file():
         failures.append(f"missing audio {path.relative_to(ROOT)}")
@@ -53,7 +64,7 @@ def check_wav(path: Path) -> None:
     try:
         with wave.open(str(path), "rb") as wav:
             if wav.getnchannels() != 1:
-                failures.append(f"{path.name}: ambience/SFX must stay mono")
+                failures.append(f"{path.name}: SFX must stay mono")
             if wav.getframerate() not in (22050, 44100, 48000):
                 failures.append(f"{path.name}: unexpected sample rate {wav.getframerate()}")
             if wav.getnframes() <= 128:
@@ -63,7 +74,7 @@ def check_wav(path: Path) -> None:
 
 
 for filename in AMBIENCE.values():
-    check_wav(ROOT / "assets/audio/ambience" / filename)
+    check_ogg(ROOT / "assets/audio/ambience" / filename)
 for filename in SFX:
     check_wav(ROOT / "assets/audio/sfx" / filename)
 
@@ -78,9 +89,10 @@ for rel, required in TOKENS.items():
             failures.append(f"{rel}: missing sensory token {token!r}")
 
 audio = (ROOT / "scripts/audio_director.gd").read_text(errors="replace")
+audio_assets = (ROOT / "scripts/audio/audio_asset_runtime.gd").read_text(errors="replace")
 for style, filename in AMBIENCE.items():
-    if f'"{style}": "res://assets/audio/ambience/{filename}"' not in audio:
-        failures.append(f"audio director missing ambience mapping for {style}")
+    if f'"{style}": "res://assets/audio/ambience/{filename}"' not in audio_assets:
+        failures.append(f"audio asset runtime missing ambience mapping for {style}")
 for token in ("play_cinematic_sfx", "INTERACTION_SFX", "CINEMATIC_SFX"):
     if token not in audio:
         failures.append(f"audio director missing {token}")
@@ -90,4 +102,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_SENSORY_ROOMS=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_SENSORY_ROOMS=PASS ambience=11 sfx=13 animations=11 doors=hinge+supersonic hud=no-overlap")
+print("SYNESTHESIA_SENSORY_ROOMS=PASS ambience=11-vorbis sfx=13-wav animations=11 doors=hinge+supersonic hud=no-overlap")

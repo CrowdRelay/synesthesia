@@ -22,7 +22,7 @@ for filename, tokens in expected.items():
     for token in tokens:
         assert token in text, (filename, token)
 
-stage = (ROOT / "scripts" / "render" / "room_stage.gd").read_text()
+stage = (ROOT / "scripts" / "render" / "room_stage.gd").read_text() + "\n" + (ROOT / "scripts" / "render" / "room_interaction_flow.gd").read_text() + "\n" + (ROOT / "scripts" / "render" / "room_state_flow.gd").read_text()
 assert 'MechanicProgress.resolve' in stage
 resolver = (ROOT / 'scripts' / 'rooms' / 'mechanic_progress.gd').read_text()
 assert 'behavior.mechanic_progress()' in resolver

@@ -5,9 +5,9 @@ signal released
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
-const BOOT_HOLD: float = 0.42
-const DOOR_DURATION: float = 0.66
-const FADE_DURATION: float = 0.22
+const BOOT_HOLD: float = 0.16
+const DOOR_DURATION: float = 0.46
+const FADE_DURATION: float = 0.16
 
 var _motif
 var _title: Label

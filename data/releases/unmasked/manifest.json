@@ -79,6 +79,7 @@
     "mode": "pink_noise_reveal_mix",
     "title": "Unmasked",
     "completion_excerpt": "res://assets/audio/unmasked-room-outro.mp3",
+    "ambience": "res://assets/audio/ambience/unmasked.ogg",
     "completion_volume_db": -8.0,
     "source": "VIRYA — Echoes Of The Modern Mind",
     "note": "Painting reveals volume, frequency range and stereo space; at 99% the ASMR noise and filtering are gone.",

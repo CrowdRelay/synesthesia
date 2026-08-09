@@ -2,10 +2,12 @@ extends RefCounted
 
 var room_data: Dictionary = {}
 var state: Dictionary = {}
+var interaction_forgiveness: float = 1.12
 
 func configure(data: Dictionary) -> void:
     room_data = data.duplicate(true)
     state = {}
+    interaction_forgiveness = 1.12
 
 func acts() -> Array[String]:
     return ["ROZPOZNANIE", "PRZEŁAMANIE", "TRANSFORMACJA"]
@@ -64,8 +66,16 @@ func export_state() -> Dictionary:
 func restore_state(saved: Dictionary) -> void:
     state = saved.duplicate(true)
 
+func set_assist_level(level: int) -> void:
+    # Assist changes only invisible touch tolerance. Visual geometry and mechanic
+    # state stay identical, so help can rise/fall without changing the room.
+    interaction_forgiveness = [1.12, 1.18, 1.25, 1.32][clampi(level, 0, 3)]
+
 func _near(point: Vector2, target: Vector2, radius: float) -> bool:
-    return point.distance_squared_to(target) <= radius * radius
+    # Touch targets are intentionally a little more forgiving than their visual
+    # geometry. This keeps precision from becoming difficulty on small phones.
+    var forgiving_radius: float = radius * interaction_forgiveness
+    return point.distance_squared_to(target) <= forgiving_radius * forgiving_radius
 
 func _gesture_point(gesture: Dictionary) -> Vector2:
     var value: Variant = gesture.get("point", Vector2(0.5, 0.5))

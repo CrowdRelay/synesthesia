@@ -17,6 +17,10 @@ var _body: Label
 var _email: LineEdit
 var _status: Label
 var _claim: Button
+var _signal_button: Button
+var _next_event: Label
+var _next_event_button: Button
+var _signal_context: Dictionary = {}
 var _accent: Color = Color("e35f83")
 var _motif
 var _ui_scale: float = 1.0
@@ -27,7 +31,8 @@ func _ready() -> void:
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(server_completed: bool, saved_reward: Dictionary) -> void:
+func configure(server_completed: bool, saved_reward: Dictionary, journey_summary: Dictionary = {}, signal_context: Dictionary = {}) -> void:
+    _signal_context = signal_context.duplicate(true)
     var dim := ColorRect.new()
     dim.color = Color(0.003, 0.004, 0.010, 0.76)
     dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -85,6 +90,7 @@ func configure(server_completed: bool, saved_reward: Dictionary) -> void:
     _body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     _body.add_theme_font_size_override("font_size", 11)
     _visual.add_child(_body)
+    _build_journey_summary(journey_summary)
     var memory_line := Label.new()
     memory_line.text = "FALA · KONFETTI · MASKA · WINO · KORZEŃ · POJEDYNEK · SYGNAŁ · LUSTRO · POPIÓŁ · ODDECH · ŚWIATŁO"
     memory_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -123,9 +129,21 @@ func configure(server_completed: bool, saved_reward: Dictionary) -> void:
     _claim.pressed.connect(_emit_claim)
     _form.add_child(_claim)
 
-    var signal_button := UIFactory.menu_button("WZMOCNIJ SYGNAŁ VIRYA", Color("71dcff"))
-    signal_button.pressed.connect(func() -> void: OS.shell_open("https://virya.music/pl/signal/?source=synesthesia"))
-    _form.add_child(signal_button)
+    _signal_button = UIFactory.menu_button("WZMOCNIJ SYGNAŁ VIRYA", Color("71dcff"))
+    _signal_button.pressed.connect(_open_signal)
+    _form.add_child(_signal_button)
+
+    _next_event = UIFactory.body("")
+    _next_event.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+    _next_event.add_theme_font_size_override("font_size", 9)
+    _next_event.add_theme_color_override("font_color", Color("9eafc3"))
+    _next_event.visible = false
+    _form.add_child(_next_event)
+    _next_event_button = UIFactory.menu_button("NASTĘPNY SYGNAŁ", Color("73869d"))
+    _next_event_button.visible = false
+    _next_event_button.pressed.connect(_open_next_event)
+    _form.add_child(_next_event_button)
+    apply_signal_context(_signal_context)
 
     var album_mode := UIFactory.menu_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
     album_mode.pressed.connect(func() -> void: album_mode_requested.emit())
@@ -146,6 +164,107 @@ func configure(server_completed: bool, saved_reward: Dictionary) -> void:
     modulate.a = 0.0
     var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     tween.tween_property(self, "modulate:a", 1.0, 0.30)
+
+func _build_journey_summary(summary: Dictionary) -> void:
+    if summary.is_empty():
+        return
+    var card := PanelContainer.new()
+    card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    card.add_theme_stylebox_override("panel", UIFactory.panel_style(Color("0b1420ec"), 14, Color(_accent, 0.25)))
+    _visual.add_child(card)
+    var content := VBoxContainer.new()
+    content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    content.add_theme_constant_override("separation", 4)
+    card.add_child(content)
+
+    var kicker := Label.new()
+    kicker.text = "TWÓJ PRZEBIEG"
+    UIFactory.apply_display_font(kicker)
+    kicker.add_theme_font_size_override("font_size", 8)
+    kicker.add_theme_color_override("font_color", _accent)
+    content.add_child(kicker)
+
+    var rooms_done: int = maxi(0, int(summary.get("rooms_completed", 0)))
+    var rooms_total: int = maxi(rooms_done, int(summary.get("rooms_total", rooms_done)))
+    var echoes_found: int = maxi(0, int(summary.get("echoes_found", 0)))
+    var echoes_total: int = maxi(echoes_found, int(summary.get("echoes_total", echoes_found)))
+    var elapsed_ms: int = maxi(0, int(summary.get("elapsed_ms", 0)))
+    var line := UIFactory.body("POKOJE %d/%d  ·  ECHA %d/%d  ·  %s" % [rooms_done, rooms_total, echoes_found, echoes_total, _format_elapsed(elapsed_ms)])
+    line.add_theme_font_size_override("font_size", 10)
+    line.add_theme_color_override("font_color", Color("d9e8f4"))
+    content.add_child(line)
+
+    var marks_value: Variant = summary.get("journey_marks", [])
+    if marks_value is Array and not (marks_value as Array).is_empty():
+        var mark_labels: PackedStringArray = PackedStringArray()
+        for value in marks_value as Array:
+            mark_labels.append(str(value))
+        var marks := UIFactory.body("ŚLADY · %s" % " · ".join(mark_labels))
+        marks.add_theme_font_size_override("font_size", 9)
+        marks.add_theme_color_override("font_color", Color("f0cf88"))
+        content.add_child(marks)
+
+    var unlock := UIFactory.body("Album Mode odblokowany · możesz wracać do dowolnego pokoju bez kasowania tej podróży.")
+    unlock.add_theme_font_size_override("font_size", 9)
+    unlock.add_theme_color_override("font_color", Color("8fdff0"))
+    content.add_child(unlock)
+
+func apply_signal_context(context: Dictionary) -> void:
+    _signal_context = context.duplicate(true)
+    if _signal_button == null:
+        return
+    var linked: bool = bool(_signal_context.get("linked_to_fan", false))
+    var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
+    if linked:
+        _signal_button.text = "OTWÓRZ MÓJ SYGNAŁ"
+    elif handoff.length() == 64:
+        _signal_button.text = "POŁĄCZ PODRÓŻ Z SYGNAŁEM"
+    else:
+        _signal_button.text = "WZMOCNIJ SYGNAŁ VIRYA"
+
+    var event_value: Variant = _signal_context.get("next_event", {})
+    var event: Dictionary = event_value if event_value is Dictionary else {}
+    var slug: String = str(event.get("slug", ""))
+    if _next_event == null or _next_event_button == null:
+        return
+    if slug.is_empty():
+        _next_event.visible = false
+        _next_event_button.visible = false
+        return
+    var city: String = str(event.get("city", ""))
+    var venue: String = str(event.get("venue", ""))
+    var place: String = city
+    if not venue.is_empty():
+        place = "%s · %s" % [place, venue] if not place.is_empty() else venue
+    _next_event.text = "Podróż nie kończy się tutaj. Następny fizyczny Sygnał%s." % (" · %s" % place if not place.is_empty() else "")
+    _next_event_button.text = "NASTĘPNY SYGNAŁ · %s" % str(event.get("title", slug)).to_upper()
+    _next_event.visible = true
+    _next_event_button.visible = true
+
+func _open_signal() -> void:
+    var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
+    var url := "https://virya.music/pl/signal/?source=synesthesia"
+    # Only the short-lived single-fan completion handoff travels in the fragment.
+    # Fan/session credentials never leave the API cookie/native secure store.
+    if handoff.length() == 64:
+        url += "#handoff=%s" % handoff.uri_encode()
+    OS.shell_open(url)
+
+func _open_next_event() -> void:
+    var event_value: Variant = _signal_context.get("next_event", {})
+    var event: Dictionary = event_value if event_value is Dictionary else {}
+    var slug: String = str(event.get("slug", ""))
+    if slug.is_empty():
+        return
+    OS.shell_open("https://virya.music/pl/live/%s/" % slug.uri_encode())
+
+func _format_elapsed(elapsed_ms: int) -> String:
+    var total_seconds: int = maxi(0, int(elapsed_ms / 1000))
+    var minutes: int = int(total_seconds / 60)
+    var seconds: int = total_seconds % 60
+    if minutes >= 60:
+        return "%dh %02dm" % [int(minutes / 60), minutes % 60]
+    return "%dm %02ds" % [minutes, seconds]
 
 func _emit_claim() -> void:
     draw_entry_requested.emit(_email.text.strip_edges())

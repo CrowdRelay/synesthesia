@@ -1,6 +1,13 @@
 extends RefCounted
 
+# Release/room manifests are immutable runtime configuration. Cache parsed JSON so
+# menu previews, threaded prewarm and room entry do not repeatedly reopen and
+# parse the same tiny files on the main thread.
+static var _json_cache: Dictionary = {}
+
 static func load_json(path: String) -> Dictionary:
+    if _json_cache.has(path):
+        return _json_cache[path] as Dictionary
     if path.is_empty() or not FileAccess.file_exists(path):
         push_error("Missing JSON: %s" % path)
         return {}
@@ -10,7 +17,9 @@ static func load_json(path: String) -> Dictionary:
         return {}
     var parsed: Variant = JSON.parse_string(file.get_as_text())
     if parsed is Dictionary:
-        return parsed
+        var document: Dictionary = parsed
+        _json_cache[path] = document
+        return document
     push_error("JSON root is not an object: %s" % path)
     return {}
 

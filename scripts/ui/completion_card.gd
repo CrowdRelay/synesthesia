@@ -62,7 +62,7 @@ func configure(title: String, message: String, next_label: String, accent: Color
 
     _next_button = UIFactory.menu_button(next_label, accent, true)
     _next_button.name = "ContinueButton"
-    _next_button.custom_minimum_size = Vector2(280.0, 48.0)
+    _next_button.custom_minimum_size = Vector2(280.0, 54.0)
     _next_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     _next_button.pressed.connect(func() -> void: continue_requested.emit())
     _actions.add_child(_next_button)

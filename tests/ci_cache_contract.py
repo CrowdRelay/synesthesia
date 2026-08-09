@@ -31,7 +31,7 @@ if 'linux_release.x86_64' not in release:
     failures.append("tagged desktop cache should retain only the selected Linux release template")
 if 'firebelley/godot-export' in release:
     failures.append("tagged desktop build must not re-download the full multi-platform template pack")
-if 'push:\n    branches: [main]\n  pull_request:' not in ci:
+if 'push:\n    branches: [main]' not in ci or '\n  pull_request:' not in ci:
     failures.append("CI should run branch pushes only for main; PR event covers feature branches")
 if ci.find("./scripts/validate-source.sh") > ci.find("Cache Rust dependency sources"):
     failures.append("CI source validation must run before cache restore")

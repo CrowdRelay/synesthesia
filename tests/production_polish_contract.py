@@ -19,6 +19,20 @@ def require(path: str, *tokens: str) -> str:
             failures.append(f"{path}: missing contract token {token!r}")
     return text
 
+def require_group(paths: tuple[str, ...], *tokens: str) -> str:
+    chunks: list[str] = []
+    for path in paths:
+        target = ROOT / path
+        if not target.is_file():
+            failures.append(f"missing {path}")
+            continue
+        chunks.append(target.read_text(errors="replace"))
+    text = "\n".join(chunks)
+    for token in tokens:
+        if token not in text:
+            failures.append(f"{'+'.join(paths)}: missing contract token {token!r}")
+    return text
+
 
 mask = require(
     "scripts/render/reveal_mask.gd",
@@ -34,8 +48,8 @@ for forbidden in ("_history", "_image.set_pixel"):
     if forbidden in mask:
         failures.append(f"reveal mask resurrected forbidden {forbidden}")
 
-stage = require(
-    "scripts/render/room_stage.gd",
+stage = require_group(
+    ("scripts/render/room_stage.gd", "scripts/render/room_visual_setup.gd", "scripts/render/room_interaction_flow.gd", "scripts/render/room_state_flow.gd"),
     "set_runtime_budget",
     'set_shader_parameter("completion_reveal"',
     'set_shader_parameter("brush_energy"',
@@ -74,8 +88,8 @@ audio = require(
     "MIN_FILTER_HZ",
     "MAX_FILTER_HZ",
 )
-main = require(
-    "scripts/main.gd",
+main = require_group(
+    ("scripts/main.gd", "scripts/app/main_room_flow.gd", "scripts/app/main_settings_flow.gd", "scripts/app/main_reward_flow.gd"),
     "SettingsCardScript",
     "settings_dirty",
     "save_timer.stop()",
@@ -101,8 +115,8 @@ settings = require(
     "quality_cycle_requested",
     "horizontal_scroll_mode = 0",
 )
-hud = require(
-    "scripts/ui/app_hud.gd",
+hud = require_group(
+    ("scripts/ui/app_hud.gd", "scripts/ui/hud_layout_flow.gd"),
     "set_painting",
     "update_discovery",
     "update_act",
@@ -139,10 +153,10 @@ require("scripts/validate-source.sh", "python3 tools/memory_budget.py", "python3
 require("validate.sh", "./scripts/validate-source.sh", "lifecycle_smoke.gd")
 require(".github/workflows/ci.yml", "./scripts/validate-source.sh")
 
-if len(main.splitlines()) > 980:
-    failures.append(f"main controller grew above 980 lines: {len(main.splitlines())}")
-if len(stage.splitlines()) > 620:
-    failures.append(f"room stage grew above 620 lines: {len(stage.splitlines())}")
+for gd_path in sorted((ROOT / "scripts").rglob("*.gd")):
+    lines = len(gd_path.read_text(errors="replace").splitlines())
+    if lines > 420:
+        failures.append(f"production GDScript grew above 420 lines: {gd_path.relative_to(ROOT)}={lines}")
 
 if failures:
     for failure in failures:

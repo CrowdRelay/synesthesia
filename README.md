@@ -9,7 +9,7 @@ Godot 4.7.1 portrait album experience for **Echoes Of The Modern Mind**. Eleven 
 - desktop keeps the portrait room undistorted and uses side space for menu/finale UI; portrait phones use the full native viewport so the room never becomes a tiny centered postcard;
 - HiDPI is enabled on Web/Android/iOS/desktop; UI and procedural eye/door graphics render at the target display resolution;
 - current + next room assets are preloaded within explicit memory budgets;
-- cinematic loops are runtime FHD `1080×1920 @ 24 fps`, deterministically upscaled 1.5× from the supplied 720×1280 masters with Lanczos + low-strength CAS; no frame interpolation or generative detail is used;
+- cinematic loops are encoded directly from the supplied native `720×1280 @ 24 fps` masters; the old 1.5× FHD upscale is removed, and ping-pong loops omit duplicated turn-around endpoints;
 - adaptive performance lowers mask upload cadence, particles and motion before dropping functionality;
 - room progress persists locally as bounded PNG reveal masks;
 - the Web boot shell owns browser startup and suppresses the stock Godot image with a Web feature override; native targets can retain their branded splash;
@@ -17,7 +17,7 @@ Godot 4.7.1 portrait album experience for **Echoes Of The Modern Mind**. Eleven 
 
 The source art stays asymmetrical by intent: background 405×720, scene/subject 675×1200, foreground 540×960. Those are texture-source sizes, not the runtime viewport. The runtime never stretches a fixed 540×960 application canvas; it fits/crops the portrait art inside a native-resolution shell while UI remains pixel-sharp.
 
-The original video provenance is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). Runtime files are FHD and the complete cinematic pack remains below 40 MiB. Web runtime files (`.pck/.wasm/.js`) use strict network-first + HTTP revalidation with CacheStorage fallback only after a real network/transient-origin failure. The cache namespace fingerprints the whole deploy surface, and returning clients perform a one-time clean worker/cache handoff when the deploy generation changes, preventing mixed-version PCK/WASM after a release while retaining offline recovery.
+The original video provenance is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). Runtime files stay at source resolution and the complete cinematic pack is guarded below 24 MiB (over 40% below the former video payload). Web runtime files (`.pck/.wasm/.js`) use strict network-first + HTTP revalidation with CacheStorage fallback only after a real network/transient-origin failure. The cache namespace fingerprints the whole deploy surface, and returning clients perform a one-time clean worker/cache handoff when the deploy generation changes, preventing mixed-version PCK/WASM after a release while retaining offline recovery.
 
 ## CrowdRelay integration
 

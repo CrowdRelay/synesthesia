@@ -23,7 +23,7 @@ for token in (
         failures.append(f"adaptive runtime contract missing: {token}")
 
 preloader = (ROOT / "scripts/app/asset_preloader.gd").read_text()
-audio = (ROOT / "scripts/audio_director.gd").read_text()
+audio = (ROOT / "scripts/audio_director.gd").read_text() + "\n" + (ROOT / "scripts/audio/audio_asset_runtime.gd").read_text()
 for token in (
     "func wait_for_queued(",
     "await get_tree().process_frame",
@@ -36,7 +36,7 @@ for token in (
     if token not in preloader:
         failures.append(f"preloader observability contract missing: {token}")
 
-main = (ROOT / "scripts/main.gd").read_text()
+main = (ROOT / "scripts/main.gd").read_text() + "\n" + (ROOT / "scripts/app/main_room_flow.gd").read_text()
 for token in (
     'diagnostics.configure(adaptive_performance, asset_preloader)',
     'await asset_preloader.wait_for_queued()',
