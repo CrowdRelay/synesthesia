@@ -40,6 +40,7 @@ func configure(title: String, message: String, next_label: String, accent: Color
     _status = Label.new()
     _status.text = "DRZWI OTWARTE · SZUM 0% · MUZYKA 100%"
     _status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    UIFactory.apply_display_font(_status)
     _status.add_theme_font_size_override("font_size", 8)
     _status.add_theme_color_override("font_color", accent)
     _content.add_child(_status)

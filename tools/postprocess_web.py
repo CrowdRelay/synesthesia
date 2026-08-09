@@ -18,6 +18,10 @@ html = index_path.read_text()
 manifest_tag = '<link rel="manifest" href="/manifest.webmanifest">'
 icon_tag = '<link rel="icon" href="/icon.svg" type="image/svg+xml">'
 apple_icon_tag = '<link rel="apple-touch-icon" href="/icon-192.png">'
+font_preload_tags = [
+    '<link rel="preload" href="/fonts/SynesthesiaTitle.ttf" as="font" type="font/ttf" crossorigin>',
+    '<link rel="preload" href="/fonts/SynesthesiaDisplay.ttf" as="font" type="font/ttf" crossorigin>',
+]
 boot_style_tag = '<link rel="stylesheet" href="/boot-shell.css">'
 boot_script_tag = '<script src="/boot-shell.js"></script>'
 register_tag = '<script src="/register-sw.js" defer></script>'
@@ -25,21 +29,19 @@ boot_markup = '''<div id="synesthesia-boot" role="status" aria-label="Ładowanie
   <h1 class="synesthesia-boot__title">SYNESTHESIA</h1>
   <div class="synesthesia-boot__sub">VIRYA · ECHOES OF THE MODERN MIND</div>
   <div class="synesthesia-boot__door" aria-hidden="true">
-    <div class="synesthesia-boot__eye">
-      <div class="synesthesia-boot__brain"></div>
-      <i class="synesthesia-boot__node synesthesia-boot__node--a"></i>
-      <i class="synesthesia-boot__node synesthesia-boot__node--b"></i>
-      <i class="synesthesia-boot__node synesthesia-boot__node--c"></i>
-      <i class="synesthesia-boot__node synesthesia-boot__node--d"></i>
-    </div>
+    <video class="synesthesia-boot__eye-art" id="synesthesia-boot-eye" muted loop playsinline preload="none" poster="/menu-eye-poster.webp" tabindex="-1"></video>
   </div>
-  <div class="synesthesia-boot__render" id="synesthesia-boot-status">ADAPTIVE NATIVE</div>
+  <div class="synesthesia-boot__tagline">OTWÓRZ · ODKRYJ · POCZUJ</div>
+  <div class="synesthesia-boot__render" id="synesthesia-boot-status">URUCHAMIAM DOŚWIADCZENIE</div>
   <button class="synesthesia-boot__retry" id="synesthesia-boot-retry" type="button">Wyczyść cache i uruchom ponownie</button>
 </div>'''
 if manifest_tag not in html:
     html = html.replace("</head>", f"  {manifest_tag}\n</head>")
 if icon_tag not in html:
     html = html.replace("</head>", f"  {icon_tag}\n  {apple_icon_tag}\n</head>")
+for preload_tag in font_preload_tags:
+    if preload_tag not in html:
+        html = html.replace("</head>", f"  {preload_tag}\n</head>")
 if boot_style_tag not in html:
     html = html.replace("</head>", f"  {boot_style_tag}\n  {boot_script_tag}\n</head>")
 if 'id="synesthesia-boot"' not in html:

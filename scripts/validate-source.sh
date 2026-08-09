@@ -12,6 +12,7 @@ python3 -m compileall -q tests tools
 
 python3 tests/static_validate.py
 python3 tests/adaptive_viewport_contract.py
+python3 tests/boot_visual_continuity_contract.py
 python3 tools/perf_budget.py
 python3 tools/memory_budget.py
 python3 tools/audio_mix_budget.py

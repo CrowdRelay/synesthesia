@@ -70,6 +70,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
 
     var eyebrow := Label.new()
     eyebrow.text = "ECHOES OF THE MODERN MIND · FINAŁ"
+    UIFactory.apply_display_font(eyebrow)
     eyebrow.add_theme_font_size_override("font_size", 9)
     eyebrow.add_theme_color_override("font_color", Color("7fd7ef"))
     _visual.add_child(eyebrow)
@@ -107,6 +108,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
 
     var form_title := Label.new()
     form_title.text = "PROOF OF FAIR · 5 PŁYT"
+    UIFactory.apply_display_font(form_title)
     form_title.add_theme_font_size_override("font_size", 10)
     form_title.add_theme_color_override("font_color", _accent)
     _form.add_child(form_title)

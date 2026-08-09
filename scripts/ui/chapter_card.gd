@@ -49,6 +49,7 @@ func _build(room_index: int, room_total: int, room_name: String, intro_text: Str
 
     var eyebrow := Label.new()
     eyebrow.text = "ROZDZIAŁ %02d / %02d  ·  %s" % [room_index + 1, room_total, caption if not caption.is_empty() else "VIRYA · SYNESTEZJA"]
+    UIFactory.apply_display_font(eyebrow)
     eyebrow.add_theme_font_size_override("font_size", 8)
     eyebrow.add_theme_color_override("font_color", _accent)
     _content.add_child(eyebrow)
@@ -66,6 +67,7 @@ func _build(room_index: int, room_total: int, room_name: String, intro_text: Str
     var hint := Label.new()
     hint.text = "MALUJ OD RAZU · SZUM → MUZYKA · DRZWI OTWIERAJĄ SIĘ PRZY KOŃCU"
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    UIFactory.apply_display_font(hint)
     hint.add_theme_font_size_override("font_size", 8)
     hint.add_theme_color_override("font_color", Color("8fa4bc"))
     _content.add_child(hint)

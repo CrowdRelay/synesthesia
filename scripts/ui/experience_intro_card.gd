@@ -41,7 +41,7 @@ func _ready() -> void:
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(accent: Color, has_progress: bool = false, album_completed: bool = false, api_url: String = "", policy_version: String = "virya-signal-2026-08", render_label: String = "ADAPTIVE NATIVE") -> void:
+func configure(accent: Color, has_progress: bool = false, album_completed: bool = false, api_url: String = "", policy_version: String = "virya-signal-2026-08", render_label: String = "") -> void:
     _accent = accent
     _has_progress = has_progress
     _album_completed = album_completed
@@ -100,6 +100,13 @@ func _build() -> void:
     title.add_theme_color_override("font_shadow_color", Color(_accent, 0.24))
     _content_root.add_child(title)
 
+    var header_line := ColorRect.new()
+    header_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    header_line.color = Color(_accent, 0.44)
+    header_line.custom_minimum_size = Vector2(0.0, 2.0)
+    header_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _content_root.add_child(header_line)
+
     _layout = BoxContainer.new()
     _layout.mouse_filter = Control.MOUSE_FILTER_PASS
     _layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -127,11 +134,13 @@ func _build() -> void:
     _description.add_theme_font_size_override("font_size", 13)
     _visual_column.add_child(_description)
 
-    var render_hint := Label.new()
-    render_hint.text = _render_label
-    render_hint.add_theme_font_size_override("font_size", 8)
-    render_hint.add_theme_color_override("font_color", Color("71849b"))
-    _visual_column.add_child(render_hint)
+    if not _render_label.is_empty():
+        var render_hint := Label.new()
+        render_hint.text = _render_label
+        UIFactory.apply_display_font(render_hint)
+        render_hint.add_theme_font_size_override("font_size", 8)
+        render_hint.add_theme_color_override("font_color", Color("71849b"))
+        _visual_column.add_child(render_hint)
 
     _action_column = VBoxContainer.new()
     _action_column.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -161,6 +170,16 @@ func _build() -> void:
     new_button.visible = _has_progress or _album_completed
     new_button.pressed.connect(func() -> void: new_journey_requested.emit())
     _action_column.add_child(new_button)
+
+    var utility_divider := HSeparator.new()
+    utility_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _action_column.add_child(utility_divider)
+    var utility_label := Label.new()
+    utility_label.text = "SYGNAŁ · USTAWIENIA · WIĘCEJ"
+    UIFactory.apply_display_font(utility_label)
+    utility_label.add_theme_font_size_override("font_size", 8)
+    utility_label.add_theme_color_override("font_color", Color("788ba2"))
+    _action_column.add_child(utility_label)
 
     var settings_button := UIFactory.menu_button("USTAWIENIA", _accent)
     settings_button.pressed.connect(func() -> void: settings_requested.emit())

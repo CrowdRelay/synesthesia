@@ -6,11 +6,14 @@ extends Control
 
 const DOOR_EYE_TEXTURE_PATH: String = "res://assets/comic/door_eye_comic.webp"
 const MENU_EYE_VIDEO_PATH: String = "res://assets/comic/menu_eye_loop.ogv"
+const MENU_EYE_POSTER_PATH: String = "res://assets/branding/menu-eye-poster.webp"
 const MENU_EYE_VIDEO_SIZE: Vector2 = Vector2(848.0, 1104.0)
 
 var _door_eye_texture: Texture2D
+var _menu_eye_poster_texture: Texture2D
 var _video_player: VideoStreamPlayer
 var _last_video_position: float = 0.0
+var _authored_video_armed: bool = false
 
 var _accent: Color = Color("8c62ff")
 var _secondary: Color = Color("ef6fbd")
@@ -29,6 +32,7 @@ var _redraw_accumulator: float = 0.0
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     _door_eye_texture = _load_door_eye_texture()
+    _menu_eye_poster_texture = _load_menu_eye_poster_texture()
     _build_video_player()
     visibility_changed.connect(_on_visibility_changed)
     _sync_processing()
@@ -57,15 +61,22 @@ func _build_video_player() -> void:
 func _on_visibility_changed() -> void:
     _sync_processing()
     _sync_video_mode()
-    if is_visible_in_tree() and _wants_menu_video():
+    if is_visible_in_tree() and _wants_authored_video() and _authored_video_armed:
+        call_deferred("restart_authored_animation")
+
+func arm_authored_animation(restart: bool = true) -> void:
+    # Menu playback can start as soon as the menu exists. Splash playback is
+    # deliberately armed only *after* the first rendered Godot frame so the
+    # first-frame latency budget stays cheap while the user still sees the exact
+    # authored menu-eye animation during the branded loading sequence.
+    _authored_video_armed = true
+    _sync_video_mode()
+    _sync_video_geometry()
+    if restart:
         call_deferred("restart_authored_animation")
 
 func restart_authored_animation() -> void:
-    # The authored decoder is menu-only. Splash deliberately stays on the
-    # lightweight bitmap/procedural eye so Web can present the first Godot frame
-    # without opening Theora. Starting one frame later also guarantees valid UI
-    # geometry before playback begins.
-    if not is_inside_tree() or not is_visible_in_tree() or not _wants_menu_video():
+    if not is_inside_tree() or not is_visible_in_tree() or not _wants_authored_video() or not _authored_video_armed:
         return
     _sync_video_mode()
     _sync_video_geometry()
@@ -75,8 +86,20 @@ func restart_authored_animation() -> void:
     _video_player.play()
     _last_video_position = 0.0
 
-func _wants_menu_video() -> bool:
-    return _profile == "menu" and not _reduced_motion
+func suspend_authored_animation(clear_stream: bool = false) -> void:
+    # Used by the splash handoff: freeze on the exact authored poster while the
+    # menu starts its own loop underneath, avoiding two active video decoders.
+    _authored_video_armed = false
+    if _video_player != null:
+        _video_player.stop()
+        _video_player.visible = false
+        if clear_stream:
+            _video_player.stream = null
+    _last_video_position = 0.0
+    queue_redraw()
+
+func _wants_authored_video() -> bool:
+    return (_profile == "menu" or _profile == "splash") and not _reduced_motion
 
 func _video_is_active() -> bool:
     return _video_player != null and _video_player.visible and _video_player.stream != null and _video_player.is_playing()
@@ -84,7 +107,7 @@ func _video_is_active() -> bool:
 func _sync_video_mode() -> void:
     if _video_player == null:
         return
-    var should_play: bool = is_visible_in_tree() and _wants_menu_video() and FileAccess.file_exists(MENU_EYE_VIDEO_PATH)
+    var should_play: bool = is_visible_in_tree() and _wants_authored_video() and _authored_video_armed and FileAccess.file_exists(MENU_EYE_VIDEO_PATH)
     if not should_play:
         _video_player.stop()
         _video_player.visible = false
@@ -119,10 +142,22 @@ func _load_door_eye_texture() -> Texture2D:
     push_error("Door-eye resource is not Texture2D: %s" % DOOR_EYE_TEXTURE_PATH)
     return null
 
+func _load_menu_eye_poster_texture() -> Texture2D:
+    if not ResourceLoader.exists(MENU_EYE_POSTER_PATH):
+        return null
+    var resource: Resource = load(MENU_EYE_POSTER_PATH)
+    if resource is Texture2D:
+        return resource as Texture2D
+    push_error("Menu-eye poster resource is not Texture2D: %s" % MENU_EYE_POSTER_PATH)
+    return null
+
 func configure(accent: Color, profile: String = "menu", secondary: Color = Color("ef6fbd")) -> void:
     _accent = accent
     _secondary = secondary
     _profile = profile
+    # The normal menu can lazily start its authored loop when configured. The
+    # splash is armed by BootSequence after the first actual frame is presented.
+    _authored_video_armed = profile == "menu"
     _schedule_next_blink()
     _sync_video_mode()
     _sync_video_geometry()
@@ -196,15 +231,18 @@ func _schedule_next_blink() -> void:
 func _draw() -> void:
     if size.x <= 2.0 or size.y <= 2.0:
         return
-    if _door_eye_texture == null:
+    var authored_profile: bool = _profile == "menu" or _profile == "splash"
+    var base_texture: Texture2D = _menu_eye_poster_texture if authored_profile and _menu_eye_poster_texture != null else _door_eye_texture
+    if base_texture == null:
         return
     var min_side: float = minf(size.x, size.y)
-    var art: Rect2 = _fit_texture_rect(_door_eye_texture.get_size())
+    var art: Rect2 = _fit_texture_rect(base_texture.get_size())
     var glow: float = 0.52 + 0.20 * sin(_phase * 1.15)
     var glitch_px: float = _glitch * maxf(2.0, min_side * 0.012)
 
-    # A soft painted aura keeps the bitmap integrated with the current room
-    # accent without turning the illustration into a flat monochrome tint.
+    # A soft painted aura keeps the authored eye integrated with the current
+    # accent. Splash/menu use a real frame from the exact same loop, so the
+    # native pre-splash, first Godot frame and moving menu eye never jump art.
     for index in range(4):
         var grow: float = 5.0 + float(index) * 9.0
         draw_rect(art.grow(grow), Color(_accent, (0.050 - float(index) * 0.008) * glow), false, maxf(1.0, min_side * 0.0025))
@@ -212,12 +250,12 @@ func _draw() -> void:
     var art_alpha: float = 0.96 if _profile != "panel" else 0.84
     var open_bloom: float = 0.04 + _open_mix * 0.10
     if not _video_is_active():
-        draw_texture_rect(_door_eye_texture, art, false, Color(1.0 + open_bloom, 1.0 + open_bloom * 0.35, 1.0 + open_bloom, art_alpha))
+        draw_texture_rect(base_texture, art, false, Color(1.0 + open_bloom, 1.0 + open_bloom * 0.35, 1.0 + open_bloom, art_alpha))
     draw_rect(art, Color(_accent, 0.16 + _open_mix * 0.08), false, maxf(1.0, min_side * 0.004))
 
     _draw_textured_eye_animation(art, min_side, glow)
     if _glitch > 0.02:
-        _draw_texture_glitch(art, glitch_px)
+        _draw_texture_glitch(base_texture, art, glitch_px)
 
 func _fit_texture_rect(texture_size: Vector2) -> Rect2:
     var aspect: float = texture_size.x / maxf(1.0, texture_size.y)
@@ -292,8 +330,8 @@ func _draw_brain_pulses(center: Vector2, radius: float, glow: float) -> void:
         var color: Color = _accent.lerp(_secondary, float(index) / maxf(1.0, float(nodes.size() - 1)))
         draw_circle(node, maxf(1.0, radius * (0.025 + pulse * 0.020)), Color(color, (0.38 + pulse * 0.52) * glow))
 
-func _draw_texture_glitch(art: Rect2, glitch_px: float) -> void:
-    var tex_size: Vector2 = _door_eye_texture.get_size()
+func _draw_texture_glitch(texture: Texture2D, art: Rect2, glitch_px: float) -> void:
+    var tex_size: Vector2 = texture.get_size()
     var slices: int = 4
     for index in range(slices):
         var ratio: float = 0.18 + float(index) * 0.18 + 0.012 * sin(_phase * 37.0 + float(index))
@@ -306,7 +344,7 @@ func _draw_texture_glitch(art: Rect2, glitch_px: float) -> void:
             Vector2(0.0, tex_size.y * ratio),
             Vector2(tex_size.x, tex_size.y * height_ratio)
         )
-        draw_texture_rect_region(_door_eye_texture, dest, src, Color(1.0, 1.0, 1.0, 0.30 + _glitch * 0.34))
+        draw_texture_rect_region(texture, dest, src, Color(1.0, 1.0, 1.0, 0.30 + _glitch * 0.34))
         draw_rect(dest, Color(_accent.lerp(_secondary, float(index) / float(slices)), 0.10 * _glitch), true)
 
 func _notification(what: int) -> void:

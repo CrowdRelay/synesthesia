@@ -30,12 +30,16 @@ if "reward_client.start_run()" not in begin:
     failures.append("reward networking is not gated on explicit experience start")
 if "app.room.set_interaction_enabled(false)" not in room_flow:
     failures.append("new room can receive input before restore/layout completion")
-if 'return _profile == "menu" and not _reduced_motion' not in eye:
-    failures.append("splash may open the menu Theora decoder")
+if '_authored_video_armed = profile == "menu"' not in eye:
+    failures.append("splash authored video must remain disarmed during first-frame construction")
+if 'func arm_authored_animation(restart: bool = true)' not in eye:
+    failures.append("authored eye lacks explicit post-first-frame arming gate")
+if 'await RenderingServer.frame_post_draw' not in boot or '_motif.arm_authored_animation(true)' not in boot:
+    failures.append("splash eye is not armed strictly after the first rendered Godot frame")
 for token in (
-    "const BOOT_HOLD: float = 0.16",
-    "const DOOR_DURATION: float = 0.46",
-    "const FADE_DURATION: float = 0.16",
+    "const BOOT_HOLD: float = 0.28",
+    "const EYE_REVEAL_DURATION: float = 0.50",
+    "const FADE_DURATION: float = 0.20",
 ):
     if token not in boot:
         failures.append(f"bounded branded boot timing missing: {token}")
@@ -44,4 +48,4 @@ if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_STARTUP_LATENCY=FAIL count={len(failures)}")
-print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=menu-only room=thread-warm+door-wait+load network=interaction-gated splash-video=off branded-boot=0.78s")
+print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=poster-only room=thread-warm+door-wait+load network=interaction-gated splash-video=post-frame-authored branded-boot=0.98s")

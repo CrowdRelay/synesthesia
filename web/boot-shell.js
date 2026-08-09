@@ -4,6 +4,7 @@
   const CACHE_MARKER = "synesthesia:web-cache-id";
   let removed = false;
   let migrationActive = false;
+  let bootVideoTimer = 0;
 
   function readCacheMarker() {
     try {
@@ -64,6 +65,51 @@
     return document.getElementById("synesthesia-boot");
   }
 
+  function bootVideoElement() {
+    return document.getElementById("synesthesia-boot-eye");
+  }
+
+  function shouldAnimateBootVideo() {
+    if (removed || migrationActive) return false;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection?.saveData) return false;
+    return !["slow-2g", "2g"].includes(connection?.effectiveType || "");
+  }
+
+  function armBootVideo() {
+    bootVideoTimer = 0;
+    if (!shouldAnimateBootVideo()) return;
+    const video = bootVideoElement();
+    const boot = bootElement();
+    if (!video || !boot || boot.dataset.ready === "true") return;
+    if (!video.getAttribute("src")) {
+      video.src = "/menu-eye-boot-loop.mp4";
+      video.load();
+    }
+    const play = video.play();
+    if (play && typeof play.catch === "function") play.catch(() => undefined);
+  }
+
+  function stopBootVideo() {
+    if (bootVideoTimer) {
+      window.clearTimeout(bootVideoTimer);
+      bootVideoTimer = 0;
+    }
+    const video = bootVideoElement();
+    if (!video) return;
+    try { video.pause(); } catch (_) {}
+    video.removeAttribute("src");
+    try { video.load(); } catch (_) {}
+  }
+
+  function scheduleBootVideo() {
+    if (!shouldAnimateBootVideo() || bootVideoTimer) return;
+    // Fast boots never fetch/decode the extra loop. Slow boots become animated
+    // after the instant poster has already painted.
+    bootVideoTimer = window.setTimeout(armBootVideo, 350);
+  }
+
   function statusElement() {
     return document.getElementById("synesthesia-boot-status");
   }
@@ -74,14 +120,19 @@
     if (!el || el.dataset.stalled === "true") return;
     const status = statusElement();
     if (!status) return;
-
+    // Keep technical viewport diagnostics out of the artwork by default. They
+    // remain one query flag away for QA without leaking into the public splash.
+    if (!new URLSearchParams(location.search).has("debug-ui")) {
+      status.textContent = "URUCHAMIAM DOŚWIADCZENIE";
+      return;
+    }
     const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 3);
     const viewport = window.visualViewport;
     const cssWidth = Math.max(1, Math.round(viewport?.width || window.innerWidth || document.documentElement.clientWidth || 1));
     const cssHeight = Math.max(1, Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight || 1));
     const width = Math.round(cssWidth * dpr);
     const height = Math.round(cssHeight * dpr);
-    status.textContent = `ADAPTIVE NATIVE · ${width}×${height} · DPR ${dpr.toFixed(2)}`;
+    status.textContent = `NATIVE ${width}×${height} · DPR ${dpr.toFixed(2)}`;
   }
 
   function showStalled(message) {
@@ -96,6 +147,7 @@
   function removeBoot() {
     if (removed || migrationActive) return;
     removed = true;
+    stopBootVideo();
     const el = bootElement();
     if (!el) return;
     el.dataset.ready = "true";
@@ -120,6 +172,7 @@
   function wireDom() {
     wireRetry();
     updateNativeLabel();
+    scheduleBootVideo();
   }
 
   migrateControlledDeploy();
@@ -131,6 +184,9 @@
   window.addEventListener("resize", updateNativeLabel, { passive: true });
   window.visualViewport?.addEventListener("resize", updateNativeLabel, { passive: true });
 
+  // Godot calls prepare first, then arms its authored Theora loop, then fades
+  // this shell. This prevents two decoders from running through the handoff.
+  window.synesthesiaBootPrepareHandoff = stopBootVideo;
   window.synesthesiaBootReady = removeBoot;
   window.synesthesiaBootFailed = (message) => showStalled(message);
 

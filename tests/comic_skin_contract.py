@@ -62,7 +62,9 @@ if 'preload("res://assets/comic/' in ui or 'res://assets/ui/comic/' in ui:
 motif = (ROOT / "scripts/ui/door_eye_motif.gd").read_text(errors="replace")
 for token in (
     "DOOR_EYE_TEXTURE_PATH",
-    "draw_texture_rect(_door_eye_texture",
+    "MENU_EYE_POSTER_PATH",
+    "var base_texture: Texture2D",
+    "draw_texture_rect(base_texture",
     "_draw_textured_eye_animation",
     "_draw_texture_glitch",
     "_sync_processing",
@@ -81,7 +83,7 @@ for token in (
         failures.append(f"door-eye runtime texture loading token missing: {token}")
 if 'preload("res://assets/comic/' in motif or 'res://assets/ui/comic/' in motif:
     failures.append("door-eye must not preload raw image or live below assets/ui/.gdignore")
-expected_glitch_call = "draw_texture_rect_region(_door_eye_texture, dest, src, Color(1.0, 1.0, 1.0, 0.30 + _glitch * 0.34))"
+expected_glitch_call = "draw_texture_rect_region(texture, dest, src, Color(1.0, 1.0, 1.0, 0.30 + _glitch * 0.34))"
 if expected_glitch_call not in motif:
     failures.append("door-eye glitch draw_texture_rect_region signature is not Godot 4.x texture-first order")
 

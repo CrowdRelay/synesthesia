@@ -111,6 +111,7 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
 
     var eyebrow: Label = Label.new()
     eyebrow.text = "VIRYA · SYNESTEZJA"
+    UIFactory.apply_display_font(eyebrow)
     eyebrow.add_theme_font_size_override("font_size", 9)
     eyebrow.add_theme_color_override("font_color", Color("79b7ff"))
     content.add_child(eyebrow)
@@ -210,6 +211,7 @@ func _section(text_value: String) -> Label:
     var label: Label = Label.new()
     label.text = text_value
     label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    UIFactory.apply_display_font(label)
     label.add_theme_font_size_override("font_size", 9)
     label.add_theme_color_override("font_color", Color("8fbef4"))
     return label

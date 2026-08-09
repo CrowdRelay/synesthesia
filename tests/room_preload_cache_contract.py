@@ -9,6 +9,7 @@ failures: list[str] = []
 reader = (ROOT / "scripts/app/release_reader.gd").read_text()
 preloader = (ROOT / "scripts/app/asset_preloader.gd").read_text()
 audio = (ROOT / "scripts/audio_director.gd").read_text()
+audio_runtime = (ROOT / "scripts/audio/audio_asset_runtime.gd").read_text()
 
 for token in (
     "static var _json_cache: Dictionary = {}",
@@ -28,15 +29,22 @@ for token in (
         failures.append(f"deferred audio prewarm missing: {token}")
 
 for token in (
-    'audio.get("ambience", AMBIENCE_PATHS.get(_visual_style, ""))',
-    "_pending_ambience_path = path",
-    "_pending_asset_source.take_if_ready(_pending_ambience_path)",
-    "_resolve_pending_ambience()",
-    "_release_pending_asset_source_if_idle()",
+    "_asset_runtime._resolve_pending_ambience()",
+    "_asset_runtime._release_pending_asset_source_if_idle()",
+):
+    if token not in audio:
+        failures.append(f"audio director delegation missing: {token}")
+
+for token in (
+    'audio.get("ambience", AMBIENCE_PATHS.get(app._visual_style, ""))',
+    "app._pending_ambience_path = path",
+    "app._pending_asset_source.take_if_ready(app._pending_ambience_path)",
+    "func _resolve_pending_ambience() -> void:",
+    "func _release_pending_asset_source_if_idle() -> void:",
     "if resource is AudioStreamOggVorbis:",
     "ogg_stream.loop = true",
 ):
-    if token not in audio:
+    if token not in audio_runtime:
         failures.append(f"deferred ambience lifecycle missing: {token}")
 
 manifest_count = 0

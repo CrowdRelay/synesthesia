@@ -168,6 +168,7 @@ func _build_application_shell() -> void:
     save_timer.timeout.connect(_save_progress)
     add_child(save_timer)
     var boot = BootSequenceScript.new()
+    boot.configure(reduced_motion)
     ui_root.attach(boot, 100)
     boot.released.connect(_show_experience_intro)
 func _apply_native_geometry() -> void:
@@ -193,7 +194,7 @@ func _show_experience_intro() -> void:
         bool(album_state.get("album_completed", false)),
         str(reward.get("api_url", "")),
         str(reward.get("policy_version", "virya-signal-2026-08")),
-        experience_surface.get_render_label(),
+        experience_surface.get_render_label() if DebugProfile.is_local_desktop_debug() else "",
     )
     experience_intro_panel.begin_requested.connect(_begin_experience)
     experience_intro_panel.new_journey_requested.connect(_confirm_reset_album)

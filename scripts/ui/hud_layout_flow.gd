@@ -77,6 +77,7 @@ func _build_top() -> void:
     app.counter_label.name = "RoomCounter"
     app.counter_label.custom_minimum_size = Vector2(48.0, 22.0)
     app.counter_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    UIFactory.apply_display_font(app.counter_label)
     app.counter_label.add_theme_font_size_override("font_size", 10)
     app.counter_label.add_theme_color_override("font_color", Color("88bfff"))
     row.add_child(app.counter_label)
@@ -86,6 +87,7 @@ func _build_top() -> void:
     app.title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     app.title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     app.title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+    UIFactory.apply_title_font(app.title_label)
     app.title_label.add_theme_font_size_override("font_size", 15)
     app.title_label.add_theme_color_override("font_color", Color("f4f7fb"))
     row.add_child(app.title_label)
@@ -133,6 +135,7 @@ func _build_top() -> void:
     app.progress_label.custom_minimum_size = Vector2(108.0, 16.0)
     app.progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
     app.progress_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    UIFactory.apply_display_font(app.progress_label)
     app.progress_label.add_theme_font_size_override("font_size", 9)
     app.progress_label.add_theme_color_override("font_color", Color("8ec4ff"))
     app.progress_row.add_child(app.progress_label)
@@ -182,6 +185,7 @@ func _build_bottom() -> void:
     app.act_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     app.act_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     app.act_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+    UIFactory.apply_display_font(app.act_label)
     app.act_label.add_theme_font_size_override("font_size", 10)
     app.act_label.add_theme_color_override("font_color", Color("f0d39d"))
     content.add_child(app.act_label)
@@ -192,6 +196,7 @@ func _build_bottom() -> void:
     app.instruction_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     app.instruction_label.custom_minimum_size = Vector2(0.0, 22.0)
     app.instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    UIFactory.apply_display_font(app.instruction_label)
     app.instruction_label.add_theme_font_size_override("font_size", 9)
     app.instruction_label.add_theme_color_override("font_color", Color("b5c3d4"))
     content.add_child(app.instruction_label)
@@ -208,6 +213,7 @@ func _build_bottom() -> void:
     app.brush_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     app.brush_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     app.brush_label.custom_minimum_size = Vector2(0.0, 28.0)
+    UIFactory.apply_display_font(app.brush_label)
     app.brush_label.add_theme_font_size_override("font_size", 9)
     app.brush_label.add_theme_color_override("font_color", Color("8d9fb5"))
     content.add_child(app.brush_label)
@@ -234,6 +240,7 @@ func _build_toast() -> void:
     app.toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     app.toast_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     app.toast_label.custom_minimum_size = Vector2(360.0, 0.0)
+    UIFactory.apply_display_font(app.toast_label)
     app.toast_label.add_theme_font_size_override("font_size", 11)
     app.toast_label.add_theme_color_override("font_color", Color("e6f1ff"))
     row.add_child(app.toast_label)
@@ -261,6 +268,7 @@ func _build_act_banner() -> void:
     app.act_banner_label.autowrap_mode = TextServer.AUTOWRAP_OFF
     app.act_banner_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
     app.act_banner_label.custom_minimum_size = Vector2(360.0, 0.0)
+    UIFactory.apply_display_font(app.act_banner_label)
     app.act_banner_label.add_theme_font_size_override("font_size", 10)
     app.act_banner_label.add_theme_color_override("font_color", Color("f7e7c7"))
     row.add_child(app.act_banner_label)

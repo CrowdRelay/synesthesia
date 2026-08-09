@@ -68,9 +68,18 @@ require(
 require(
     "scripts/ui/door_eye_motif.gd",
     "show_behind_parent = true",
+    'MENU_EYE_POSTER_PATH',
+    'func arm_authored_animation(restart: bool = true) -> void:',
     "func restart_authored_animation() -> void:",
     '_video_player.stop()',
     '_video_player.play()',
+)
+require(
+    "scripts/ui/boot_sequence.gd",
+    'BootAuthoredEye',
+    '_motif.arm_authored_animation(true)',
+    'UIFactory.apply_title_font(_title)',
+    'OTWÓRZ  ·  ODKRYJ  ·  POCZUJ',
 )
 intro = read("scripts/ui/experience_intro_card.gd")
 for token in ('_motif.configure(_accent, "menu", Color("ef6fbd"))',):
@@ -78,6 +87,16 @@ for token in ('_motif.configure(_accent, "menu", Color("ef6fbd"))',):
         failures.append(f"experience_intro_card.gd: missing lazy eye setup {token}")
 if '_motif.call_deferred("restart_authored_animation")' in intro:
     failures.append("experience_intro_card.gd: menu must not force authored decoder restart on first presentation")
+
+
+require(
+    "scripts/ui/hud_layout_flow.gd",
+    "UIFactory.apply_title_font(app.title_label)",
+    "UIFactory.apply_display_font(app.counter_label)",
+    "UIFactory.apply_display_font(app.progress_label)",
+    "UIFactory.apply_display_font(app.instruction_label)",
+    "UIFactory.apply_display_font(app.act_banner_label)",
+)
 
 require(
     "scripts/app/door_transition_layer.gd",

@@ -133,6 +133,7 @@ func _add_room_entry(index: int) -> void:
     var echo_text := Label.new()
     echo_text.text = "ECHA %d/%d  ·  %s" % [echo_count, collectibles.size(), " · ".join(echo_titles)]
     echo_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    UIFactory.apply_display_font(echo_text)
     echo_text.add_theme_font_size_override("font_size", 9)
     echo_text.add_theme_color_override("font_color", Color(room_accent, 0.78) if unlocked else Color("6f7b8b"))
     body.add_child(echo_text)

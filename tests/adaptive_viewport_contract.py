@@ -50,7 +50,7 @@ for token, source, label in [
     ('html/canvas_resize_policy=2', exports, 'web-adaptive-canvas'),
     ('PHONE_ASPECT_CUTOFF: float = 0.72', surface, 'responsive-cutoff'),
     ('get_viewport_rect().size', surface, 'native-root-size'),
-    ('ADAPTIVE NATIVE', boot, 'native-boot-label'),
+    ('URUCHAMIAM DOŚWIADCZENIE', boot, 'branded-boot-status'),
     ('window.devicePixelRatio', web_boot, 'web-dpr-probe'),
     ('ui_root.attach(experience_intro_panel, 20)', main, 'menu-full-native-ui-root'),
     ('room_layer.position = art_rect.position', main, 'room-cover-position'),
