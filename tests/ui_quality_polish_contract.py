@@ -27,11 +27,18 @@ require(
     "font.font_stretch = 76",
     "font.font_stretch = 82",
     "control.alignment = HORIZONTAL_ALIGNMENT_CENTER",
-    "apply_display_font(control)",
-    "apply_title_font(label)",
+    "Generic actions follow the same clean sans-serif vocabulary as Virya/Signal",
+    "Content headings stay neutral for ecosystem consistency",
 )
 
 factory = read("scripts/ui/ui_factory.gd")
+menu_button = factory[factory.find("static func menu_button"):factory.find("static func _button_style")]
+generic_button = factory[factory.find("static func button("):factory.find("static func heading(")]
+content_heading = factory[factory.find("static func heading("):factory.find("static func body(")]
+if "apply_display_font(control)" in menu_button or "apply_display_font(control)" in generic_button:
+    failures.append("ui_factory.gd: generic actions must keep the neutral ecosystem font")
+if "apply_title_font(label)" in content_heading:
+    failures.append("ui_factory.gd: content headings must not reuse the identity title font")
 button_style = factory[factory.find("static func _button_style"):factory.find("static func panel_style")]
 if "20.0,\n        9.0,\n        16.0" in button_style:
     failures.append("ui_factory.gd: asymmetric legacy button content margins returned")

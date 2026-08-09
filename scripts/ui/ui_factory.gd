@@ -151,7 +151,8 @@ static func menu_button(text_value: String, accent: Color, primary: bool = false
     control.focus_mode = Control.FOCUS_ALL
     control.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
     control.alignment = HORIZONTAL_ALIGNMENT_CENTER
-    apply_display_font(control)
+    # Generic actions follow the same clean sans-serif vocabulary as Virya/Signal.
+    # Synesthesia's display face is reserved for identity/meta accents.
     control.add_theme_font_size_override("font_size", 15 if primary else 13)
     control.add_theme_color_override("font_color", Color("f4ead7"))
     control.add_theme_color_override("font_hover_color", Color("fff6e8"))
@@ -228,7 +229,6 @@ static func button(text_value: String, compact: bool = false) -> Button:
     control.focus_mode = Control.FOCUS_ALL
     control.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
     control.alignment = HORIZONTAL_ALIGNMENT_CENTER
-    apply_display_font(control)
     control.add_theme_font_size_override("font_size", 12 if compact else 13)
     control.add_theme_color_override("font_color", Color("f2eadb"))
     control.add_theme_color_override("font_disabled_color", Color("8d9aaa"))
@@ -247,7 +247,8 @@ static func heading(text_value: String) -> Label:
     label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    apply_title_font(label)
+    # Content headings stay neutral for ecosystem consistency. The authored
+    # title face remains on the SYNESTHESIA logo and in-room track identity.
     label.add_theme_font_size_override("font_size", 24)
     label.add_theme_color_override("font_color", Color("f4ead8"))
     label.add_theme_constant_override("outline_size", 1)
@@ -271,7 +272,12 @@ static func line_edit(placeholder: String, accent: Color = Color("72afff")) -> L
     field.custom_minimum_size = Vector2(0.0, 48.0)
     field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     field.mouse_filter = Control.MOUSE_FILTER_STOP
-    field.add_theme_font_size_override("font_size", 13)
+    field.focus_mode = Control.FOCUS_ALL
+    field.mouse_default_cursor_shape = Control.CURSOR_IBEAM
+    field.virtual_keyboard_enabled = true
+    field.virtual_keyboard_show_on_focus = true
+    field.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
+    field.add_theme_font_size_override("font_size", 14)
     field.add_theme_color_override("font_color", Color("f2eadb"))
     field.add_theme_color_override("font_placeholder_color", Color("918d87"))
     field.add_theme_stylebox_override("normal", _texture_style(_texture(COMIC_INPUT_TEXTURE_PATH), _comic_tint(accent, 0.08, 0.94), 24.0, 17.0, 9.0, 14.0, 9.0))
@@ -298,7 +304,6 @@ static func option_button(accent: Color = Color("72afff")) -> OptionButton:
     control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     control.mouse_filter = Control.MOUSE_FILTER_STOP
     control.alignment = HORIZONTAL_ALIGNMENT_CENTER
-    apply_display_font(control)
     control.add_theme_font_size_override("font_size", 12)
     control.add_theme_color_override("font_color", Color("f2eadb"))
     control.add_theme_color_override("font_hover_color", Color("fff6e8"))
