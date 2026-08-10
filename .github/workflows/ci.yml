@@ -72,7 +72,6 @@ jobs:
           set -euo pipefail
           cargo +1.97.1 fmt --manifest-path native/Cargo.toml --all -- --check
           cargo +1.97.1 test --manifest-path native/Cargo.toml --package synesthesia-core
-          cargo +1.97.1 check --manifest-path native/Cargo.toml --package synesthesia-gdext
           cargo +1.97.1 clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
 
       - name: Install verified Godot editor
