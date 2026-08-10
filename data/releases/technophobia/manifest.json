@@ -107,7 +107,7 @@
       "enabled": true,
       "profile": "technophobia",
       "settle_delay": 2.05,
-      "strength": 0.76,
+      "strength": 0.92,
       "target_fps": 24,
       "effects": [
         "crt_residual",

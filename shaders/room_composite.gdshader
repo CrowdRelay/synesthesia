@@ -121,13 +121,14 @@ void fragment() {
             scene_loop += vec2(sin(lt * 0.34) * 0.0012, cos(lt * 0.22) * 0.0005) * living;
             foreground_loop += vec2(-sin(lt * 0.29) * 0.0018, 0.0) * living;
         } else if (unlock_profile == 1) {
-            subject_loop += vec2(sin(lt * 0.31) * 0.0018, cos(lt * 0.27) * 0.0026) * living;
-            foreground_loop += vec2(-sin(lt * 0.24) * 0.0022, cos(lt * 0.19) * 0.0012) * living;
+            subject_loop += vec2(sin(lt * 0.31) * 0.0036, cos(lt * 0.27) * 0.0052) * living;
+            foreground_loop += vec2(-sin(lt * 0.24) * 0.0042, cos(lt * 0.19) * 0.0022) * living;
         } else if (unlock_profile == 2) {
-            subject_loop += vec2(sin(lt * 0.27) * 0.0024, cos(lt * 0.21) * 0.0008) * living;
+            subject_loop += vec2(sin(lt * 0.27) * 0.0044, cos(lt * 0.21) * 0.0016) * living;
+            foreground_loop += vec2(-sin(lt * 0.20) * 0.0012, 0.0) * living;
         } else if (unlock_profile == 3) {
-            scene_loop += vec2(sin(lt * 0.15) * 0.0007, cos(lt * 0.13) * 0.0006) * living;
-            foreground_loop += vec2(sin(lt * 0.18) * 0.0011, 0.0) * living;
+            scene_loop += vec2(sin(lt * 0.15) * 0.0014, cos(lt * 0.13) * 0.0011) * living;
+            foreground_loop += vec2(sin(lt * 0.18) * 0.0023, 0.0) * living;
         } else if (unlock_profile == 4) {
             subject_loop += vec2(sin(lt * 0.42) * 0.0016, sin(lt * 0.20) * 0.0007) * living;
         } else if (unlock_profile == 5) {
@@ -140,11 +141,11 @@ void fragment() {
         } else if (unlock_profile == 8) {
             subject_loop += vec2(sin(lt * 0.30) * 0.0012, sin(lt * 0.21) * 0.0010) * living;
         } else if (unlock_profile == 9) {
-            foreground_loop += vec2(sin(lt * 0.24) * 0.0027, cos(lt * 0.17) * 0.0005) * living;
-            scene_loop += vec2(-sin(lt * 0.18) * 0.0008, 0.0) * living;
+            foreground_loop += vec2(sin(lt * 0.24) * 0.0042, cos(lt * 0.17) * 0.0011) * living;
+            scene_loop += vec2(-sin(lt * 0.18) * 0.0014, 0.0) * living;
         } else if (unlock_profile == 10) {
-            scene_loop += vec2(0.0, sin(lt * 0.18) * 0.0010) * living;
-            foreground_loop += vec2(sin(lt * 0.16) * 0.0007, -cos(lt * 0.14) * 0.0012) * living;
+            scene_loop += vec2(0.0, sin(lt * 0.18) * 0.0016) * living;
+            foreground_loop += vec2(sin(lt * 0.16) * 0.0014, -cos(lt * 0.14) * 0.0020) * living;
         }
     }
 
@@ -152,6 +153,55 @@ void fragment() {
     vec2 back_uv = cover_uv(UV, 1.095 + unlock_zoom * 0.45, parallax * background_parallax * motion_scale + back_loop);
     vec2 subject_uv = cover_uv(UV, 1.026 + unlock_zoom * 0.72, parallax * subject_parallax * motion_scale + subject_loop);
     vec2 foreground_uv = cover_uv(UV, 1.042 + unlock_zoom * 1.10, parallax * foreground_parallax * motion_scale + foreground_loop);
+    if (living > 0.001) {
+        if (unlock_profile == 3) { // Calling: liquid bowl ripple slightly distorts the altar area.
+            vec2 altar = UV - vec2(0.5, 0.63);
+            float ad = length(altar);
+            float ripple = sin(ad * 120.0 - lt * 2.3) * (1.0 - smoothstep(0.05, 0.24, ad));
+            subject_uv += normalize(altar + vec2(0.0001)) * ripple * 0.0024 * living;
+            scene_uv += vec2(sin(lt * 0.8 + UV.y * 9.0), cos(lt * 0.7 + UV.x * 8.0)) * 0.0005 * living;
+        } else if (unlock_profile == 1) { // Party: membrane breath creates small surface drag.
+            float membrane = sin(UV.y * 18.0 + lt * 0.9 + sin(UV.x * 7.0)) * 0.0018 * living;
+            subject_uv.y += membrane;
+            foreground_uv.x += membrane * 0.65;
+        } else if (unlock_profile == 2) { // Unmasked: the reliquary breath subtly warps the face area.
+            vec2 reliquary = UV - vec2(0.5, 0.43);
+            float rd = length(reliquary);
+            float halo = (1.0 - smoothstep(0.08, 0.26, rd)) * sin(lt * 1.1 + rd * 18.0);
+            subject_uv += normalize(reliquary + vec2(0.0001)) * halo * 0.0016 * living;
+        } else if (unlock_profile == 9) { // Waves: curtains and air move the image softly.
+            float curtain = sin(UV.x * 21.0 + lt * 0.42) * cos(UV.y * 8.0 + lt * 0.18);
+            foreground_uv.x += curtain * 0.0028 * living;
+            scene_uv.x -= curtain * 0.0010 * living;
+        } else if (unlock_profile == 6) { // Technophobia: residual horizontal sync errors.
+            float band = step(0.91, hash21(vec2(floor(UV.y * 22.0), floor(lt * 2.4))));
+            float offset = (hash21(vec2(floor(lt * 4.0), floor(UV.y * 22.0))) - 0.5) * 0.006 * band * living;
+            scene_uv.x += offset;
+            foreground_uv.x -= offset * 0.55;
+        } else if (unlock_profile == 7) { // Invaluable: tiny glass refraction around moving glints.
+            float shard = sin((UV.x + UV.y) * 36.0 + lt * 0.55) * sin((UV.x - UV.y) * 27.0 - lt * 0.42);
+            foreground_uv += vec2(shard, -shard) * 0.0009 * living;
+        } else if (unlock_profile == 4) { // Seed: sap current gently bends the trunk area.
+            float trunk = 1.0 - smoothstep(0.03, 0.19, abs(UV.x - 0.5));
+            subject_uv.x += sin(UV.y * 22.0 + lt * 1.25) * 0.0017 * trunk * living;
+        } else if (unlock_profile == 8) { // Ashes: heat haze around phoenix.
+            float heat = 1.0 - smoothstep(0.16, 0.43, distance(UV, vec2(0.5, 0.43)));
+            subject_uv.x += sin(UV.y * 34.0 + lt * 2.1) * 0.0018 * heat * living;
+            foreground_uv.y += cos(UV.x * 19.0 - lt * 1.4) * 0.0007 * heat * living;
+        } else if (unlock_profile == 5) { // Hybrid: radial motor vibration.
+            vec2 core = UV - vec2(0.5, 0.52);
+            float cd = length(core);
+            float motor = sin(cd * 95.0 - lt * 1.15) * (1.0 - smoothstep(0.08, 0.34, cd));
+            scene_uv += normalize(core + vec2(0.0001)) * motor * 0.0013 * living;
+        } else if (unlock_profile == 10) { // Rise: vertical atmospheric current.
+            float shaft = 1.0 - smoothstep(0.12, 0.34, abs(UV.x - 0.5));
+            scene_uv.y += sin(UV.y * 17.0 + lt * 0.62) * 0.0011 * shaft * living;
+            foreground_uv.y -= 0.00055 * living;
+        } else if (unlock_profile == 0) { // Uncertainty: opposing wave drag.
+            scene_uv.x += sin(UV.y * 19.0 + lt * 0.72) * 0.0011 * living;
+            foreground_uv.x -= sin(UV.y * 15.0 - lt * 0.63) * 0.0013 * living;
+        }
+    }
     if (unlock_profile == 4) {
         subject_uv.x += sin(UV.y * 10.0 + t * 2.2) * 0.0038 * unlock;
     } else if (unlock_profile == 6) {
@@ -220,10 +270,10 @@ void fragment() {
     if (living > 0.001 && reveal > 0.92) {
         if (unlock_profile == 1) { // Party: slow specular sweeps across membranes.
             float sweep = 0.5 + 0.5 * sin(UV.y * 22.0 - lt * 0.75 + sin(UV.x * 9.0));
-            living_fx = pow(sweep, 7.0) * 0.026 * living;
+            living_fx = pow(sweep, 5.0) * 0.072 * living;
         } else if (unlock_profile == 2) { // Unmasked: breathing halo around reliquary.
             float d = distance(UV, vec2(0.5, 0.43));
-            living_fx = (1.0 - smoothstep(0.12, 0.31, d)) * (0.018 + 0.014 * (0.5 + 0.5 * sin(lt * 0.82))) * living;
+            living_fx = (1.0 - smoothstep(0.10, 0.34, d)) * (0.040 + 0.034 * (0.5 + 0.5 * sin(lt * 0.82))) * living;
         } else if (unlock_profile == 3) { // Calling: candles + living liquid surface.
             float candles = 0.0;
             candles += 1.0 - smoothstep(0.015, 0.055, distance(UV, vec2(0.23, 0.58)));
@@ -233,36 +283,51 @@ void fragment() {
             float flicker = 0.55 + 0.45 * sin(lt * 6.1) * sin(lt * 1.73 + UV.x * 13.0);
             float altar_d = distance(UV, vec2(0.5, 0.63));
             float liquid = (0.5 + 0.5 * sin(altar_d * 165.0 - lt * 2.1)) * (1.0 - smoothstep(0.06, 0.24, altar_d));
-            living_fx = (candles * (0.020 + flicker * 0.022) + liquid * 0.020) * living;
+            living_fx = (candles * (0.054 + flicker * 0.052) + liquid * 0.050) * living;
         } else if (unlock_profile == 4) { // Seed: energy moves upward through the trunk.
             float trunk = 1.0 - smoothstep(0.015, 0.13, abs(UV.x - 0.5));
             float sap = 0.5 + 0.5 * sin(UV.y * 37.0 + lt * 2.0);
-            living_fx = trunk * pow(sap, 7.0) * 0.032 * living;
+            living_fx = trunk * pow(sap, 5.5) * 0.060 * living;
         } else if (unlock_profile == 6) { // Tech: residual scan / LED glow.
             float grid = step(0.93, hash21(floor(UV * vec2(8.0, 13.0)) + floor(lt * 1.8)));
-            living_fx = grid * (0.5 + 0.5 * sin(lt * 8.0 + UV.y * 17.0)) * 0.025 * living;
+            living_fx = grid * (0.5 + 0.5 * sin(lt * 8.0 + UV.y * 17.0)) * 0.048 * living;
         } else if (unlock_profile == 7) { // Invaluable: moving glass glint.
             float diagonal = 1.0 - smoothstep(0.0, 0.055, abs(fract(UV.x + UV.y * 0.72 - lt * 0.045) - 0.5));
-            living_fx = diagonal * 0.022 * living;
+            living_fx = diagonal * 0.046 * living;
         } else if (unlock_profile == 8) { // Ashes: warm breathing heat around phoenix.
             float d = distance(UV, vec2(0.5, 0.43));
-            living_fx = (1.0 - smoothstep(0.10, 0.40, d)) * (0.014 + 0.012 * (0.5 + 0.5 * sin(lt * 0.66))) * living;
+            living_fx = (1.0 - smoothstep(0.10, 0.42, d)) * (0.034 + 0.024 * (0.5 + 0.5 * sin(lt * 0.66))) * living;
         } else if (unlock_profile == 9) { // Waves: rain/window light travels through curtains.
             float curtain = pow(0.5 + 0.5 * sin(UV.x * 31.0 + lt * 0.34), 9.0);
             float window = (1.0 - smoothstep(0.18, 0.42, distance(UV, vec2(0.5, 0.45))));
-            living_fx = (curtain * 0.014 + window * (0.010 + 0.008 * sin(lt * 0.47))) * living;
+            living_fx = (curtain * 0.038 + window * (0.028 + 0.022 * sin(lt * 0.47))) * living;
         } else if (unlock_profile == 5) { // Hybrid: core pulse.
             float d = distance(UV, vec2(0.5, 0.52));
             float ring = 1.0 - smoothstep(0.0, 0.018, abs(d - (0.12 + 0.018 * sin(lt * 0.35))));
-            living_fx = ring * 0.028 * living;
+            living_fx = ring * 0.052 * living;
         } else if (unlock_profile == 10) { // Rise: slow vertical light current.
             float column = 1.0 - smoothstep(0.08, 0.30, abs(UV.x - 0.5));
             float current = 0.5 + 0.5 * sin(UV.y * 15.0 + lt * 0.62);
-            living_fx = column * (0.010 + pow(current, 8.0) * 0.024) * living;
+            living_fx = column * (0.026 + pow(current, 6.5) * 0.050) * living;
         } else {
-            living_fx = (0.5 + 0.5 * sin(UV.y * 16.0 + lt * 0.4)) * 0.010 * living;
+            living_fx = (0.5 + 0.5 * sin(UV.y * 16.0 + lt * 0.4)) * 0.022 * living;
         }
         color += accent_color.rgb * living_fx;
+        if (unlock_profile == 3) {
+            color += vec3(0.20, 0.08, 0.04) * living_fx * 0.85;
+        } else if (unlock_profile == 1) {
+            color += vec3(0.05, 0.02, 0.08) * living_fx * 0.55;
+        } else if (unlock_profile == 2) {
+            color += vec3(0.10, 0.03, 0.03) * living_fx * 0.70;
+        } else if (unlock_profile == 9) {
+            color += vec3(0.03, 0.05, 0.08) * living_fx * 0.55;
+        }
+        // Room materials keep breathing after completion. It is intentionally
+        // small but visible on OLED/mobile: a gentle luminance wave + signal sweep.
+        float material_breath = 0.5 + 0.5 * sin(lt * (0.31 + float(unlock_profile) * 0.013));
+        color *= 1.0 + living * (material_breath - 0.5) * 0.022;
+        float signal_scan = pow(0.5 + 0.5 * sin((UV.y + UV.x * 0.12) * 42.0 - lt * 0.52), 12.0);
+        color += accent_color.rgb * signal_scan * living * 0.010;
     }
 
     if (quality_level > 0) {

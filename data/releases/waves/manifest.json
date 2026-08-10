@@ -70,8 +70,8 @@
     "living_state": {
       "enabled": true,
       "profile": "waves",
-      "settle_delay": 2.0,
-      "strength": 0.84,
+      "settle_delay": 1.85,
+      "strength": 0.95,
       "target_fps": 24,
       "effects": [
         "curtain_breath",

@@ -53,12 +53,19 @@ func _process(delta: float) -> void:
 
     _elapsed += minf(delta, 0.10)
     var hero: float = 0.0
+    var target := _effective_target()
     if not _instant_restore and _elapsed < _settle_delay:
         var raw: float = clampf(_elapsed / _settle_delay, 0.0, 1.0)
         hero = raw * raw * (3.0 - 2.0 * raw)
+        # Start the living loop before the hero beat fully settles so the room
+        # flows into life instead of feeling like a held final frame.
+        var overlap := clampf((raw - 0.42) / 0.58, 0.0, 1.0)
+        _living_time = fmod(_living_time + minf(delta, 0.10), 10000.0)
+        var overlap_target := target * (0.18 + overlap * 0.58)
+        _living_strength = move_toward(_living_strength, overlap_target, delta * 0.95)
     else:
         _living_time = fmod(_living_time + minf(delta, 0.10), 10000.0)
-        _living_strength = move_toward(_living_strength, _effective_target(), delta * 0.52)
+        _living_strength = move_toward(_living_strength, target, delta * 0.88)
 
     _apply(hero, _living_strength, _living_time)
 

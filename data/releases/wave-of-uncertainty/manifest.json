@@ -70,7 +70,7 @@
       "enabled": true,
       "profile": "uncertainty",
       "settle_delay": 1.85,
-      "strength": 0.72,
+      "strength": 0.9,
       "target_fps": 24,
       "effects": [
         "wave_filaments",

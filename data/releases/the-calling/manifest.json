@@ -70,8 +70,8 @@
     "living_state": {
       "enabled": true,
       "profile": "calling",
-      "settle_delay": 2.05,
-      "strength": 0.88,
+      "settle_delay": 1.85,
+      "strength": 0.95,
       "target_fps": 24,
       "effects": [
         "candle_flicker",

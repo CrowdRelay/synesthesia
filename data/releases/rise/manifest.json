@@ -69,8 +69,8 @@
     "living_state": {
       "enabled": true,
       "profile": "rise",
-      "settle_delay": 2.2,
-      "strength": 0.82,
+      "settle_delay": 1.75,
+      "strength": 0.95,
       "target_fps": 24,
       "effects": [
         "ascension_current",

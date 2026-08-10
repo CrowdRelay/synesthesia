@@ -70,7 +70,7 @@
       "enabled": true,
       "profile": "hybrid",
       "settle_delay": 1.85,
-      "strength": 0.74,
+      "strength": 0.93,
       "target_fps": 24,
       "effects": [
         "counter_rotation",
