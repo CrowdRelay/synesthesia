@@ -69,8 +69,8 @@
     "living_state": {
       "enabled": true,
       "profile": "invaluable",
-      "settle_delay": 2.0,
-      "strength": 0.92,
+      "settle_delay": 1.7,
+      "strength": 0.95,
       "target_fps": 24,
       "effects": [
         "shard_float",

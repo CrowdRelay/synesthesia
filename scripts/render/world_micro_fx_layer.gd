@@ -132,13 +132,17 @@ func _draw_glass(alpha: float) -> void:
     var shattered_value: Variant = _state("shattered", [])
     var shattered: Array = shattered_value if shattered_value is Array else []
     var c := Vector2(size.x * 0.5, size.y * 0.50)
-    for i in range(11):
-        var phase := float(i) * 0.71
-        var a := phase + sin(_time * 0.27 + phase) * 0.035
-        var radius := minf(size.x, size.y) * (0.13 + float(i % 4) * 0.028)
-        var p := c + Vector2(cos(a), sin(a)) * radius
-        var shimmer := 0.20 + 0.80 * maxf(0.0, sin(_time * 0.9 + phase))
-        draw_line(p, p + Vector2.from_angle(a + 1.2) * (8.0 + i % 4 * 3.0), Color(accent, alpha * shimmer * (0.42 + shattered.size() * 0.08)), 1.0)
+    for i in range(14):
+        var phase := float(i) * 0.58
+        var a := phase + sin(_time * 0.29 + phase) * 0.050
+        var radius := minf(size.x, size.y) * (0.11 + float(i % 5) * 0.025)
+        var p := c + Vector2(cos(a), sin(a)) * radius + Vector2(sin(_time * 0.25 + i) * 2.0, cos(_time * 0.19 + i * 0.7) * 1.5)
+        var shimmer := 0.24 + 0.76 * maxf(0.0, sin(_time * (1.0 + i * 0.03) + phase))
+        var seg := Vector2.from_angle(a + 1.2) * (10.0 + i % 4 * 3.6)
+        draw_line(p - seg * 0.35, p + seg, Color(accent, alpha * shimmer * (0.52 + shattered.size() * 0.10)), 1.1)
+    var sweep := fmod(_time * 0.12, 1.0)
+    var sx := lerpf(size.x * 0.22, size.x * 0.78, sweep)
+    draw_line(Vector2(sx - 22.0, size.y * 0.26), Vector2(sx + 18.0, size.y * 0.74), Color(Color.WHITE, alpha * 0.16 * (1.0 - abs(sweep - 0.5) * 1.5)), 1.6)
 
 func _draw_seed(alpha: float) -> void:
     var growth := clampf(float(_state("growth", _state("root_growth", progress))), 0.0, 1.0)
@@ -266,74 +270,81 @@ func _draw_gameplay_living_accents(alpha: float) -> void:
                 var a := float(i) / 7.0 * TAU + _time * (0.10 + i * 0.004)
                 var p := c + Vector2.from_angle(a) * (42.0 + i * 7.0)
                 var gl := 0.5 + 0.5 * sin(_time * 1.4 + i * 1.9)
-                draw_line(p - Vector2(4,4), p + Vector2(4,4), Color(Color.WHITE, alpha * live * gl * 0.34), 1.0)
+                draw_line(p - Vector2(4,4), p + Vector2(4,4), Color(Color.WHITE, alpha * live * gl * 0.40), 1.0)
             var blink := pow(maxf(0.0, sin(_time * 0.72)), 14.0)
-            draw_circle(Vector2(size.x * 0.5, size.y * 0.43), 3.0 + blink * 5.0, Color(secondary, alpha * live * (0.18 + blink * 0.75)))
+            draw_circle(Vector2(size.x * 0.5, size.y * 0.43), 3.0 + blink * 5.0, Color(secondary, alpha * live * (0.20 + blink * 0.82)))
         "invaluable":
-            for i in range(12):
-                var a := float(i) * 0.71 + sin(_time * 0.17 + i) * 0.06
+            for i in range(14):
+                var a := float(i) * 0.66 + sin(_time * 0.17 + i) * 0.06
                 var r := 34.0 + float(i % 5) * 24.0
                 var p := c + Vector2.from_angle(a) * r
-                var glint := pow(maxf(0.0, sin(_time * (0.72 + i * 0.025) + i)), 9.0)
-                draw_line(p - Vector2(6,0), p + Vector2(6,0), Color(accent, alpha * live * glint * 0.72), 1.2)
-                draw_line(p - Vector2(0,4), p + Vector2(0,4), Color(Color.WHITE, alpha * live * glint * 0.42), 1.0)
+                var glint := pow(maxf(0.0, sin(_time * (0.72 + i * 0.025) + i)), 7.0)
+                draw_line(p - Vector2(8,0), p + Vector2(8,0), Color(accent, alpha * live * glint * 0.78), 1.3)
+                draw_line(p - Vector2(0,5), p + Vector2(0,5), Color(Color.WHITE, alpha * live * glint * 0.50), 1.0)
+            var sweep := fmod(_time * 0.11, 1.0)
+            var x0 := lerpf(size.x * 0.18, size.x * 0.82, sweep)
+            draw_line(Vector2(x0 - 20.0, size.y * 0.27), Vector2(x0 + 24.0, size.y * 0.77), Color(Color.WHITE, alpha * live * (1.0 - abs(sweep - 0.5) * 1.4) * 0.28), 1.8)
         "seed":
             var pulse := fmod(_time * 0.22, 1.0)
             var y := size.y * lerpf(0.76, 0.18, pulse)
             var radius := 5.0 + 20.0 * sin(pulse * PI)
-            draw_arc(Vector2(size.x * 0.5, y), radius, 0.0, TAU, 34, Color(secondary, alpha * live * (1.0 - pulse) * 0.62), 1.2)
-            for i in range(7):
+            draw_arc(Vector2(size.x * 0.5, y), radius, 0.0, TAU, 34, Color(secondary, alpha * live * (1.0 - pulse) * 0.72), 1.2)
+            for i in range(10):
                 var x := size.x * 0.5 + sin(_time * 0.55 + i) * (16.0 + i * 7.0)
-                draw_circle(Vector2(x, y + i * 4.0), 1.0 + i % 2, Color(accent, alpha * live * 0.22))
+                draw_circle(Vector2(x, y + i * 4.0), 1.0 + i % 2, Color(accent, alpha * live * 0.28))
         "party":
             var beat := pow(maxf(0.0, sin(_time * 0.92)), 10.0)
-            draw_circle(c, 28.0 + beat * 18.0, Color(secondary, alpha * live * beat * 0.08))
-            draw_arc(c, 48.0 + beat * 22.0, -2.7, 2.7, 42, Color(accent, alpha * live * beat * 0.36), 1.2)
-            for i in range(9):
-                var p := Vector2(size.x * (0.12 + float(i % 5) * 0.19), size.y * (0.27 + float(i / 5) * 0.32))
+            draw_circle(c, 28.0 + beat * 18.0, Color(secondary, alpha * live * beat * 0.10))
+            draw_arc(c, 48.0 + beat * 22.0, -2.7, 2.7, 42, Color(accent, alpha * live * beat * 0.42), 1.2)
+            for i in range(12):
+                var p := Vector2(size.x * (0.10 + float(i % 6) * 0.16), size.y * (0.26 + float(i / 6) * 0.32))
                 p += Vector2(sin(_time * 0.31 + i) * 8.0, cos(_time * 0.25 + i) * 10.0)
-                draw_circle(p, 1.0 + beat * 1.8, Color(Color.WHITE, alpha * live * (0.08 + beat * 0.20)))
+                draw_circle(p, 1.0 + beat * 2.0, Color(Color.WHITE, alpha * live * (0.10 + beat * 0.24)))
         "calling":
-            for ring in range(3):
-                var r := 32.0 + ring * 22.0
+            for ring in range(4):
+                var r := 28.0 + ring * 20.0
                 var dir := -1.0 if ring % 2 else 1.0
                 var phase := _time * (0.16 + ring * 0.025) * dir
-                draw_arc(Vector2(size.x * 0.5, size.y * 0.63), r, phase, phase + 1.35 + ring * 0.2, 24, Color(secondary if ring % 2 == 0 else accent, alpha * live * 0.42), 1.2)
-            for i in range(6):
-                var x := size.x * (0.35 + i * 0.06)
+                draw_arc(Vector2(size.x * 0.5, size.y * 0.63), r, phase, phase + 1.45 + ring * 0.25, 28, Color(secondary if ring % 2 == 0 else accent, alpha * live * 0.46), 1.3)
+            for i in range(8):
+                var x := size.x * (0.33 + i * 0.045)
                 var y := size.y * 0.62 + sin(_time * 0.9 + i) * 4.0
-                draw_line(Vector2(x, y), Vector2(x + 12.0, y + sin(_time * 1.2 + i) * 4.0), Color(Color.WHITE, alpha * live * 0.13), 1.0)
+                draw_line(Vector2(x, y), Vector2(x + 12.0, y + sin(_time * 1.2 + i) * 4.0), Color(Color.WHITE, alpha * live * 0.16), 1.0)
         "ashes":
             var pulse := pow(maxf(0.0, sin(_time * 0.58)), 7.0)
-            draw_circle(Vector2(size.x * 0.5, size.y * 0.43), 8.0 + pulse * 16.0, Color(secondary, alpha * live * pulse * 0.13))
-            for i in range(10):
+            draw_circle(Vector2(size.x * 0.5, size.y * 0.43), 8.0 + pulse * 16.0, Color(secondary, alpha * live * pulse * 0.18))
+            for i in range(14):
                 var travel := fmod(_time * (0.08 + i * 0.004) + i * 0.11, 1.0)
                 var p := Vector2(size.x * 0.5 + sin(i * 2.1 + _time) * (18.0 + i * 4.0), size.y * lerpf(0.72, 0.24, travel))
-                draw_circle(p, 0.8 + i % 3 * 0.4, Color(secondary, alpha * live * (1.0 - travel) * 0.40))
+                draw_circle(p, 0.8 + i % 3 * 0.4, Color(secondary, alpha * live * (1.0 - travel) * 0.46))
         "waves":
             var sync := 0.5 + 0.5 * sin(_time * 0.38)
             var left := Vector2(size.x * lerpf(0.31, 0.46, sync), size.y * 0.59)
             var right := Vector2(size.x * lerpf(0.69, 0.54, sync), size.y * 0.59)
-            draw_arc(left, 17.0 + sync * 8.0, -2.5, 2.5, 30, Color(secondary, alpha * live * 0.32), 1.0)
-            draw_arc(right, 17.0 + sync * 8.0, -2.5, 2.5, 30, Color(accent, alpha * live * 0.32), 1.0)
-            if sync > 0.90:
-                draw_line(left, right, Color(Color.WHITE, alpha * live * (sync - 0.9) * 2.4), 1.2)
+            draw_arc(left, 17.0 + sync * 8.0, -2.5, 2.5, 30, Color(secondary, alpha * live * 0.36), 1.0)
+            draw_arc(right, 17.0 + sync * 8.0, -2.5, 2.5, 30, Color(accent, alpha * live * 0.36), 1.0)
+            if sync > 0.86:
+                draw_line(left, right, Color(Color.WHITE, alpha * live * (sync - 0.86) * 3.0), 1.2)
         "hybrid":
             var pulse := fmod(_time * 0.17, 1.0)
-            draw_arc(c, 30.0 + pulse * 86.0, -2.8, 2.8, 58, Color(accent, alpha * live * (1.0 - pulse) * 0.48), 1.1)
-            if pulse < 0.10:
-                draw_line(c - Vector2(34,0), c + Vector2(34,0), Color(secondary, alpha * live * 0.46), 1.3)
+            draw_arc(c, 30.0 + pulse * 86.0, -2.8, 2.8, 58, Color(accent, alpha * live * (1.0 - pulse) * 0.56), 1.1)
+            if pulse < 0.12:
+                draw_line(c - Vector2(34,0), c + Vector2(34,0), Color(secondary, alpha * live * 0.52), 1.3)
+            draw_circle(c, 4.0 + sin(_time * 1.3) * 1.5, Color(Color.WHITE, alpha * live * 0.14))
         "rise":
             var shaft := 0.5 + 0.5 * sin(_time * 0.31)
-            draw_rect(Rect2(Vector2(size.x * 0.47, size.y * 0.13), Vector2(size.x * 0.06, size.y * 0.68)), Color(Color.WHITE, alpha * live * (0.018 + shaft * 0.025)), true)
-            for i in range(12):
+            draw_rect(Rect2(Vector2(size.x * 0.47, size.y * 0.13), Vector2(size.x * 0.06, size.y * 0.68)), Color(Color.WHITE, alpha * live * (0.024 + shaft * 0.030)), true)
+            for i in range(14):
                 var travel := fmod(_time * (0.07 + i * 0.003) + i * 0.09, 1.0)
-                var p := Vector2(size.x * (0.39 + float(i % 5) * 0.055), size.y * lerpf(0.82, 0.18, travel))
-                draw_line(p, p - Vector2(0, 5.0 + i % 3 * 2.0), Color(accent, alpha * live * (1.0 - travel) * 0.28), 1.0)
+                var p := Vector2(size.x * (0.37 + float(i % 6) * 0.05), size.y * lerpf(0.82, 0.18, travel))
+                draw_line(p, p - Vector2(0, 5.0 + i % 3 * 2.0), Color(accent, alpha * live * (1.0 - travel) * 0.34), 1.0)
         _:
             var sweep := fmod(_time * 0.13, 1.0)
             var x := size.x * lerpf(0.12, 0.88, sweep)
-            draw_line(Vector2(x, size.y * 0.22), Vector2(x, size.y * 0.75), Color(accent, alpha * live * (1.0 - abs(sweep - 0.5)) * 0.14), 1.0)
+            draw_line(Vector2(x, size.y * 0.22), Vector2(x, size.y * 0.75), Color(accent, alpha * live * (1.0 - abs(sweep - 0.5)) * 0.18), 1.0)
+            for i in range(4):
+                var y := size.y * (0.28 + i * 0.11) + sin(_time * 0.31 + i) * 6.0
+                draw_line(Vector2(size.x * 0.16, y), Vector2(size.x * 0.84, y), Color(secondary if i % 2 == 0 else accent, alpha * live * 0.18), 1.0)
 
 
 func _draw_living_state(alpha: float) -> void:
