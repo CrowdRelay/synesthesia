@@ -9,6 +9,7 @@ var _enabled: bool = true
 var _settle_delay: float = 2.0
 var _target_strength: float = 0.78
 var _reduced_strength: float = 0.18
+var _target_fps: float = 24.0
 var _elapsed: float = 0.0
 var _living_time: float = 0.0
 var _living_strength: float = 0.0
@@ -26,6 +27,9 @@ func configure(room_data: Dictionary) -> void:
     _settle_delay = clampf(float(cfg.get("settle_delay", 2.0)), 0.8, 3.5)
     _target_strength = clampf(float(cfg.get("strength", 0.78)), 0.20, 1.0)
     _reduced_strength = clampf(float(cfg.get("reduced_motion_strength", 0.18)), 0.0, 0.35)
+    _target_fps = clampf(float(cfg.get("target_fps", 24.0)), 12.0, 30.0)
+    if app != null and app.world_micro_fx != null and app.world_micro_fx.has_method("set_target_fps"):
+        app.world_micro_fx.set_target_fps(_target_fps)
     _reset_runtime()
 
 func _process(delta: float) -> void:

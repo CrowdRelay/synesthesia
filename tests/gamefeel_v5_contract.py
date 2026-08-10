@@ -13,7 +13,8 @@ def require(path,*tokens):
         if token not in text: failures.append(f"{path}: missing {token!r}")
     return text
 
-micro=require("scripts/render/world_micro_fx_layer.gd","_draw_hero_beat","interaction_energy","_draw_tech","_draw_mask","_draw_glass","_draw_seed","_draw_party","_draw_calling","_draw_ashes","_draw_waves","_draw_hybrid","_draw_rise","_draw_uncertainty")
+micro=require("scripts/render/world_micro_fx_layer.gd","WorldMicroFXDrawHelpers.draw_hero_beat","interaction_energy","_draw_tech","_draw_mask","_draw_glass","_draw_seed","_draw_party","_draw_calling","_draw_ashes","_draw_waves","_draw_hybrid","_draw_rise","_draw_uncertainty")
+require("scripts/render/world_micro_fx_draw_helpers.gd","static func draw_hero_beat", "\"uncertainty\":", "\"invaluable\":")
 require("scripts/render/room_stage.gd","signal interaction_motion","_idle_motion_time","idle_breath","set_interaction_energy")
 require("scripts/render/room_interaction_flow.gd","_emit_continuous_motion","_motion_kind","app.interaction_motion.emit")
 require("scripts/app/player_feedback_bridge.gd","_on_interaction_motion","set_interaction_motion","_haptics.motion")

@@ -21,10 +21,10 @@ world_text = world.read_text(errors="replace") if world.is_file() else ""
 shader_text = shader.read_text(errors="replace") if shader.is_file() else ""
 setup_text = setup.read_text(errors="replace") if setup.is_file() else ""
 
-for token in ("settle_delay", "living_strength", "_instant_restore", "reduced_motion"):
+for token in ("settle_delay", "living_strength", "_instant_restore", "reduced_motion", "target_fps", "set_target_fps"):
     if token not in runtime_text:
         failures.append(f"post reveal runtime missing {token}")
-for token in ("set_living_strength", "_draw_living_state", '"calling"', '"party"', '"unmasked"', '"waves"'):
+for token in ("set_living_strength", "set_target_fps", '"calling"', '"party"', '"unmasked"', '"waves"', '"uncertainty"'):
     if token not in world_text:
         failures.append(f"world micro FX missing {token}")
 for token in ("living_strength", "living_time", "Calling: candles + living liquid surface", "Party: slow specular sweeps", "Waves: rain/window light"):
@@ -52,6 +52,9 @@ for manifest in sorted((ROOT / "data/releases").glob("*/manifest.json")):
     delay = float(cfg.get("settle_delay", 0.0))
     if not 1.5 <= delay <= 2.6:
         failures.append(f"{rid}: settle delay outside 1.5..2.6")
+    target_fps = float(cfg.get("target_fps", 0.0))
+    if not 12.0 <= target_fps <= 30.0:
+        failures.append(f"{rid}: living target_fps outside 12..30")
     profiles.add(str(cfg.get("profile", "")))
 
 if len(profiles) != 11:
@@ -68,4 +71,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_POST_REVEAL_LIVING=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_POST_REVEAL_LIVING=PASS rooms=11 hero=settle living=permanent calling=candles+liquid party=membranes unmasked=masks waves=curtains")
+print("SYNESTHESIA_POST_REVEAL_LIVING=PASS rooms=11 hero=settle living=permanent paced=manifest-fps uncertainty=waves invaluable=glass-sweep")

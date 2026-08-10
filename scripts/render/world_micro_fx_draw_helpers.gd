@@ -136,7 +136,7 @@ static func draw_living_state(owner: Control, style: String, accent: Color, seco
                 for i in range(5):
                     var lane := owner.size.x * (0.38 + float(i) * 0.06)
                     owner.draw_line(Vector2(lane, owner.size.y * 0.84), Vector2(owner.size.x * 0.5, owner.size.y * 0.16), Color(accent, alpha * live * 0.12), 1.0)
-            _:
+            "uncertainty":
                 for i in range(5):
                     var y := owner.size.y * (0.28 + i * 0.10) + sin(t * 0.31 + i) * 4.0
                     owner.draw_line(Vector2(owner.size.x * 0.12, y), Vector2(owner.size.x * 0.88, y), Color(accent if i % 2 == 0 else secondary, alpha * live * 0.24), 1.0)
