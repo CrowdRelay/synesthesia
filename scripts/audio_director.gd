@@ -1,5 +1,4 @@
 extends Node
-
 const PINK_NOISE_PATH: String = "res://assets/audio/pink-noise-asmr-loop.ogg"
 const BALLOON_POP_PATH: String = "res://assets/audio/balloon-pop.mp3"
 const CONFIRM_SFX_PATH: String = "res://assets/audio/sfx/light-rise.wav"
@@ -67,7 +66,6 @@ const CINEMATIC_SFX: Dictionary = {
     "waves": "res://assets/audio/sfx/presence-wind.wav",
     "rise": "res://assets/audio/sfx/light-rise.wav",
 }
-
 var _noise_player: AudioStreamPlayer
 var _music_player: AudioStreamPlayer
 var _ambient_player: AudioStreamPlayer
@@ -103,13 +101,13 @@ var _foreground_duck_target: float = 0.0
 var _foreground_duck_smoothed: float = 0.0
 var _transition_duck_target: float = 0.0
 var _semantic_clearance: float = 0.0
+var _motion_target: float = 0.0; var _motion_smoothed: float = 0.0; var _motion_profile: String = ""
 var _suspended: bool = false
 var _control_accumulator: float = 0.0
 var _pending_excerpt_path: String = ""
 var _pending_ambience_path: String = ""
 var _pending_asset_source
 var _asset_runtime: Node
-
 func _ready() -> void:
     _asset_runtime = AudioAssetRuntimeScript.new(); _asset_runtime.bind(self); add_child(_asset_runtime)
     _noise_player = AudioStreamPlayer.new()
@@ -118,23 +116,19 @@ func _ready() -> void:
     _noise_player.volume_db = SILENCE_DB
     add_child(_noise_player)
     _load_noise_loop()
-
     _music_player = AudioStreamPlayer.new()
     _music_player.name = "RoomMusicReveal"
     _music_player.bus = &"Music"
     _music_player.volume_db = SILENCE_DB
     add_child(_music_player)
-
     _ambient_player = AudioStreamPlayer.new()
     _ambient_player.name = "ThematicRoomAmbience"
     _ambient_player.bus = &"Room"
     _ambient_player.volume_db = SILENCE_DB
     add_child(_ambient_player)
-
     _resolve_bus_effects()
     _build_sfx_pool()
     set_process(true)
-
 func _build_sfx_pool() -> void:
     _balloon_pop_stream = _load_audio_stream(BALLOON_POP_PATH)
     for index in range(4):
@@ -144,7 +138,6 @@ func _build_sfx_pool() -> void:
         player.volume_db = -10.0
         add_child(player)
         _sfx_players.append(player)
-
 func _load_audio_stream(path: String) -> AudioStream:
     return _asset_runtime._load_audio_stream(path)
 func _stream_for_sfx(path: String) -> AudioStream:
@@ -159,7 +152,6 @@ func _play_sfx_stream(stream: AudioStream, pitch: float = 1.0, volume_db: float 
     player.pitch_scale = clampf(pitch, 0.88, 1.12)
     player.volume_db = volume_db - (12.0 if _quiet_target > 0.5 else 0.0)
     player.play()
-
 func play_interaction_sfx(kind: String, index: int = 0) -> void:
     _interaction_bloom_target = maxf(_interaction_bloom_target, float(INTERACTION_BLOOM.get(kind, 0.22)))
     var semantic_steps := {
@@ -177,28 +169,23 @@ func play_interaction_sfx(kind: String, index: int = 0) -> void:
     var path: String = str(INTERACTION_SFX.get(kind, ""))
     var volume: float = -12.0 if kind in ["duel", "mirror"] else -15.0
     _play_sfx_stream(_stream_for_sfx(path), 0.98 + float(index % 3) * 0.015, volume)
-
+func set_interaction_motion(kind: String, strength: float) -> void:
+    _motion_profile = kind; _motion_target = maxf(_motion_target, clampf(strength, 0.0, 1.0))
 func play_confirmation_tick(strength: float = 0.6) -> void:
     var amount: float = clampf(strength, 0.2, 1.0)
     _foreground_duck_target = maxf(_foreground_duck_target, 0.44 + amount * 0.22)
     _play_sfx_stream(_stream_for_sfx(CONFIRM_SFX_PATH), 0.96 + amount * 0.045, -27.0 + amount * 4.0)
-
 func begin_transition_out() -> void:
     _transition_duck_target = 1.0
-
 func begin_transition_in() -> void:
     _transition_duck_target = 0.72
-
 func end_transition_in() -> void:
     _transition_duck_target = 0.0
-
 func play_cinematic_sfx() -> void:
     var path: String = str(CINEMATIC_SFX.get(_visual_style, ""))
     _play_sfx_stream(_stream_for_sfx(path), 1.0, -16.0)
-
 func _load_noise_loop() -> void:
     _asset_runtime._load_noise_loop()
-
 func _resolve_bus_effects() -> void:
     var bus_index: int = AudioServer.get_bus_index(&"Music")
     if bus_index < 0:
@@ -209,7 +196,6 @@ func _resolve_bus_effects() -> void:
     var reverb: AudioEffect = AudioServer.get_bus_effect(bus_index, 1)
     if reverb is AudioEffectReverb:
         _music_reverb = reverb as AudioEffectReverb
-
 func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: int = 1, asset_source = null, visual_style: String = "uncertainty") -> void:
     _collectible_total = maxi(1, collectible_total)
     _visual_style = visual_style
@@ -227,12 +213,12 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
     _interaction_bloom_smoothed = 0.0
     _completion_active = false
     _semantic_clearance = 0.0
+    _motion_target = 0.0; _motion_smoothed = 0.0; _motion_profile = ""
     _music_available = false
     _pending_excerpt_path = ""
     _pending_ambience_path = ""
     _pending_asset_source = asset_source
     _load_room_ambience(audio, asset_source)
-
     var excerpt_path: String = str(audio.get("completion_excerpt", ""))
     if excerpt_path.is_empty() or not excerpt_path.begins_with("res://") or not ResourceLoader.exists(excerpt_path):
         push_warning("Room music resource is missing: %s" % excerpt_path)
@@ -254,7 +240,6 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
         resource = load(excerpt_path)
     _attach_music_stream(resource, excerpt_path)
     _apply_filter(0.0)
-
 func _load_room_ambience(audio: Dictionary, asset_source = null) -> void:
     _asset_runtime._load_room_ambience(audio, asset_source)
 func _attach_ambience_stream(resource: Resource, path: String) -> bool:
@@ -264,17 +249,13 @@ func set_progress(coverage: float, found_count: int) -> void:
     _collectibles_target = clampf(float(found_count) / float(_collectible_total), 0.0, 1.0)
     if _coverage_target >= COMPLETION_THRESHOLD:
         _completion_active = true
-
 func set_quiet(value: bool) -> void:
     _quiet_target = 1.0 if value else 0.0
-
 func set_calm_mode(value: bool) -> void:
     _calm_mode = value
-
 func set_user_levels(music_linear: float, noise_linear: float) -> void:
     _music_user_gain_db = linear_to_db(clampf(music_linear, 0.001, 1.0)) if music_linear > 0.0 else SILENCE_DB
     _noise_user_gain_db = linear_to_db(clampf(noise_linear, 0.0, 1.0)) if noise_linear > 0.0 else SILENCE_DB
-
 func _attach_music_stream(resource: Resource, excerpt_path: String) -> bool:
     return _asset_runtime._attach_music_stream(resource, excerpt_path)
 func _resolve_pending_ambience() -> void:
@@ -299,7 +280,6 @@ func set_suspended(value: bool) -> void:
         # Apply targets on the next control tick instead of burning CPU behind menus.
         _last_filter_hz = -1.0
         _last_reverb_wet = -1.0
-
 func reveal_release_excerpt() -> bool:
     _completion_active = true
     _coverage_target = 1.0
@@ -313,7 +293,6 @@ func reveal_release_excerpt() -> bool:
     if not _music_player.playing:
         _music_player.play()
     return true
-
 func reset_release_excerpt() -> void:
     _completion_active = false
     _coverage_target = 0.0
@@ -323,10 +302,8 @@ func reset_release_excerpt() -> void:
         _music_player.volume_db = SILENCE_DB
         _music_player.play()
     _apply_filter(0.0)
-
 func get_release_title() -> String:
     return _release_title
-
 func _process(delta: float) -> void:
     _control_accumulator += minf(delta, 0.10)
     if _control_accumulator < CONTROL_INTERVAL:
@@ -340,16 +317,16 @@ func _process(delta: float) -> void:
     _quiet_smoothed = move_toward(_quiet_smoothed, _quiet_target, control_delta * 1.80)
     _interaction_bloom_target = move_toward(_interaction_bloom_target, 0.0, control_delta * 0.58)
     _interaction_bloom_smoothed = move_toward(_interaction_bloom_smoothed, _interaction_bloom_target, control_delta * 5.8)
+    _motion_target = move_toward(_motion_target, 0.0, control_delta * 1.8); _motion_smoothed = move_toward(_motion_smoothed, _motion_target, control_delta * 7.0)
     _foreground_duck_target = move_toward(_foreground_duck_target, 0.0, control_delta * 2.8)
     _foreground_duck_smoothed = move_toward(_foreground_duck_smoothed, _foreground_duck_target, control_delta * 10.0)
-
     var reveal_mix: float = clampf(_coverage_smoothed, 0.0, 1.0)
     if _completion_active or _coverage_target >= COMPLETION_THRESHOLD:
         reveal_mix = 1.0
-    var music_ratio: float = clampf(reveal_mix + _semantic_clearance * (1.0 - reveal_mix) * 0.62, 0.0, 1.0)
-    var noise_ratio: float = clampf((1.0 - reveal_mix) * (1.0 - _semantic_clearance * 0.82), 0.0, 1.0)
+    var motion_reveal := _motion_smoothed * (0.045 if _motion_profile in ["breath", "heartbeat"] else 0.075)
+    var music_ratio: float = clampf(reveal_mix + _semantic_clearance * (1.0 - reveal_mix) * 0.62 + motion_reveal, 0.0, 1.0)
+    var noise_ratio: float = clampf((1.0 - reveal_mix) * (1.0 - _semantic_clearance * 0.82) * (1.0 - _motion_smoothed * 0.10), 0.0, 1.0)
     var quiet_cut_db: float = lerpf(0.0, 18.0, _quiet_smoothed)
-
     if _noise_player != null:
         if not _noise_player.playing and _noise_player.stream != null:
             _noise_player.play()
@@ -360,7 +337,6 @@ func _process(delta: float) -> void:
             noise_target_db = start_db + linear_to_db(noise_ratio)
         noise_target_db -= quiet_cut_db
         _noise_player.volume_db = move_toward(_noise_player.volume_db, noise_target_db, control_delta * 20.0)
-
     if _music_player != null and _music_available:
         if not _music_player.playing:
             _music_player.play()
@@ -369,19 +345,16 @@ func _process(delta: float) -> void:
             music_target_db = _completion_music_db + linear_to_db(music_ratio) + _music_user_gain_db + _interaction_bloom_smoothed * 2.4
         music_target_db -= quiet_cut_db + _foreground_duck_smoothed * 1.8 + _transition_duck_target * 4.5
         _music_player.volume_db = move_toward(_music_player.volume_db, music_target_db, control_delta * 17.0)
-
     if _ambient_player != null and _ambient_player.stream != null:
         if not _ambient_player.playing:
             _ambient_player.play()
         var ambient_target_db: float = (-31.0 if _calm_mode else -27.0) + reveal_mix * 2.5 + _interaction_bloom_smoothed * 1.2 - quiet_cut_db - _foreground_duck_smoothed * 4.0 - _transition_duck_target * 7.0
         _ambient_player.volume_db = move_toward(_ambient_player.volume_db, ambient_target_db, control_delta * 9.0)
-
     _apply_filter(reveal_mix)
-
 func _apply_filter(reveal_mix: float) -> void:
     var clamped_mix: float = clampf(reveal_mix, 0.0, 1.0)
     if _music_lowpass != null:
-        var reactive_mix: float = clampf(clamped_mix + _interaction_bloom_smoothed * 0.10, 0.0, 1.0)
+        var reactive_mix: float = clampf(clamped_mix + _interaction_bloom_smoothed * 0.10 + _motion_smoothed * 0.045, 0.0, 1.0)
         var filter_curve: float = pow(reactive_mix, 0.72)
         var target_hz: float = lerpf(_lowpass_start_hz, MAX_FILTER_HZ, filter_curve)
         if _last_filter_hz < 0.0 or absf(target_hz - _last_filter_hz) >= 18.0:
@@ -393,7 +366,6 @@ func _apply_filter(reveal_mix: float) -> void:
             _last_reverb_wet = target_wet
             _music_reverb.wet = target_wet
             _music_reverb.room_size = lerpf(0.62, 0.34, clamped_mix)
-
 func _exit_tree() -> void:
     set_process(false)
     if _noise_player != null:

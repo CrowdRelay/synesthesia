@@ -8,6 +8,7 @@ signal interaction_started
 signal interaction_ended
 signal interaction_missed(point: Vector2)
 signal interaction_confirmed(point: Vector2, strength: float)
+signal interaction_motion(kind: String, strength: float)
 signal act_changed(index: int, title: String)
 const BrushEngineScript := preload("res://scripts/brush/brush_engine.gd")
 const InteractionRouterScript := preload("res://scripts/input/interaction_router.gd")
@@ -44,7 +45,7 @@ var interaction_fx
 var room_dressing
 var video_layer
 var hint_layer
-var world_micro_fx; var interaction_enabled: bool = true
+var world_micro_fx; var post_reveal_runtime; var interaction_enabled: bool = true
 var calm_mode: bool = true
 var reduced_motion: bool = false
 var quiet_visuals: bool = false
@@ -71,6 +72,8 @@ var _cinematic_target: float = 0.0
 var _brush_energy: float = 0.0
 var _runtime_scale: float = 1.0
 var _hint_refresh_accumulator: float = 0.0
+var _idle_motion_time: float = 0.0
+var _interaction_energy: float = 0.0
 var _last_parallax_sent: Vector2 = Vector2(99.0, 99.0)
 var _last_coverage_emitted: float = -1.0
 var _cinematic_elapsed: float = 0.0
@@ -150,12 +153,9 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     composite_material.set_shader_parameter("unlock_motion", 0.0)
     _set_progress_from_mask()
     queue_redraw()
-func _configure_behavior(room_data: Dictionary) -> void:
-    _visual_setup._configure_behavior(room_data)
-func _configure_art(room_data: Dictionary, asset_source = null) -> void:
-    _visual_setup._configure_art(room_data, asset_source)
-func _take_texture(path: String, asset_source = null) -> Texture2D:
-    return _visual_setup._take_texture(path, asset_source)
+func _configure_behavior(room_data: Dictionary) -> void: _visual_setup._configure_behavior(room_data)
+func _configure_art(room_data: Dictionary, asset_source = null) -> void: _visual_setup._configure_art(room_data, asset_source)
+func _take_texture(path: String, asset_source = null) -> Texture2D: return _visual_setup._take_texture(path, asset_source)
 func _process(delta: float) -> void:
     if behavior != null and (not _behavior_tick_gated or behavior.needs_tick()):
         behavior.advance(delta)
@@ -163,10 +163,13 @@ func _process(delta: float) -> void:
     if _hint_refresh_accumulator >= 0.20:
         _hint_refresh_accumulator = 0.0
         _refresh_hint_targets()
+    _idle_motion_time = fmod(_idle_motion_time + delta, 10000.0)
+    _interaction_energy = move_toward(_interaction_energy, 0.0, delta * 1.9)
     if world_micro_fx != null:
         world_micro_fx.set_progress(current_progress)
         world_micro_fx.set_pointer(pointer_norm)
         world_micro_fx.set_cinematic(_cinematic_mix)
+        world_micro_fx.set_interaction_energy(_interaction_energy)
     if interaction_enabled and interaction_router != null and interaction_router.needs_tick():
         _handle_gestures(interaction_router.advance(Time.get_ticks_msec()))
     var target: float = 1.0 if door_target_open else 0.0
@@ -183,7 +186,15 @@ func _process(delta: float) -> void:
         )
         composite_material.set_shader_parameter("cinematic_time", _cinematic_elapsed)
     var motion_factor: float = 0.18 if reduced_motion else (0.58 if calm_mode else 0.90)
-    smoothed_parallax = smoothed_parallax.lerp(target_parallax, clampf(delta * 4.5 * motion_factor, 0.0, 1.0))
+    # A 1–2% idle camera breath makes still art read as a physical place while
+    # preserving pointer-driven parallax. Reduced-motion keeps this essentially off.
+    var idle_amount: float = 0.003 if reduced_motion else (0.012 if calm_mode else 0.017)
+    var idle_breath := Vector2(
+        sin(_idle_motion_time * 0.27 + float(_unlock_profile) * 0.41),
+        cos(_idle_motion_time * 0.19 + float(_unlock_profile) * 0.29) * 0.58
+    ) * idle_amount
+    var desired_parallax: Vector2 = target_parallax + idle_breath
+    smoothed_parallax = smoothed_parallax.lerp(desired_parallax, clampf(delta * 4.5 * motion_factor, 0.0, 1.0))
     if smoothed_parallax.distance_squared_to(_last_parallax_sent) > 0.000001:
         _last_parallax_sent = smoothed_parallax
         composite_material.set_shader_parameter("parallax", smoothed_parallax)
@@ -277,12 +288,10 @@ func set_runtime_budget(scale: float) -> void:
 func set_assist_level(level: int) -> void:
     if behavior != null and behavior.has_method("set_assist_level"):
         behavior.set_assist_level(level)
-
 func set_hint_strength(value: float) -> void:
     if hint_layer != null:
         _refresh_hint_targets()
         hint_layer.set_hint_strength(value)
-
 func _refresh_hint_targets() -> void:
     if hint_layer == null:
         return
@@ -298,28 +307,17 @@ func set_door_open(value: bool) -> void: door_target_open = value
 func get_door_open_amount() -> float: return door_open_amount
 func reset_room() -> void:
     _state_flow.reset_room()
-func get_found_count() -> int:
-    return _state_flow.get_found_count()
-func get_coverage() -> float:
-    return _state_flow.get_coverage()
-func get_normalized_progress() -> float:
-    return _state_flow.get_normalized_progress()
-func get_current_act() -> int:
-    return _state_flow.get_current_act()
-func export_state() -> Dictionary:
-    return _state_flow.export_state()
-func restore_state(saved: Dictionary) -> bool:
-    return _state_flow.restore_state(saved)
-func reveal_remaining_collectibles() -> Array[Dictionary]:
-    return _state_flow.reveal_remaining_collectibles()
-func _gui_input(event: InputEvent) -> void:
-    _interaction_flow._gui_input(event)
-func _handle_gestures(gestures: Array) -> void:
-    _interaction_flow._handle_gestures(gestures)
-func _on_runtime_special(kind: String, index: int) -> void:
-    _interaction_flow._on_runtime_special(kind, index)
-func _on_attempt_confirmed(point: Vector2, strength: float) -> void:
-    _interaction_flow._on_attempt_confirmed(point, strength)
+func get_found_count() -> int: return _state_flow.get_found_count()
+func get_coverage() -> float: return _state_flow.get_coverage()
+func get_normalized_progress() -> float: return _state_flow.get_normalized_progress()
+func get_current_act() -> int: return _state_flow.get_current_act()
+func export_state() -> Dictionary: return _state_flow.export_state()
+func restore_state(saved: Dictionary) -> bool: return _state_flow.restore_state(saved)
+func reveal_remaining_collectibles() -> Array[Dictionary]: return _state_flow.reveal_remaining_collectibles()
+func _gui_input(event: InputEvent) -> void: _interaction_flow._gui_input(event)
+func _handle_gestures(gestures: Array) -> void: _interaction_flow._handle_gestures(gestures)
+func _on_runtime_special(kind: String, index: int) -> void: _interaction_flow._on_runtime_special(kind, index)
+func _on_attempt_confirmed(point: Vector2, strength: float) -> void: _interaction_flow._on_attempt_confirmed(point, strength)
 func _on_gesture_reveal_changed(point: Vector2, radius: float) -> void:
     _interaction_flow._on_gesture_reveal_changed(point, radius)
 func _begin_stroke(point_norm: Vector2, pointer_id: int = -1) -> void:
@@ -373,7 +371,6 @@ func _render_collectibles() -> void:
             var y1 := center.y + sin(float(wave_index + 1) * 2.2 + _phase * 3.0) * 2.6
             draw_line(Vector2(x0, y0), Vector2(x1, y1), Color(Color.WHITE, wave_alpha * 0.72), 1.0)
         draw_circle(center, 1.5, Color(_accent_color, alpha * 0.92))
-
 func _render_cursor() -> void:
     if not interaction_enabled:
         return

@@ -1,12 +1,15 @@
 extends Node
 
 const EchoArchive := preload("res://scripts/app/echo_archive.gd")
+const RoomCinematicRuntime := preload("res://scripts/app/room_cinematic_runtime.gd")
 const ViryaWorld := preload("res://scripts/app/virya_world.gd")
 
 var app: Node
+var cinematic_runtime: Node
 
 func bind(owner: Node) -> void:
     app = owner
+    cinematic_runtime = RoomCinematicRuntime.new(); cinematic_runtime.bind(app); add_child(cinematic_runtime)
 
 func _load_room(index: int, show_intro: bool) -> void:
     if index < 0 or index >= app.release_entries.size():
@@ -308,6 +311,10 @@ func _complete_current_room() -> void:
     if app.current_room_index == app.release_entries.size() - 1:
         app.album_state["album_completed"] = true
     app._save_progress()
+    if app.current_room_index == 5 and not bool(app.album_state.get("signal_breach_seen", false)):
+        app.album_state["signal_breach_seen"] = true
+        app._save_album_state()
+        cinematic_runtime.play_signal_breach()
     if app.reward_client != null and app.reward_client.has_run():
         app.reward_client.record_room(release_id, app.current_room_index, elapsed_at_completion)
         if app.current_room_index == app.release_entries.size() - 1:
@@ -315,7 +322,7 @@ func _complete_current_room() -> void:
     app.call_deferred("_show_completion_panel")
 
 func _show_completion_panel() -> void:
-    await get_tree().create_timer(1.28).timeout
+    await get_tree().create_timer(cinematic_runtime.hero_beat_delay()).timeout
     if app.completion_panel != null or app.transition_running or app.reward_panel != null or app.experience_intro_panel != null or not app.room_layer.visible:
         return
     var room_value: Variant = app.manifest.get("room", {})

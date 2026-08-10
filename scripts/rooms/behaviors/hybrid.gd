@@ -37,26 +37,37 @@ func advance(delta: float) -> void:
 
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#F2B35D")), Color("f2b35d"))
-    var opponent: Vector2 = Vector2(viewport_size.x * OPPONENT.x, viewport_size.y * OPPONENT.y)
-    var aim: float = float(state.get("aim_strength", 0.0))
-    var instability: float = maxf(0.0, progress - 0.35) * (1.0 - aim * 0.72)
-    var jitter: float = sin(phase * 18.0) * instability * 12.0
-    canvas.draw_circle(opponent + Vector2(jitter, -22.0), 13.0, Color(Color.BLACK, 0.26 * (1.0 - progress * 0.75)))
-    canvas.draw_line(opponent + Vector2(jitter, -8.0), opponent + Vector2(-jitter, 54.0), Color(accent, 0.10 + instability * 0.20), 6.0)
-    if bool(state.get("aim_locked", false)) and not bool(state.get("duel", false)):
-        var radius: float = lerpf(48.0, 24.0, clampf(aim, 0.0, 1.0))
-        canvas.draw_arc(opponent, radius, 0.0, TAU, 32, Color(accent, 0.28), 1.6)
-        canvas.draw_line(opponent - Vector2(radius + 12.0, 0.0), opponent - Vector2(radius - 5.0, 0.0), Color(accent, 0.30), 1.5)
-        canvas.draw_line(opponent + Vector2(radius - 5.0, 0.0), opponent + Vector2(radius + 12.0, 0.0), Color(accent, 0.30), 1.5)
-    if bool(state.get("duel", false)):
-        var duel_t: float = float(state.get("duel_elapsed", 0.0))
-        var draw_mix: float = clampf(duel_t / 0.34, 0.0, 1.0)
-        var grip: Vector2 = Vector2(lerpf(viewport_size.x * 1.08, viewport_size.x * 0.73, draw_mix), viewport_size.y * 0.83)
-        var muzzle: Vector2 = grip + Vector2(-70.0, -82.0)
-        canvas.draw_line(grip, muzzle, Color(0.035, 0.028, 0.025, 0.82), 16.0)
-        if duel_t > 0.36 and duel_t < 0.54:
-            var flash: float = 1.0 - absf(duel_t - 0.45) / 0.09
-            canvas.draw_circle(muzzle, 38.0 * flash, Color(accent, 0.13 * flash))
+    var secondary: Color = Color.from_string(str(room_data.get("secondary_color", "#71DCFF")), Color("71dcff"))
+    var core: Vector2 = Vector2(viewport_size.x * OPPONENT.x, viewport_size.y * OPPONENT.y)
+    var aim: float = clampf(float(state.get("aim_strength", 0.0)), 0.0, 1.0)
+    var duel_t: float = float(state.get("duel_elapsed", 0.0))
+    var resolved: bool = bool(state.get("duel", false))
+
+    # Hybrid is now a frequency core, not a stick-figure duel. Counter-rotating
+    # rings stabilise as the player holds the centre; release collapses them into
+    # a single authored pulse.
+    for ring in range(6):
+        var radius := 30.0 + float(ring) * 23.0
+        var direction := -1.0 if ring % 2 else 1.0
+        var rotation := phase * (0.23 + ring * 0.035) * direction
+        var span := lerpf(4.15, 5.90, aim)
+        var alpha := 0.065 + aim * 0.16 + progress * 0.035
+        canvas.draw_arc(core, radius, rotation, rotation + span, 52, Color(accent if ring % 2 == 0 else secondary, alpha), 1.0 + aim * 0.55)
+    var instability := (1.0 - aim) * (0.5 + 0.5 * sin(phase * 9.0))
+    for band in range(5):
+        var y := core.y + (float(band) - 2.0) * 13.0
+        var width := lerpf(92.0, 34.0, aim)
+        var jitter := sin(phase * (8.0 + band) + band * 1.7) * 9.0 * instability
+        canvas.draw_line(Vector2(core.x - width + jitter, y), Vector2(core.x + width - jitter, y), Color(secondary, 0.035 + aim * 0.075), 1.0)
+    if bool(state.get("aim_locked", false)) and not resolved:
+        var lock_radius := lerpf(54.0, 22.0, aim)
+        canvas.draw_arc(core, lock_radius, -2.72, 2.72, 44, Color(accent, 0.18 + aim * 0.18), 1.4)
+        canvas.draw_circle(core, 2.2 + aim * 2.8, Color(Color.WHITE, 0.24 + aim * 0.30))
+    if resolved:
+        var collapse := clampf(duel_t / 0.70, 0.0, 1.0)
+        var flash := 1.0 - clampf(absf(duel_t - 0.34) / 0.24, 0.0, 1.0)
+        canvas.draw_arc(core, lerpf(120.0, 34.0, collapse), 0.0, TAU, 64, Color(accent, 0.10 + flash * 0.25), 1.8)
+        canvas.draw_circle(core, lerpf(4.0, 19.0, flash), Color(secondary, flash * 0.08))
 
 func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Dictionary]:
     var point: Vector2 = _gesture_point(gesture)

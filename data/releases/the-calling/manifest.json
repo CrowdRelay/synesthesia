@@ -54,12 +54,34 @@
       ],
       "film_grain_strength": 0.2,
       "visual_system": "virya-signal-v2",
-      "asset_generation": "moodboard-locked-2026"
+      "asset_generation": "post-reveal-v6-master",
+      "room_signature": "resonance altar",
+      "ambient_motion": "counter-rotating sigils + ritual ripple + low light",
+      "living_world_version": "v6-post-reveal",
+      "hero_beat": "authored-2s",
+      "touch_physics": "continuous",
+      "post_reveal": "hero -> settle -> living-loop",
+      "source_master": "generated-2026-08-10-signal-v2"
     },
     "id": "the-calling",
     "scene_path": "res://scenes/rooms/the-calling.tscn",
     "behavior_script": "res://scripts/rooms/behaviors/the-calling.gd",
-    "render_pipeline": "mask-gpu-v2"
+    "render_pipeline": "mask-gpu-v2",
+    "living_state": {
+      "enabled": true,
+      "profile": "calling",
+      "settle_delay": 2.05,
+      "strength": 0.88,
+      "target_fps": 24,
+      "effects": [
+        "candle_flicker",
+        "liquid_ripple",
+        "sigil_breath",
+        "reflection_shimmer",
+        "altar_haze"
+      ],
+      "reduced_motion_strength": 0.18
+    }
   },
   "sensory": {
     "default_mode": "calm",

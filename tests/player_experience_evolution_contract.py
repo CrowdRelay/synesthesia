@@ -41,8 +41,8 @@ assert '[1.12, 1.18, 1.25, 1.32]' in base
 assert 'radius * interaction_forgiveness' in base
 
 # HUD gets out of the way during interaction and the completion moment is diegetic.
-assert 'var target_alpha: float = 0.46 if value' in hud
-assert 'var target_bottom_alpha: float = 0.34 if value' in hud
+assert 'var target_alpha: float = 0.30 if value' in hud
+assert 'var target_bottom_alpha: float = 0.24 if value' in hud
 assert 'func enter_completion_beat() -> void:' in hud
 assert 'hud.enter_completion_beat()' in main
 for token in ('var top_y: float = size.y * 0.66', 'draw_circle(Vector2(center_x'):

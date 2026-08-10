@@ -7,6 +7,7 @@ var full_amplitude: float = 0.34
 var room_style: String = "paint"
 var _last_tick_ms: int = 0
 var _last_tech_buzz_ms: int = 0
+var _last_motion_ms: int = 0
 var _pulse_generation: int = 0
 
 func configure(sensory: Dictionary, style: String = "paint") -> void:
@@ -44,6 +45,34 @@ func paint_tick(speed_normalized: float) -> void:
     if room_style == "technophobia" and now - _last_tech_buzz_ms > (720 if calm_mode else 430):
         _last_tech_buzz_ms = now
         _pulse_after_delay(24, 5 if calm_mode else 8, clampf(amplitude * 0.58, 0.04, 0.28))
+
+func motion(kind: String, strength: float) -> void:
+    if not enabled:
+        return
+    var now := Time.get_ticks_msec()
+    var amount := clampf(strength, 0.0, 1.0)
+    var interval := 76 if calm_mode else 52
+    if kind in ["heartbeat", "breath", "resonance"]:
+        interval = 118 if calm_mode else 84
+    if now - _last_motion_ms < interval:
+        return
+    _last_motion_ms = now
+    var base := calm_amplitude if calm_mode else full_amplitude
+    var scale := 0.24
+    var duration := 5 if calm_mode else 7
+    match kind:
+        "tension": scale = 0.28 + amount * 0.38
+        "glass_pressure": scale = 0.22 + amount * 0.28
+        "heartbeat": scale = 0.30 + amount * 0.22; duration = 8
+        "membrane": scale = 0.24 + amount * 0.32
+        "resonance": scale = 0.20 + amount * 0.26; duration = 7
+        "ember_flow": scale = 0.18 + amount * 0.24
+        "breath": scale = 0.14 + amount * 0.20; duration = 6
+        "frequency": scale = 0.22 + amount * 0.30
+        "lift": scale = 0.20 + amount * 0.28
+        "peel": scale = 0.26 + amount * 0.34
+        _: scale = 0.18 + amount * 0.22
+    Input.vibrate_handheld(duration, clampf(base * scale, 0.025, 0.26))
 
 func discovery() -> void:
     if not enabled:
@@ -105,6 +134,11 @@ func special(kind: String) -> void:
             Input.vibrate_handheld(14 if calm_mode else 20, clampf(base * 0.56, 0.05, 0.30))
             _pulse_after_delay(66, 18, clampf(base * 0.82, 0.07, 0.42))
             _pulse_after_delay(132, 30 if calm_mode else 42, clampf(base * 1.12, 0.09, 0.56))
+        "signal_breach":
+            Input.vibrate_handheld(7, clampf(base * 0.34, 0.04, 0.20))
+            _pulse_after_delay(54, 11, clampf(base * 0.62, 0.06, 0.32))
+            _pulse_after_delay(122, 6, clampf(base * 0.42, 0.04, 0.22))
+            _pulse_after_delay(188, 28 if calm_mode else 38, clampf(base * 1.02, 0.08, 0.52))
         "seed":
             Input.vibrate_handheld(24 if calm_mode else 34, clampf(base * 0.88, 0.07, 0.42))
             _pulse_after_delay(84, 18, clampf(base * 0.70, 0.06, 0.34))

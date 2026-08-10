@@ -29,10 +29,47 @@ func _handle_gestures(gestures: Array) -> void:
     if app.interaction_runtime == null or gestures.is_empty():
         return
     var generation_before: int = app.attempt_feedback.generation()
+    _emit_continuous_motion(gestures)
     app.interaction_runtime.handle_gestures(gestures, app.current_progress)
     _set_progress_from_mask()
     app.coverage_changed.emit(app.get_coverage())
     app.attempt_feedback.note_gesture_batch(gestures, generation_before, app.pointer_norm)
+
+func _emit_continuous_motion(gestures: Array) -> void:
+    var style := str(app.manifest_room.get("visual_style", "uncertainty"))
+    for value in gestures:
+        if not value is Dictionary:
+            continue
+        var gesture: Dictionary = value
+        var kind := str(gesture.get("kind", ""))
+        if kind not in ["press", "drag", "hold", "two_finger"]:
+            continue
+        var point_value: Variant = gesture.get("point", app.pointer_norm)
+        var point: Vector2 = point_value if point_value is Vector2 else app.pointer_norm
+        var captured: bool = app.behavior != null and app.behavior.has_method("captures_pointer_at") and app.behavior.captures_pointer_at(point)
+        if not captured and kind != "two_finger":
+            continue
+        var velocity := clampf(float(gesture.get("velocity", 0.0)) * 0.65, 0.0, 1.0)
+        var distance := clampf(float(gesture.get("distance", 0.0)) * 3.4, 0.0, 1.0)
+        var strength := maxf(0.18 if kind == "press" else 0.0, maxf(velocity, distance))
+        if kind == "hold":
+            strength = maxf(strength, 0.58)
+        app._interaction_energy = maxf(app._interaction_energy, strength)
+        app.interaction_motion.emit(_motion_kind(style, kind), strength)
+
+func _motion_kind(style: String, gesture_kind: String) -> String:
+    match style:
+        "technophobia": return "tension" if gesture_kind == "drag" else "electrical"
+        "unmasked": return "peel"
+        "invaluable": return "glass_pressure"
+        "seed": return "heartbeat"
+        "party": return "membrane"
+        "calling": return "resonance"
+        "ashes": return "ember_flow"
+        "waves": return "breath"
+        "hybrid": return "frequency"
+        "rise": return "lift"
+        _: return "wave_pressure"
 
 func _on_runtime_special(kind: String, index: int) -> void:
     app.attempt_feedback.success(app.pointer_norm, 0.78)

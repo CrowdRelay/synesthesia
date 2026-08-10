@@ -33,7 +33,7 @@ TOKENS = {
     "scripts/rooms/behaviors/party-time.gd": ["fly_t", "rise", "_draw_burst"],
     "scripts/rooms/behaviors/unmasked.gd": ["eye_y", "mouth_open"],
     "scripts/rooms/behaviors/seed-of-doubt.gd": ["twist", "cinematic_t"],
-    "scripts/rooms/behaviors/hybrid.gd": ["duel_elapsed", "muzzle", "flash"],
+    "scripts/rooms/behaviors/hybrid.gd": ["duel_elapsed", "frequency core", "collapse"],
     "scripts/rooms/behaviors/technophobia.gd": ["jitter_strength", "band_y"],
     "scripts/rooms/behaviors/invaluable.gd": ["for shard in range(10)", "burst"],
     "scripts/rooms/behaviors/from-the-ashes.gd": ["wing_span", "cinematic_t * 74.0"],

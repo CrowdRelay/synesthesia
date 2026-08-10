@@ -247,8 +247,10 @@ func set_painting(value: bool) -> void:
         _context_seen = true
         _interaction_guide.note_interaction()
         _restore_timer.start()
-    var target_alpha: float = 0.46 if value else (0.88 if _context_seen else 1.0)
-    var target_bottom_alpha: float = 0.34 if value else (0.82 if _context_seen else 1.0)
+    # Gameplay owns the screen after the first interaction: HUD recedes to a
+    # thin signal instrument instead of competing with room art.
+    var target_alpha: float = 0.30 if value else (0.72 if _context_seen else 1.0)
+    var target_bottom_alpha: float = 0.24 if value else (0.62 if _context_seen else 1.0)
     var tween: Tween = create_tween()
     tween.set_parallel(true)
     tween.set_trans(Tween.TRANS_SINE)

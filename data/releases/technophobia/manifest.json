@@ -54,7 +54,13 @@
       ],
       "film_grain_strength": 0.2,
       "visual_system": "virya-signal-v2",
-      "asset_generation": "moodboard-locked-2026"
+      "asset_generation": "moodboard-locked-2026",
+      "room_signature": "crt cable vault",
+      "ambient_motion": "async crt jitter + led decay + cable tension",
+      "living_world_version": "v6-post-reveal",
+      "hero_beat": "authored-2s",
+      "touch_physics": "continuous",
+      "post_reveal": "hero -> settle -> living-loop"
     },
     "id": "technophobia",
     "scene_path": "res://scenes/rooms/technophobia.tscn",
@@ -96,6 +102,21 @@
         "spark-fx",
         "dynamic-hud"
       ]
+    },
+    "living_state": {
+      "enabled": true,
+      "profile": "technophobia",
+      "settle_delay": 2.05,
+      "strength": 0.76,
+      "target_fps": 24,
+      "effects": [
+        "crt_residual",
+        "led_decay",
+        "cable_tremor",
+        "scanline_drift",
+        "micro_spark"
+      ],
+      "reduced_motion_strength": 0.18
     }
   },
   "sensory": {

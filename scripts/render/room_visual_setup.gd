@@ -6,6 +6,7 @@ const RoomDressingLayerScript := preload("res://scripts/render/room_dressing_lay
 const RoomVideoLayerScript := preload("res://scripts/render/room_video_layer.gd")
 const InteractionHintLayerScript := preload("res://scripts/render/interaction_hint_layer.gd")
 const WorldMicroFxLayerScript := preload("res://scripts/render/world_micro_fx_layer.gd")
+const PostRevealLivingRuntimeScript := preload("res://scripts/render/post_reveal_living_runtime.gd")
 const CompositeShader := preload("res://shaders/room_composite.gdshader")
 
 var app: Control
@@ -46,6 +47,10 @@ func _build_composite() -> void:
     app.add_child(app.world_micro_fx)
     app.world_micro_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     app.move_child(app.world_micro_fx, 4)
+    app.post_reveal_runtime = PostRevealLivingRuntimeScript.new()
+    app.post_reveal_runtime.name = "PostRevealLivingRuntime"
+    app.add_child(app.post_reveal_runtime)
+    app.post_reveal_runtime.bind(app)
     app.hint_layer = InteractionHintLayerScript.new()
     app.hint_layer.name = "InteractionHints"
     app.hint_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -71,6 +76,8 @@ func _configure_behavior(room_data: Dictionary) -> void:
         app._behavior_tick_gated = app.behavior.has_method("needs_tick")
 
 func _configure_art(room_data: Dictionary, asset_source = null) -> void:
+    if app.post_reveal_runtime != null:
+        app.post_reveal_runtime.configure(room_data)
     var art_value: Variant = room_data.get("art_direction", {})
     var art: Dictionary = art_value if art_value is Dictionary else {}
     var scene_texture: Texture2D = _take_texture(str(art.get("scene_image", "")), asset_source)
@@ -105,6 +112,8 @@ func _configure_art(room_data: Dictionary, asset_source = null) -> void:
     app.composite_material.set_shader_parameter("cinematic_time", 0.0)
     app.composite_material.set_shader_parameter("unlock_motion", 0.0)
     app.composite_material.set_shader_parameter("unlock_profile", 0)
+    app.composite_material.set_shader_parameter("living_strength", 0.0)
+    app.composite_material.set_shader_parameter("living_time", 0.0)
 
 func _take_texture(path: String, asset_source = null) -> Texture2D:
     if path.is_empty():

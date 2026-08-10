@@ -27,7 +27,7 @@ REQUIRED_FILES = [
     "scenes/main.tscn", "scripts/main.gd", "scripts/audio_director.gd",
     "scripts/haptics.gd", "scripts/progress_store.gd", "scripts/reward_client.gd",
     "scripts/render/room_stage.gd", "scripts/render/reveal_mask.gd",
-    "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/render/room_dressing_layer.gd", "scripts/render/room_video_layer.gd", "scripts/brush/brush_engine.gd",
+    "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/render/room_dressing_layer.gd", "scripts/render/room_video_layer.gd", "scripts/render/post_reveal_living_runtime.gd", "scripts/brush/brush_engine.gd",
     "scripts/app/quality_manager.gd", "scripts/app/asset_preloader.gd", "scripts/app/adaptive_performance.gd", "scripts/app/native_experience_surface.gd", "scripts/app/signal_signup_client.gd", "scripts/app/menu_runtime_guard.gd", "scripts/app/debug_profile.gd",
     "scripts/app/transition_director.gd", "scripts/app/door_transition_layer.gd", "scripts/app/diagnostics_overlay.gd",
     "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/ui_metrics.gd", "scripts/ui/signal_backdrop.gd", "scripts/ui/door_eye_motif.gd", "scripts/ui/chapter_card.gd", "scripts/ui/experience_intro_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd", "scripts/ui/boot_sequence.gd",

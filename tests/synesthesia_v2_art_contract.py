@@ -42,7 +42,7 @@ for manifest_path in sorted((ROOT / "data/releases").glob("*/manifest.json")):
     art = data["room"].get("art_direction", {})
     if art.get("visual_system") != "virya-signal-v2":
         failures.append(f"{rid}: visual_system is not virya-signal-v2")
-    if art.get("asset_generation") != "moodboard-locked-2026":
+    if art.get("asset_generation") not in {"moodboard-locked-2026", "post-reveal-v6-master"}:
         failures.append(f"{rid}: moodboard lock metadata missing")
     scene_rel = str(art.get("scene_image", "")).removeprefix("res://")
     scene = ROOT / scene_rel

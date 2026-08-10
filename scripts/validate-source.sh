@@ -54,7 +54,9 @@ python3 tests/sensory_room_contract.py
 python3 tests/door_transition_contract.py
 python3 tests/cinematic_video_contract.py
 python3 tests/presentation_contract.py
+python3 tests/post_reveal_living_contract.py
 python3 tests/virya_world_contract.py
+python3 tests/gamefeel_v5_contract.py
 python3 tests/comic_skin_contract.py
 python3 tests/ui_input_contract.py
 python3 tests/ui_performance_contract.py

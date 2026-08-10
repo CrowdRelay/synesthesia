@@ -171,8 +171,7 @@ func _add_room_entry(index: int) -> void:
                 if not message.is_empty():
                     memory_lines.append("%s · %s" % [source, message])
         if not memory_lines.is_empty():
-            var memory := UIFactory.body("
-".join(memory_lines))
+            var memory := UIFactory.body("\n".join(memory_lines))
             memory.name = "EchoCodexMemory"
             memory.add_theme_font_size_override("font_size", 9)
             memory.add_theme_color_override("font_color", Color("bac7d5"))

@@ -12,6 +12,7 @@ const VIDEO_PATHS: Dictionary = {
     "finale": "res://assets/video/finale.ogv",
 }
 const PROCEDURAL_LIVING_STYLES: Array[String] = ["party", "calling", "waves", "rise", "hybrid", "ashes"]
+# Procedural-living rooms must not repaint old props over the V5 authored scene.
 const PROFILE_INDEX: Dictionary = {
     "uncertainty": 0, "party": 1, "unmasked": 2, "calling": 3,
     "seed": 4, "hybrid": 5, "technophobia": 6, "invaluable": 7,

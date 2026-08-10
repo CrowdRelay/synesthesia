@@ -143,7 +143,7 @@ require("tests/lifecycle_smoke.gd", "SYNESTHESIA_LIFECYCLE_SMOKE=PASS", "preload
 require("tests/sensory_room_contract.py", "SYNESTHESIA_SENSORY_ROOMS=PASS", "ambience=11", "doors=hinge+supersonic")
 require("tests/door_transition_contract.py", "SYNESTHESIA_DOOR_TRANSITION=PASS", "door=hinged", "no-room-stretch")
 require("tests/cinematic_video_contract.py", "SYNESTHESIA_CINEMATIC_VIDEO=PASS", "clips=6", "lazy=load+unload")
-require("tests/presentation_contract.py", "SYNESTHESIA_PRESENTATION=PASS", "menu=door-eye+signal", "chapter=nonblocking", "hud=two-panel+content")
+require("tests/presentation_contract.py", "SYNESTHESIA_PRESENTATION=PASS", "menu=door-eye+signal", "chapter=nonblocking", "hud=receding-signal-instrument")
 require("scripts/render/room_video_layer.gd", "VideoStreamPlayer.new()", "VideoStreamTheora.new()", "theora.file = _video_path", "_player.stream = null", "entry_strength")
 
 memory = require("tools/memory_budget.py", "stdlib-webp", "MAX_CURRENT_PLUS_NEXT")

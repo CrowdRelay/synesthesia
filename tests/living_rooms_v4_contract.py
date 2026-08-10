@@ -20,7 +20,7 @@ for mp in sorted((ROOT/'data/releases').glob('*/manifest.json')):
     d=json.loads(mp.read_text())
     rid=d['release_id']; art=d['room'].get('art_direction',{})
     sig=str(art.get('room_signature','')).strip(); motion=str(art.get('ambient_motion','')).strip()
-    if not sig or not motion or art.get('living_world_version')!='v4':
+    if not sig or not motion or art.get('living_world_version') not in ['v4','v5','v6-post-reveal']:
         fail.append(f'{rid}: missing V4 room signature / ambient motion metadata')
     if sig in signatures: fail.append(f'{rid}: duplicate room signature {sig!r}')
     signatures.add(sig)
