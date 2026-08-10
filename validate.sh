@@ -4,7 +4,7 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 cd "$ROOT"
 
-# Keep source-level gates identical across local, CI, Netlify and Android.
+# Keep source-level gates identical across local, CI and Android builders.
 if [[ "${SYNESTHESIA_SKIP_SOURCE_VALIDATION:-0}" != "1" ]]; then
   ./scripts/validate-source.sh
 fi

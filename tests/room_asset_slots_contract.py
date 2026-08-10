@@ -18,7 +18,6 @@ else:
  for key in ('master_min','runtime_budget_per_room_kib','visual_language','faces'):
   if key not in rules: failures.append(f'missing rule {key}')
 if not (ROOT/'assets/props/README.md').is_file(): failures.append('missing assets/props/README.md')
-if not (ROOT/'docs/FULL_ROOM_GAMEPLAY.md').is_file(): failures.append('missing docs/FULL_ROOM_GAMEPLAY.md')
 if failures:
  [print('FAIL:',x) for x in failures]
  raise SystemExit(f'SYNESTHESIA_ROOM_ASSET_SLOTS=FAIL count={len(failures)}')

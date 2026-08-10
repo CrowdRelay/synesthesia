@@ -5,10 +5,8 @@ umask 022
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
 
-GODOT_VERSION="4.7.1-stable"
-GODOT_RELEASE_VERSION="4.7.1.stable"
-GODOT_EDITOR_SHA256="c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba"
-GODOT_TEMPLATES_SHA256="86409db6200b6f8fd3230989c2d2002851f3dd18acf11d7bdbafddf5a0dd0f72"
+# shellcheck disable=SC1091
+source "$ROOT/config/toolchains.env"
 CACHE_DIR="${GODOT_CACHE_DIR:-$ROOT/.cache/godot-$GODOT_VERSION}"
 GODOT_BIN="${GODOT_BIN:-}"
 OUTPUT="${SYNESTHESIA_LINUX_OUTPUT:-$ROOT/build/linux/synesthesia.x86_64}"

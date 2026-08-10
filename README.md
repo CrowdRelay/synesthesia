@@ -27,7 +27,7 @@ V2 is intentionally more game-like than the original reveal prototype. The playe
 notice -> manipulate -> immediate audiovisual response -> changed world state -> optional echo -> payoff
 ```
 
-The paint mask remains an accessibility/reveal assist, but completion is driven by each room's own mechanic: pulling cables and killing screen noise, removing masks, cracking mirror panes, growing the seed, rupturing sensory membranes, gathering ash, closing a resonance ritual, synchronizing paired waveforms, and so on. Visual direction and asset rules are documented in [`docs/SYNESTHESIA_V2_PRODUCTION.md`](docs/SYNESTHESIA_V2_PRODUCTION.md). The current per-room identity and ambient-motion lock is documented in [`docs/LIVING_ROOMS_V4.md`](docs/LIVING_ROOMS_V4.md).
+The paint mask remains an accessibility/reveal assist, but completion is driven by each room's own mechanic: pulling cables and killing screen noise, removing masks, cracking mirror panes, growing the seed, rupturing sensory membranes, gathering ash, closing a resonance ritual, synchronizing paired waveforms, and so on.
 
 ## CrowdRelay integration
 
@@ -46,12 +46,12 @@ Draw rules are server-enforced: 5 winners, 1 CD each, one completion/e-mail = on
 
 Synesthesia uses Godot + Rust with a deliberately narrow boundary. The editor, scenes, UI, audio, haptics and GPU reveal renderer stay in Godot; deterministic gameplay primitives live in the pure `native/synesthesia-core` crate and are exposed through the thin `native/synesthesia-gdext` adapter. The first migrated slice is gesture recognition.
 
-Native production builds are Rust-primary: macOS/Linux load the native GDExtension and Android packages an `arm64-v8a` `.so`. Web/Netlify deliberately uses the behavior-compatible GDScript recognizer in production so an experimental Emscripten side-module is not part of the browser's critical startup path. The Rust/WASM path (`synesthesia_gdext.wasm`) remains a fail-closed CI/verification target and can be enabled explicitly with `SYNESTHESIA_RUST_WEB_REQUIRED=1`. This keeps the Web experience resilient and also avoids paying the Rust+emsdk compile cost on every production Netlify build. A clean checkout still opens without committed native binaries because the descriptor and build products are generated locally and ignored by Git. See [`docs/RUST_HYBRID_ARCHITECTURE.md`](docs/RUST_HYBRID_ARCHITECTURE.md). Runtime budgets, idle-work rules and save/cache boundaries are documented in [`docs/PERFORMANCE_ARCHITECTURE.md`](docs/PERFORMANCE_ARCHITECTURE.md).
+Native production builds are Rust-primary: macOS/Linux load the native GDExtension and Android packages an `arm64-v8a` `.so`. Web production deliberately uses the behavior-compatible GDScript recognizer so an experimental Emscripten side-module is not part of the browser's critical startup path. The Rust/WASM path (`synesthesia_gdext.wasm`) remains a fail-closed CI/verification target and can be enabled explicitly with `SYNESTHESIA_RUST_WEB_REQUIRED=1`. GitHub Actions is the only Web builder: CI exports and verifies the production `build/web` artifact once, records a source-SHA manifest, and the deployment workflow promotes that exact artifact to Netlify with `--no-build`. A clean checkout still opens without committed native binaries because the descriptor and build products are generated locally and ignored by Git. See [`docs/RUST_HYBRID_ARCHITECTURE.md`](docs/RUST_HYBRID_ARCHITECTURE.md). Runtime budgets, idle-work rules and save/cache boundaries are enforced by the performance, memory, lifecycle and Web bundle contracts under `tests/` and `tools/`.
 
 ## Build and validation
 
 ```bash
-# Fast canonical source/contracts gate (shared by CI, Netlify and Android)
+# Fast canonical source/contracts gate (shared by local, CI and Android builders)
 ./scripts/validate-source.sh
 
 # Source gates + real Godot import/runtime smoke when Godot is installed
@@ -99,7 +99,7 @@ tests/                       static/runtime/visual contracts
 web/                         PWA shell, CSP and pre-engine boot
 ```
 
-New room packs must satisfy [`docs/RELEASE_PACK_SCHEMA.md`](docs/RELEASE_PACK_SCHEMA.md).
+New room packs must satisfy the schema encoded by `data/release_index.json`, `data/releases/*/manifest.json` and `tests/new_release_pack_contract.py`.
 
 ## Security and privacy
 

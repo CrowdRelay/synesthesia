@@ -6,7 +6,8 @@ DOC = (ROOT / "docs/RUST_HYBRID_ARCHITECTURE.md").read_text()
 
 for token in (
     "Native production builds are Rust-primary",
-    "Web/Netlify deliberately uses the behavior-compatible GDScript recognizer in production",
+    "Web production deliberately uses the behavior-compatible GDScript recognizer",
+    "GitHub Actions is the only Web builder",
     "synesthesia_gdext.wasm",
     "SYNESTHESIA_RUST_WEB_REQUIRED=1",
 ):
@@ -14,9 +15,11 @@ for token in (
 
 for token in (
     "| Android | Rust GDExtension",
-    "| Web / Netlify | GDScript recognizer",
-    "Web production: Netlify sets `SYNESTHESIA_RUST_WEB_REQUIRED=0`",
-    "Netlify connected-Git integration is the sole automatic Web deployment authority",
+    "| Web | GDScript recognizer",
+    "Web production: GitHub Actions runs `build-web-preview.sh` with `SYNESTHESIA_RUST_WEB_REQUIRED=0`",
+    "GitHub Actions is the sole Web build authority",
+    "deploys it to Netlify with `--no-build`",
+    "Netlify connected-Git source builds must remain stopped",
     "never `native/target`",
 ):
     assert token in DOC, token
@@ -24,6 +27,8 @@ for token in (
 for stale in (
     "Production builds are Rust-primary on all supported targets",
     "| Web / Netlify | Rust GDExtension side-module",
+    "Netlify connected-Git integration is the sole automatic Web deployment authority",
+    "production Netlify build",
     "Web: `build-web-preview.sh` must produce and export `synesthesia_gdext.wasm`",
 ):
     assert stale not in README + DOC, stale

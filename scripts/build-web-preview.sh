@@ -5,17 +5,14 @@ umask 022
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
 
-GODOT_VERSION="4.7.1-stable"
-GODOT_RELEASE_VERSION="4.7.1.stable"
-GODOT_EDITOR_SHA256="c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba"
-GODOT_TEMPLATES_SHA256="86409db6200b6f8fd3230989c2d2002851f3dd18acf11d7bdbafddf5a0dd0f72"
+# shellcheck disable=SC1091
+source "$ROOT/config/toolchains.env"
 CACHE_DIR="${GODOT_CACHE_DIR:-$ROOT/.cache/godot-$GODOT_VERSION}"
 GODOT_BIN="${GODOT_BIN:-}"
 RUST_WEB_REQUIRED="${SYNESTHESIA_RUST_WEB_REQUIRED:-1}"
-RUST_NATIVE_TOOLCHAIN="${SYNESTHESIA_RUST_NATIVE_TOOLCHAIN:-1.97.1}"
-RUST_WEB_TOOLCHAIN="${SYNESTHESIA_RUST_WEB_TOOLCHAIN:-nightly-2026-08-07}"
-EMSDK_VERSION="${SYNESTHESIA_EMSDK_VERSION:-3.1.74}"
-EMSDK_MANAGER_COMMIT="3d6d8ee910466516a53e665b86458faa81dae9ba"
+RUST_NATIVE_TOOLCHAIN="${SYNESTHESIA_RUST_NATIVE_TOOLCHAIN:-$RUST_NATIVE_TOOLCHAIN}"
+RUST_WEB_TOOLCHAIN="${SYNESTHESIA_RUST_WEB_TOOLCHAIN:-$RUST_WEB_TOOLCHAIN}"
+EMSDK_VERSION="${SYNESTHESIA_EMSDK_VERSION:-$EMSDK_VERSION}"
 EMSDK_DIR="${EMSDK_DIR:-$CACHE_DIR/emsdk-$EMSDK_VERSION}"
 
 calculate_sha256() {
@@ -135,8 +132,8 @@ if [[ "${SYNESTHESIA_SKIP_SOURCE_VALIDATION:-0}" != "1" ]]; then
   ./scripts/validate-source.sh
 fi
 
-# Cheap deterministic size gate before Godot/templates/Rust. This protects Netlify
-# build minutes from source/runtime growth that can be known without exporting.
+# Cheap deterministic size gate before Godot/templates/Rust. This protects GitHub
+# runner minutes from source/runtime growth that can be known without exporting.
 python3 tools/web_bundle_budget.py --preflight
 
 if [[ -z "$GODOT_BIN" ]]; then
@@ -170,10 +167,9 @@ fi
 export GODOT_BIN
 
 # Keep the bounded download cache separate from Godot's runtime install path.
-# The engine's own diagnostic is authoritative here: on Linux/Netlify Godot
-# 4.7.1 resolves templates from $HOME/.local/share/godot/export_templates,
-# regardless of a private shell-only GODOT_DATA_DIR and (in Netlify's process
-# environment) despite attempts to relocate XDG_DATA_HOME. Cache two verified
+# The engine's own diagnostic is authoritative here: on Linux CI Godot 4.7.1
+# resolves templates from $HOME/.local/share/godot/export_templates regardless
+# of a private shell-only GODOT_DATA_DIR. Cache two verified
 # Web templates under the repository, then atomically install copies where the
 # running editor actually looks for them.
 GODOT_RUNTIME_DATA_DIR="$(./scripts/godot-runtime-data-dir.sh)"

@@ -10,9 +10,6 @@ failures: list[str] = []
 
 required_files = [
     ROOT / "data/virya_world.json",
-    ROOT / "docs/VIRYA_ART_BIBLE.md",
-    ROOT / "docs/VIRYA_ASSET_BACKLOG.md",
-    ROOT / "docs/VIRYA_ROOM_REDESIGN.md",
     ROOT / "scripts/app/virya_world.gd",
 ]
 for path in required_files:
@@ -55,5 +52,5 @@ if failures:
 
 print(
     "SYNESTHESIA_VIRYA_WORLD=PASS "
-    "archetypes=4 rooms=11 docs=art-bible+backlog+redesign"
+    "archetypes=4 rooms=11"
 )

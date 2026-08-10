@@ -62,6 +62,13 @@ jobs:
           SYNESTHESIA_SKIP_SOURCE_VALIDATION: "1"
         run: ./scripts/build-linux-release.sh
 
+      - name: Create desktop/Web provenance manifests
+        run: |
+          python3 tools/artifact_manifest.py create build/web build/web-release-artifact-manifest.json --source-sha "${GITHUB_SHA}"
+          python3 tools/artifact_manifest.py verify build/web build/web-release-artifact-manifest.json --source-sha "${GITHUB_SHA}"
+          python3 tools/artifact_manifest.py create build/linux build/linux-release-artifact-manifest.json --source-sha "${GITHUB_SHA}"
+          python3 tools/artifact_manifest.py verify build/linux build/linux-release-artifact-manifest.json --source-sha "${GITHUB_SHA}"
+
       - name: Upload Linux and Web artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -69,6 +76,9 @@ jobs:
           path: |
             build/web
             build/linux
+            build/web-release-artifact-manifest.json
+            build/linux-release-artifact-manifest.json
+            tools/artifact_manifest.py
           if-no-files-found: error
           retention-days: 14
 
@@ -125,6 +135,13 @@ jobs:
           SYNESTHESIA_SKIP_SOURCE_VALIDATION: "1"
         run: ./scripts/build-android-apk.sh
 
+      - name: Bind Android artifact to source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/artifact_manifest.py create build/android build/android-artifact-manifest.json --source-sha "${GITHUB_SHA}"
+          python3 tools/artifact_manifest.py verify build/android build/android-artifact-manifest.json --source-sha "${GITHUB_SHA}"
+
       - name: Upload Android artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -133,6 +150,7 @@ jobs:
             build/android/synesthesia-debug.apk
             build/android/synesthesia-debug.apk.sha256
             build/android/synesthesia-debug.apk.badging.txt
+            build/android-artifact-manifest.json
           if-no-files-found: error
           retention-days: 14
 

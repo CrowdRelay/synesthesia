@@ -34,7 +34,7 @@ The gesture boundary is also deliberately **idle-zero-FFI**: Godot mirrors activ
 | --- | --- | --- | --- |
 | macOS / Linux | Rust GDExtension | `.dylib` / `.so` | explicit disable only |
 | Android | Rust GDExtension | `arm64-v8a/libsynesthesia_gdext.so` | explicit emergency switch only |
-| Web / Netlify | GDScript recognizer | no Rust side-module in production | Rust/WASM remains an explicit CI verification path |
+| Web | GDScript recognizer | no Rust side-module in production | Rust/WASM remains an explicit CI verification path; Netlify receives only the CI-built artifact |
 
 `interaction_router.gd` performs runtime feature detection and keeps the same event contract in both implementations. Native release pipelines fail closed when their required Rust artifact is absent. Web intentionally takes the opposite production tradeoff: the behavior-compatible GDScript backend stays on the browser critical path, while the Rust/WASM adapter is compiled and exported in verification builds so capability does not silently rot.
 
@@ -71,8 +71,8 @@ SYNESTHESIA_RUST_WEB_REQUIRED=1 ./scripts/build-web-preview.sh
 - Main CI: format, unit-test, check and `clippy -D warnings`; then build the host extension and run real Godot import/lifecycle smoke.
 - Android: Rust is required, the APK is opened as a ZIP and must physically contain `libsynesthesia_gdext.so`.
 - Web verification: `build-web-preview.sh` with `SYNESTHESIA_RUST_WEB_REQUIRED=1` must produce and export `synesthesia_gdext.wasm`.
-- Web production: Netlify sets `SYNESTHESIA_RUST_WEB_REQUIRED=0`; the script disables generated native state before import/export and uses the proven GDScript recognizer. This avoids experimental side-module startup failures and removes Rust/emsdk compilation from the production Netlify critical path.
-- Netlify connected-Git integration is the sole automatic Web deployment authority. Deploy previews/branch builds are intentionally skipped; GitHub Web workflow is verification only.
+- Web production: GitHub Actions runs `build-web-preview.sh` with `SYNESTHESIA_RUST_WEB_REQUIRED=0`; the script disables generated native state before import/export and uses the proven GDScript recognizer. This avoids experimental side-module startup failures and keeps Rust/emsdk out of the production Web critical path.
+- GitHub Actions is the sole Web build authority. CI creates a source-SHA manifest for the exact `build/web` output and uploads it as an immutable workflow artifact. A separate promotion workflow downloads that exact successful CI artifact, verifies the manifest and deploys it to Netlify with `--no-build`. Netlify connected-Git source builds must remain stopped.
 - Build caches contain dependency sources and selected verified Godot inputs, never `native/target`, full template packs or generated application artifacts.
 
 ## Performance rule

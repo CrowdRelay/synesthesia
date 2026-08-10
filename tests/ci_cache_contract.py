@@ -14,7 +14,7 @@ for source in (ci, android):
     if "native/target" in source:
         failures.append("native/target must never be persisted in GitHub Actions cache")
 
-for token in ("~/.cargo/registry", "~/.cargo/git", "editor-${{ env.GODOT_VERSION }}.zip"):
+for token in ("~/.cargo/registry", "~/.cargo/git", ".cache/godot-${{ env.GODOT_VERSION }}/editor.zip"):
     if token not in ci:
         failures.append(f"CI bounded dependency cache missing: {token}")
 for token in ("~/.cargo/bin/cargo-ndk", "android_debug.apk", "android_release.apk"):

@@ -1,23 +1,29 @@
-name: Web build and Netlify deploy
+name: Promote CI Web artifact to Netlify
 
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: Successful CI run id containing the Web artifact
+        required: true
+      source_sha:
+        description: Full 40-character source SHA produced by that CI run
+        required: true
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: synesthesia-netlify-production
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
-    name: Build on GitHub and deploy prebuilt output
-    env:
-      SYNESTHESIA_RUST_WEB_REQUIRED: "0"
+  deploy:
+    name: Promote exact CI artifact without rebuilding
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
@@ -25,73 +31,61 @@ jobs:
        github.event.workflow_run.head_branch == 'main' &&
        github.event.workflow_run.actor.login != 'dependabot[bot]')
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 12
 
     steps:
-      - name: Resolve source revision
+      - name: Resolve validated CI artifact
         id: source
         shell: bash
         env:
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
           WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          MANUAL_RUN_ID: ${{ inputs.ci_run_id }}
+          MANUAL_SHA: ${{ inputs.source_sha }}
         run: |
           set -euo pipefail
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            run_id="${WORKFLOW_RUN_ID}"
             source_sha="${WORKFLOW_SHA}"
           else
-            source_sha="${GITHUB_SHA}"
+            run_id="${MANUAL_RUN_ID}"
+            source_sha="${MANUAL_SHA}"
           fi
-          test -n "${source_sha}"
+          [[ "${run_id}" =~ ^[0-9]+$ ]]
+          [[ "${source_sha}" =~ ^[0-9a-f]{40}$ ]]
+          echo "run_id=${run_id}" >> "${GITHUB_OUTPUT}"
           echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
-          echo "SYNESTHESIA_DEPLOY_SOURCE=${source_sha}"
+          echo "SYNESTHESIA_DEPLOY_SOURCE=${source_sha} ci_run=${run_id}"
 
-      - name: Checkout CI-proven source
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Download exact CI-proven Web artifact
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          ref: ${{ steps.source.outputs.sha }}
+          name: synesthesia-web-${{ steps.source.outputs.sha }}
+          path: promoted
+          run-id: ${{ steps.source.outputs.run_id }}
+          github-token: ${{ github.token }}
 
-      - name: Setup Node.js for Netlify CLI
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: '22'
-
-      - name: Cache verified Godot Web inputs
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
-        with:
-          path: |
-            .cache/godot-4.7.1-stable/editor.zip
-            .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/.synesthesia-web-templates.sha256
-            .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_dlink_nothreads_debug.zip
-            .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_dlink_nothreads_release.zip
-          key: ${{ runner.os }}-synesthesia-godot-web-4.7.1-v4
-
-      - name: Prepare pinned bundled fonts
-        run: |
-          set -euo pipefail
-          ./scripts/prepare-bundled-fonts.sh
-          test -s assets/fonts/generated/SynesthesiaTitle.ttf
-          test -s assets/fonts/generated/SynesthesiaDisplay.ttf
-          test -s assets/fonts/generated/OFL-NewRocker.txt
-          test -s assets/fonts/generated/OFL-BebasNeue.txt
-          echo "SYNESTHESIA_DEPLOY_FONTS=PASS"
-
-      - name: Build production Web artifact on GitHub
-        env:
-          SYNESTHESIA_SKIP_SOURCE_VALIDATION: ${{ github.event_name == 'workflow_run' && '1' || '0' }}
-        run: ./scripts/build-web-preview.sh
-
-      - name: Verify deploy artifact
+      - name: Verify artifact manifest and deploy surface
         shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
           set -euo pipefail
-          test -s build/web/index.html
-          test -s build/web/_headers
-          test -s build/web/_redirects
-          test -s build/web/manifest.webmanifest
-          test -s build/web/service-worker.js
-          test -n "$(find build/web -maxdepth 1 -type f -name '*.wasm' -print -quit)"
-          test -n "$(find build/web -maxdepth 1 -type f -name '*.pck' -print -quit)"
-          test -z "$(find build/web -type f -name 'synesthesia_gdext.wasm' -print -quit)"
-          echo "SYNESTHESIA_NETLIFY_ARTIFACT=PASS files=$(find build/web -type f | wc -l | tr -d ' ') bytes=$(du -sk build/web | awk '{print $1 * 1024}')"
+          test -s promoted/build/web/index.html
+          test -s promoted/build/web/_headers
+          test -s promoted/build/web/_redirects
+          test -s promoted/build/web/manifest.webmanifest
+          test -s promoted/build/web/service-worker.js
+          test -s promoted/build/web-artifact-manifest.json
+          test -s promoted/tools/artifact_manifest.py
+          test -n "$(find promoted/build/web -maxdepth 1 -type f -name '*.wasm' -print -quit)"
+          test -n "$(find promoted/build/web -maxdepth 1 -type f -name '*.pck' -print -quit)"
+          test -z "$(find promoted/build/web -type f -name 'synesthesia_gdext.wasm' -print -quit)"
+          python3 promoted/tools/artifact_manifest.py verify \
+            promoted/build/web \
+            promoted/build/web-artifact-manifest.json \
+            --source-sha "${SOURCE_SHA}"
+          echo "SYNESTHESIA_NETLIFY_ARTIFACT=PASS source=${SOURCE_SHA} rebuild=false"
 
       - name: Verify Netlify source builds are stopped
         env:
@@ -117,7 +111,7 @@ jobs:
                   "SYNESTHESIA_NETLIFY_ZERO_BUILD=FAIL reason=source-builds-active "
                   "action='Netlify > Project configuration > Build & deploy > Build settings > Stopped builds'"
               )
-          print("SYNESTHESIA_NETLIFY_ZERO_BUILD=PASS source_builds=stopped deploy=manual-cli")
+          print("SYNESTHESIA_NETLIFY_ZERO_BUILD=PASS source_builds=stopped deploy=artifact-promotion")
           PY
 
       - name: Refuse stale production promotion
@@ -125,10 +119,14 @@ jobs:
         shell: bash
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          current_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
-          test -n "${current_sha}"
+          current_sha="$(curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/commits/main" | jq -r '.sha')"
+          [[ "${current_sha}" =~ ^[0-9a-f]{40}$ ]]
           if [[ "${current_sha}" == "${SOURCE_SHA}" ]]; then
             echo "current=true" >> "${GITHUB_OUTPUT}"
             echo "SYNESTHESIA_DEPLOY_FRESHNESS=PASS sha=${SOURCE_SHA}"
@@ -137,7 +135,13 @@ jobs:
             echo "SYNESTHESIA_DEPLOY_FRESHNESS=SKIP artifact=${SOURCE_SHA} main=${current_sha}"
           fi
 
-      - name: Deploy prebuilt output to Netlify
+      - name: Setup Node.js for Netlify CLI
+        if: steps.freshness.outputs.current == 'true'
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+
+      - name: Deploy exact prebuilt artifact to Netlify
         if: steps.freshness.outputs.current == 'true'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
@@ -148,7 +152,7 @@ jobs:
           npx --yes netlify-cli@26.2.0 deploy \
             --prod \
             --no-build \
-            --dir=build/web \
+            --dir=promoted/build/web \
             --site="${NETLIFY_SITE_ID}" \
             --auth="${NETLIFY_AUTH_TOKEN}" \
-            --message="GitHub Actions ${SOURCE_SHA}"
+            --message="GitHub Actions artifact ${SOURCE_SHA}"

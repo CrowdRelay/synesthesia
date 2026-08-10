@@ -9,11 +9,13 @@ workflow_path = ROOT / ".github/workflows/android-apk.yml"
 build_script_path = ROOT / "scripts/build-android-apk.sh"
 preset_path = ROOT / "export_presets.cfg"
 project_path = ROOT / "project.godot"
+toolchains_path = ROOT / "config/toolchains.env"
 
 workflow = workflow_path.read_text() if workflow_path.is_file() else ""
 script = build_script_path.read_text() if build_script_path.is_file() else ""
 preset = preset_path.read_text()
 project = project_path.read_text()
+toolchains = toolchains_path.read_text() if toolchains_path.is_file() else ""
 
 if not workflow:
     failures.append(".github/workflows/android-apk.yml missing")
@@ -38,13 +40,11 @@ for token in (
         failures.append(f"Android workflow missing token: {token}")
 
 for token in (
-    'GODOT_VERSION="4.7.1-stable"',
-    'GODOT_EDITOR_SHA256="c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba"',
-    'GODOT_TEMPLATES_SHA256="86409db6200b6f8fd3230989c2d2002851f3dd18acf11d7bdbafddf5a0dd0f72"',
-    'BUILD_TOOLS_VERSION="35.0.1"',
-    'PLATFORM_VERSION="android-35"',
-    'NDK_VERSION="28.1.13356709"',
-    'CMAKE_VERSION="3.10.2.4988404"',
+    'source "$ROOT/config/toolchains.env"',
+    'BUILD_TOOLS_VERSION="$ANDROID_BUILD_TOOLS_VERSION"',
+    'PLATFORM_VERSION="$ANDROID_PLATFORM_VERSION"',
+    'NDK_VERSION="$ANDROID_NDK_VERSION"',
+    'CMAKE_VERSION="$ANDROID_CMAKE_VERSION"',
     'editor_settings-4.7.tres',
     'export/android/android_sdk_path',
     'export/android/java_sdk_path',
@@ -69,6 +69,19 @@ for token in (
 ):
     if token not in script:
         failures.append(f"Android build script missing token: {token}")
+
+
+for token in (
+    "GODOT_VERSION=4.7.1-stable",
+    "GODOT_EDITOR_SHA256=c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba",
+    "GODOT_TEMPLATES_SHA256=86409db6200b6f8fd3230989c2d2002851f3dd18acf11d7bdbafddf5a0dd0f72",
+    "ANDROID_BUILD_TOOLS_VERSION=35.0.1",
+    "ANDROID_PLATFORM_VERSION=android-35",
+    "ANDROID_NDK_VERSION=28.1.13356709",
+    "ANDROID_CMAKE_VERSION=3.10.2.4988404",
+):
+    if token not in toolchains:
+        failures.append(f"Canonical toolchain config missing token: {token}")
 
 if "templates-unpack" in script or 'cp -R "$unpack_dir/templates/."' in script or 'sha256sum --check --strict' in script:
     failures.append("Android builder must install only selected templates with portable checksum verification")

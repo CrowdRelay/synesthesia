@@ -33,7 +33,7 @@ REQUIRED_FILES = [
     "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/ui_metrics.gd", "scripts/ui/signal_backdrop.gd", "scripts/ui/door_eye_motif.gd", "scripts/ui/chapter_card.gd", "scripts/ui/experience_intro_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd", "scripts/ui/boot_sequence.gd",
     "scripts/rooms/behavior_base.gd", "shaders/room_composite.gdshader", "shaders/echoes_finale.gdshader", "shaders/room_video_postprocess.gdshader",
     "assets/branding/signal-glyph-loop.ogv", "assets/audio/pink-noise-asmr-loop.ogg", "assets/audio/balloon-pop.mp3", "assets/finale/echoes-finale.webp", "default_bus_layout.tres",
-    "data/release_index.json", "data/room_asset_slots.json", "docs/SYNESTHESIA_V2_PRODUCTION.md", "tests/validate_project.gd",
+    "data/release_index.json", "data/room_asset_slots.json", "tests/validate_project.gd",
     "tests/room_pipeline_contract.py", "tests/capture_rooms.gd",
     "tests/visual_snapshot_contract.py", "tests/visual_snapshots.json",
     "tests/new_release_pack_contract.py", "tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py", "assets/video/manifest.json", "tools/update_visual_snapshots.py",

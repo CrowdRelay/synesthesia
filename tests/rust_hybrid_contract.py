@@ -71,8 +71,10 @@ def main() -> None:
     require(netlify, 'ignore = "exit 0"', "netlify-build-stop-guard")
     if "command =" in netlify or "[[plugins]]" in netlify:
         raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL netlify-build-path-still-enabled")
-    if re.search(r"(?m)^\s*SYNESTHESIA_RUST_WEB_REQUIRED:\s*(?:0|\"0\"|'0')\s*(?:#.*)?$", web_deploy) is None:
-        raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL missing=github-web-gdscript-production-fallback")
+    if re.search(r"(?m)^\s*SYNESTHESIA_RUST_WEB_REQUIRED:\s*(?:0|\"0\"|'0')\s*(?:#.*)?$", ci) is None:
+        raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL missing=ci-web-gdscript-production-fallback")
+    if "build-web-preview.sh" in web_deploy:
+        raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL deploy-rebuilds-web")
     require(web_deploy, "netlify-cli@26.2.0 deploy", "github-netlify-cli-promotion")
     require(web_deploy, "--no-build", "github-netlify-no-build")
 
