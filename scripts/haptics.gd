@@ -86,6 +86,25 @@ func special(kind: String) -> void:
             Input.vibrate_handheld(9, clampf(base * 0.82, 0.06, 0.38))
             _pulse_after_delay(31, 9, clampf(base * 0.66, 0.05, 0.30))
             _pulse_after_delay(70, 16, clampf(base * 1.04, 0.08, 0.48))
+        "cable_grab":
+            Input.vibrate_handheld(6, clampf(base * 0.30, 0.03, 0.16))
+        "cable_tension":
+            Input.vibrate_handheld(5 if calm_mode else 8, clampf(base * 0.22, 0.025, 0.14))
+        "cable_snap":
+            Input.vibrate_handheld(7, clampf(base * 0.34, 0.03, 0.18))
+        "cable_unplug":
+            Input.vibrate_handheld(16 if calm_mode else 24, clampf(base * 0.88, 0.07, 0.44))
+            _pulse_after_delay(46, 8, clampf(base * 0.42, 0.04, 0.22))
+        "breaker":
+            Input.vibrate_handheld(24 if calm_mode else 34, clampf(base * 1.02, 0.08, 0.50))
+            _pulse_after_delay(76, 14, clampf(base * 0.66, 0.05, 0.32))
+        "signal_lock":
+            Input.vibrate_handheld(18 if calm_mode else 26, clampf(base * 0.72, 0.06, 0.36))
+            _pulse_after_delay(86, 34 if calm_mode else 46, clampf(base * 1.16, 0.09, 0.58))
+        "echo_complete":
+            Input.vibrate_handheld(14 if calm_mode else 20, clampf(base * 0.56, 0.05, 0.30))
+            _pulse_after_delay(66, 18, clampf(base * 0.82, 0.07, 0.42))
+            _pulse_after_delay(132, 30 if calm_mode else 42, clampf(base * 1.12, 0.09, 0.56))
         "seed":
             Input.vibrate_handheld(24 if calm_mode else 34, clampf(base * 0.88, 0.07, 0.42))
             _pulse_after_delay(84, 18, clampf(base * 0.70, 0.06, 0.34))

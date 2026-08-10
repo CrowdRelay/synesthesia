@@ -1,0 +1,99 @@
+{
+  "version": 2,
+  "style": "virya-signal-v2-moodboard-locked",
+  "rules": {
+    "master_min": "1080x1920",
+    "alpha_props": "lossless-source -> webp/png runtime",
+    "runtime_budget_per_room_kib": 900,
+    "visual_language": "charcoal + thin signal hairlines + selective red/cyan/purple/dirty-white + waveform/rings + industrial stains",
+    "faces": "abstract silhouettes only; no literal portrait treatment",
+    "runtime_art": "all 11 scene/background/subject/foreground layers replaced in V2",
+    "motion": "new authored room art owns image; legacy cinematics are low-amplitude texture only"
+  },
+  "rooms": {
+    "wave-of-uncertainty": [
+      "foam-foreground",
+      "water-streaks",
+      "horizon-signal",
+      "spray-particles"
+    ],
+    "party-time": [
+      "balloon-atlas",
+      "confetti-atlas",
+      "disco-glints",
+      "party-stains"
+    ],
+    "unmasked": [
+      "mask-atlas",
+      "mask-cracks",
+      "mask-straps",
+      "ceremony-dust"
+    ],
+    "the-calling": [
+      "wine-bottle",
+      "wine-glass",
+      "candle-glow",
+      "table-stains",
+      "glass-condensation"
+    ],
+    "seed-of-doubt": [
+      "seed",
+      "root-tendrils",
+      "soil-cracks",
+      "leaf-dust",
+      "organic-stains"
+    ],
+    "hybrid": [
+      "dust-atlas",
+      "impact-decals",
+      "metal-scratches",
+      "duel-silhouette"
+    ],
+    "technophobia": [
+      "cable-atlas",
+      "plug-atlas",
+      "socket-atlas",
+      "screen-cracks",
+      "crt-noise-masks",
+      "spark-atlas",
+      "burnt-electronics-stains"
+    ],
+    "invaluable": [
+      "mirror-cracks",
+      "glass-shards",
+      "fingerprint-stains",
+      "reflection-slices"
+    ],
+    "from-the-ashes": [
+      "ash-atlas",
+      "ember-atlas",
+      "wing-traces",
+      "burn-marks",
+      "smoke-wisps"
+    ],
+    "waves": [
+      "curtain-layer",
+      "lamp-glow",
+      "window-rain",
+      "breath-fog",
+      "bedroom-dust"
+    ],
+    "rise": [
+      "light-rays",
+      "dust-motes",
+      "halo-rings",
+      "atrium-glass",
+      "final-signal-traces"
+    ]
+  },
+  "shared_runtime_assets": [
+    "res://assets/v2/fx/signal-ring.png",
+    "res://assets/v2/fx/signal-glitch.png",
+    "res://assets/v2/fx/surface-scratches.png"
+  ],
+  "branding": [
+    "res://assets/v2/branding/menu-world.webp",
+    "res://assets/v2/branding/corridor-world.webp",
+    "res://assets/v2/branding/finale-world.webp"
+  ]
+}

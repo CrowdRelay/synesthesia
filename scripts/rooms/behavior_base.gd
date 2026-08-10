@@ -19,6 +19,12 @@ func particle_style() -> String:
 func interaction_hint() -> String:
     return "DOTKNIJ ŚWIATA"
 
+## Diegetic assist targets. They stay invisible during normal play and are only
+## rendered by InteractionHintLayer after inactivity/misses. Each entry may use:
+## point: Vector2, kind: String, radius: float.
+func hint_targets() -> Array[Dictionary]:
+    return []
+
 ## V2 progression is mechanic-first: every room owns a different way of
 ## reducing interference. The reveal brush only assists/localizes the effect.
 func mechanic_progress() -> float:
@@ -26,6 +32,11 @@ func mechanic_progress() -> float:
 
 func brush_assist_weight() -> float:
     return 0.22
+
+## Interactive props can own the pointer so the accessibility/reveal brush does
+## not paint underneath a cable pull, knob drag or hold interaction.
+func captures_pointer_at(_point_norm: Vector2) -> bool:
+    return false
 
 ## Painting remains a fallback/reveal layer for every room. Gesture-driven rooms
 ## can return semantic events from on_gesture without replacing the mask system.

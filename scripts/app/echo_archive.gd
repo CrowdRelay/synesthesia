@@ -9,6 +9,10 @@ static func remember(album_state: Dictionary, release_id: String, item: Dictiona
     room_archive[echo_id] = {
         "title": str(item.get("title", "Echo")),
         "message": str(item.get("message", "")),
+        "source": str(item.get("source", "VIRYA")),
+        "source_role": str(item.get("source_role", "")),
+        "echo_type": str(item.get("echo_type", "signal_trace")),
+        "reward_hint": str(item.get("reward_hint", "")),
         "found_at_unix": int(Time.get_unix_time_from_system()),
     }
     archive[release_id] = room_archive

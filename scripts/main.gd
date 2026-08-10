@@ -189,7 +189,7 @@ func _show_experience_intro() -> void:
     var reward: Dictionary = reward_value if reward_value is Dictionary else {}
     var has_progress: bool = bool(album_state.get("experience_intro_seen", false)) or current_room_index > 0 or not _array_value(album_state.get("completed_room_ids", [])).is_empty()
     experience_intro_panel.configure(
-        _accent_for_release(current_room_index),
+        Color("E73535"),
         has_progress,
         bool(album_state.get("album_completed", false)),
         str(reward.get("api_url", "")),

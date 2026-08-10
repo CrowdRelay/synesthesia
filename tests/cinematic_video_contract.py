@@ -9,15 +9,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 VIDEO_DIR = ROOT / "assets/video"
 STYLES = [
-    "uncertainty", "party", "unmasked", "calling", "seed", "hybrid",
-    "technophobia", "invaluable", "ashes", "waves", "rise", "finale",
+    "uncertainty", "unmasked", "seed", "technophobia", "invaluable", "finale",
 ]
 SOURCE_NAMES = {
-    "uncertainty": "wave.mp4", "party": "party.mp4", "unmasked": "unmasked.mp4",
-    "calling": "calling.mp4", "seed": "seed.mp4", "hybrid": "hybrid.mp4",
-    "technophobia": "technophobia.mp4", "invaluable": "invaluable.mp4",
-    "ashes": "fromtheashes.mp4", "waves": "waves.mp4", "rise": "rise.mp4",
-    "finale": "echoes.mp4",
+    "uncertainty": "wave.mp4", "unmasked": "unmasked.mp4",
+    "seed": "seed.mp4", "technophobia": "technophobia.mp4",
+    "invaluable": "invaluable.mp4", "finale": "echoes.mp4",
 }
 failures: list[str] = []
 
@@ -40,7 +37,7 @@ if manifest.get("runtime_profile") != "native-source-resolution-theora-q5":
 if manifest.get("loop_endpoint_policy") != "forward-full+reverse-without-duplicated-endpoints":
     failures.append("cinematic loop endpoint policy must prevent ping-pong turn-around stutter")
 if sorted(clips) != sorted(STYLES):
-    failures.append("cinematic manifest must contain exact 11 rooms + finale")
+    failures.append("cinematic manifest must contain exact runtime video set")
 total_bytes = 0
 for style in STYLES:
     meta = clips.get(style, {})
@@ -116,6 +113,6 @@ if failures:
 
 print(
     "SYNESTHESIA_CINEMATIC_VIDEO=PASS "
-    f"clips=12 resolution=720x1280 source=720x1280 fps=24 bytes={total_bytes} "
+    f"clips=6 resolution=720x1280 source=720x1280 fps=24 bytes={total_bytes} "
     "lazy=load+unload post=themed unmasked=source-video finale=covered"
 )

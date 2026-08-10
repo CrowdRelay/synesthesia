@@ -1,5 +1,9 @@
 extends Control
 
+# Diegetic assist only: normal play stays clean. After inactivity/misses the layer
+# reveals the *actual* current interactive objects using the same signal language
+# as the rest of VIRYA instead of a generic tutorial cursor.
+
 var _interaction: String = "paint"
 var _accent: Color = Color("72afff")
 var _strength: float = 0.0
@@ -7,6 +11,7 @@ var _target_strength: float = 0.0
 var _phase: float = 0.0
 var _reduced_motion: bool = false
 var _runtime_scale: float = 1.0
+var _targets: Array[Dictionary] = []
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -17,7 +22,16 @@ func configure(interaction: String, accent: Color) -> void:
     _accent = accent
     _strength = 0.0
     _target_strength = 0.0
+    _targets.clear()
     queue_redraw()
+
+func set_targets(value: Array) -> void:
+    _targets.clear()
+    for raw in value:
+        if raw is Dictionary:
+            _targets.append((raw as Dictionary).duplicate(true))
+    if _strength > 0.001:
+        queue_redraw()
 
 func set_hint_strength(value: float) -> void:
     _target_strength = clampf(value, 0.0, 1.0)
@@ -42,15 +56,56 @@ func _process(delta: float) -> void:
 func _draw() -> void:
     if _strength <= 0.001 or size.x <= 1.0 or size.y <= 1.0:
         return
-    var center := Vector2(size.x * 0.5, size.y * 0.56)
-    var pulse: float = 0.5 if _reduced_motion else 0.5 + sin(_phase * 2.0) * 0.5
-    var alpha: float = _strength * (0.10 + pulse * 0.08)
-    var radius: float = minf(size.x, size.y) * (0.075 + pulse * 0.012)
-    draw_arc(center, radius, 0.0, TAU, 40, Color(_accent, alpha), 2.0)
-    match _interaction:
-        "toast_table", "grow_tree", "western_duel", "intimate_bedroom":
-            draw_circle(center, radius * 0.22, Color(_accent, alpha * 0.72))
-        "raise_phoenix", "rise_atrium":
-            draw_line(center + Vector2(0.0, radius * 0.55), center - Vector2(0.0, radius * 0.55), Color(_accent, alpha), 2.0)
+    var targets := _targets
+    if targets.is_empty():
+        targets = [{"point": _fallback_center(), "kind": _interaction, "radius": 0.075}]
+    var limit := mini(targets.size(), 4)
+    for index in range(limit):
+        _draw_target(targets[index], index)
+
+func _draw_target(target: Dictionary, index: int) -> void:
+    var point_value: Variant = target.get("point", _fallback_center())
+    var point_norm: Vector2 = point_value if point_value is Vector2 else _fallback_center()
+    var center := Vector2(point_norm.x * size.x, point_norm.y * size.y)
+    var kind := str(target.get("kind", _interaction))
+    var radius_norm := clampf(float(target.get("radius", 0.075)), 0.035, 0.20)
+    var base_radius := minf(size.x, size.y) * radius_norm
+    var pulse: float = 0.5 if _reduced_motion else 0.5 + sin(_phase * 2.0 + float(index) * 1.47) * 0.5
+    var alpha: float = _strength * (0.18 + pulse * 0.13)
+    var radius := base_radius * (0.82 + pulse * 0.12)
+
+    # Thin concentric rings match the approved Signal mockup and never resemble
+    # a mobile-game glowing hotspot.
+    draw_arc(center, radius, -PI * 0.84, PI * 0.84, 36, Color(_accent, alpha), 1.35)
+    draw_arc(center, radius * 0.68, PI * 0.18, PI * 1.82, 28, Color(Color.WHITE, alpha * 0.30), 1.0)
+    _draw_gesture_glyph(center, radius, kind, alpha)
+
+func _draw_gesture_glyph(center: Vector2, radius: float, kind: String, alpha: float) -> void:
+    match kind:
+        "drag_up":
+            draw_line(center + Vector2(0.0, radius * 0.40), center - Vector2(0.0, radius * 0.42), Color(_accent, alpha * 0.90), 1.6)
+            draw_line(center - Vector2(0.0, radius * 0.42), center + Vector2(-radius * 0.16, -radius * 0.20), Color(_accent, alpha * 0.90), 1.4)
+            draw_line(center - Vector2(0.0, radius * 0.42), center + Vector2(radius * 0.16, -radius * 0.20), Color(_accent, alpha * 0.90), 1.4)
+        "drag_horizontal", "tune":
+            draw_line(center - Vector2(radius * 0.45, 0.0), center + Vector2(radius * 0.45, 0.0), Color(_accent, alpha * 0.88), 1.5)
+            draw_circle(center, maxf(2.0, radius * 0.09), Color(Color.WHITE, alpha * 0.70))
+        "pull", "drag":
+            draw_line(center, center + Vector2(radius * 0.46, radius * 0.28), Color(_accent, alpha * 0.88), 1.5)
+            draw_circle(center, maxf(2.0, radius * 0.10), Color(Color.WHITE, alpha * 0.66))
+        "hold":
+            draw_circle(center, radius * 0.16, Color(_accent, alpha * 0.42))
+            draw_arc(center, radius * 0.31, -PI * 0.5, PI * 1.18, 22, Color(_accent, alpha * 0.78), 1.4)
+        "swirl":
+            draw_arc(center, radius * 0.34, -PI * 0.25, PI * 1.45, 26, Color(_accent, alpha * 0.88), 1.5)
+        "target":
+            draw_line(center - Vector2(radius * 0.28, 0.0), center + Vector2(radius * 0.28, 0.0), Color(_accent, alpha * 0.55), 1.0)
+            draw_line(center - Vector2(0.0, radius * 0.28), center + Vector2(0.0, radius * 0.28), Color(_accent, alpha * 0.55), 1.0)
         _:
-            draw_line(center - Vector2(radius * 0.48, 0.0), center + Vector2(radius * 0.48, 0.0), Color(_accent, alpha), 2.0)
+            draw_circle(center, maxf(2.0, radius * 0.10), Color(_accent, alpha * 0.62))
+
+func _fallback_center() -> Vector2:
+    if _interaction == "grow_tree":
+        return Vector2(0.50, 0.74)
+    if _interaction == "rise_atrium":
+        return Vector2(0.50, 0.20)
+    return Vector2(0.50, 0.56)

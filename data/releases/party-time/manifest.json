@@ -32,10 +32,10 @@
       "spacing": 0.76
     },
     "art_direction": {
-      "style": "dark_comic",
+      "style": "virya_signal_cinematic",
       "caption": "NIE PYTAJ — PRZEBIJ",
-      "ink_strength": 0.64,
-      "halftone_strength": 0.3,
+      "ink_strength": 0.48,
+      "halftone_strength": 0.075,
       "scene_image": "res://assets/rooms/vertical/party-time-scene.webp",
       "scene_opacity": 1.0,
       "scene_parallax": 0.012,
@@ -53,7 +53,9 @@
         "foreground",
         "atmosphere"
       ],
-      "film_grain_strength": 0.3
+      "film_grain_strength": 0.2,
+      "visual_system": "virya-signal-v2",
+      "asset_generation": "moodboard-locked-2026"
     },
     "id": "party-time",
     "scene_path": "res://scenes/rooms/party-time.tscn",
@@ -101,7 +103,11 @@
         0.28,
         0.43
       ],
-      "symbol": "✹"
+      "symbol": "✹",
+      "source": "Koobosky",
+      "source_role": "perkusja · mad doctor",
+      "echo_type": "voice_fragment",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "mess",
@@ -111,7 +117,11 @@
         0.7,
         0.35
       ],
-      "symbol": "✦"
+      "symbol": "✦",
+      "source": "Koobosky",
+      "source_role": "perkusja · mad doctor",
+      "echo_type": "signal_trace",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "moment",
@@ -121,10 +131,24 @@
         0.53,
         0.68
       ],
-      "symbol": "●"
+      "symbol": "●",
+      "source": "Koobosky",
+      "source_role": "perkusja · mad doctor",
+      "echo_type": "memory_shard",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     }
   ],
   "intro": "Przebijaj balony dotykiem, maluj po ścianach i rób kolorowy bałagan. To jest czysta zabawa.",
   "completion_title": "Konfetti przejęło pokój",
-  "completion_message": "Balony pękły, kolory uciekły w górę, a drzwi otworzyły się bez ważnej lekcji."
+  "completion_message": "Balony pękły, kolory uciekły w górę, a drzwi otworzyły się bez ważnej lekcji.",
+  "virya_identity": {
+    "character_id": "warden-of-rhythm",
+    "focus_title": "PERA · Koobosky",
+    "member_role": "perkusja · mad doctor",
+    "story_role": "Utrzymuje puls i napięcie. Nadaje scenom fizyczny ciężar, nerw, uderzenie i kontrolowany chaos.",
+    "future_costume_hook": "medyczny konfetti look, pałki, lampy imprezowe jak sprzęt sali zabiegowej",
+    "hero_moment": "balonowy chaos z rytmicznym impulsem i obecnością gospodarza sceny",
+    "wow_upgrade": "mocniejsza głębia, confetti w foregroundzie, bardziej wyrazista sylwetka",
+    "band_integration": "Pokój ma wizualnie należeć do świata VIRYA i być gotowy na przyszłe kostiumy Viryatkowa."
+  }
 }

@@ -31,7 +31,7 @@ boot_markup = '''<div id="synesthesia-boot" role="status" aria-label="Ładowanie
   <div class="synesthesia-boot__door" aria-hidden="true">
     <video class="synesthesia-boot__eye-art" id="synesthesia-boot-eye" muted loop playsinline preload="none" poster="/menu-eye-poster.webp" tabindex="-1"></video>
   </div>
-  <div class="synesthesia-boot__tagline">OTWÓRZ · ODKRYJ · POCZUJ</div>
+  <div class="synesthesia-boot__tagline">SZUKAJ · DOTKNIJ · ODSZUM</div>
   <div class="synesthesia-boot__render" id="synesthesia-boot-status">URUCHAMIAM DOŚWIADCZENIE</div>
   <button class="synesthesia-boot__retry" id="synesthesia-boot-retry" type="button">Wyczyść cache i uruchom ponownie</button>
 </div>'''
@@ -54,14 +54,14 @@ manifest_path = BUILD / "manifest.webmanifest"
 manifest = {
     "name": "VIRYA: Synestezja",
     "short_name": "Synestezja",
-    "description": "Interaktywne doświadczenie albumu VIRYA.",
+    "description": "VIRYA Synesthesia V2 — interaktywny album, mikro-zagadki i reaktywny Sygnał.",
     "id": "/",
     "start_url": "/",
     "scope": "/",
     "display": "fullscreen",
     "orientation": "portrait",
-    "background_color": "#080c14",
-    "theme_color": "#111a2a",
+    "background_color": "#030509",
+    "theme_color": "#e73535",
     "lang": "pl",
     "categories": ["music", "entertainment", "games"],
     "icons": [

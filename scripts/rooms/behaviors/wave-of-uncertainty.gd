@@ -9,7 +9,19 @@ func acts() -> Array[String]:
     return ["USŁYSZ PRZYPŁYW", "PROWADŹ FALĘ", "ODZYSKAJ HORYZONT"]
 
 func interaction_hint() -> String:
-    return "PROWADŹ FALĘ W BOK · NIE WALCZ Z NIĄ"
+    if bool(state.get("horizon", false)):
+        return "HORYZONT WRÓCIŁ · POSZUKAJ ECH W FALI"
+    if float(state.get("calmness", 0.0)) > 0.32:
+        return "FALA ŁAPIE RYTM · KONTYNUUJ RUCH W BOK"
+    return "DOTKNIJ FALI W DOLNEJ POŁOWIE · PROWADŹ JĄ POZIOMO"
+
+func hint_targets() -> Array[Dictionary]:
+    if bool(state.get("horizon", false)):
+        return []
+    return [{"point": Vector2(0.50, 0.62), "kind": "drag_horizontal", "radius": 0.18}]
+
+func captures_pointer_at(point_norm: Vector2) -> bool:
+    return not bool(state.get("horizon", false)) and point_norm.y >= 0.44
 
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#64E8D9")), Color("64e8d9"))

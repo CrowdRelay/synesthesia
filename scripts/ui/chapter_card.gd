@@ -19,14 +19,14 @@ func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, accent: Color) -> void:
+func configure(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, accent: Color, identity: Dictionary = {}) -> void:
     _accent = accent
-    _build(room_index, room_total, room_name, intro_text, caption)
+    _build(room_index, room_total, room_name, intro_text, caption, identity)
 
-func _build(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String) -> void:
+func _build(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, identity: Dictionary) -> void:
     _sheet = PanelContainer.new()
     _sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _sheet.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.90, true))
+    _sheet.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent, 0.28))
     add_child(_sheet)
     _layout_sheet()
 
@@ -64,8 +64,18 @@ func _build(room_index: int, room_total: int, room_name: String, intro_text: Str
     _body.add_theme_font_size_override("font_size", 10)
     _content.add_child(_body)
 
+    var identity_line := _identity_line(identity)
+    if not identity_line.is_empty():
+        var guide := Label.new()
+        guide.text = identity_line
+        guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        UIFactory.apply_display_font(guide)
+        guide.add_theme_font_size_override("font_size", 8)
+        guide.add_theme_color_override("font_color", Color("f0cf88"))
+        _content.add_child(guide)
+
     var hint := Label.new()
-    hint.text = "MALUJ OD RAZU · SZUM → MUZYKA · DRZWI OTWIERAJĄ SIĘ PRZY KOŃCU"
+    hint.text = "ROZEJRZYJ SIĘ · SZUKAJ REAKCJI · SZUM → MUZYKA"
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     UIFactory.apply_display_font(hint)
     hint.add_theme_font_size_override("font_size", 8)
@@ -151,6 +161,15 @@ func _shorten(value: String, limit: int) -> String:
     if last_space > limit / 2:
         cropped = cropped.substr(0, last_space)
     return "%s…" % cropped
+
+func _identity_line(identity: Dictionary) -> String:
+    if identity.is_empty():
+        return ""
+    var focus := str(identity.get("focus_title", "")).strip_edges()
+    var member_role := str(identity.get("member_role", "")).strip_edges()
+    if focus.is_empty():
+        return ""
+    return "PRZEWODNIK · %s%s" % [focus, " · %s" % member_role if not member_role.is_empty() else ""]
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:

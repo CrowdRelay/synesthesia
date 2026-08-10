@@ -80,6 +80,16 @@ func _draw() -> void:
                 _draw_confetti(center, radius, alpha, int(effect.get("seed", 0)))
             "screen", "duel":
                 _draw_glitch(center, radius, alpha)
+            "cable_grab":
+                _draw_cable_tension(center, radius, alpha)
+            "cable_snap":
+                _draw_cable_snap(center, radius, alpha)
+            "cable_unplug":
+                _draw_unplug_sparks(center, radius, alpha, int(effect.get("seed", 0)))
+            "breaker":
+                _draw_breaker_pulse(center, radius, alpha)
+            "signal_lock":
+                _draw_signal_lock(center, radius, alpha)
             "phoenix", "seed", "light":
                 _draw_rays(center, radius, alpha)
             "wave", "presence", "toast", "mask":
@@ -116,6 +126,43 @@ func _draw_rays(center: Vector2, radius: float, alpha: float) -> void:
     for index in range(8):
         var angle: float = float(index) * TAU / 8.0
         draw_line(center + Vector2.from_angle(angle) * radius * 0.16, center + Vector2.from_angle(angle) * radius, Color(accent, alpha), 1.2)
+
+func _draw_cable_tension(center: Vector2, radius: float, alpha: float) -> void:
+    draw_arc(center, radius * 0.72, -PI * 0.20, PI * 1.18, 22, Color(accent, alpha * 0.78), 1.2)
+    draw_line(center - Vector2(radius * 0.42, 0.0), center + Vector2(radius * 0.42, 0.0), Color(secondary, alpha * 0.42), 1.0)
+
+func _draw_cable_snap(center: Vector2, radius: float, alpha: float) -> void:
+    var points := PackedVector2Array()
+    for index in range(7):
+        var x := lerpf(-radius * 0.72, radius * 0.72, float(index) / 6.0)
+        var y := sin(float(index) * PI) * radius * 0.12
+        points.append(center + Vector2(x, y))
+    draw_polyline(points, Color(accent, alpha * 0.72), 1.4, true)
+
+func _draw_unplug_sparks(center: Vector2, radius: float, alpha: float, seed: int) -> void:
+    draw_arc(center, radius * 0.56, 0.0, TAU, 24, Color(accent, alpha * 0.38), 1.0)
+    for index in range(11):
+        var angle := float(index) * TAU / 11.0 + _hash01(index + 41, seed) * 0.42
+        var inner := center + Vector2.from_angle(angle) * radius * 0.14
+        var outer := center + Vector2.from_angle(angle) * radius * lerpf(0.45, 1.0, _hash01(index + 61, seed))
+        var spark_color := secondary if index % 3 == 0 else accent
+        draw_line(inner, outer, Color(spark_color, alpha * 1.45), 1.25)
+
+func _draw_breaker_pulse(center: Vector2, radius: float, alpha: float) -> void:
+    var rect := Rect2(center - Vector2(radius * 0.36, radius * 0.48), Vector2(radius * 0.72, radius * 0.96))
+    draw_rect(rect, Color(accent, alpha * 0.54), false, 1.3)
+    draw_line(center - Vector2(radius * 0.10, radius * 0.24), center + Vector2(radius * 0.10, radius * 0.24), Color(secondary, alpha * 0.92), 2.0)
+    draw_arc(center, radius, 0.0, TAU, 30, Color(accent, alpha * 0.26), 1.0)
+
+func _draw_signal_lock(center: Vector2, radius: float, alpha: float) -> void:
+    for ring in range(3):
+        var r := radius * (0.45 + float(ring) * 0.28)
+        draw_arc(center, r, -PI * 0.78, PI * 0.78, 34, Color(accent, alpha * (1.25 - float(ring) * 0.24)), 1.4)
+    var waveform := PackedVector2Array()
+    for index in range(19):
+        var t := float(index) / 18.0
+        waveform.append(center + Vector2((t - 0.5) * radius * 1.35, sin(t * TAU * 3.0) * radius * 0.16 * (1.0 - absf(t - 0.5))))
+    draw_polyline(waveform, Color(Color.WHITE, alpha * 1.18), 1.4, true)
 
 func _hash01(a: int, b: int) -> float:
     var value: float = sin(float(a * 127 + b * 311) * 0.0179) * 43758.5453

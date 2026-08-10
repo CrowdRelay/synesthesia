@@ -31,10 +31,10 @@
       "spacing": 0.5
     },
     "art_direction": {
-      "style": "dark_comic",
+      "style": "virya_signal_cinematic",
       "caption": "NAPRAW SYGNAŁ",
-      "ink_strength": 0.94,
-      "halftone_strength": 0.38,
+      "ink_strength": 0.48,
+      "halftone_strength": 0.075,
       "scene_image": "res://assets/rooms/vertical/technophobia-scene.webp",
       "scene_opacity": 1.0,
       "scene_parallax": 0.013,
@@ -52,12 +52,51 @@
         "foreground",
         "atmosphere"
       ],
-      "film_grain_strength": 0.42
+      "film_grain_strength": 0.2,
+      "visual_system": "virya-signal-v2",
+      "asset_generation": "moodboard-locked-2026"
     },
     "id": "technophobia",
     "scene_path": "res://scenes/rooms/technophobia.tscn",
     "behavior_script": "res://scripts/rooms/behaviors/technophobia.gd",
-    "render_pipeline": "mask-gpu-v2"
+    "render_pipeline": "mask-gpu-v2",
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Odetnij źródła zakłóceń i odzyskaj własny sygnał.",
+      "steps": [
+        {
+          "id": "cables",
+          "verb": "pull",
+          "count": 3,
+          "payoff": "Każdy wyrwany przewód wyłącza część ekranów i redukuje szum."
+        },
+        {
+          "id": "breaker",
+          "verb": "hold",
+          "requires": "cables>=2",
+          "payoff": "Główne zasilanie gaśnie, wszystkie monitory milkną."
+        },
+        {
+          "id": "tuner",
+          "verb": "drag",
+          "requires": "breaker",
+          "payoff": "Dostrojenie otwiera pełny miks i zamyka zagadkę."
+        }
+      ],
+      "discoverables": [
+        "interface",
+        "observer",
+        "human-signal"
+      ],
+      "feedback": [
+        "screen-state",
+        "noise-mix",
+        "music-filter",
+        "haptics",
+        "spark-fx",
+        "dynamic-hud"
+      ]
+    }
   },
   "sensory": {
     "default_mode": "calm",
@@ -100,7 +139,11 @@
         0.24,
         0.36
       ],
-      "symbol": "▦"
+      "symbol": "▦",
+      "source": "Koobosky",
+      "source_role": "perkusja · mad doctor",
+      "echo_type": "voice_fragment",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "observer",
@@ -110,7 +153,11 @@
         0.73,
         0.48
       ],
-      "symbol": "◉"
+      "symbol": "◉",
+      "source": "Koobosky",
+      "source_role": "perkusja · mad doctor",
+      "echo_type": "signal_trace",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "human-signal",
@@ -120,10 +167,24 @@
         0.48,
         0.69
       ],
-      "symbol": "⌁"
+      "symbol": "⌁",
+      "source": "Koobosky",
+      "source_role": "perkusja · mad doctor",
+      "echo_type": "memory_shard",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     }
   ],
-  "intro": "Naprawiaj obraz ruchem. Zamalowuj rozdarcia, wyciszaj ZZZ i odkrywaj człowieka spod awarii. Bez stroboskopu.",
-  "completion_title": "Transmisja została naprawiona",
-  "completion_message": "Przy 99% wszystkie błędy puściły naraz. Pod nimi nadal był człowiek."
+  "intro": "Nie naprawiaj wszystkiego, co miga. Znajdź źródła przeciążenia, odłącz je i odzyskaj własny sygnał.",
+  "completion_title": "Cisza po zwarciu",
+  "completion_message": "Ekrany zgasły. Technologia przestała wybierać za Ciebie częstotliwość — został Twój sygnał i muzyka.",
+  "virya_identity": {
+    "character_id": "warden-of-rhythm",
+    "focus_title": "PERA · Koobosky",
+    "member_role": "perkusja · mad doctor",
+    "story_role": "Utrzymuje puls i napięcie. Nadaje scenom fizyczny ciężar, nerw, uderzenie i kontrolowany chaos.",
+    "future_costume_hook": "mad doctor z neonowym błędem, monitorami i pasami",
+    "hero_moment": "figura przeciążona bodźcami powinna być bardziej sceniczna i ludzka, jak ktoś wpadł w zwarcie świata",
+    "wow_upgrade": "większy kontrast, czytelniejsza twarz/sylwetka, bardziej brutalny glitch",
+    "band_integration": "Pokój ma wizualnie należeć do świata VIRYA i być gotowy na przyszłe kostiumy Viryatkowa."
+  }
 }

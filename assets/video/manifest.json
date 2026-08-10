@@ -19,19 +19,6 @@
       "clean_forward_frames": 97,
       "tail_trim_frames": 0
     },
-    "party": {
-      "path": "res://assets/video/party.ogv",
-      "width": 720,
-      "height": 1280,
-      "fps": 24,
-      "duration_seconds": 4.0,
-      "bytes": 948186,
-      "sha256": "1fe37c3fcec9e2f492961adf787606df52ef578c5a03908465666b9e99eaac3c",
-      "source": "party.mp4",
-      "source_forward_frames": 49,
-      "clean_forward_frames": 49,
-      "tail_trim_frames": 0
-    },
     "unmasked": {
       "path": "res://assets/video/unmasked.ogv",
       "width": 720,
@@ -45,19 +32,6 @@
       "clean_forward_frames": 73,
       "tail_trim_frames": 0
     },
-    "calling": {
-      "path": "res://assets/video/calling.ogv",
-      "width": 720,
-      "height": 1280,
-      "fps": 24,
-      "duration_seconds": 8.0,
-      "bytes": 1916539,
-      "sha256": "fefdcd960912505b928dc2f4d0017af5dee9b4787f6b15c41456d89993e24adf",
-      "source": "calling.mp4",
-      "source_forward_frames": 97,
-      "clean_forward_frames": 97,
-      "tail_trim_frames": 0
-    },
     "seed": {
       "path": "res://assets/video/seed.ogv",
       "width": 720,
@@ -67,19 +41,6 @@
       "bytes": 1470304,
       "sha256": "ba840835384fadacede72d0e478498ee369d4c85ffd2a40ea08c5ab5e0ec79e6",
       "source": "seed.mp4",
-      "source_forward_frames": 97,
-      "clean_forward_frames": 97,
-      "tail_trim_frames": 0
-    },
-    "hybrid": {
-      "path": "res://assets/video/hybrid.ogv",
-      "width": 720,
-      "height": 1280,
-      "fps": 24,
-      "duration_seconds": 8.0,
-      "bytes": 2089229,
-      "sha256": "07cecfe2cf5a193d84163c56423ab3a1b29b573fe862410472436cd5d85e9576",
-      "source": "hybrid.mp4",
       "source_forward_frames": 97,
       "clean_forward_frames": 97,
       "tail_trim_frames": 0
@@ -110,45 +71,6 @@
       "clean_forward_frames": 73,
       "tail_trim_frames": 0
     },
-    "ashes": {
-      "path": "res://assets/video/ashes.ogv",
-      "width": 720,
-      "height": 1280,
-      "fps": 24,
-      "duration_seconds": 6.0,
-      "bytes": 3006345,
-      "sha256": "875b4ce62ef1f19a9c4ac81738fe4698367dc53d77e7cfa898313030e71d7633",
-      "source": "fromtheashes.mp4",
-      "source_forward_frames": 73,
-      "clean_forward_frames": 73,
-      "tail_trim_frames": 0
-    },
-    "waves": {
-      "path": "res://assets/video/waves.ogv",
-      "width": 720,
-      "height": 1280,
-      "fps": 24,
-      "duration_seconds": 4.0,
-      "bytes": 515637,
-      "sha256": "c46a0cc3eabf1457cd255e68577680b1d3ccc446ab93c6d0debc28178d4d12e6",
-      "source": "waves.mp4",
-      "source_forward_frames": 49,
-      "clean_forward_frames": 49,
-      "tail_trim_frames": 0
-    },
-    "rise": {
-      "path": "res://assets/video/rise.ogv",
-      "width": 720,
-      "height": 1280,
-      "fps": 24,
-      "duration_seconds": 6.0,
-      "bytes": 1298214,
-      "sha256": "918a3b981921c6e85bc28a5e3c8224e5414b6f86c8107bdddb0e298bf1b9fef1",
-      "source": "rise.mp4",
-      "source_forward_frames": 73,
-      "clean_forward_frames": 73,
-      "tail_trim_frames": 0
-    },
     "finale": {
       "path": "res://assets/video/finale.ogv",
       "width": 720,
@@ -165,6 +87,7 @@
   },
   "source_resolution": "720x1280",
   "runtime_profile": "native-source-resolution-theora-q5",
-  "runtime_note": "Encoded directly from the original Gotowe 720x1280/24 fps MP4 masters. No upscale; forward-to-reverse ping-pong preserves the authored source frames while omitting duplicated turn-around endpoints.",
-  "loop_endpoint_policy": "forward-full+reverse-without-duplicated-endpoints"
+  "runtime_note": "Only clips reachable from RoomVideoLayer are packaged. Party, Calling, Hybrid, Ashes, Waves and Rise are procedural-living rooms.",
+  "loop_endpoint_policy": "forward-full+reverse-without-duplicated-endpoints",
+  "v2_role": "six lazy cinematic streams; V4 living rooms use procedural motion and ship without legacy clips"
 }

@@ -135,7 +135,7 @@ func _hints_for(interaction: String) -> Array[String]:
         "western_duel":
             return ["Cel staje się spokojniejszy, gdy go przytrzymasz.", "Przytrzymaj cel, ustaw ruch i puść bez pośpiechu."]
         "repair_glitches":
-            return ["Każdy ekran można naprawić osobno.", "Dotykaj ekranów, a potem dostrój sygnał dłuższym ruchem."]
+            return ["Nie wszystkie ekrany są problemem. Poszukaj przewodów, które je karmią.", "Chwyć świecącą wtyczkę i wyciągnij ją dalej od gniazda. Potem znajdź zasilanie."]
         "crack_mirrors":
             return ["Tafla pamięta pojedynczy dotyk.", "Pęknij lustro dotknięciem, potem zrzuć je zdecydowanym ruchem."]
         "raise_phoenix":

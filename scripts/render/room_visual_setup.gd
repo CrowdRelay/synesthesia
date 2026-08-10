@@ -5,6 +5,7 @@ const InteractionFxLayerScript := preload("res://scripts/render/interaction_fx_l
 const RoomDressingLayerScript := preload("res://scripts/render/room_dressing_layer.gd")
 const RoomVideoLayerScript := preload("res://scripts/render/room_video_layer.gd")
 const InteractionHintLayerScript := preload("res://scripts/render/interaction_hint_layer.gd")
+const WorldMicroFxLayerScript := preload("res://scripts/render/world_micro_fx_layer.gd")
 const CompositeShader := preload("res://shaders/room_composite.gdshader")
 
 var app: Control
@@ -39,6 +40,12 @@ func _build_composite() -> void:
     app.move_child(app.room_dressing, 1)
     app.move_child(app.video_layer, 2)
     app.move_child(app.atmosphere, 3)
+    app.world_micro_fx = WorldMicroFxLayerScript.new()
+    app.world_micro_fx.name = "WorldMicroFX"
+    app.world_micro_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    app.add_child(app.world_micro_fx)
+    app.world_micro_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    app.move_child(app.world_micro_fx, 4)
     app.hint_layer = InteractionHintLayerScript.new()
     app.hint_layer.name = "InteractionHints"
     app.hint_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE

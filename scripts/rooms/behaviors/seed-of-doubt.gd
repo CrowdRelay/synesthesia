@@ -12,7 +12,26 @@ func acts() -> Array[String]:
     return ["ZNAJDŹ ZIARNO", "NARYSUJ KORZENIOM DROGĘ", "WYROŚNIJ PONAD WĄTPLIWOŚĆ"]
 
 func interaction_hint() -> String:
-    return "PRZYTRZYMAJ ZIARNO · PROWADŹ WZROST"
+    if not bool(state.get("seed", false)):
+        return "ZNAJDŹ ZIARNO PRZY PODŁODZE · DOTKNIJ LUB PRZYTRZYMAJ"
+    if not bool(state.get("crown", false)):
+        return "ZIARNO PĘKŁO · PROWADŹ WZROST W GÓRĘ"
+    return "DRZEWO ROŚNIE · POSZUKAJ ECH"
+
+func hint_targets() -> Array[Dictionary]:
+    if not bool(state.get("seed", false)):
+        return [{"point": SEED_POINT, "kind": "hold", "radius": 0.105}]
+    if not bool(state.get("crown", false)):
+        var growth: float = clampf(float(state.get("growth", 0.0)), 0.0, 1.0)
+        return [{"point": SEED_POINT.lerp(Vector2(0.50, 0.30), growth), "kind": "drag_up", "radius": 0.11}]
+    return []
+
+func captures_pointer_at(point_norm: Vector2) -> bool:
+    if not bool(state.get("seed", false)):
+        return _near(point_norm, SEED_POINT, 0.13)
+    if not bool(state.get("crown", false)):
+        return point_norm.y >= 0.24 and point_norm.y <= 0.82 and absf(point_norm.x - 0.50) <= 0.22
+    return false
 
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#9DE66F")), Color("9de66f"))
@@ -32,31 +51,39 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
         var branch_end: Vector2 = branch_origin + Vector2(side * (36.0 + ratio * 54.0) + sway, -28.0 - ratio * 38.0)
         canvas.draw_line(branch_origin, branch_end, Color(accent, 0.12 + effective * 0.20), 1.4 + effective * 2.2)
 
+# Legacy contract: kind == "hold" remains accepted through tap/hold/press union.
 func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Dictionary]:
     var point: Vector2 = _gesture_point(gesture)
-    if kind == "hold" and not bool(state.get("seed", false)) and _near(point, SEED_POINT, 0.12):
+    if kind in ["tap", "hold", "press"] and not bool(state.get("seed", false)) and _near(point, SEED_POINT, 0.14):
         state["seed"] = true
-        state["growth"] = maxf(float(state.get("growth", 0.0)), 0.12)
-        return [_interaction_event("seed", 0, "Ziarno pękło — korzenie słyszą dotyk", SEED_POINT, 0.09, 0.88)]
+        state["growth"] = maxf(float(state.get("growth", 0.0)), 0.14)
+        return [_interaction_event("seed", 0, "Ziarno pękło — prowadź wzrost ku światłu", SEED_POINT, 0.10, 0.90)]
     if kind == "drag" and bool(state.get("seed", false)):
         var delta_value: Variant = gesture.get("delta", Vector2.ZERO)
         var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
-        var growth: float = clampf(float(state.get("growth", 0.0)) + maxf(0.0, -delta.y) * 0.72 + absf(delta.x) * 0.11, 0.0, 1.0)
+        var growth: float = clampf(float(state.get("growth", 0.0)) + maxf(0.0, -delta.y) * 1.08 + absf(delta.x) * 0.075, 0.0, 1.0)
         state["growth"] = growth
         var milestones: Array = state.get("milestones", [])
         for index in range(3):
-            var threshold: float = 0.32 + float(index) * 0.24
+            var threshold: float = 0.30 + float(index) * 0.20
             if growth >= threshold and not milestones.has(index):
                 milestones.append(index)
                 state["milestones"] = milestones
-                return [_interaction_event("root", index, "Korzeń znalazł następną szczelinę", point, 0.070 + float(index) * 0.012, 0.82)]
-    if kind == "swipe" and bool(state.get("seed", false)) and float(state.get("growth", 0.0)) >= 0.58:
+                if growth < 0.72:
+                    return [_interaction_event("root", index, "Korzeń znalazł następną szczelinę", point, 0.070 + float(index) * 0.012, 0.82)]
+        if growth >= 0.72 and not bool(state.get("crown", false)):
+            state["crown"] = true
+            state["growth"] = maxf(growth, 0.86)
+            return [_interaction_event("seed", 9, "Korona wyszła ponad wątpliwość — droga jest otwarta", Vector2(0.50, 0.32), 0.14, 0.98)]
+    if kind == "swipe" and bool(state.get("seed", false)) and not bool(state.get("crown", false)):
         var delta_value: Variant = gesture.get("delta", Vector2.ZERO)
         var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
-        if delta.y < -0.12 and not bool(state.get("crown", false)):
-            state["crown"] = true
-            state["growth"] = maxf(float(state.get("growth", 0.0)), 0.86)
-            return [_interaction_event("seed", 9, "Korona wyszła ponad wątpliwość", point, 0.12, 0.94)]
+        if delta.y < -0.10:
+            state["growth"] = clampf(float(state.get("growth", 0.0)) + absf(delta.y) * 1.15, 0.0, 1.0)
+            if float(state.get("growth", 0.0)) >= 0.72:
+                state["crown"] = true
+                state["growth"] = maxf(float(state.get("growth", 0.0)), 0.86)
+                return [_interaction_event("seed", 9, "Korona wyszła ponad wątpliwość — droga jest otwarta", Vector2(0.50, 0.32), 0.14, 0.98)]
     return []
 
 func mechanic_progress() -> float:

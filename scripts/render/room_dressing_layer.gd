@@ -1,5 +1,8 @@
 extends Control
 
+const SIGNAL_GLITCH_TEXTURE := preload("res://assets/v2/fx/signal-glitch.png")
+const SCRATCH_TEXTURE := preload("res://assets/v2/fx/surface-scratches.png")
+
 var _accent: Color = Color("72afff")
 var _secondary: Color = Color("ff6680")
 var _style: String = "uncertainty"
@@ -56,43 +59,44 @@ func _process(delta: float) -> void:
 func _draw() -> void:
     if size.x <= 1.0 or size.y <= 1.0:
         return
+    _draw_material_overlays()
     _draw_chamber_shell()
     _draw_consciousness_marks()
     if _door_open > 0.001:
         _draw_open_doorway()
 
+func _draw_material_overlays() -> void:
+    var full := Rect2(Vector2.ZERO, size)
+    draw_texture_rect(SCRATCH_TEXTURE, full, true, Color(0.76, 0.84, 0.91, 0.055 + _cinematic * 0.020))
+    if _style == "technophobia":
+        var glitch_alpha := 0.055 + (1.0 - _progress) * 0.085
+        draw_texture_rect(SIGNAL_GLITCH_TEXTURE, full, true, Color(1.0, 1.0, 1.0, glitch_alpha))
+
 func _draw_chamber_shell() -> void:
-    var w: float = size.x
-    var h: float = size.y
-    var side: float = clampf(w * 0.045, 16.0, 28.0)
-    var top: float = clampf(h * 0.032, 24.0, 42.0)
-    var bottom: float = clampf(h * 0.055, 38.0, 62.0)
-    var shell_alpha: float = 0.36 + _cinematic * 0.07
-    var dark: Color = Color(0.006, 0.010, 0.018, shell_alpha)
-    var dark_soft: Color = Color(0.006, 0.010, 0.018, shell_alpha * 0.64)
+    # V2: the authored room art is the hero. The runtime shell is a restrained
+    # signal-system frame, not a comic/board-game chamber painted over it.
+    var w := size.x
+    var h := size.y
+    var edge_alpha := 0.13 + _progress * 0.05 + _cinematic * 0.06
+    var border := Color(_accent, edge_alpha)
+    var inset := clampf(minf(w, h) * 0.018, 8.0, 20.0)
+    draw_rect(Rect2(Vector2(inset, inset), Vector2(w - inset * 2.0, h - inset * 2.0)), border, false, 1.0)
 
-    draw_colored_polygon(PackedVector2Array([
-        Vector2.ZERO, Vector2(side, top), Vector2(side, h - bottom), Vector2(0.0, h)
-    ]), dark)
-    draw_colored_polygon(PackedVector2Array([
-        Vector2(w, 0.0), Vector2(w - side, top), Vector2(w - side, h - bottom), Vector2(w, h)
-    ]), dark)
-    draw_colored_polygon(PackedVector2Array([
-        Vector2.ZERO, Vector2(w, 0.0), Vector2(w - side, top), Vector2(side, top)
-    ]), dark_soft)
-    draw_colored_polygon(PackedVector2Array([
-        Vector2(0.0, h), Vector2(side, h - bottom), Vector2(w - side, h - bottom), Vector2(w, h)
-    ]), Color(0.004, 0.008, 0.014, shell_alpha * 0.76))
+    var tick := clampf(minf(w, h) * 0.045, 14.0, 32.0)
+    var c := Color(_secondary, edge_alpha * 0.82)
+    draw_line(Vector2(inset, inset), Vector2(inset + tick, inset), c, 1.2)
+    draw_line(Vector2(inset, inset), Vector2(inset, inset + tick), c, 1.2)
+    draw_line(Vector2(w - inset, inset), Vector2(w - inset - tick, inset), c, 1.2)
+    draw_line(Vector2(w - inset, inset), Vector2(w - inset, inset + tick), c, 1.2)
+    draw_line(Vector2(inset, h - inset), Vector2(inset + tick, h - inset), c, 1.2)
+    draw_line(Vector2(w - inset, h - inset), Vector2(w - inset - tick, h - inset), c, 1.2)
 
-    var edge_alpha: float = 0.10 + _progress * 0.08 + _cinematic * 0.10
-    draw_line(Vector2(side, top), Vector2(side, h - bottom), Color(_accent, edge_alpha), 1.15)
-    draw_line(Vector2(w - side, top), Vector2(w - side, h - bottom), Color(_accent, edge_alpha), 1.15)
-    draw_line(Vector2(side, top), Vector2(w - side, top), Color(_accent, edge_alpha * 0.72), 1.0)
-
-    var perspective_alpha: float = 0.045 + _cinematic * 0.035
-    for index in range(1, 4):
-        var x: float = w * float(index) / 4.0
-        draw_line(Vector2(x, h - bottom), Vector2(w * 0.5 + (x - w * 0.5) * 0.34, h), Color(_accent, perspective_alpha), 0.8)
+    # A very soft floor lattice binds all rooms to the accepted Signal board.
+    var floor_y := h * 0.83
+    for index in range(4):
+        var ratio := float(index + 1) / 4.0
+        var x := lerpf(w * 0.16, w * 0.84, ratio)
+        draw_line(Vector2(x, floor_y), Vector2(w * 0.5 + (x - w * 0.5) * 1.8, h), Color(_accent, 0.022 + _cinematic * 0.018), 0.8)
 
 func _draw_consciousness_marks() -> void:
     var w: float = size.x

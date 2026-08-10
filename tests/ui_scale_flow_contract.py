@@ -125,7 +125,7 @@ require(
 
 require(
     "scripts/ui/door_eye_motif.gd",
-    'MENU_EYE_VIDEO_PATH: String = "res://assets/comic/menu_eye_loop.ogv"',
+    'MENU_EYE_VIDEO_PATH: String = "res://assets/branding/signal-glyph-loop.ogv"',
     "var theora := VideoStreamTheora.new()",
     "theora.file = MENU_EYE_VIDEO_PATH",
     "func restart_authored_animation() -> void:",
@@ -134,9 +134,9 @@ require(
     "_draw_brain_pulses",
 )
 
-video = ROOT / "assets/comic/menu_eye_loop.ogv"
-if not video.is_file() or video.stat().st_size < 300_000 or video.stat().st_size > 1_250_000:
-    failures.append("assets/comic/menu_eye_loop.ogv: missing or outside 0.3..1.25 MB menu animation budget")
+video = ROOT / "assets/branding/signal-glyph-loop.ogv"
+if not video.is_file() or video.stat().st_size < 60_000 or video.stat().st_size > 500_000:
+    failures.append("assets/branding/signal-glyph-loop.ogv: missing or outside 60..500 KB V2 menu animation budget")
 
 for rel in (
     "scripts/ui/experience_intro_card.gd",
@@ -154,4 +154,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_UI_SCALE_FLOW=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_UI_SCALE_FLOW=PASS native-ui=adaptive menu=isolated room=paused listen=next debug-window=max-height debug-ui>=1.30x debug-brush=2.25x eye=authored-video+procedural-fx+deferred-start")
+print("SYNESTHESIA_UI_SCALE_FLOW=PASS native-ui=adaptive menu=isolated room=paused listen=next debug-window=max-height debug-ui>=1.30x debug-brush=2.25x portal=authored-video+procedural-fx+deferred-start")

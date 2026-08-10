@@ -48,7 +48,7 @@ func _build_top() -> void:
     app.top_panel = PanelContainer.new()
     app.top_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     app.top_panel.custom_minimum_size = Vector2(0.0, 146.0)
-    app.top_panel.add_theme_stylebox_override("panel", UIFactory.story_style(app._accent, 0.88, false))
+    app.top_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(app._accent, 0.22))
     app.top_margin.add_child(app.top_panel)
 
     var shell := HBoxContainer.new()
@@ -158,7 +158,7 @@ func _build_bottom() -> void:
     app.bottom_panel = PanelContainer.new()
     app.bottom_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     app.bottom_panel.custom_minimum_size = Vector2(0.0, 146.0)
-    app.bottom_panel.add_theme_stylebox_override("panel", UIFactory.story_style(Color("f3d39d"), 0.88, false))
+    app.bottom_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(Color("f0cf88"), 0.18))
     app.bottom_margin.add_child(app.bottom_panel)
 
     var shell := HBoxContainer.new()
@@ -223,7 +223,7 @@ func _build_toast() -> void:
     app.toast_panel.visible = false
     app.toast_panel.modulate.a = 0.0
     app.toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    app.toast_panel.add_theme_stylebox_override("panel", UIFactory.story_style(app._accent, 0.94, true))
+    app.toast_panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(app._accent, true))
     add_child(app.toast_panel)
     var row: HBoxContainer = HBoxContainer.new()
     row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -250,7 +250,7 @@ func _build_act_banner() -> void:
     app.act_banner.visible = false
     app.act_banner.modulate.a = 0.0
     app.act_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    app.act_banner.add_theme_stylebox_override("panel", UIFactory.story_style(Color("f3d39d"), 0.93, true))
+    app.act_banner.add_theme_stylebox_override("panel", UIFactory.product_surface_style(Color("f0cf88"), true))
     add_child(app.act_banner)
     var row: HBoxContainer = HBoxContainer.new()
     row.size_flags_horizontal = Control.SIZE_EXPAND_FILL

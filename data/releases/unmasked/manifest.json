@@ -31,10 +31,10 @@
       "spacing": 0.54
     },
     "art_direction": {
-      "style": "dark_comic",
+      "style": "virya_signal_cinematic",
       "caption": "MASKI NIE MÓWIĄ PRAWDY",
-      "ink_strength": 0.82,
-      "halftone_strength": 0.3,
+      "ink_strength": 0.48,
+      "halftone_strength": 0.075,
       "scene_image": "res://assets/rooms/vertical/unmasked-scene.webp",
       "scene_opacity": 1.0,
       "scene_parallax": 0.008,
@@ -52,7 +52,9 @@
         "foreground",
         "atmosphere"
       ],
-      "film_grain_strength": 0.34
+      "film_grain_strength": 0.2,
+      "visual_system": "virya-signal-v2",
+      "asset_generation": "moodboard-locked-2026"
     },
     "id": "unmasked",
     "scene_path": "res://scenes/rooms/unmasked.tscn",
@@ -100,7 +102,11 @@
         0.26,
         0.4
       ],
-      "symbol": "◐"
+      "symbol": "◐",
+      "source": "Yanusin",
+      "source_role": "frontman · rzecznik emocji",
+      "echo_type": "voice_fragment",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "crack",
@@ -110,7 +116,11 @@
         0.73,
         0.34
       ],
-      "symbol": "⌁"
+      "symbol": "⌁",
+      "source": "Yanusin",
+      "source_role": "frontman · rzecznik emocji",
+      "echo_type": "signal_trace",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "voice",
@@ -120,10 +130,24 @@
         0.52,
         0.68
       ],
-      "symbol": "◌"
+      "symbol": "◌",
+      "source": "Yanusin",
+      "source_role": "frontman · rzecznik emocji",
+      "echo_type": "memory_shard",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     }
   ],
   "intro": "Na ścianach wiszą weneckie maski. Odsłaniaj je, krusz zdobienia i pozwól ścianom zostać bez roli.",
   "completion_title": "Maski opadły",
-  "completion_message": "Nie została jedna poprawna twarz. Została obecność i kolejne drzwi."
+  "completion_message": "Nie została jedna poprawna twarz. Została obecność i kolejne drzwi.",
+  "virya_identity": {
+    "character_id": "voice-under-mask",
+    "focus_title": "GŁOS · Yanusin",
+    "member_role": "frontman · rzecznik emocji",
+    "story_role": "Figura, która pokazuje napięcie między ukryciem a ekspresją. Idealna dla kadrów z maskami, stołem, rytuałem i wezwaniem.",
+    "future_costume_hook": "sceniczna maska, biel i krew-róż, smukła centralna sylwetka",
+    "hero_moment": "twarz i maski mają sprawiać wrażenie person scenicznych, nie anonimowej instalacji",
+    "wow_upgrade": "jeden silny centralny portret i agresywniejsze warstwy masek",
+    "band_integration": "Pokój ma wizualnie należeć do świata VIRYA i być gotowy na przyszłe kostiumy Viryatkowa."
+  }
 }

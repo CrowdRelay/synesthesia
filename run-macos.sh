@@ -53,7 +53,7 @@ required_sensory_audio=(
   ambience/uncertainty.ogg ambience/party.ogg ambience/unmasked.ogg ambience/calling.ogg
   ambience/seed.ogg ambience/hybrid.ogg ambience/technophobia.ogg ambience/invaluable.ogg
   ambience/ashes.ogg ambience/waves.ogg ambience/rise.ogg
-  sfx/glass-clink.wav sfx/wood-creak.wav sfx/gunshot.wav sfx/mirror-shatter.wav
+  sfx/resonance-lock.wav sfx/wood-creak.wav sfx/gunshot.wav sfx/mirror-shatter.wav
   sfx/wing-whoosh.wav sfx/electric-bzz.wav sfx/mask-whisper.wav sfx/wave-slap.wav
   sfx/light-rise.wav sfx/presence-wind.wav sfx/door-close.wav sfx/door-open.wav sfx/teleport-suck.wav
 )
@@ -61,7 +61,7 @@ for name in "${required_sensory_audio[@]}"; do
   [[ -s "$ROOT/assets/audio/$name" ]] || { echo "Missing sensory audio asset: assets/audio/$name" >&2; exit 4; }
 done
 [[ -s "$ROOT/assets/finale/echoes-finale.webp" ]] || { echo "Missing finale artwork: assets/finale/echoes-finale.webp" >&2; exit 4; }
-required_video=(uncertainty party unmasked calling seed hybrid technophobia invaluable ashes waves rise finale)
+required_video=(uncertainty unmasked seed technophobia invaluable finale)
 for name in "${required_video[@]}"; do
   [[ -s "$ROOT/assets/video/$name.ogv" ]] || { echo "Missing cinematic video: assets/video/$name.ogv" >&2; exit 4; }
 done

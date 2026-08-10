@@ -7,12 +7,37 @@ func configure(data: Dictionary) -> void:
     state["cracks"] = [0.0, 0.0, 0.0]
     state["removed"] = []
     state["offsets"] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+    state["active_mask"] = -1
 
 func acts() -> Array[String]:
     return ["ZOBACZ MASKI", "PĘKNIJ CEREMONIĘ", "ZOSTAW TWARZ"]
 
 func interaction_hint() -> String:
-    return "PUKNIJ W MASKĘ · ZSUŃ JĄ ZE ŚCIANY"
+    var removed: Array = state.get("removed", [])
+    if removed.size() >= MASKS.size():
+        return "MASKI ZESZŁY · ZOSTAŁA OBECNOŚĆ"
+    var cracks: Array = state.get("cracks", [0.0, 0.0, 0.0])
+    for index in range(MASKS.size()):
+        if not removed.has(index) and float(cracks[index]) >= 0.45:
+            return "MASKA PĘKŁA · CHWYĆ JĄ I ZSUŃ ZE ŚCIANY"
+    return "MASKI NIE SĄ TŁEM · DOTKNIJ JEDNEJ, ŻEBY PĘKŁA"
+
+func hint_targets() -> Array[Dictionary]:
+    var cracks: Array = state.get("cracks", [0.0, 0.0, 0.0])
+    var removed: Array = state.get("removed", [])
+    var targets: Array[Dictionary] = []
+    for index in range(MASKS.size()):
+        if removed.has(index):
+            continue
+        targets.append({
+            "point": MASKS[index] + _offset(index),
+            "kind": "drag" if float(cracks[index]) >= 0.45 else "tap",
+            "radius": 0.10,
+        })
+    return targets
+
+func captures_pointer_at(point_norm: Vector2) -> bool:
+    return _mask_near(point_norm, 0.14) >= 0 or int(state.get("active_mask", -1)) >= 0
 
 func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#FFB970")), Color("ffb970"))
@@ -48,28 +73,43 @@ func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> v
 
 func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Dictionary]:
     var point: Vector2 = _gesture_point(gesture)
-    var index: int = _mask_near(point, 0.12)
+    var index: int = _mask_near(point, 0.13)
     var cracks: Array = state.get("cracks", [0.0, 0.0, 0.0])
     var removed: Array = state.get("removed", [])
-    if kind == "tap" and index >= 0 and not removed.has(index):
+    if kind in ["tap", "press"] and index >= 0 and not removed.has(index):
+        if kind == "press":
+            state["active_mask"] = index
         var previous: float = float(cracks[index])
-        cracks[index] = minf(1.0, previous + 0.50)
+        cracks[index] = minf(1.0, previous + (0.52 if kind == "tap" else 0.28))
         state["cracks"] = cracks
-        if previous < 0.5:
-            return [_interaction_event("mask", index + 10, "Ornament pękł — rola przestaje być gładka", MASKS[index], 0.068, 0.80)]
-    elif kind == "drag" and index >= 0 and float(cracks[index]) >= 0.45 and not removed.has(index):
-        var delta_value: Variant = gesture.get("delta", Vector2.ZERO)
-        var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
-        _shift_offset(index, delta * 0.72)
+        if previous < 0.45 and float(cracks[index]) >= 0.45:
+            return [_interaction_event("mask", index + 10, "Ornament pękł — teraz możesz zsunąć maskę", MASKS[index], 0.075, 0.84)]
+    elif kind == "drag":
+        var active := int(state.get("active_mask", -1))
+        if active < 0:
+            active = index
+        if active >= 0 and active < MASKS.size() and float(cracks[active]) >= 0.45 and not removed.has(active):
+            state["active_mask"] = active
+            var delta_value: Variant = gesture.get("delta", Vector2.ZERO)
+            var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
+            _shift_offset(active, delta * 0.88)
+    elif kind == "release":
+        var active := int(state.get("active_mask", -1))
+        state["active_mask"] = -1
+        if active >= 0 and active < MASKS.size() and not removed.has(active) and _offset(active).length() >= 0.065:
+            removed.append(active)
+            state["removed"] = removed
+            return [_interaction_event("mask", active, "Maska zeszła ze ściany — została obecność", MASKS[active] + _offset(active), 0.115, 0.96)]
     elif kind == "swipe":
-        var start: Vector2 = _gesture_start(gesture)
+        var start_point: Vector2 = _gesture_start(gesture)
         for candidate in range(MASKS.size()):
             if removed.has(candidate) or float(cracks[candidate]) < 0.45:
                 continue
-            if _distance_to_segment(MASKS[candidate] + _offset(candidate), start, point) <= 0.11:
+            if _distance_to_segment(MASKS[candidate] + _offset(candidate), start_point, point) <= 0.12:
                 removed.append(candidate)
                 state["removed"] = removed
-                return [_interaction_event("mask", candidate, "Maska zeszła ze ściany — została obecność", MASKS[candidate], 0.105, 0.94)]
+                state["active_mask"] = -1
+                return [_interaction_event("mask", candidate, "Maska zeszła ze ściany — została obecność", MASKS[candidate], 0.115, 0.96)]
     return []
 
 func mechanic_progress() -> float:

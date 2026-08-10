@@ -9,6 +9,9 @@ const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const SignalSignupClient := preload("res://scripts/app/signal_signup_client.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
+const ViryaWorld := preload("res://scripts/app/virya_world.gd")
+const ViryaRosterStrip := preload("res://scripts/ui/virya_roster_strip.gd")
+const MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"
 
 var _accent: Color = Color("8c62ff")
 var _panel: PanelContainer
@@ -51,16 +54,15 @@ func configure(accent: Color, has_progress: bool = false, album_completed: bool 
     _build()
 
 func _build() -> void:
-    var dim := ColorRect.new()
-    dim.color = Color(0.003, 0.005, 0.011, 0.90)
-    dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    add_child(dim)
-    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    UIFactory.add_grain(self, 0.24)
+    UIFactory.add_signal_backdrop(self, MENU_WORLD_PATH, _accent, 0.48)
+    UIFactory.add_grain(self, 0.08)
 
     _panel = PanelContainer.new()
     _panel.mouse_filter = Control.MOUSE_FILTER_PASS
-    _panel.add_theme_stylebox_override("panel", UIFactory.menu_style(_accent))
+    var panel_style := UIFactory.product_surface_style(_accent, true)
+    panel_style.bg_color = Color(0.018, 0.026, 0.038, 0.87)
+    panel_style.border_color = Color(_accent, 0.38)
+    _panel.add_theme_stylebox_override("panel", panel_style)
     add_child(_panel)
     _layout_panel()
 
@@ -83,7 +85,7 @@ func _build() -> void:
     eyebrow.text = "VIRYA · ECHOES OF THE MODERN MIND"
     eyebrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
     eyebrow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     eyebrow.add_theme_font_size_override("font_size", 10)
     eyebrow.add_theme_color_override("font_color", _accent)
     UIFactory.apply_display_font(eyebrow)
@@ -91,8 +93,9 @@ func _build() -> void:
 
     var title := UIFactory.heading("SYNESTHESIA")
     title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     title.add_theme_font_size_override("font_size", 40)
+    UIFactory.apply_title_font(title)
     title.add_theme_constant_override("outline_size", 2)
     title.add_theme_color_override("font_outline_color", Color("05060af0"))
     title.add_theme_constant_override("shadow_offset_x", 2)
@@ -123,16 +126,21 @@ func _build() -> void:
 
     _motif = DoorEyeMotif.new()
     _motif.name = "MenuDoorEye"
-    _motif.custom_minimum_size = Vector2(260.0, 330.0)
+    _motif.custom_minimum_size = Vector2(220.0, 150.0)
     _motif.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _motif.size_flags_vertical = Control.SIZE_EXPAND_FILL
     _visual_column.add_child(_motif)
     _motif.configure(_accent, "menu", Color("ef6fbd"))
 
-    _description = UIFactory.body("Interaktywny album w 11 pokojach. Dotykasz, przesuwasz, przytrzymujesz i odsłaniasz świat ruchem dłoni, a szum ustępuje muzyce. To nie zagadka ani test — wejdź i sprawdź, jak pokój odpowiada.")
+    _description = UIFactory.body(_default_description())
     _description.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    _description.add_theme_font_size_override("font_size", 13)
+    _description.add_theme_font_size_override("font_size", 11)
     _visual_column.add_child(_description)
+
+    var roster := ViryaRosterStrip.new()
+    roster.name = "ViryaRosterV1"
+    _visual_column.add_child(roster)
+    roster.configure(true, true)
 
     if not _render_label.is_empty():
         var render_hint := Label.new()
@@ -157,48 +165,58 @@ func _build() -> void:
     _action_column.add_child(menu_label)
 
     var continue_label: String = "ZOBACZ FINAŁ" if _album_completed else ("KONTYNUUJ" if _has_progress else "WEJDŹ DO ŚRODKA")
-    var continue_button := UIFactory.menu_button(continue_label, _accent, true)
+    var continue_button := UIFactory.product_button(continue_label, _accent, true)
+    continue_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     continue_button.pressed.connect(func() -> void: begin_requested.emit())
     _action_column.add_child(continue_button)
 
-    var album_mode_button := UIFactory.menu_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
+    var album_mode_button := UIFactory.product_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
+    album_mode_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     album_mode_button.visible = _album_completed
     album_mode_button.pressed.connect(func() -> void: album_mode_requested.emit())
     _action_column.add_child(album_mode_button)
 
-    var new_button := UIFactory.menu_button("NOWA PODRÓŻ", _accent)
+    var new_button := UIFactory.product_button("NOWA PODRÓŻ", _accent)
+    new_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     new_button.visible = _has_progress or _album_completed
     new_button.pressed.connect(func() -> void: new_journey_requested.emit())
     _action_column.add_child(new_button)
 
-    var utility_divider := HSeparator.new()
-    utility_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var utility_divider := UIFactory.signal_rule(_accent, 0.22)
     _action_column.add_child(utility_divider)
     var utility_label := Label.new()
-    utility_label.text = "SYGNAŁ · USTAWIENIA · WIĘCEJ"
+    utility_label.text = "SYGNAŁ · USTAWIENIA · ŚWIAT VIRYA"
     UIFactory.apply_display_font(utility_label)
     utility_label.add_theme_font_size_override("font_size", 8)
     utility_label.add_theme_color_override("font_color", Color("788ba2"))
     _action_column.add_child(utility_label)
 
-    var settings_button := UIFactory.menu_button("USTAWIENIA", _accent)
+    var settings_button := UIFactory.product_button("USTAWIENIA", _accent)
+    settings_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     settings_button.pressed.connect(func() -> void: settings_requested.emit())
     _action_column.add_child(settings_button)
 
-    var signal_button := UIFactory.menu_button("SYGNAŁ", Color("71dcff"))
+    var signal_button := UIFactory.product_button("SYGNAŁ", Color("71dcff"))
+    signal_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     signal_button.tooltip_text = "Dołącz do Sygnału VIRYA bez udziału w losowaniu Synesthesii"
     signal_button.pressed.connect(_toggle_signal_form)
     _action_column.add_child(signal_button)
 
-    var creators_button := UIFactory.menu_button("TWÓRCY", _accent)
+    var creators_button := UIFactory.product_button("ZESPÓŁ VIRYA · ŚWIAT", _accent)
+    creators_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+    creators_button.tooltip_text = "TWÓRCY · persony · świat VIRYA"
     creators_button.pressed.connect(_show_creators)
     _action_column.add_child(creators_button)
 
     var exit_label: String = "WRÓĆ DO VIRYA.MUSIC" if OS.has_feature("web") else "WYJDŹ"
-    var exit_button := UIFactory.menu_button(exit_label, Color("73869d"))
+    var exit_button := UIFactory.product_button(exit_label, Color("73869d"))
+    exit_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     exit_button.pressed.connect(_exit_requested)
     _action_column.add_child(exit_button)
 
+    # Accepted V2 board: actions read as a left-side navigation rail while the
+    # world art remains visible as the hero, rather than living inside a giant card.
+    _layout.move_child(_action_column, 0)
     _build_signal_form()
     _layout_columns()
     _apply_ui_scale()
@@ -216,7 +234,7 @@ func _build_signal_form() -> void:
     _signal_form.add_theme_constant_override("separation", 7)
     _action_column.add_child(_signal_form)
 
-    var divider := HSeparator.new()
+    var divider := UIFactory.signal_rule(Color("71dcff"), 0.24)
     _signal_form.add_child(divider)
     var heading := Label.new()
     heading.text = "WŁĄCZ SYGNAŁ"
@@ -246,7 +264,7 @@ func _build_signal_form() -> void:
     _signal_status.add_theme_color_override("font_color", Color("8ccfe8"))
     _signal_form.add_child(_signal_status)
 
-    _signal_submit = UIFactory.menu_button("WŁĄCZ SYGNAŁ", Color("71dcff"), true)
+    _signal_submit = UIFactory.product_button("WŁĄCZ SYGNAŁ", Color("71dcff"), true)
     _signal_submit.pressed.connect(_submit_signal)
     _signal_form.add_child(_signal_submit)
 
@@ -313,10 +331,15 @@ func _on_signal_request_failed(message: String) -> void:
 
 func _show_creators() -> void:
     _signal_form.visible = false
-    _description.text = "VIRYA · Echoes Of The Modern Mind. Muzyka staje się przestrzenią, a każdy pokój przekłada emocję utworu na obraz, ruch, dźwięk i dotyk. Synesthesia jest częścią ekosystemu VIRYA Signal."
+    var summary := ViryaWorld.summary_text()
+    var characters := ViryaWorld.characters_blurb()
+    _description.text = "%s\n\n%s" % [summary, characters] if not characters.is_empty() else summary
 
 func _restore_description() -> void:
-    _description.text = "Interaktywny album w 11 pokojach. Dotykasz, przesuwasz, przytrzymujesz i odsłaniasz świat ruchem dłoni, a szum ustępuje muzyce. To nie zagadka ani test — wejdź i sprawdź, jak pokój odpowiada."
+    _description.text = _default_description()
+
+func _default_description() -> String:
+    return "Interaktywny album w 11 pokojach. Dotykasz, przesuwasz, przytrzymujesz i odsłaniasz świat ruchem dłoni, a szum ustępuje muzyce. To nie zagadka ani test — wejdź i sprawdź, jak pokój odpowiada. Każdy pokój ma też rosnąć razem z Viryatkowem i postaciami zespołu."
 
 func _exit_requested() -> void:
     if OS.has_feature("web"):
@@ -329,33 +352,44 @@ func _layout_panel() -> void:
         return
     var viewport: Vector2 = get_viewport_rect().size
     _ui_scale = UiMetrics.scale_for_viewport(viewport)
-    var margin: float = clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 46.0 * _ui_scale)
-    _panel.set_anchors_preset(Control.PRESET_CENTER)
-    # The old 860px cap came from the 540x960 design reference and made an
-    # FHD-native window look like a tiny card. Scale the *layout metrics*, not
-    # the rendered canvas, so text/buttons stay sharp at 1080x1920.
-    var width: float = minf(1180.0 * _ui_scale, maxf(320.0 * _ui_scale, viewport.x - margin * 2.0))
-    var height: float = minf(860.0 * _ui_scale, maxf(500.0 * _ui_scale, viewport.y - margin * 2.0))
-    _panel.offset_left = -width * 0.5
-    _panel.offset_right = width * 0.5
-    _panel.offset_top = -height * 0.5
-    _panel.offset_bottom = height * 0.5
-    _panel.custom_minimum_size = Vector2(width, height)
+    var wide := viewport.x >= 760.0 * _ui_scale and viewport.x / maxf(1.0, viewport.y) >= 0.82
+    if wide:
+        var margin := clampf(viewport.x * 0.028, 18.0 * _ui_scale, 54.0 * _ui_scale)
+        var width := minf(520.0 * _ui_scale, viewport.x * 0.46)
+        var height := minf(980.0 * _ui_scale, viewport.y - margin * 2.0)
+        _panel.anchor_left = 0.0
+        _panel.anchor_right = 0.0
+        _panel.anchor_top = 0.5
+        _panel.anchor_bottom = 0.5
+        _panel.offset_left = margin
+        _panel.offset_right = margin + width
+        _panel.offset_top = -height * 0.5
+        _panel.offset_bottom = height * 0.5
+        _panel.custom_minimum_size = Vector2(width, height)
+    else:
+        var margin := clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 38.0 * _ui_scale)
+        var width := maxf(320.0 * _ui_scale, viewport.x - margin * 2.0)
+        var height := minf(1050.0 * _ui_scale, maxf(560.0 * _ui_scale, viewport.y - margin * 2.0))
+        _panel.set_anchors_preset(Control.PRESET_CENTER)
+        _panel.offset_left = -width * 0.5
+        _panel.offset_right = width * 0.5
+        _panel.offset_top = -height * 0.5
+        _panel.offset_bottom = height * 0.5
+        _panel.custom_minimum_size = Vector2(width, height)
     _layout_columns()
     _apply_ui_scale()
 
 func _layout_columns() -> void:
     if _layout == null:
         return
-    var viewport: Vector2 = get_viewport_rect().size
-    var portrait_layout: bool = viewport.x < 820.0 * _ui_scale or viewport.x / maxf(1.0, viewport.y) < 0.82
-    _layout.vertical = portrait_layout
-    if _visual_column != null:
-        _visual_column.custom_minimum_size = Vector2(0.0, 300.0 * _ui_scale if portrait_layout else 0.0)
-    if _motif != null:
-        _motif.custom_minimum_size = Vector2(0.0, 245.0 * _ui_scale) if portrait_layout else Vector2(340.0 * _ui_scale, 430.0 * _ui_scale)
+    # V2 menu is intentionally a navigation rail over world art on every aspect ratio.
+    _layout.vertical = true
     if _action_column != null:
-        _action_column.custom_minimum_size = Vector2(0.0 if portrait_layout else 330.0 * _ui_scale, 0.0)
+        _action_column.custom_minimum_size = Vector2(0.0, 0.0)
+    if _visual_column != null:
+        _visual_column.custom_minimum_size = Vector2(0.0, 180.0 * _ui_scale)
+    if _motif != null:
+        _motif.custom_minimum_size = Vector2(0.0, 120.0 * _ui_scale)
 
 func _apply_ui_scale() -> void:
     if _panel == null:

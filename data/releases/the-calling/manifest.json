@@ -31,10 +31,10 @@
       "spacing": 0.48
     },
     "art_direction": {
-      "style": "dark_comic",
+      "style": "virya_signal_cinematic",
       "caption": "JESZCZE JEDEN TOAST",
-      "ink_strength": 0.72,
-      "halftone_strength": 0.22,
+      "ink_strength": 0.48,
+      "halftone_strength": 0.075,
       "scene_image": "res://assets/rooms/vertical/the-calling-scene.webp",
       "scene_opacity": 1.0,
       "scene_parallax": 0.007,
@@ -52,7 +52,9 @@
         "foreground",
         "atmosphere"
       ],
-      "film_grain_strength": 0.28
+      "film_grain_strength": 0.2,
+      "visual_system": "virya-signal-v2",
+      "asset_generation": "moodboard-locked-2026"
     },
     "id": "the-calling",
     "scene_path": "res://scenes/rooms/the-calling.tscn",
@@ -100,7 +102,11 @@
         0.24,
         0.48
       ],
-      "symbol": "♙"
+      "symbol": "♙",
+      "source": "Yanusin",
+      "source_role": "frontman · rzecznik emocji",
+      "echo_type": "voice_fragment",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "memory",
@@ -110,7 +116,11 @@
         0.7,
         0.46
       ],
-      "symbol": "◌"
+      "symbol": "◌",
+      "source": "Yanusin",
+      "source_role": "frontman · rzecznik emocji",
+      "echo_type": "signal_trace",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "toast",
@@ -120,10 +130,24 @@
         0.5,
         0.66
       ],
-      "symbol": "Y"
+      "symbol": "Y",
+      "source": "Yanusin",
+      "source_role": "frontman · rzecznik emocji",
+      "echo_type": "memory_shard",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     }
   ],
   "intro": "Wykwintna kuchnia prawie straciła kolor. Maluj ludzi przy stole; czerwień pozostaje tylko w winie i toaście.",
   "completion_title": "Toast wybrzmiał",
-  "completion_message": "Przyjaciele unieśli kieliszki. Pamięć nie zatrzymała czasu, ale dała mu jeszcze jedną noc."
+  "completion_message": "Przyjaciele unieśli kieliszki. Pamięć nie zatrzymała czasu, ale dała mu jeszcze jedną noc.",
+  "virya_identity": {
+    "character_id": "voice-under-mask",
+    "focus_title": "GŁOS · Yanusin",
+    "member_role": "frontman · rzecznik emocji",
+    "story_role": "Figura, która pokazuje napięcie między ukryciem a ekspresją. Idealna dla kadrów z maskami, stołem, rytuałem i wezwaniem.",
+    "future_costume_hook": "elegancki dark formal z medycznymi detalami i stołową ceremonią",
+    "hero_moment": "uczta zamienia się w rytuał zespołu, a toast wygląda jak wezwanie do wejścia w świat VIRYA",
+    "wow_upgrade": "mocniejsza centralna kompozycja stołu i czytelni uczestnicy rytuału",
+    "band_integration": "Pokój ma wizualnie należeć do świata VIRYA i być gotowy na przyszłe kostiumy Viryatkowa."
+  }
 }

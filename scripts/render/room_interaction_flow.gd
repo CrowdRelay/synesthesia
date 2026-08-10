@@ -16,7 +16,10 @@ func _gui_input(event: InputEvent) -> void:
     app.target_parallax = (app.pointer_norm - Vector2(0.5, 0.5)) * 2.0
     _handle_gestures(routed["gestures"])
     match str(routed.get("stroke", "")):
-        "begin": _begin_stroke(app.pointer_norm, int(routed.get("pointer_id", -1)))
+        "begin":
+            var prop_capture: bool = app.behavior != null and app.behavior.has_method("captures_pointer_at") and app.behavior.captures_pointer_at(app.pointer_norm)
+            if not prop_capture:
+                _begin_stroke(app.pointer_norm, int(routed.get("pointer_id", -1)))
         "continue": _continue_stroke(app.pointer_norm)
         "end": _end_stroke()
     app.accept_event()

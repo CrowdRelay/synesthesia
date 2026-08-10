@@ -7,6 +7,8 @@ signal close_requested
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
+const ViryaWorld := preload("res://scripts/app/virya_world.gd")
+const CORRIDOR_WORLD_PATH: String = "res://assets/v2/branding/corridor-world.webp"
 
 var _releases: Array = []
 var _completed_ids: Array = []
@@ -31,16 +33,15 @@ func configure(releases: Array, completed_ids: Array, echo_archive: Dictionary, 
     _build()
 
 func _build() -> void:
-    var dim := ColorRect.new()
-    dim.color = Color(0.002, 0.004, 0.009, 0.92)
-    dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    add_child(dim)
-    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    UIFactory.add_grain(self, 0.22)
+    UIFactory.add_signal_backdrop(self, CORRIDOR_WORLD_PATH, _accent, 0.58)
+    UIFactory.add_grain(self, 0.07)
 
     _panel = PanelContainer.new()
     _panel.mouse_filter = Control.MOUSE_FILTER_PASS
-    _panel.add_theme_stylebox_override("panel", UIFactory.menu_style(_accent))
+    var panel_style := UIFactory.product_surface_style(_accent, true)
+    panel_style.bg_color = Color(0.014, 0.022, 0.032, 0.88)
+    panel_style.border_color = Color(_accent, 0.32)
+    _panel.add_theme_stylebox_override("panel", panel_style)
     add_child(_panel)
 
     _scroll = ScrollContainer.new()
@@ -77,11 +78,11 @@ func _build() -> void:
     for index in range(_releases.size()):
         _add_room_entry(index)
 
-    var finale := UIFactory.menu_button("WRÓĆ DO FINAŁU", Color("e35f83"), true)
+    var finale := UIFactory.product_button("WRÓĆ DO FINAŁU", Color("e35f83"), true)
     finale.pressed.connect(func() -> void: finale_requested.emit())
     _content.add_child(finale)
 
-    var close := UIFactory.menu_button("WRÓĆ DO MENU", Color("73869d"))
+    var close := UIFactory.product_button("WRÓĆ DO MENU", Color("73869d"))
     close.pressed.connect(func() -> void: close_requested.emit())
     _content.add_child(close)
 
@@ -103,16 +104,38 @@ func _add_room_entry(index: int) -> void:
 
     var card := PanelContainer.new()
     card.mouse_filter = Control.MOUSE_FILTER_PASS
-    card.add_theme_stylebox_override("panel", UIFactory.story_style(room_accent, 0.84, false))
+    card.add_theme_stylebox_override("panel", UIFactory.product_inset_style(room_accent, 0.20))
     _content.add_child(card)
 
+    var row := HBoxContainer.new()
+    row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    row.add_theme_constant_override("separation", 10)
+    card.add_child(row)
+
+    var art_value: Variant = room.get("art_direction", {})
+    var art: Dictionary = art_value if art_value is Dictionary else {}
+    var preview := TextureRect.new()
+    preview.name = "RoomPreview"
+    preview.custom_minimum_size = Vector2(76.0, 112.0)
+    preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+    preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var preview_path := str(art.get("scene_image", ""))
+    if ResourceLoader.exists(preview_path):
+        var preview_resource := load(preview_path)
+        if preview_resource is Texture2D:
+            preview.texture = preview_resource as Texture2D
+    row.add_child(preview)
+
     var body := VBoxContainer.new()
+    body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation", 4)
-    card.add_child(body)
+    row.add_child(body)
 
     var unlocked: bool = _completed_ids.has(release_id)
+    preview.modulate = Color.WHITE if unlocked else Color(0.32, 0.36, 0.42, 0.72)
     var button_text: String = "%02d · %s" % [index + 1, str(room.get("name", release_id)).to_upper()]
-    var button := UIFactory.menu_button(button_text, room_accent, index == 0)
+    var button := UIFactory.product_button(button_text, room_accent, index == 0)
     button.disabled = not unlocked
     button.tooltip_text = "Otwórz pokój w Album Mode" if unlocked else "Najpierw ukończ ten pokój"
     button.pressed.connect(Callable(self, "_emit_room").bind(index))
@@ -137,6 +160,43 @@ func _add_room_entry(index: int) -> void:
     echo_text.add_theme_font_size_override("font_size", 9)
     echo_text.add_theme_color_override("font_color", Color(room_accent, 0.78) if unlocked else Color("6f7b8b"))
     body.add_child(echo_text)
+
+    if not archived.is_empty():
+        var memory_lines := PackedStringArray()
+        for echo_value in archived.values():
+            if echo_value is Dictionary:
+                var echo: Dictionary = echo_value as Dictionary
+                var source := str(echo.get("source", "VIRYA"))
+                var message := str(echo.get("message", "")).strip_edges()
+                if not message.is_empty():
+                    memory_lines.append("%s · %s" % [source, message])
+        if not memory_lines.is_empty():
+            var memory := UIFactory.body("
+".join(memory_lines))
+            memory.name = "EchoCodexMemory"
+            memory.add_theme_font_size_override("font_size", 9)
+            memory.add_theme_color_override("font_color", Color("bac7d5"))
+            body.add_child(memory)
+
+    var identity: Dictionary = ViryaWorld.manifest_identity(manifest)
+    var identity_label := ViryaWorld.identity_label(identity)
+    if not identity_label.is_empty():
+        var guide := Label.new()
+        guide.text = "PRZEWODNIK · %s" % identity_label
+        guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        UIFactory.apply_display_font(guide)
+        guide.add_theme_font_size_override("font_size", 8)
+        guide.add_theme_color_override("font_color", Color("f0cf88") if unlocked else Color("7b7468"))
+        body.add_child(guide)
+    var hook := ViryaWorld.identity_hook(identity)
+    if not hook.is_empty():
+        var hook_label := Label.new()
+        hook_label.text = hook
+        hook_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        UIFactory.apply_display_font(hook_label)
+        hook_label.add_theme_font_size_override("font_size", 8)
+        hook_label.add_theme_color_override("font_color", Color("9cb0c6") if unlocked else Color("667382"))
+        body.add_child(hook_label)
 
 func _emit_room(index: int) -> void:
     room_requested.emit(index)

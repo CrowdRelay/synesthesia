@@ -23,6 +23,9 @@ python3 tests/production_polish_contract.py
 python3 tests/interactive_album_contract.py
 python3 tests/interaction_guidance_contract.py
 python3 tests/room_mechanics_v2_contract.py
+python3 tests/technophobia_vertical_slice_contract.py
+python3 tests/full_room_gameplay_contract.py
+python3 tests/room_asset_slots_contract.py
 python3 tests/menu_soundscape_contract.py
 python3 tests/rust_hybrid_contract.py
 python3 tests/gesture_semantics_contract.py
@@ -51,11 +54,15 @@ python3 tests/sensory_room_contract.py
 python3 tests/door_transition_contract.py
 python3 tests/cinematic_video_contract.py
 python3 tests/presentation_contract.py
+python3 tests/virya_world_contract.py
 python3 tests/comic_skin_contract.py
 python3 tests/ui_input_contract.py
 python3 tests/ui_performance_contract.py
 python3 tests/ui_scale_flow_contract.py
 python3 tests/ui_quality_polish_contract.py
+python3 tests/signal_design_system_contract.py
+python3 tests/game_feel_v3_contract.py
+python3 tests/synesthesia_v2_art_contract.py
 python3 tests/android_pipeline_contract.py
 python3 tests/godot_log_gate_contract.py
 python3 tests/netlify_artifact_deploy_contract.py

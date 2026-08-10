@@ -15,9 +15,10 @@ html, body { background: #03050b; overscroll-behavior: none; }
   position: fixed; inset: 0; z-index: 2147483646; overflow: hidden;
   display: grid; place-items: center; pointer-events: none;
   background:
-    radial-gradient(circle at 50% 48%, rgba(92, 45, 126, .20) 0, rgba(23, 12, 35, .13) 34%, rgba(3, 5, 11, 0) 62%),
-    #03050b;
-  color: #f1edff; opacity: 1; transition: opacity .20s ease;
+    radial-gradient(circle at 58% 48%, rgba(227, 53, 53, .14) 0, rgba(3, 5, 11, 0) 44%),
+    radial-gradient(circle at 38% 58%, rgba(67, 214, 223, .08) 0, rgba(3, 5, 11, 0) 48%),
+    #030509;
+  color: #f1efeb; opacity: 1; transition: opacity .20s ease;
   font-family: "SynesthesiaDisplay", Impact, "Arial Black", ui-sans-serif, system-ui, sans-serif;
 }
 #synesthesia-boot::after {
@@ -28,18 +29,18 @@ html, body { background: #03050b; overscroll-behavior: none; }
 #synesthesia-boot[data-stalled="true"] { pointer-events: auto; }
 .synesthesia-boot__title {
   position: absolute; z-index: 2; top: max(6.5vh, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
-  margin: 0; white-space: nowrap; font-family: "SynesthesiaTitle", Chalkduster, Trattatello, "Marker Felt", fantasy;
-  font-size: clamp(28px, 5.4vw, 64px); font-weight: 400; letter-spacing: .04em;
-  text-shadow: 0 2px 0 #05060a, 0 0 28px rgba(140, 98, 255, .12);
+  margin: 0; white-space: nowrap; font-family: "SynesthesiaDisplay", "DIN Condensed", Impact, ui-sans-serif, sans-serif;
+  font-size: clamp(28px, 5.2vw, 62px); font-weight: 700; letter-spacing: .16em;
+  text-shadow: 0 1px 0 #05060a, 0 0 26px rgba(227, 53, 53, .16);
 }
 .synesthesia-boot__sub {
   position: absolute; z-index: 2; top: max(13vh, calc(env(safe-area-inset-top) + 64px)); left: 50%; transform: translateX(-50%);
-  width: 92%; text-align: center; color: #ad9bbc; font-size: clamp(9px, 1.35vw, 14px);
+  width: 92%; text-align: center; color: #9eafc3; font-size: clamp(9px, 1.35vw, 14px);
   letter-spacing: .20em; text-transform: uppercase;
 }
 .synesthesia-boot__door {
   position: relative; z-index: 1; width: min(61vw, 424px); aspect-ratio: 848 / 1104;
-  filter: drop-shadow(0 0 44px rgba(140, 98, 255, .16));
+  filter: drop-shadow(0 0 44px rgba(227, 53, 53, .13));
   animation: synesthesia-eye-breathe 3.2s ease-in-out infinite;
 }
 .synesthesia-boot__eye-art {
@@ -48,7 +49,7 @@ html, body { background: #03050b; overscroll-behavior: none; }
 }
 .synesthesia-boot__tagline {
   position: absolute; z-index: 2; bottom: max(8.1vh, calc(env(safe-area-inset-bottom) + 56px)); left: 50%; transform: translateX(-50%);
-  color: #a895b8; font-size: clamp(8px, 1.2vw, 12px); letter-spacing: .24em; text-transform: uppercase; white-space: nowrap;
+  color: #9eafc3; font-size: clamp(8px, 1.2vw, 12px); letter-spacing: .24em; text-transform: uppercase; white-space: nowrap;
 }
 .synesthesia-boot__render {
   position: absolute; z-index: 2; bottom: max(5.1vh, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
@@ -58,14 +59,14 @@ html, body { background: #03050b; overscroll-behavior: none; }
 .synesthesia-boot__retry {
   position: absolute; z-index: 3; bottom: max(10.8vh, calc(env(safe-area-inset-bottom) + 76px)); left: 50%; transform: translateX(-50%);
   display: none; min-height: 44px; max-width: min(88vw, 360px); padding: 10px 18px;
-  border: 1px solid rgba(239,111,189,.55); border-radius: 999px; background: rgba(9,7,18,.92);
-  color: #f1edff; font: inherit; font-size: clamp(9px, 1.15vw, 13px); letter-spacing: .14em; text-transform: uppercase;
-  cursor: pointer; box-shadow: 0 0 28px rgba(132,88,255,.16);
+  border: 1px solid rgba(227,53,53,.55); border-radius: 3px; background: rgba(5,9,14,.94);
+  color: #f1efeb; font: inherit; font-size: clamp(9px, 1.15vw, 13px); letter-spacing: .14em; text-transform: uppercase;
+  cursor: pointer; box-shadow: none;
 }
 #synesthesia-boot[data-stalled="true"] .synesthesia-boot__retry { display: block; }
 #synesthesia-boot[data-stalled="true"] .synesthesia-boot__render { animation: none; color: #d9b6cf; }
 .synesthesia-boot__retry:disabled { opacity: .55; cursor: progress; }
-@keyframes synesthesia-eye-breathe { 0%,100%{transform:scale(1);filter:drop-shadow(0 0 40px rgba(140,98,255,.13))} 50%{transform:scale(1.012);filter:drop-shadow(0 0 54px rgba(239,111,189,.18))} }
+@keyframes synesthesia-eye-breathe { 0%,100%{transform:scale(1);filter:drop-shadow(0 0 38px rgba(227,53,53,.11))} 50%{transform:scale(1.012);filter:drop-shadow(0 0 50px rgba(67,214,223,.14))} }
 @keyframes synesthesia-status-pulse { 0%,100%{opacity:.55} 50%{opacity:.95} }
 @media (max-aspect-ratio: 4/5) { .synesthesia-boot__door { width:min(76vw,430px); } }
 @media (prefers-reduced-motion: reduce) {

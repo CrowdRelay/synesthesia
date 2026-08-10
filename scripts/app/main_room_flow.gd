@@ -1,6 +1,7 @@
 extends Node
 
 const EchoArchive := preload("res://scripts/app/echo_archive.gd")
+const ViryaWorld := preload("res://scripts/app/virya_world.gd")
 
 var app: Node
 
@@ -38,6 +39,8 @@ func _load_room(index: int, show_intro: bool) -> void:
     app.room.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     app.room.configure(room_data, collectible_entries, app.manifest.get("sensory", {}), app.quality, app.asset_preloader)
     app.room.set_interaction_enabled(false)
+    if app.hud != null and app.room.has_method("get_interaction_hint"):
+        app.hud.update_instruction(app.room.get_interaction_hint())
     if app.adaptive_performance != null:
         app.room.set_runtime_budget(float(app.adaptive_performance.get_scale()))
     var room_accent: Color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
@@ -198,6 +201,7 @@ func _show_intro() -> void:
         intro_text,
         str(art.get("caption", "VIRYA · SYNESTEZJA")),
         accent,
+        ViryaWorld.manifest_identity(app.manifest),
     )
     app.intro_panel.dismissed.connect(_dismiss_intro)
 
@@ -234,10 +238,18 @@ func _on_collectible_found(item: Dictionary) -> void:
         app.haptics.discovery()
     if app.audio_director != null:
         app.audio_director.set_progress(float(app.room.get_normalized_progress()), count)
+    if count >= _collectible_total():
+        app.hud.update_discovery("ECHA 3/3 · pełna pamięć pokoju zapisana w Korytarzu")
+        if app.haptics != null:
+            app.haptics.special("echo_complete")
+        if app.audio_director != null and app.audio_director.has_method("play_interaction_sfx"):
+            app.audio_director.play_interaction_sfx("echo_complete", count)
     app._schedule_save()
 
 func _on_act_changed(index: int, title: String) -> void:
     app.hud.update_act(index, title)
+    if app.room != null and app.room.has_method("get_interaction_hint"):
+        app.hud.update_instruction(app.room.get_interaction_hint())
     if app.haptics != null and index > 0:
         app.haptics.discovery()
 
@@ -250,6 +262,8 @@ func _on_special_interaction(kind: String, index: int) -> void:
         app.haptics.special(kind)
     if app.audio_director != null and app.audio_director.has_method("play_interaction_sfx"):
         app.audio_director.play_interaction_sfx(kind, index)
+    if app.room != null and app.room.has_method("get_interaction_hint"):
+        app.hud.update_instruction(app.room.get_interaction_hint())
 
 func _complete_current_room() -> void:
     if app.completion_announced or app.room == null:
@@ -259,7 +273,8 @@ func _complete_current_room() -> void:
     app.room_timer_running = false
     app.room.set_interaction_enabled(false)
     app.room.set_cinematic_reveal(true)
-    app.room.reveal_remaining_collectibles()
+    # Echoes remain optional discoveries. Opening the door never grants them for
+    # free; players can stay, search, or revisit the room later in Album Mode.
     app.room.set_door_open(true)
     app.current_coverage = float(app.room.get_coverage())
     if app.audio_director != null:
@@ -269,7 +284,12 @@ func _complete_current_room() -> void:
     if app.hud != null and is_instance_valid(app.hud):
         app.hud.update_reveal(1.0)
         app.hud.enter_completion_beat()
-        app.hud.update_discovery("ECHA %d/%d · drzwi są otwarte" % [_collectible_total(), _collectible_total()])
+        var found_echoes := int(app.room.get_found_count())
+        var total_echoes := _collectible_total()
+        if found_echoes < total_echoes:
+            app.hud.update_discovery("DRZWI OTWARTE · ECHA %d/%d · możesz zostać i szukać" % [found_echoes, total_echoes])
+        else:
+            app.hud.update_discovery("DRZWI OTWARTE · ECHA %d/%d · pokój odsłonięty" % [found_echoes, total_echoes])
     if app.haptics != null:
         app.haptics.cinematic_reveal()
     var release_id: String = str(app.manifest.get("release_id", ""))
@@ -317,11 +337,19 @@ func _show_completion_panel() -> void:
     app.completion_panel = app.CompletionCardScript.new()
     app.completion_panel.name = "CompletionCard"
     app.ui_root.attach(app.completion_panel, 30)
+    var completion_message := str(app.manifest.get("completion_message", "Obraz i muzyka zostały odsłonięte."))
+    var found_echoes := int(app.room.get_found_count()) if app.room != null else 0
+    var total_echoes := _collectible_total()
+    if found_echoes < total_echoes:
+        completion_message += "\n\nEcha %d/%d · %d nadal %s w pokoju. Możesz zostać i poszukać albo wrócić tu później w Album Mode." % [
+            found_echoes, total_echoes, total_echoes - found_echoes, "czekają" if total_echoes - found_echoes > 1 else "czeka",
+        ]
     app.completion_panel.configure(
         str(app.manifest.get("completion_title", "Pokój się otworzył")),
-        str(app.manifest.get("completion_message", "Obraz i muzyka zostały odsłonięte.")),
+        completion_message,
         next_label,
         accent,
+        ViryaWorld.manifest_identity(app.manifest),
     )
     if app.current_room_index < app.release_entries.size() - 1:
         app.completion_panel.continue_requested.connect(func() -> void: _transition_to_room(next_index))

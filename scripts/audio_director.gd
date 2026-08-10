@@ -9,7 +9,7 @@ const CONTROL_INTERVAL: float = 1.0 / 60.0
 const MIN_FILTER_HZ: float = 820.0
 const MAX_FILTER_HZ: float = 19500.0
 const INTERACTION_SFX: Dictionary = {
-    "toast": "res://assets/audio/sfx/glass-clink.wav",
+    "toast": "res://assets/audio/sfx/resonance-lock.wav",
     "seed": "res://assets/audio/sfx/wood-creak.wav",
     "duel": "res://assets/audio/sfx/gunshot.wav",
     "mirror": "res://assets/audio/sfx/mirror-shatter.wav",
@@ -19,10 +19,16 @@ const INTERACTION_SFX: Dictionary = {
     "wave": "res://assets/audio/sfx/wave-slap.wav",
     "light": "res://assets/audio/sfx/light-rise.wav",
     "presence": "res://assets/audio/sfx/presence-wind.wav",
-    "pour": "res://assets/audio/sfx/glass-clink.wav",
+    "pour": "res://assets/audio/sfx/resonance-lock.wav",
     "root": "res://assets/audio/sfx/wood-creak.wav",
     "aim": "res://assets/audio/sfx/presence-wind.wav",
     "ember": "res://assets/audio/sfx/wing-whoosh.wav",
+    "cable_grab": "res://assets/audio/sfx/cable-snap.wav",
+    "cable_snap": "res://assets/audio/sfx/cable-snap.wav",
+    "cable_unplug": "res://assets/audio/sfx/cable-unplug.wav",
+    "breaker": "res://assets/audio/sfx/breaker-off.wav",
+    "signal_lock": "res://assets/audio/sfx/signal-lock.wav",
+    "echo_complete": "res://assets/audio/sfx/signal-lock.wav",
 }
 const INTERACTION_BLOOM: Dictionary = {
     "balloon": 0.42,
@@ -40,13 +46,19 @@ const INTERACTION_BLOOM: Dictionary = {
     "presence": 0.24,
     "wave": 0.26,
     "light": 0.46,
+    "cable_grab": 0.08,
+    "cable_snap": 0.10,
+    "cable_unplug": 0.42,
+    "breaker": 0.58,
+    "signal_lock": 0.72,
+    "echo_complete": 0.78,
 }
 const AudioAssetRuntimeScript := preload("res://scripts/audio/audio_asset_runtime.gd")
 const CINEMATIC_SFX: Dictionary = {
     "uncertainty": "res://assets/audio/sfx/wave-slap.wav",
     "party": "res://assets/audio/sfx/light-rise.wav",
     "unmasked": "res://assets/audio/sfx/mask-whisper.wav",
-    "calling": "res://assets/audio/sfx/glass-clink.wav",
+    "calling": "res://assets/audio/sfx/resonance-lock.wav",
     "seed": "res://assets/audio/sfx/wood-creak.wav",
     "hybrid": "res://assets/audio/sfx/presence-wind.wav",
     "technophobia": "res://assets/audio/sfx/electric-bzz.wav",
@@ -90,6 +102,7 @@ var _interaction_bloom_smoothed: float = 0.0
 var _foreground_duck_target: float = 0.0
 var _foreground_duck_smoothed: float = 0.0
 var _transition_duck_target: float = 0.0
+var _semantic_clearance: float = 0.0
 var _suspended: bool = false
 var _control_accumulator: float = 0.0
 var _pending_excerpt_path: String = ""
@@ -149,6 +162,14 @@ func _play_sfx_stream(stream: AudioStream, pitch: float = 1.0, volume_db: float 
 
 func play_interaction_sfx(kind: String, index: int = 0) -> void:
     _interaction_bloom_target = maxf(_interaction_bloom_target, float(INTERACTION_BLOOM.get(kind, 0.22)))
+    var semantic_steps := {
+        "cable_unplug": 0.075, "breaker": 0.10, "signal_lock": 0.16,
+        "mask": 0.065, "mirror": 0.09, "seed": 0.055, "root": 0.07,
+        "balloon": 0.045, "pour": 0.05, "toast": 0.09, "ember": 0.045,
+        "phoenix": 0.13, "presence": 0.055, "wave": 0.055, "duel": 0.10,
+        "light": 0.11, "screen": 0.04, "echo_complete": 0.12,
+    }
+    _semantic_clearance = clampf(_semantic_clearance + float(semantic_steps.get(kind, 0.0)), 0.0, 0.58)
     _foreground_duck_target = maxf(_foreground_duck_target, 0.72)
     if kind == "balloon":
         _play_sfx_stream(_balloon_pop_stream, 0.96 + float(index % 5) * 0.018, -9.0)
@@ -205,6 +226,7 @@ func configure(sensory: Dictionary, audio: Dictionary = {}, collectible_total: i
     _interaction_bloom_target = 0.0
     _interaction_bloom_smoothed = 0.0
     _completion_active = false
+    _semantic_clearance = 0.0
     _music_available = false
     _pending_excerpt_path = ""
     _pending_ambience_path = ""
@@ -324,8 +346,8 @@ func _process(delta: float) -> void:
     var reveal_mix: float = clampf(_coverage_smoothed, 0.0, 1.0)
     if _completion_active or _coverage_target >= COMPLETION_THRESHOLD:
         reveal_mix = 1.0
-    var music_ratio: float = reveal_mix
-    var noise_ratio: float = 1.0 - reveal_mix
+    var music_ratio: float = clampf(reveal_mix + _semantic_clearance * (1.0 - reveal_mix) * 0.62, 0.0, 1.0)
+    var noise_ratio: float = clampf((1.0 - reveal_mix) * (1.0 - _semantic_clearance * 0.82), 0.0, 1.0)
     var quiet_cut_db: float = lerpf(0.0, 18.0, _quiet_smoothed)
 
     if _noise_player != null:

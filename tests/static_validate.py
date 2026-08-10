@@ -30,10 +30,10 @@ REQUIRED_FILES = [
     "scripts/render/atmosphere_layer.gd", "scripts/render/interaction_fx_layer.gd", "scripts/render/room_dressing_layer.gd", "scripts/render/room_video_layer.gd", "scripts/brush/brush_engine.gd",
     "scripts/app/quality_manager.gd", "scripts/app/asset_preloader.gd", "scripts/app/adaptive_performance.gd", "scripts/app/native_experience_surface.gd", "scripts/app/signal_signup_client.gd", "scripts/app/menu_runtime_guard.gd", "scripts/app/debug_profile.gd",
     "scripts/app/transition_director.gd", "scripts/app/door_transition_layer.gd", "scripts/app/diagnostics_overlay.gd",
-    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/ui_metrics.gd", "scripts/ui/door_eye_motif.gd", "scripts/ui/chapter_card.gd", "scripts/ui/experience_intro_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd", "scripts/ui/boot_sequence.gd",
+    "scripts/ui/app_hud.gd", "scripts/ui/ui_factory.gd", "scripts/ui/ui_metrics.gd", "scripts/ui/signal_backdrop.gd", "scripts/ui/door_eye_motif.gd", "scripts/ui/chapter_card.gd", "scripts/ui/experience_intro_card.gd", "scripts/ui/completion_card.gd", "scripts/ui/settings_card.gd", "scripts/ui/confirm_card.gd", "scripts/ui/echoes_finale_background.gd", "scripts/ui/signal_finale_card.gd", "scripts/ui/boot_sequence.gd",
     "scripts/rooms/behavior_base.gd", "shaders/room_composite.gdshader", "shaders/echoes_finale.gdshader", "shaders/room_video_postprocess.gdshader",
-    "assets/comic/menu_eye_loop.ogv", "assets/audio/pink-noise-asmr-loop.ogg", "assets/audio/balloon-pop.mp3", "assets/finale/echoes-finale.webp", "default_bus_layout.tres",
-    "data/release_index.json", "tests/validate_project.gd",
+    "assets/branding/signal-glyph-loop.ogv", "assets/audio/pink-noise-asmr-loop.ogg", "assets/audio/balloon-pop.mp3", "assets/finale/echoes-finale.webp", "default_bus_layout.tres",
+    "data/release_index.json", "data/room_asset_slots.json", "docs/SYNESTHESIA_V2_PRODUCTION.md", "tests/validate_project.gd",
     "tests/room_pipeline_contract.py", "tests/capture_rooms.gd",
     "tests/visual_snapshot_contract.py", "tests/visual_snapshots.json",
     "tests/new_release_pack_contract.py", "tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py", "assets/video/manifest.json", "tools/update_visual_snapshots.py",
@@ -150,8 +150,8 @@ def validate_manifest(path: Path, slug: str, order: int, failures: list[str]) ->
     if not isinstance(art, dict):
         fail(f"{slug}: art_direction must be an object", failures)
     else:
-        if art.get("style") != "dark_comic" or art.get("material_pass") != "production-2.5d":
-            fail(f"{slug}: production dark-comic material pass required", failures)
+        if art.get("style") != "virya_signal_cinematic" or art.get("material_pass") != "production-2.5d":
+            fail(f"{slug}: V2 signal-cinematic production material pass required", failures)
         scene = resource_path(art.get("scene_image"), f"{slug}: vertical scene", failures)
         background = resource_path(art.get("background_image"), f"{slug}: vertical background", failures)
         subject = resource_path(art.get("subject_image"), f"{slug}: subject layer", failures)
@@ -279,14 +279,14 @@ def main() -> int:
     if shader_only_calls:
         fail("shader-only function used from GDScript: " + ", ".join(shader_only_calls), failures)
 
-    if (ROOT / "VERSION").read_text().strip() != "0.12.9":
-        fail("VERSION must equal 0.12.9", failures)
+    if (ROOT / "VERSION").read_text().strip() != "2.0.0":
+        fail("VERSION must equal 2.0.0", failures)
     project = (ROOT / "project.godot").read_text()
-    for token in ('config/version="0.12.9"', "size/viewport_width=1080", "size/viewport_height=1920", "dpi/allow_hidpi=true", 'stretch/mode="disabled"', 'boot_splash/image="res://assets/branding/boot-splash.png"'):
+    for token in ('config/version="2.0.0"', "size/viewport_width=1080", "size/viewport_height=1920", "dpi/allow_hidpi=true", 'stretch/mode="disabled"', 'boot_splash/image="res://assets/branding/boot-splash.png"'):
         if token not in project:
             fail(f"project.godot missing {token}", failures)
     export_source = (ROOT / "export_presets.cfg").read_text()
-    for token in ('version/name="0.12.9"', 'version/code=21', 'html/canvas_resize_policy=2'):
+    for token in ('version/name="2.0.0"', 'version/code=22', 'html/canvas_resize_policy=2'):
         if token not in export_source:
             fail(f"adaptive export contract missing: {token}", failures)
     native_surface = (ROOT / "scripts/app/native_experience_surface.gd").read_text()
@@ -328,13 +328,10 @@ def main() -> int:
     video_shader_source = (ROOT / "shaders/room_video_postprocess.gdshader").read_text()
     gear_path = ROOT / "assets/ui/settings-gear.svg"
     gear_script = ROOT / "scripts/ui/settings_gear_icon.gd"
-    gear_ignore = ROOT / "assets/ui/.gdignore"
-    if gear_path.exists() and not gear_ignore.is_file():
-        fail("legacy settings gear SVG must be removed or hidden by assets/ui/.gdignore", failures)
+    if gear_path.exists():
+        fail("legacy settings gear SVG must stay removed from the slim Signal V2 tree", failures)
     if not gear_script.is_file() or gear_script.stat().st_size < 500:
         fail("procedural settings gear script missing or truncated", failures)
-    if not gear_ignore.is_file():
-        fail("assets/ui/.gdignore must suppress legacy SVG imports on overlay installs", failures)
     for token in ('SettingsGearIcon', 'SettingsGearIcon.new()', 'SettingsGearIcon'):
         if token not in hud_contract_source:
             fail(f"procedural settings gear button contract missing: {token}", failures)
@@ -346,7 +343,7 @@ def main() -> int:
         if token not in intro_source:
             fail(f"experience menu contract missing: {token}", failures)
     chapter_source = (ROOT / "scripts/ui/chapter_card.gd").read_text()
-    for token in ('mouse_filter = Control.MOUSE_FILTER_IGNORE', '_timer.wait_time = 3.6', 'MALUJ OD RAZU'):
+    for token in ('mouse_filter = Control.MOUSE_FILTER_IGNORE', '_timer.wait_time = 3.6', 'ROZEJRZYJ SIĘ'):
         if token not in chapter_source:
             fail(f"non-blocking chapter rail contract missing: {token}", failures)
     eye_source = (ROOT / "scripts/ui/door_eye_motif.gd").read_text()

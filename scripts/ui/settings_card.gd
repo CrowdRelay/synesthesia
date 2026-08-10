@@ -61,7 +61,9 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
 
     var panel: PanelContainer = PanelContainer.new()
     panel.mouse_filter = Control.MOUSE_FILTER_PASS
-    panel.add_theme_stylebox_override("panel", UIFactory.panel_style(Color("090f1bf8"), 24, Color("a8cfff31")))
+    var settings_style := UIFactory.product_surface_style(Color("43d6df"), true)
+    settings_style.bg_color = Color(0.012, 0.020, 0.030, 0.94)
+    panel.add_theme_stylebox_override("panel", settings_style)
     add_child(panel)
     panel.set_anchors_preset(Control.PRESET_CENTER)
     var viewport_size: Vector2 = get_viewport_rect().size

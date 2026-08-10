@@ -4,8 +4,8 @@ extends Control
 ## The material layer is a reusable comic bitmap; blink, neural pulses and glitch
 ## stay procedural so the same eye remains alive in every viewport.
 
-const DOOR_EYE_TEXTURE_PATH: String = "res://assets/comic/door_eye_comic.webp"
-const MENU_EYE_VIDEO_PATH: String = "res://assets/comic/menu_eye_loop.ogv"
+const DOOR_EYE_TEXTURE_PATH: String = "res://assets/branding/signal-glyph.webp"
+const MENU_EYE_VIDEO_PATH: String = "res://assets/branding/signal-glyph-loop.ogv"
 const MENU_EYE_POSTER_PATH: String = "res://assets/branding/menu-eye-poster.webp"
 const MENU_EYE_VIDEO_SIZE: Vector2 = Vector2(848.0, 1104.0)
 

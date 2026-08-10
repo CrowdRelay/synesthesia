@@ -44,7 +44,7 @@ var interaction_fx
 var room_dressing
 var video_layer
 var hint_layer
-var interaction_enabled: bool = true
+var world_micro_fx; var interaction_enabled: bool = true
 var calm_mode: bool = true
 var reduced_motion: bool = false
 var quiet_visuals: bool = false
@@ -70,6 +70,7 @@ var _cinematic_mix: float = 0.0
 var _cinematic_target: float = 0.0
 var _brush_energy: float = 0.0
 var _runtime_scale: float = 1.0
+var _hint_refresh_accumulator: float = 0.0
 var _last_parallax_sent: Vector2 = Vector2(99.0, 99.0)
 var _last_coverage_emitted: float = -1.0
 var _cinematic_elapsed: float = 0.0
@@ -127,6 +128,7 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     )
     interaction_fx.configure(_accent_color, secondary_color)
     hint_layer.configure(str(room_data.get("interaction", "paint")), _accent_color)
+    _refresh_hint_targets()
     interaction_fx.set_sensory(calm_mode, reduced_motion)
     interaction_runtime = RoomInteractionRuntimeScript.new()
     interaction_runtime.configure(behavior, reveal_mask, interaction_fx)
@@ -138,6 +140,8 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     attempt_feedback.confirmed.connect(_on_attempt_confirmed)
     var visual_style: String = str(room_data.get("visual_style", "uncertainty"))
     room_dressing.configure(visual_style, _accent_color, secondary_color)
+    if world_micro_fx != null:
+        world_micro_fx.configure(visual_style, _accent_color, secondary_color, behavior)
     room_dressing.set_reduced_motion(reduced_motion)
     video_layer.configure(visual_style, reduced_motion, quiet_visuals, calm_mode)
     _unlock_profile = _unlock_profile_index(visual_style)
@@ -155,6 +159,14 @@ func _take_texture(path: String, asset_source = null) -> Texture2D:
 func _process(delta: float) -> void:
     if behavior != null and (not _behavior_tick_gated or behavior.needs_tick()):
         behavior.advance(delta)
+    _hint_refresh_accumulator += delta
+    if _hint_refresh_accumulator >= 0.20:
+        _hint_refresh_accumulator = 0.0
+        _refresh_hint_targets()
+    if world_micro_fx != null:
+        world_micro_fx.set_progress(current_progress)
+        world_micro_fx.set_pointer(pointer_norm)
+        world_micro_fx.set_cinematic(_cinematic_mix)
     if interaction_enabled and interaction_router != null and interaction_router.needs_tick():
         _handle_gestures(interaction_router.advance(Time.get_ticks_msec()))
     var target: float = 1.0 if door_target_open else 0.0
@@ -215,6 +227,8 @@ func set_reduced_motion(value: bool) -> void:
         hint_layer.set_reduced_motion(reduced_motion)
     if room_dressing != null:
         room_dressing.set_reduced_motion(reduced_motion)
+    if world_micro_fx != null:
+        world_micro_fx.set_reduced_motion(reduced_motion)
     composite_material.set_shader_parameter("reduced_motion", value)
 func set_quiet_visuals(value: bool) -> void:
     quiet_visuals = value
@@ -266,7 +280,20 @@ func set_assist_level(level: int) -> void:
 
 func set_hint_strength(value: float) -> void:
     if hint_layer != null:
+        _refresh_hint_targets()
         hint_layer.set_hint_strength(value)
+
+func _refresh_hint_targets() -> void:
+    if hint_layer == null:
+        return
+    var targets: Array = []
+    if behavior != null and behavior.has_method("hint_targets"):
+        targets = behavior.hint_targets()
+    hint_layer.set_targets(targets)
+func get_interaction_hint() -> String:
+    if behavior != null and behavior.has_method("interaction_hint"):
+        return str(behavior.interaction_hint())
+    return "DOTKNIJ ŚWIATA"
 func set_door_open(value: bool) -> void: door_target_open = value
 func get_door_open_amount() -> float: return door_open_amount
 func reset_room() -> void:
@@ -324,9 +351,29 @@ func _render_collectibles() -> void:
         var position_value: Variant = item.get("position", [])
         if not position_value is Array or position_value.size() != 2:
             continue
-        var center: Vector2 = Vector2(float(position_value[0]) * size.x, float(position_value[1]) * size.y)
-        var pulse: float = 0.5 + 0.5 * sin(_phase * 4.0 + float(center.x))
-        draw_arc(center, 11.0 + pulse * 3.0, 0.0, TAU, 22, Color(_accent_color, 0.10 + pulse * 0.08), 1.4)
+        var point_norm := Vector2(float(position_value[0]), float(position_value[1]))
+        var center := Vector2(point_norm.x * size.x, point_norm.y * size.y)
+        var proximity := 1.0 - clampf(pointer_norm.distance_to(point_norm) / 0.22, 0.0, 1.0)
+        var completion_boost := 1.0 if cinematic_revealed else 0.0
+        var discovery_visibility := clampf(0.05 + proximity * 0.62 + current_progress * 0.10 + completion_boost * 0.42, 0.0, 1.0)
+        if discovery_visibility < 0.08:
+            continue
+        var pulse: float = 0.5 if reduced_motion else 0.5 + 0.5 * sin(_phase * 3.4 + float(center.x) * 0.013)
+        var alpha := discovery_visibility * (0.08 + pulse * 0.10)
+        var radius := 10.0 + pulse * 3.0
+        # Echoes read as signal anomalies, not collectible coins: broken ring,
+        # short waveform and tiny center phase marker.
+        draw_arc(center, radius, -PI * 0.82, -PI * 0.08, 10, Color(_accent_color, alpha), 1.2)
+        draw_arc(center, radius, PI * 0.18, PI * 0.92, 10, Color(_accent_color, alpha), 1.2)
+        var wave_alpha := alpha * (0.75 + completion_boost * 0.25)
+        for wave_index in range(4):
+            var x0 := center.x - 7.0 + float(wave_index) * 4.0
+            var y0 := center.y + sin(float(wave_index) * 2.2 + _phase * 3.0) * 2.6
+            var x1 := x0 + 3.0
+            var y1 := center.y + sin(float(wave_index + 1) * 2.2 + _phase * 3.0) * 2.6
+            draw_line(Vector2(x0, y0), Vector2(x1, y1), Color(Color.WHITE, wave_alpha * 0.72), 1.0)
+        draw_circle(center, 1.5, Color(_accent_color, alpha * 0.92))
+
 func _render_cursor() -> void:
     if not interaction_enabled:
         return

@@ -20,7 +20,7 @@ AMBIENCE = {
     "rise": "rise.ogg",
 }
 SFX = [
-    "glass-clink.wav", "wood-creak.wav", "gunshot.wav", "mirror-shatter.wav",
+    "resonance-lock.wav", "wood-creak.wav", "gunshot.wav", "mirror-shatter.wav",
     "wing-whoosh.wav", "electric-bzz.wav", "mask-whisper.wav", "wave-slap.wav",
     "light-rise.wav", "presence-wind.wav", "door-close.wav", "door-open.wav",
     "teleport-suck.wav",
@@ -30,15 +30,15 @@ TOKENS = {
     "scripts/app/door_transition_layer.gd": ["set_door_open_mix", "set_approach_mix", "set_warp_mix", "_draw_hinged_door", "_draw_supersonic_tunnel"],
     "scripts/app/transition_director.gd": ["TELEPORT_STREAM", "DOOR_OPEN_STREAM", "set_approach_mix", "set_warp_mix"],
     "scripts/rooms/behaviors/wave-of-uncertainty.gd": ["lateral", "direction"],
-    "scripts/rooms/behaviors/party-time.gd": ["fly_t", "rise", "glow"],
+    "scripts/rooms/behaviors/party-time.gd": ["fly_t", "rise", "_draw_burst"],
     "scripts/rooms/behaviors/unmasked.gd": ["eye_y", "mouth_open"],
     "scripts/rooms/behaviors/seed-of-doubt.gd": ["twist", "cinematic_t"],
     "scripts/rooms/behaviors/hybrid.gd": ["duel_elapsed", "muzzle", "flash"],
     "scripts/rooms/behaviors/technophobia.gd": ["jitter_strength", "band_y"],
     "scripts/rooms/behaviors/invaluable.gd": ["for shard in range(10)", "burst"],
     "scripts/rooms/behaviors/from-the-ashes.gd": ["wing_span", "cinematic_t * 74.0"],
-    "scripts/rooms/behaviors/waves.gd": ["lamp", "window_rect", "flicker_gate"],
-    "scripts/rooms/behaviors/rise.gd": ["arm_raise", "window_glow", "rise_t"],
+    "scripts/rooms/behaviors/waves.gd": ["Rain trails", "_draw_resonance", "_draw_bridge_wave"],
+    "scripts/rooms/behaviors/rise.gd": ["ascending motes", "window_glow", "rise_t"],
     "scripts/ui/echoes_finale_background.gd": ["else 58", "drift - 12.0"],
     "shaders/room_composite.gdshader": ["glitch_band", "flight * 0.075", "ascent * 0.070"],
 }

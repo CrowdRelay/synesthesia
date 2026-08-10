@@ -13,7 +13,19 @@ func acts() -> Array[String]:
     return ["STAŃ NA ULICY", "USTABILIZUJ CEL", "PUŚĆ CUDZY PLAN"]
 
 func interaction_hint() -> String:
-    return "PRZYTRZYMAJ CEL · PUŚĆ, GDY JESTEŚ GOTÓW"
+    if bool(state.get("duel", false)):
+        return "WYBÓR PADŁ · POSZUKAJ ŚLADÓW NA ULICY"
+    if bool(state.get("aim_locked", false)):
+        return "CEL JEST SPOKOJNY · PUŚĆ PALec, GDY DECYZJA JEST TWOJA"
+    return "TO NIE CELOWNIK HUD · PRZYTRZYMAJ POSTAĆ W CENTRUM"
+
+func hint_targets() -> Array[Dictionary]:
+    if bool(state.get("duel", false)):
+        return []
+    return [{"point": OPPONENT, "kind": "hold" if not bool(state.get("aim_locked", false)) else "release", "radius": 0.13}]
+
+func captures_pointer_at(point_norm: Vector2) -> bool:
+    return not bool(state.get("duel", false)) and (_near(point_norm, OPPONENT, 0.18) or bool(state.get("aim_locked", false)))
 
 func needs_tick() -> bool:
     return cinematic_active() or (bool(state.get("duel", false)) and float(state.get("duel_elapsed", 0.0)) < 3.0)

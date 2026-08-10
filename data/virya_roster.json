@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "style": "virya-signal-abstract-avatar-v1",
+  "members": [
+    {
+      "id": "voice",
+      "role": "GŁOS",
+      "alias": "Yanusin",
+      "accent": "#E73535",
+      "avatar": "res://assets/avatars/yanusin-v1.webp",
+      "archetype": "voice-under-mask"
+    },
+    {
+      "id": "guitar",
+      "role": "GITARA",
+      "alias": "Mr R",
+      "accent": "#43D6DF",
+      "avatar": "res://assets/avatars/mr-r-v1.webp",
+      "archetype": "signal-bearer"
+    },
+    {
+      "id": "bass",
+      "role": "BAS",
+      "alias": "Lubek",
+      "accent": "#B15BD7",
+      "avatar": "res://assets/avatars/lubek-v1.webp",
+      "archetype": "anchor-of-weight"
+    },
+    {
+      "id": "drums",
+      "role": "PERA",
+      "alias": "Koobosky",
+      "accent": "#D8D8D5",
+      "avatar": "res://assets/avatars/koobosky-v1.webp",
+      "archetype": "warden-of-rhythm"
+    }
+  ]
+}

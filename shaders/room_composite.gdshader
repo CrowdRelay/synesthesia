@@ -144,7 +144,9 @@ void fragment() {
     float luminance = dot(photographed, vec3(0.2126, 0.7152, 0.0722));
     vec3 monochrome = vec3(luminance);
     vec3 negative = vec3(1.0) - photographed;
-    vec3 obscured = mix(monochrome * 0.48, negative * 0.36, 0.22 + horizontal_jitter * 0.25);
+    // V2 hidden state: dark signal loss instead of the old comic-negative wash.
+    vec3 obscured = mix(photographed * 0.12, monochrome * 0.34, 0.72);
+    obscured = mix(obscured, negative * 0.18, 0.055 + horizontal_jitter * 0.035);
 
     float time_speed = mix(5.0, 24.0, motion) * motion_scale;
     float frame = floor(TIME * time_speed);
@@ -168,7 +170,7 @@ void fragment() {
         static_alpha *= 0.22;
     }
 
-    vec3 static_color = mix(vec3(0.72), noise_tint.rgb, 0.64) * (0.72 + pink * 0.52);
+    vec3 static_color = mix(vec3(0.18, 0.21, 0.24), noise_tint.rgb * 0.58, 0.54) * (0.70 + pink * 0.48);
     vec3 color = mix(obscured, photographed, reveal);
     color += accent_color.rgb * profile_light * unlock * reveal;
     color = mix(color, static_color, clamp(static_alpha, 0.0, 0.42));
@@ -176,7 +178,7 @@ void fragment() {
     if (quality_level > 0) {
         float dots = sin(pixel.x * 0.19) * sin(pixel.y * 0.19);
         float halftone = smoothstep(0.60, 0.98, dots * 0.5 + 0.5);
-        color *= 1.0 - hidden * halftone * halftone_strength * 0.20;
+        color *= 1.0 - hidden * halftone * halftone_strength * 0.065;
     }
 
     float mask_edge = 1.0 - smoothstep(0.002, 0.015, abs(mask - 0.52));
@@ -194,8 +196,16 @@ void fragment() {
     color *= 1.0 + (revealed_grain - 0.5) * 0.042 * grain_strength * reveal;
 
     float vignette = 1.0 - smoothstep(0.22, 0.78, distance(UV, vec2(0.5)));
-    color *= mix(0.76, 1.0, vignette);
-    color = mix(color, color * color * (3.0 - 2.0 * color), ink_strength * 0.16);
+    color *= mix(0.72, 1.0, vignette);
+
+    // Accepted Signal board grade: cool steel in shadows, selective accent in
+    // highlights, high black floor and no broad comic-poster quantisation.
+    float final_luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float shadow = 1.0 - smoothstep(0.08, 0.52, final_luma);
+    float highlight = smoothstep(0.56, 0.94, final_luma);
+    color = mix(color, color * vec3(0.90, 1.015, 1.055), shadow * 0.095);
+    color += accent_color.rgb * highlight * (0.018 + completion_reveal * 0.022);
+    color = mix(color, color * color * (3.0 - 2.0 * color), ink_strength * 0.055);
 
     COLOR = vec4(color, 1.0);
 }

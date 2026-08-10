@@ -8,7 +8,7 @@ checks = {
         "mouse_filter = Control.MOUSE_FILTER_STOP",
         "mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED",
         "focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED",
-        "dim.mouse_filter = Control.MOUSE_FILTER_IGNORE",
+        "UIFactory.add_signal_backdrop(self, MENU_WORLD_PATH",
         "_panel.mouse_filter = Control.MOUSE_FILTER_PASS",
     ],
     "scripts/ui/settings_card.gd": [

@@ -13,7 +13,19 @@ func acts() -> Array[String]:
     return ["ZBIERZ POPIÓŁ", "ZAKRĘĆ ŻAREM", "WYPUSĆ SKRZYDŁA"]
 
 func interaction_hint() -> String:
-    return "ZAKRĘĆ POPIOŁEM · POTEM PRZESUŃ W GÓRĘ"
+    if bool(state.get("phoenix", false)):
+        return "SKRZYDŁA SĄ W RUCHU · POSZUKAJ ECH W POPIELE"
+    if float(state.get("swirl", 0.0)) >= 0.42:
+        return "ŻAR PAMIĘTA KSZTAŁT · WYPROWADŹ RUCH W GÓRĘ LUB KRĄŻ DALEJ"
+    return "POPIÓŁ REAGUJE W CENTRUM · ZAKRĘĆ PALCEM PO OKRĘGU"
+
+func hint_targets() -> Array[Dictionary]:
+    if bool(state.get("phoenix", false)):
+        return []
+    return [{"point": CENTER, "kind": "swirl" if float(state.get("swirl", 0.0)) < 0.42 else "drag_up", "radius": 0.18}]
+
+func captures_pointer_at(point_norm: Vector2) -> bool:
+    return not bool(state.get("phoenix", false)) and _near(point_norm, CENTER, 0.30)
 
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#FF9E58")), Color("ff9e58"))
@@ -52,6 +64,10 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             var diff: float = absf(wrapf(angle - previous, -PI, PI))
             var swirl: float = clampf(float(state.get("swirl", 0.0)) + diff / TAU * 0.46, 0.0, 1.0)
             state["swirl"] = swirl
+            if swirl >= 0.78 and not bool(state.get("phoenix", false)):
+                state["phoenix"] = true
+                state["last_angle"] = angle
+                return [_interaction_event("phoenix", 0, "Żar zebrał się w skrzydła — feniks rusza", CENTER, 0.14, 0.98)]
             if swirl >= 0.52 and not bool(state.get("ember_ready", false)):
                 state["ember_ready"] = true
                 state["last_angle"] = angle

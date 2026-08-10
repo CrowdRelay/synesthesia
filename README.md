@@ -1,6 +1,6 @@
-# VIRYA: Synesthesia
+# VIRYA: Synesthesia V2
 
-Godot 4.7.1 portrait album experience for **Echoes Of The Modern Mind**. Eleven rooms reveal from visual noise into the full artwork/music while local progress remains resumable.
+Godot 4.7.1 portrait interactive-album adventure for **Echoes Of The Modern Mind**. Eleven explorable rooms combine micro-puzzles, hidden echoes, reactive audio, haptics and a moodboard-locked VIRYA Signal visual system while local progress remains resumable.
 
 ## Runtime
 
@@ -9,15 +9,25 @@ Godot 4.7.1 portrait album experience for **Echoes Of The Modern Mind**. Eleven 
 - desktop keeps the portrait room undistorted and uses side space for menu/finale UI; portrait phones use the full native viewport so the room never becomes a tiny centered postcard;
 - HiDPI is enabled on Web/Android/iOS/desktop; UI and procedural eye/door graphics render at the target display resolution;
 - current + next room assets are preloaded within explicit memory budgets;
-- cinematic loops are encoded directly from the supplied native `720×1280 @ 24 fps` masters; the old 1.5× FHD upscale is removed, and ping-pong loops omit duplicated turn-around endpoints;
+- V2 room stills own the image; six Living Rooms V4 scenes use procedural ambient motion exclusively, while the remaining legacy `720×1280 @ 24 fps` loops stay only as low-amplitude motion texture;
 - adaptive performance lowers mask upload cadence, particles and motion before dropping functionality;
 - room progress persists locally as bounded PNG reveal masks;
 - the Web boot shell owns browser startup and suppresses the stock Godot image with a Web feature override; native targets can retain their branded splash;
-- Android/PWA icons, menu, chapter rails, transitions and finale share the doorway + eye + neural-activation mark.
+- Android/PWA icons, boot, menu, Korytarz, chapter rails, transitions and finale share the waveform + concentric Signal-ring language from the accepted V2 board.
 
 The source art stays asymmetrical by intent: background 405×720, scene/subject 675×1200, foreground 540×960. Those are texture-source sizes, not the runtime viewport. The runtime never stretches a fixed 540×960 application canvas; it fits/crops the portrait art inside a native-resolution shell while UI remains pixel-sharp.
 
-The original video provenance is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). Runtime files stay at source resolution and the complete cinematic pack is guarded below 24 MiB (over 40% below the former video payload). Web runtime files (`.pck/.wasm/.js`) use strict network-first + HTTP revalidation with CacheStorage fallback only after a real network/transient-origin failure. The cache namespace fingerprints the whole deploy surface, and returning clients perform a one-time clean worker/cache handoff when the deploy generation changes, preventing mixed-version PCK/WASM after a release while retaining offline recovery.
+Video provenance for the six runtime cinematics is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). V4 living rooms use procedural motion and no longer ship their legacy clips, cutting the runtime video payload substantially. Web runtime files (`.pck/.wasm/.js`) use strict network-first + HTTP revalidation with CacheStorage fallback only after a real network/transient-origin failure. The cache namespace fingerprints the whole deploy surface, and returning clients perform a one-time clean worker/cache handoff when the deploy generation changes, preventing mixed-version PCK/WASM after a release while retaining offline recovery.
+
+## V2 experience
+
+V2 is intentionally more game-like than the original reveal prototype. The player promise is:
+
+```text
+notice -> manipulate -> immediate audiovisual response -> changed world state -> optional echo -> payoff
+```
+
+The paint mask remains an accessibility/reveal assist, but completion is driven by each room's own mechanic: pulling cables and killing screen noise, removing masks, cracking mirror panes, growing the seed, rupturing sensory membranes, gathering ash, closing a resonance ritual, synchronizing paired waveforms, and so on. Visual direction and asset rules are documented in [`docs/SYNESTHESIA_V2_PRODUCTION.md`](docs/SYNESTHESIA_V2_PRODUCTION.md). The current per-room identity and ambient-motion lock is documented in [`docs/LIVING_ROOMS_V4.md`](docs/LIVING_ROOMS_V4.md).
 
 ## CrowdRelay integration
 
@@ -82,7 +92,7 @@ scenes/rooms/                one PackedScene per room
 scripts/render/              GPU composite/reveal pipeline
 scripts/rooms/behaviors/     per-room interactions
 scripts/app/                 preload/quality/transition/diagnostics
-scripts/ui/                  HUD, doorway boot and finale
+scripts/ui/                  Signal UI, HUD, boot, Korytarz and finale
 shaders/                     bounded canvas shaders
 data/releases/               schema-v4 manifests
 tests/                       static/runtime/visual contracts

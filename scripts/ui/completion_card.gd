@@ -25,10 +25,10 @@ func _ready() -> void:
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(title: String, message: String, next_label: String, accent: Color) -> void:
+func configure(title: String, message: String, next_label: String, accent: Color, identity: Dictionary = {}) -> void:
     _sheet = PanelContainer.new()
     _sheet.mouse_filter = Control.MOUSE_FILTER_PASS
-    _sheet.add_theme_stylebox_override("panel", UIFactory.story_style(accent, 0.96, true))
+    _sheet.add_theme_stylebox_override("panel", UIFactory.product_surface_style(accent, true))
     add_child(_sheet)
 
     _content = VBoxContainer.new()
@@ -55,20 +55,31 @@ func configure(title: String, message: String, next_label: String, accent: Color
     _body.add_theme_font_size_override("font_size", 10)
     _content.add_child(_body)
 
+    var identity_line := _identity_line(identity)
+    if not identity_line.is_empty():
+        var afterglow := Label.new()
+        afterglow.text = identity_line
+        afterglow.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        afterglow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        UIFactory.apply_display_font(afterglow)
+        afterglow.add_theme_font_size_override("font_size", 8)
+        afterglow.add_theme_color_override("font_color", Color("f0cf88"))
+        _content.add_child(afterglow)
+
     _actions = VBoxContainer.new()
     _actions.mouse_filter = Control.MOUSE_FILTER_PASS
     _actions.alignment = BoxContainer.ALIGNMENT_CENTER
     _actions.add_theme_constant_override("separation", 7)
     _content.add_child(_actions)
 
-    _next_button = UIFactory.menu_button(next_label, accent, true)
+    _next_button = UIFactory.product_button(next_label, accent, true)
     _next_button.name = "ContinueButton"
     _next_button.custom_minimum_size = Vector2(280.0, 54.0)
     _next_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     _next_button.pressed.connect(func() -> void: continue_requested.emit())
     _actions.add_child(_next_button)
 
-    _stay_button = UIFactory.button("Zostań i słuchaj", true)
+    _stay_button = UIFactory.product_button("Zostań i słuchaj", Color("73869d"), false)
     _stay_button.name = "ListenButton"
     _stay_button.custom_minimum_size = Vector2(220.0, 40.0)
     _stay_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -137,6 +148,12 @@ func _apply_ui_scale() -> void:
     # Kept for callers/tests; layout refresh owns scaling so custom minimum sizes
     # are never multiplied twice on native FHD/HiDPI viewports.
     _refresh_layout()
+
+func _identity_line(identity: Dictionary) -> String:
+    if identity.is_empty():
+        return ""
+    var focus := str(identity.get("focus_title", "")).strip_edges()
+    return "ŚLAD VIRYATKOWA · %s" % focus if not focus.is_empty() else ""
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:

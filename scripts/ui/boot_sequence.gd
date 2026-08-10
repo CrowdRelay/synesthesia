@@ -5,6 +5,7 @@ signal released
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
+const MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"
 
 # Keep startup branded but bounded. The authored Theora loop is armed only after
 # the first real Godot frame, so these timings do not move decoder work back onto
@@ -52,12 +53,13 @@ func _build() -> void:
     var viewport_size: Vector2 = get_viewport_rect().size
     _ui_scale = UiMetrics.scale_for_viewport(viewport_size)
 
+    UIFactory.add_signal_backdrop(self, MENU_WORLD_PATH, Color("E73535"), 0.46, _reduced_motion)
     var background := ColorRect.new()
-    background.color = Color("03050b")
+    background.color = Color(0.005, 0.008, 0.012, 0.22)
     background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     background.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(background)
-    UIFactory.add_grain(self, 0.16)
+    UIFactory.add_grain(self, 0.06)
 
     _title = Label.new()
     _title.text = "SYNESTHESIA"
@@ -66,7 +68,7 @@ func _build() -> void:
     _title.add_theme_color_override("font_color", Color("f4eef8"))
     _title.add_theme_constant_override("outline_size", 2)
     _title.add_theme_color_override("font_outline_color", Color("05060ae8"))
-    UIFactory.apply_title_font(_title)
+    UIFactory.apply_display_font(_title)
     _title.set_anchors_preset(Control.PRESET_TOP_WIDE)
     _title.offset_top = 46.0 * _ui_scale
     _title.offset_bottom = 104.0 * _ui_scale
@@ -93,11 +95,12 @@ func _build() -> void:
     _motif.offset_top = -motif_h * 0.47
     _motif.offset_bottom = motif_h * 0.53
     add_child(_motif)
-    _motif.configure(Color("8c62ff"), "splash", Color("ef6fbd"))
+    _motif.configure(Color("43d6df"), "splash", Color("e73535"))
+    _motif.modulate.a = 0.36
     _motif.set_reduced_motion(_reduced_motion)
 
     _tagline = Label.new()
-    _tagline.text = "OTWÓRZ  ·  ODKRYJ  ·  POCZUJ"
+    _tagline.text = "SZUKAJ  ·  DOTKNIJ  ·  ODSZUM"
     _tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _tagline.add_theme_font_size_override("font_size", 9)
     _tagline.add_theme_color_override("font_color", Color("a895b8"))
@@ -130,7 +133,7 @@ func _build() -> void:
     add_child(progress_track)
 
     _progress_fill = ColorRect.new()
-    _progress_fill.color = Color("9b68ff")
+    _progress_fill.color = Color("e73535")
     _progress_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _progress_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _progress_fill.scale = Vector2(0.08, 1.0)

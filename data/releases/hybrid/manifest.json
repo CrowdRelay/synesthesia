@@ -31,10 +31,10 @@
       "spacing": 0.48
     },
     "art_direction": {
-      "style": "dark_comic",
+      "style": "virya_signal_cinematic",
       "caption": "OSTATNI POJEDYNEK",
-      "ink_strength": 0.9,
-      "halftone_strength": 0.34,
+      "ink_strength": 0.48,
+      "halftone_strength": 0.075,
       "scene_image": "res://assets/rooms/vertical/hybrid-scene.webp",
       "scene_opacity": 1.0,
       "scene_parallax": 0.011,
@@ -52,7 +52,9 @@
         "foreground",
         "atmosphere"
       ],
-      "film_grain_strength": 0.36
+      "film_grain_strength": 0.2,
+      "visual_system": "virya-signal-v2",
+      "asset_generation": "moodboard-locked-2026"
     },
     "id": "hybrid",
     "scene_path": "res://scenes/rooms/hybrid.tscn",
@@ -100,7 +102,11 @@
         0.72,
         0.42
       ],
-      "symbol": "♠"
+      "symbol": "♠",
+      "source": "Mr R",
+      "source_role": "gitara · operator sygnału",
+      "echo_type": "voice_fragment",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "name",
@@ -110,7 +116,11 @@
         0.28,
         0.62
       ],
-      "symbol": "I"
+      "symbol": "I",
+      "source": "Mr R",
+      "source_role": "gitara · operator sygnału",
+      "echo_type": "signal_trace",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "stand",
@@ -120,10 +130,24 @@
         0.52,
         0.7
       ],
-      "symbol": "✦"
+      "symbol": "✦",
+      "source": "Mr R",
+      "source_role": "gitara · operator sygnału",
+      "echo_type": "memory_shard",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     }
   ],
   "intro": "Stoisz na środku pustej ulicy jak w westernie. Zamalowuj i glitchuj przeciwnika — jedynego boga, którego dotąd znałeś.",
   "completion_title": "Przeciwnik stracił kształt",
-  "completion_message": "Nie przejąłeś jego marzenia. Została droga, na której możesz wybrać własne."
+  "completion_message": "Nie przejąłeś jego marzenia. Została droga, na której możesz wybrać własne.",
+  "virya_identity": {
+    "character_id": "signal-bearer",
+    "focus_title": "GITARA · Mr R",
+    "member_role": "gitara · operator sygnału",
+    "story_role": "Najbardziej świadoma obecność w świecie Synesthesii. Prowadzi wzrok, inicjuje zmianę i spina muzykę z ruchem.",
+    "future_costume_hook": "kowbojski cień spotyka Viryatkowo: pasy, kabury, przewody, instrument",
+    "hero_moment": "pojedynek powinien czuć obecność gitarzysty-wojownika, bardziej personalnie niż anonimowo",
+    "wow_upgrade": "ostrzejszy silhouette read i mocniejszy kurz/foreground",
+    "band_integration": "Pokój ma wizualnie należeć do świata VIRYA i być gotowy na przyszłe kostiumy Viryatkowa."
+  }
 }

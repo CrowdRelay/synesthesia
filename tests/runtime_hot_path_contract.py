@@ -28,7 +28,7 @@ checks={
     'idle gesture tick gate': 'func needs_tick() -> bool:' in router and 'interaction_router.needs_tick()' in stage,
     'no callv event hot path': '.callv(' not in backend and '_events(_backend.call(&"pointer_move"' in backend,
     'behavior idle gate': 'behavior.needs_tick()' in stage and 'func needs_tick() -> bool:' in base,
-    'party sleeps at rest': 'state["motion_active"] = still_moving' in party and 'return cinematic_active() or bool(state.get("motion_active", false))' in party,
+    'party sleeps at rest': 'state["motion_active"] = still_moving' in party and 'burst_ages' in party and 'return false' in party,
     'hybrid bounded duel tick': 'duel_elapsed' in hybrid and ' < 3.0)' in hybrid,
     'audio control cadence': 'const CONTROL_INTERVAL: float = 1.0 / 60.0' in audio and '_control_accumulator' in audio,
     'adaptive sleeps off gameplay': 'func set_suspended(value: bool)' in adaptive and 'set_process(profile_name == "balanced" and not value)' in adaptive,

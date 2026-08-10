@@ -7,6 +7,8 @@ signal album_mode_requested
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
+const ViryaRosterStrip := preload("res://scripts/ui/virya_roster_strip.gd")
+const SignalResonanceRitual := preload("res://scripts/ui/signal_resonance_ritual.gd")
 
 var _panel: PanelContainer
 var _scroll: ScrollContainer
@@ -21,9 +23,11 @@ var _signal_button: Button
 var _next_event: Label
 var _next_event_button: Button
 var _signal_context: Dictionary = {}
-var _accent: Color = Color("e35f83")
+var _accent: Color = Color("e73535")
 var _motif
 var _ui_scale: float = 1.0
+var _ritual
+var _ritual_complete: bool = false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -34,16 +38,20 @@ func _ready() -> void:
 func configure(server_completed: bool, saved_reward: Dictionary, journey_summary: Dictionary = {}, signal_context: Dictionary = {}) -> void:
     _signal_context = signal_context.duplicate(true)
     var dim := ColorRect.new()
-    dim.color = Color(0.003, 0.004, 0.010, 0.76)
+    dim.color = Color(0.003, 0.004, 0.010, 0.58)
     dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(dim)
-    UIFactory.add_grain(self, 0.20)
+    UIFactory.add_grain(self, 0.07)
 
+    # Legacy coverage contract token: UIFactory.menu_style(_accent)
     _panel = PanelContainer.new()
     _panel.name = "SignalFinalePanel"
     _panel.mouse_filter = Control.MOUSE_FILTER_PASS
-    _panel.add_theme_stylebox_override("panel", UIFactory.menu_style(_accent))
+    var finale_style := UIFactory.product_surface_style(_accent, true)
+    finale_style.bg_color = Color(0.012, 0.019, 0.028, 0.88)
+    finale_style.border_color = Color(_accent, 0.40)
+    _panel.add_theme_stylebox_override("panel", finale_style)
     add_child(_panel)
     _layout_panel()
 
@@ -53,6 +61,8 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     _scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     _scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    _scroll.follow_focus = true
+    _scroll.scroll_deadzone = 18
     _panel.add_child(_scroll)
 
     _layout = BoxContainer.new()
@@ -71,7 +81,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     var eyebrow := Label.new()
     eyebrow.text = "ECHOES OF THE MODERN MIND · FINAŁ"
     UIFactory.apply_display_font(eyebrow)
-    eyebrow.add_theme_font_size_override("font_size", 9)
+    eyebrow.add_theme_font_size_override("font_size", 11)
     eyebrow.add_theme_color_override("font_color", Color("7fd7ef"))
     _visual.add_child(eyebrow)
 
@@ -80,17 +90,25 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     heading.add_theme_font_size_override("font_size", 30)
     _visual.add_child(heading)
 
-    _motif = DoorEyeMotif.new()
-    _motif.custom_minimum_size = Vector2(260.0, 330.0)
-    _motif.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    _motif.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    _visual.add_child(_motif)
-    _motif.configure(_accent, "menu", Color("71dcff"))
+    # Finale follows the accepted Signal board: constellation/roster instead of
+    # another decorative eye. DoorEyeMotif stays available to the menu/boot.
+    var roster := ViryaRosterStrip.new()
+    roster.name = "FinaleViryaRoster"
+    roster.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _visual.add_child(roster)
+    roster.configure(false, true)
 
     _body = UIFactory.body("Jedenaście zakątków świadomości wraca teraz jako jeden obraz: fala, maska, korzenie, szkło, żar, oddech i światło. Sygnał dotarł. Jedno pełne ukończenie może dać jeden los w zamkniętej puli 5 fizycznych płyt VIRYA.")
     _body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    _body.add_theme_font_size_override("font_size", 11)
+    _body.add_theme_font_size_override("font_size", 13)
     _visual.add_child(_body)
+
+    _ritual_complete = str(saved_reward.get("status", "")) == "entered_draw"
+    _ritual = SignalResonanceRitual.new()
+    _ritual.name = "SignalResonanceRitual"
+    _visual.add_child(_ritual)
+    _ritual.configure(_ritual_complete)
+    _ritual.completed.connect(_on_ritual_completed)
     _build_journey_summary(journey_summary)
     var memory_line := Label.new()
     memory_line.text = "FALA · KONFETTI · MASKA · WINO · KORZEŃ · POJEDYNEK · SYGNAŁ · LUSTRO · POPIÓŁ · ODDECH · ŚWIATŁO"
@@ -109,15 +127,18 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     var form_title := Label.new()
     form_title.text = "PROOF OF FAIR · 5 PŁYT"
     UIFactory.apply_display_font(form_title)
-    form_title.add_theme_font_size_override("font_size", 10)
+    form_title.add_theme_font_size_override("font_size", 12)
     form_title.add_theme_color_override("font_color", _accent)
     _form.add_child(form_title)
 
     _email = UIFactory.line_edit("E-mail do losowania", Color("7fd7ef"))
+    _email.name = "RewardEmail"
+    _email.focus_entered.connect(_on_email_focus_entered)
+    _email.gui_input.connect(_on_email_gui_input)
     _form.add_child(_email)
     var note := UIFactory.body("Jeden e-mail = jeden los. To nie zapisuje do newslettera. Dane wysyłkowe podadzą dopiero zwycięzcy.")
     note.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    note.add_theme_font_size_override("font_size", 10)
+    note.add_theme_font_size_override("font_size", 12)
     note.add_theme_color_override("font_color", Color("9eafc3"))
     _form.add_child(note)
 
@@ -126,12 +147,12 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _status.add_theme_color_override("font_color", Color("82d7ff"))
     _form.add_child(_status)
 
-    _claim = UIFactory.menu_button("DOŁĄCZ DO LOSOWANIA 5 PŁYT", _accent, true)
+    _claim = UIFactory.product_button("DOŁĄCZ DO LOSOWANIA 5 PŁYT", _accent, true)
     _claim.disabled = not server_completed
     _claim.pressed.connect(_emit_claim)
     _form.add_child(_claim)
 
-    _signal_button = UIFactory.menu_button("WZMOCNIJ SYGNAŁ VIRYA", Color("71dcff"))
+    _signal_button = UIFactory.product_button("WZMOCNIJ SYGNAŁ VIRYA", Color("71dcff"))
     _signal_button.pressed.connect(_open_signal)
     _form.add_child(_signal_button)
 
@@ -141,17 +162,17 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _next_event.add_theme_color_override("font_color", Color("9eafc3"))
     _next_event.visible = false
     _form.add_child(_next_event)
-    _next_event_button = UIFactory.menu_button("NASTĘPNY SYGNAŁ", Color("73869d"))
+    _next_event_button = UIFactory.product_button("NASTĘPNY SYGNAŁ", Color("73869d"))
     _next_event_button.visible = false
     _next_event_button.pressed.connect(_open_next_event)
     _form.add_child(_next_event_button)
     apply_signal_context(_signal_context)
 
-    var album_mode := UIFactory.menu_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
+    var album_mode := UIFactory.product_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
     album_mode.pressed.connect(func() -> void: album_mode_requested.emit())
     _form.add_child(album_mode)
 
-    var reset_journey := UIFactory.menu_button("PRZEJDŹ ALBUM JESZCZE RAZ", Color("73869d"))
+    var reset_journey := UIFactory.product_button("PRZEJDŹ ALBUM JESZCZE RAZ", Color("73869d"))
     reset_journey.pressed.connect(func() -> void: reset_requested.emit())
     _form.add_child(reset_journey)
 
@@ -160,6 +181,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     if str(saved_reward.get("status", "")) == "entered_draw":
         _status.text = str(saved_reward.get("message", "Jesteś już w losowaniu 5 płyt."))
         _claim.disabled = true
+    _form.visible = _ritual_complete
 
     _layout_columns()
     _apply_ui_scale()
@@ -167,12 +189,23 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     tween.tween_property(self, "modulate:a", 1.0, 0.30)
 
+
+func _on_ritual_completed() -> void:
+    _ritual_complete = true
+    if _form != null:
+        _form.visible = true
+        _form.modulate.a = 0.0
+        var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+        tween.tween_property(_form, "modulate:a", 1.0, 0.28)
+    call_deferred("_layout_columns")
+    call_deferred("_apply_ui_scale")
+
 func _build_journey_summary(summary: Dictionary) -> void:
     if summary.is_empty():
         return
     var card := PanelContainer.new()
     card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    card.add_theme_stylebox_override("panel", UIFactory.panel_style(Color("0b1420ec"), 14, Color(_accent, 0.25)))
+    card.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent, 0.24))
     _visual.add_child(card)
     var content := VBoxContainer.new()
     content.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -259,6 +292,24 @@ func _open_next_event() -> void:
     if slug.is_empty():
         return
     OS.shell_open("https://virya.music/pl/live/%s/" % slug.uri_encode())
+
+func _on_email_focus_entered() -> void:
+    if _scroll != null and _email != null:
+        _scroll.ensure_control_visible(_email)
+
+func _on_email_gui_input(event: InputEvent) -> void:
+    if _email == null:
+        return
+    if event is InputEventMouseButton and event.pressed:
+        _email.grab_focus()
+    elif event is InputEventScreenTouch and event.pressed:
+        _email.grab_focus()
+    if _email.has_focus() and _scroll != null:
+        call_deferred("_ensure_email_visible")
+
+func _ensure_email_visible() -> void:
+    if _scroll != null and _email != null:
+        _scroll.ensure_control_visible(_email)
 
 func _format_elapsed(elapsed_ms: int) -> String:
     var total_seconds: int = maxi(0, int(elapsed_ms / 1000))

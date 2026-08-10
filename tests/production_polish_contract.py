@@ -126,7 +126,7 @@ hud = require_group(
     "size_flags_stretch_ratio = 0.82",
     "tylko muzyka",
 )
-require("scripts/ui/chapter_card.gd", "MALUJ OD RAZU", "_timer.wait_time = 3.6", "MOUSE_FILTER_IGNORE")
+require("scripts/ui/chapter_card.gd", "ROZEJRZYJ SIĘ", "_timer.wait_time = 3.6", "MOUSE_FILTER_IGNORE")
 require("scripts/ui/confirm_card.gd", "signal confirmed", "signal cancelled", "UIFactory.modal_content")
 require("scripts/ui/completion_card.gd", "DRZWI OTWARTE", "Zostań i słuchaj")
 require("scripts/ui/signal_finale_card.gd", "Sygnał dotarł.", "ECHOES OF THE MODERN MIND", "DOŁĄCZ DO LOSOWANIA 5 PŁYT", "DoorEyeMotif")
@@ -142,7 +142,7 @@ require("scripts/audio_director.gd", "ResourceLoader.exists", "func _exit_tree()
 require("tests/lifecycle_smoke.gd", "SYNESTHESIA_LIFECYCLE_SMOKE=PASS", "preloader.drain()")
 require("tests/sensory_room_contract.py", "SYNESTHESIA_SENSORY_ROOMS=PASS", "ambience=11", "doors=hinge+supersonic")
 require("tests/door_transition_contract.py", "SYNESTHESIA_DOOR_TRANSITION=PASS", "door=hinged", "no-room-stretch")
-require("tests/cinematic_video_contract.py", "SYNESTHESIA_CINEMATIC_VIDEO=PASS", "clips=12", "lazy=load+unload")
+require("tests/cinematic_video_contract.py", "SYNESTHESIA_CINEMATIC_VIDEO=PASS", "clips=6", "lazy=load+unload")
 require("tests/presentation_contract.py", "SYNESTHESIA_PRESENTATION=PASS", "menu=door-eye+signal", "chapter=nonblocking", "hud=two-panel+content")
 require("scripts/render/room_video_layer.gd", "VideoStreamPlayer.new()", "VideoStreamTheora.new()", "theora.file = _video_path", "_player.stream = null", "entry_strength")
 

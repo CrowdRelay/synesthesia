@@ -100,7 +100,7 @@ func _run() -> void:
         "noise": 1.0,
         "has_room": true,
         "album_completed": true,
-    }, "Zbalansowana", "0.12.9")
+    }, "Zbalansowana", "2.0.0")
     await process_frame
     await process_frame
     _require_label_width(settings, "Dopasuj intensywność", 220.0, "settings")
@@ -262,7 +262,7 @@ func _run() -> void:
 
     var reward = RewardClientScript.new()
     get_root().add_child(reward)
-    reward.configure("", "", "0.12.9", "smoke")
+    reward.configure("", "", "2.0.0", "smoke")
     reward.shutdown()
     await _dispose_node(reward)
 

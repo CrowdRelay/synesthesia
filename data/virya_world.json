@@ -1,0 +1,150 @@
+{
+  "tagline": "Synesthesia ma wyglądać jak część świata VIRYA — ciemna, psychologiczna, sceniczna i ludzka.",
+  "visual_bible": {
+    "north_star": "Mroczny komiksowy fotorealizm z poczuciem sceny, z wyraźną obecnością zespołu i świata Viryatkowa.",
+    "pillars": [
+      "Każdy pokój ma czytelny hero moment i rozpoznawalną dominantę kadru.",
+      "UI i grafiki mają wspólne DNA z VIRYA Signal: czytelność, kontrast, stalowe błękity, różowe akcenty i organiczny mrok.",
+      "Ludzie są ważni: postacie zespołu lub ich symbole pojawiają się w kadrze, nie tylko anonimowe obiekty.",
+      "Warstwy 2.5D muszą podbijać głębię: foreground ma robić wow, subject ma nieść historię, background ma wzmacniać świat.",
+      "Kostiumy Viryatkowa mają być gotowe do wszycia w grafiki bez przebudowy systemu pokojów."
+    ],
+    "palette": [
+      "#71DCFF",
+      "#E35F83",
+      "#F0CF88",
+      "#0A1018",
+      "#1A2230"
+    ],
+    "lighting": [
+      "teatralne rim lighty",
+      "punktowe światło prowadzące wzrok",
+      "ciemne wnętrza z jednym silnym źródłem światła",
+      "subtelny bloom tylko w hero momentach"
+    ],
+    "asset_targets": {
+      "scene": "1080x1920 master, eksport runtime 675x1200",
+      "subject": "1080x1920 master z czytelną sylwetką",
+      "foreground": "864x1536 master z mocnym depth cue",
+      "background": "648x1152 master z zapasem na parallax"
+    }
+  },
+  "characters": [
+    {
+      "id": "signal-bearer",
+      "title": "GITARA · Mr R",
+      "member_role": "gitara · operator sygnału",
+      "summary": "Najbardziej świadoma obecność w świecie Synesthesii. Prowadzi wzrok, inicjuje zmianę i spina muzykę z ruchem.",
+      "costume_hook": "biały kitel lub pasy bezpieczeństwa, czarne taśmy, neonowy błękit przy dłoni lub kablach",
+      "props": [
+        "gitara",
+        "przewody",
+        "światło diagnostyczne"
+      ]
+    },
+    {
+      "id": "voice-under-mask",
+      "title": "GŁOS · Yanusin",
+      "member_role": "frontman · rzecznik emocji",
+      "summary": "Figura, która pokazuje napięcie między ukryciem a ekspresją. Idealna dla kadrów z maskami, stołem, rytuałem i wezwaniem.",
+      "costume_hook": "maska sceniczna, ciemny płaszcz, chirurgiczna biel z różowym akcentem",
+      "props": [
+        "mikrofon",
+        "maska",
+        "szarfy"
+      ]
+    },
+    {
+      "id": "warden-of-rhythm",
+      "title": "PERA · Koobosky",
+      "member_role": "perkusja · mad doctor",
+      "summary": "Utrzymuje puls i napięcie. Nadaje scenom fizyczny ciężar, nerw, uderzenie i kontrolowany chaos.",
+      "costume_hook": "lekarski fartuch, rękawice, metalowe elementy, sygnety lub pasy",
+      "props": [
+        "pałki",
+        "monitor medyczny",
+        "mechaniczne impulsy"
+      ]
+    },
+    {
+      "id": "anchor-of-weight",
+      "title": "BAS · Lubek",
+      "member_role": "bas · fundament i cień",
+      "summary": "Uziemia świat Synesthesii i pilnuje, żeby nawet najbardziej oniryczne kadry miały ciężar i cielesność.",
+      "costume_hook": "pielęgniarski uniform w ciemniejszej tonacji, uprzęże, skórzane akcenty",
+      "props": [
+        "bas",
+        "lampy industrialne",
+        "stalowe ramy"
+      ]
+    }
+  ],
+  "room_mapping": {
+    "wave-of-uncertainty": {
+      "character_id": "anchor-of-weight",
+      "hero_moment": "potężna fala ma czuć obecność człowieka, jakby ciężar ciała rozcinał wodę lub stał wobec żywiołu",
+      "future_costume_hook": "mokry płaszcz lub pasy, stalowe światło, ciężkie sylwetki w tle",
+      "wow_upgrade": "większy foreground ze spienioną wodą i czytelny punkt skupienia"
+    },
+    "party-time": {
+      "character_id": "warden-of-rhythm",
+      "hero_moment": "balonowy chaos z rytmicznym impulsem i obecnością gospodarza sceny",
+      "future_costume_hook": "medyczny konfetti look, pałki, lampy imprezowe jak sprzęt sali zabiegowej",
+      "wow_upgrade": "mocniejsza głębia, confetti w foregroundzie, bardziej wyrazista sylwetka"
+    },
+    "unmasked": {
+      "character_id": "voice-under-mask",
+      "hero_moment": "twarz i maski mają sprawiać wrażenie person scenicznych, nie anonimowej instalacji",
+      "future_costume_hook": "sceniczna maska, biel i krew-róż, smukła centralna sylwetka",
+      "wow_upgrade": "jeden silny centralny portret i agresywniejsze warstwy masek"
+    },
+    "the-calling": {
+      "character_id": "voice-under-mask",
+      "hero_moment": "uczta zamienia się w rytuał zespołu, a toast wygląda jak wezwanie do wejścia w świat VIRYA",
+      "future_costume_hook": "elegancki dark formal z medycznymi detalami i stołową ceremonią",
+      "wow_upgrade": "mocniejsza centralna kompozycja stołu i czytelni uczestnicy rytuału"
+    },
+    "seed-of-doubt": {
+      "character_id": "signal-bearer",
+      "hero_moment": "korzeń lub drzewo ma oplatać przestrzeń wokół postaci, jakby myśl wrastała w ciało",
+      "future_costume_hook": "kable jak korzenie, dłonie w świetle, organiczny błękit",
+      "wow_upgrade": "bardziej czytelna postać i dramatyczniejsze światło boczne"
+    },
+    "hybrid": {
+      "character_id": "signal-bearer",
+      "hero_moment": "pojedynek powinien czuć obecność gitarzysty-wojownika, bardziej personalnie niż anonimowo",
+      "future_costume_hook": "kowbojski cień spotyka Viryatkowo: pasy, kabury, przewody, instrument",
+      "wow_upgrade": "ostrzejszy silhouette read i mocniejszy kurz/foreground"
+    },
+    "technophobia": {
+      "character_id": "warden-of-rhythm",
+      "hero_moment": "figura przeciążona bodźcami powinna być bardziej sceniczna i ludzka, jak ktoś wpadł w zwarcie świata",
+      "future_costume_hook": "mad doctor z neonowym błędem, monitorami i pasami",
+      "wow_upgrade": "większy kontrast, czytelniejsza twarz/sylwetka, bardziej brutalny glitch"
+    },
+    "invaluable": {
+      "character_id": "anchor-of-weight",
+      "hero_moment": "lustrzane szkło ma pękać wokół ciężkiej postaci lub obecności, nie tylko wokół obiektu",
+      "future_costume_hook": "industrialna sylwetka i fragmenty odbić kostiumu",
+      "wow_upgrade": "wyraźniejsza figura i bardziej dynamiczny foreground ze szkłem"
+    },
+    "from-the-ashes": {
+      "character_id": "signal-bearer",
+      "hero_moment": "odrodzenie ma być bardziej performerskie: nie tylko feniks, ale i człowiek niosący ogień zmiany",
+      "future_costume_hook": "biały kostium opalany światłem, żar w przewodach lub przy instrumencie",
+      "wow_upgrade": "bardziej czytelna relacja między postacią a feniksem"
+    },
+    "waves": {
+      "character_id": "anchor-of-weight",
+      "hero_moment": "cichy pokój ma mieć obecność kogoś, kto trwa mimo lęku i bezsenności",
+      "future_costume_hook": "spokojna sylwetka na łóżku lub przy oknie, ciężkie zasłony i lampa",
+      "wow_upgrade": "subtelny foreground i emocjonalny focus point"
+    },
+    "rise": {
+      "character_id": "voice-under-mask",
+      "hero_moment": "ostatnie światło ma czuć się jak wyjście całego kolektywu przez drzwi, nie samotny stockowy obraz",
+      "future_costume_hook": "biało-czarna sylwetka z akcentem różu, światło jako finał sceniczny",
+      "wow_upgrade": "bardziej zapadająca w pamięć centralna figura i sakralne światło"
+    }
+  }
+}

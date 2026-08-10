@@ -20,13 +20,12 @@ require(
     "BUNDLED_DISPLAY_FONT_PATH",
     "_load_bundled_font",
     '"Impact"',
-    '"Chalkduster"',
     "static func apply_title_font(control: Control)",
     '"DIN Condensed"',
     "font.font_weight = 900",
     "font.font_stretch = 76",
-    "font.font_stretch = 82",
-    "control.alignment = HORIZONTAL_ALIGNMENT_CENTER",
+    "font.font_stretch = 74",
+    "control.alignment = HORIZONTAL_ALIGNMENT_LEFT",
     "Generic actions follow the same clean sans-serif vocabulary as Virya/Signal",
     "Content headings stay neutral for ecosystem consistency",
 )
@@ -85,8 +84,8 @@ require(
     "scripts/ui/boot_sequence.gd",
     'BootAuthoredEye',
     '_motif.arm_authored_animation(true)',
-    'UIFactory.apply_title_font(_title)',
-    'OTWÓRZ  ·  ODKRYJ  ·  POCZUJ',
+    'UIFactory.apply_display_font(_title)',
+    'SZUKAJ  ·  DOTKNIJ  ·  ODSZUM',
 )
 intro = read("scripts/ui/experience_intro_card.gd")
 for token in ('_motif.configure(_accent, "menu", Color("ef6fbd"))',):
@@ -115,8 +114,8 @@ require(
 
 require(
     "scripts/ui/experience_intro_card.gd",
-    'eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER',
-    'title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER',
+    'eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT',
+    'title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT',
     '_content_root.add_child(eyebrow)',
     '_content_root.add_child(title)',
 )
@@ -130,13 +129,12 @@ require(
     'custom minimum sizes\n    # are never multiplied twice',
 )
 
-button_asset = ROOT / "assets/comic/button_comic.webp"
-if not button_asset.is_file() or button_asset.stat().st_size < 4_000 or button_asset.stat().st_size > 30_000:
-    failures.append("assets/comic/button_comic.webp: missing or outside lightweight comic-button budget")
+if (ROOT / "assets/comic").exists() and any(p.is_file() for p in (ROOT / "assets/comic").rglob("*")):
+    failures.append("legacy comic assets must not return; Signal V2 uses flat product surfaces")
 
 if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_UI_QUALITY_POLISH=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_UI_QUALITY_POLISH=PASS buttons=centered+no-black-rails type=poster-display+punk-title completion=clean-cta settings=x eye=pingpong-authored-loop doors=first-person menu-header=centered completion=balanced")
+print("SYNESTHESIA_UI_QUALITY_POLISH=PASS buttons=left-rail+no-black-rails type=condensed-signal+clean-title completion=clean-cta settings=x eye=pingpong-authored-loop doors=first-person menu-header=left-rail completion=balanced")

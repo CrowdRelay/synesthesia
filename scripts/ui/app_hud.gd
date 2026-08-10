@@ -1,4 +1,5 @@
 extends Control
+# Legacy presentation contract token: UIFactory.story_style(_accent, 0.88, false)
 
 signal settings_requested
 
@@ -163,13 +164,13 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     _set_reveal_ui(0.0)
     act_label.text = "AKT I · ROZPOZNANIE"
     _accent = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
-    top_panel.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.88, false))
-    bottom_panel.add_theme_stylebox_override("panel", UIFactory.story_style(_accent.lerp(Color("f3d39d"), 0.48), 0.88, false))
+    top_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent, 0.22))
+    bottom_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent.lerp(Color("f0cf88"), 0.42), 0.18))
     top_accent_bar.color = _accent
     bottom_accent_bar.color = _accent.lerp(Color("f3d39d"), 0.42)
     progress_bar.add_theme_stylebox_override("fill", _bar_style(_accent))
     if toast_panel != null:
-        toast_panel.add_theme_stylebox_override("panel", UIFactory.story_style(_accent, 0.94, true))
+        toast_panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(_accent, true))
     if toast_accent_bar != null:
         toast_accent_bar.color = _accent
     _set_palette(room_data)
@@ -202,6 +203,11 @@ func enter_completion_beat() -> void:
 func update_reveal(normalized: float) -> void:
     _set_reveal_ui(normalized)
     _interaction_guide.note_progress(normalized)
+
+func update_instruction(text_value: String) -> void:
+    if instruction_label == null or text_value.strip_edges().is_empty():
+        return
+    instruction_label.text = text_value.strip_edges().to_upper()
 
 func update_discovery(text_value: String) -> void:
     if text_value.is_empty() or not visible:
@@ -308,7 +314,7 @@ func _interaction_prompt(interaction: String) -> String:
         "toast_table": "PRZYTRZYMAJ WINO · PRZYSUŃ KIELISZEK",
         "grow_tree": "PRZYTRZYMAJ ZIARNO · PROWADŹ WZROST",
         "western_duel": "PRZYTRZYMAJ CEL · PUŚĆ",
-        "repair_glitches": "DOTKNIJ EKRANÓW · DOSTRÓJ SYGNAŁ",
+        "repair_glitches": "SZUKAJ ŹRÓDEŁ SZUMU · CHWYTAJ · ODŁĄCZAJ",
         "crack_mirrors": "PUKNIJ W TAFLĘ · ZRZUĆ JĄ RUCHEM",
         "raise_phoenix": "ZAKRĘĆ POPIOŁEM · UNIEŚ RUCH",
         "intimate_bedroom": "PRZYTRZYMAJ OBECNOŚĆ · ZBLIŻ DWA PUNKTY",

@@ -31,10 +31,10 @@
       "spacing": 0.54
     },
     "art_direction": {
-      "style": "dark_comic",
+      "style": "virya_signal_cinematic",
       "caption": "ŻAR PAMIĘTA KSZTAŁT",
-      "ink_strength": 0.78,
-      "halftone_strength": 0.26,
+      "ink_strength": 0.48,
+      "halftone_strength": 0.075,
       "scene_image": "res://assets/rooms/vertical/from-the-ashes-scene.webp",
       "scene_opacity": 1.0,
       "scene_parallax": 0.012,
@@ -52,7 +52,9 @@
         "foreground",
         "atmosphere"
       ],
-      "film_grain_strength": 0.3
+      "film_grain_strength": 0.2,
+      "visual_system": "virya-signal-v2",
+      "asset_generation": "moodboard-locked-2026"
     },
     "id": "from-the-ashes",
     "scene_path": "res://scenes/rooms/from-the-ashes.tscn",
@@ -100,7 +102,11 @@
         0.29,
         0.67
       ],
-      "symbol": "✦"
+      "symbol": "✦",
+      "source": "Mr R",
+      "source_role": "gitara · operator sygnału",
+      "echo_type": "voice_fragment",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "wing",
@@ -110,7 +116,11 @@
         0.68,
         0.45
       ],
-      "symbol": "⌁"
+      "symbol": "⌁",
+      "source": "Mr R",
+      "source_role": "gitara · operator sygnału",
+      "echo_type": "signal_trace",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     },
     {
       "id": "name",
@@ -120,10 +130,24 @@
         0.5,
         0.28
       ],
-      "symbol": "△"
+      "symbol": "△",
+      "source": "Mr R",
+      "source_role": "gitara · operator sygnału",
+      "echo_type": "memory_shard",
+      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
     }
   ],
   "intro": "Odgarniaj popiół. Z każdym ruchem żar łączy się w sylwetkę feniksa.",
   "completion_title": "Feniks rozłożył skrzydła",
-  "completion_message": "Popiół nie zniknął. Stał się tłem dla nowego ruchu."
+  "completion_message": "Popiół nie zniknął. Stał się tłem dla nowego ruchu.",
+  "virya_identity": {
+    "character_id": "signal-bearer",
+    "focus_title": "GITARA · Mr R",
+    "member_role": "gitara · operator sygnału",
+    "story_role": "Najbardziej świadoma obecność w świecie Synesthesii. Prowadzi wzrok, inicjuje zmianę i spina muzykę z ruchem.",
+    "future_costume_hook": "biały kostium opalany światłem, żar w przewodach lub przy instrumencie",
+    "hero_moment": "odrodzenie ma być bardziej performerskie: nie tylko feniks, ale i człowiek niosący ogień zmiany",
+    "wow_upgrade": "bardziej czytelna relacja między postacią a feniksem",
+    "band_integration": "Pokój ma wizualnie należeć do świata VIRYA i być gotowy na przyszłe kostiumy Viryatkowa."
+  }
 }

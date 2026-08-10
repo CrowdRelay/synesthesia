@@ -6,12 +6,35 @@ func configure(data: Dictionary) -> void:
     super.configure(data)
     state["cracked"] = []
     state["shattered"] = []
+    state["active_mirror"] = -1
+    state["mirror_drag_start"] = Vector2.ZERO
 
 func acts() -> Array[String]:
     return ["WEJDŹ MIĘDZY ODBICIA", "ROZBIJ CUDZĄ MIARĘ", "ZOSTAW WŁASNĄ WARTOŚĆ"]
 
 func interaction_hint() -> String:
-    return "PUKNIJ W TAFLĘ · ZRZUĆ JĄ RUCHEM"
+    var cracked: Array = state.get("cracked", [])
+    var shattered: Array = state.get("shattered", [])
+    if shattered.size() >= MIRRORS.size():
+        return "ODBICIA STRACIŁY GŁOS · POSZUKAJ ECH"
+    if cracked.size() > shattered.size():
+        return "PĘKNIĘTA TAFLA NIE JEST JUŻ PRZYTWIERDZONA · ZRZUĆ JĄ RUCHEM"
+    return "LUSTRA REAGUJĄ NA DOTYK · PUKNIJ W JEDNĄ TAFLĘ"
+
+func hint_targets() -> Array[Dictionary]:
+    var cracked: Array = state.get("cracked", [])
+    var shattered: Array = state.get("shattered", [])
+    var targets: Array[Dictionary] = []
+    for index in range(MIRRORS.size()):
+        if shattered.has(index):
+            continue
+        targets.append({"point": MIRRORS[index], "kind": "swipe" if cracked.has(index) else "tap", "radius": 0.09})
+        if targets.size() >= 3:
+            break
+    return targets
+
+func captures_pointer_at(point_norm: Vector2) -> bool:
+    return _mirror_near(point_norm, 0.14) >= 0 or int(state.get("active_mirror", -1)) >= 0
 
 func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#BDD9FF")), Color("bdd9ff"))
@@ -39,21 +62,38 @@ func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> v
                 var angle: float = float(branch) * TAU / 8.0 + float(index) * 0.13
                 canvas.draw_line(center, center + Vector2.from_angle(angle) * (34.0 + float(branch % 3) * 7.0), Color(Color.WHITE, 0.26), 1.0)
 
+# Legacy contract: kind == "tap" remains accepted through tap/press union.
 func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Dictionary]:
     var point: Vector2 = _gesture_point(gesture)
     var cracked: Array = state.get("cracked", [])
     var shattered: Array = state.get("shattered", [])
-    var index: int = _mirror_near(point, 0.11)
-    if index < 0:
-        return []
-    if kind == "tap" and not cracked.has(index) and not shattered.has(index):
-        cracked.append(index)
-        state["cracked"] = cracked
-        return [_interaction_event("mirror", index, "Pierwsza rysa — odbicie nie jest wyrokiem", MIRRORS[index], 0.085, 0.86)]
-    if kind == "swipe" and cracked.has(index) and not shattered.has(index):
-        shattered.append(index)
-        state["shattered"] = shattered
-        return [_interaction_event("mirror", index + 20, "Tafla zeszła ze ściany — miara została bez głosu", MIRRORS[index], 0.12, 0.96)]
+    var index: int = _mirror_near(point, 0.12)
+    if kind in ["tap", "press"] and index >= 0 and not shattered.has(index):
+        if kind == "press":
+            state["active_mirror"] = index
+            state["mirror_drag_start"] = point
+        if not cracked.has(index):
+            cracked.append(index)
+            state["cracked"] = cracked
+            return [_interaction_event("mirror", index, "Pierwsza rysa — teraz możesz zrzucić taflę", MIRRORS[index], 0.09, 0.88)]
+    if kind == "release":
+        var active := int(state.get("active_mirror", -1))
+        var start_value: Variant = state.get("mirror_drag_start", point)
+        var start_point: Vector2 = start_value if start_value is Vector2 else point
+        state["active_mirror"] = -1
+        if active >= 0 and active < MIRRORS.size() and cracked.has(active) and not shattered.has(active) and point.distance_to(start_point) >= 0.10:
+            shattered.append(active)
+            state["shattered"] = shattered
+            return [_interaction_event("mirror", active + 20, "Tafla zeszła ze ściany — miara została bez głosu", MIRRORS[active], 0.13, 0.98)]
+    if kind == "swipe":
+        var start_point: Vector2 = _gesture_start(gesture)
+        for candidate in range(MIRRORS.size()):
+            if shattered.has(candidate) or not cracked.has(candidate):
+                continue
+            if _distance_to_segment(MIRRORS[candidate], start_point, point) <= 0.12:
+                shattered.append(candidate)
+                state["shattered"] = shattered
+                return [_interaction_event("mirror", candidate + 20, "Tafla zeszła ze ściany — miara została bez głosu", MIRRORS[candidate], 0.13, 0.98)]
     return []
 
 func mechanic_progress() -> float:
