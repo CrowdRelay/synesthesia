@@ -79,7 +79,17 @@
         "debris_rise",
         "white_bloom"
       ],
-      "reduced_motion_strength": 0.18
+      "reduced_motion_strength": 0.18,
+      "signature_interaction": "ascension_light_shaft",
+      "motion_grammar": {
+        "ambient": "vertical light current + ascending motes + step illumination",
+        "reactive": "rise_atrium",
+        "reveal": "noise-to-clarity",
+        "hero": "atrium-white-bloom",
+        "settle": "living-loop",
+        "hud": "art-first-auto-dim",
+        "reduced_motion": "static-readable-low-energy"
+      }
     }
   },
   "sensory": {

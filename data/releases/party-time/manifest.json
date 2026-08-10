@@ -79,7 +79,17 @@
         "surface_gloss",
         "confetti_dust"
       ],
-      "reduced_motion_strength": 0.18
+      "reduced_motion_strength": 0.18,
+      "signature_interaction": "membrane_beat",
+      "motion_grammar": {
+        "ambient": "asynchronous membranes + cable ribbons + dust",
+        "reactive": "pop_balloons",
+        "reveal": "noise-to-clarity",
+        "hero": "afterparty-pulse",
+        "settle": "living-loop",
+        "hud": "art-first-auto-dim",
+        "reduced_motion": "static-readable-low-energy"
+      }
     }
   },
   "sensory": {

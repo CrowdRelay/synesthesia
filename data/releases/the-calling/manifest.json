@@ -80,7 +80,17 @@
         "reflection_shimmer",
         "altar_haze"
       ],
-      "reduced_motion_strength": 0.18
+      "reduced_motion_strength": 0.18,
+      "signature_interaction": "liquid_candle_resonance",
+      "motion_grammar": {
+        "ambient": "counter-rotating sigils + ritual ripple + low light",
+        "reactive": "toast_table",
+        "reveal": "noise-to-clarity",
+        "hero": "toast-resonance-ring",
+        "settle": "living-loop",
+        "hud": "art-first-auto-dim",
+        "reduced_motion": "static-readable-low-energy"
+      }
     }
   },
   "sensory": {

@@ -157,6 +157,8 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     _room_index = room_index
     _room_total = room_total
     _context_seen = false
+    top_panel.modulate.a = 1.0
+    bottom_panel.modulate.a = 1.0
     title_label.text = title.trim_prefix("VIRYA: ")
     subtitle_label.text = subtitle
     subtitle_label.visible = true
@@ -199,6 +201,17 @@ func enter_completion_beat() -> void:
     set_painting(false)
     if instruction_label != null:
         instruction_label.text = "Pokój odpowiedział. Drzwi już prowadzą dalej."
+    # After full reveal the artwork, not the instrument panel, owns the screen.
+    # Keep the navigation affordance readable while secondary HUD chrome recedes.
+    subtitle_label.visible = false
+    palette_row.visible = false
+    brush_label.visible = false
+    var tween: Tween = create_tween()
+    tween.set_parallel(true)
+    tween.set_trans(Tween.TRANS_SINE)
+    tween.set_ease(Tween.EASE_OUT)
+    tween.tween_property(top_panel, "modulate:a", 0.18, 0.48)
+    tween.tween_property(bottom_panel, "modulate:a", 0.30, 0.48)
 
 func update_reveal(normalized: float) -> void:
     _set_reveal_ui(normalized)

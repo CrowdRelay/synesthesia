@@ -80,7 +80,17 @@
         "dual_wave_sync",
         "haze"
       ],
-      "reduced_motion_strength": 0.18
+      "reduced_motion_strength": 0.18,
+      "signature_interaction": "rain_dual_wave_sync",
+      "motion_grammar": {
+        "ambient": "curtain sway + rain traces + dual phase waves",
+        "reactive": "intimate_bedroom",
+        "reveal": "noise-to-clarity",
+        "hero": "window-wave-convergence",
+        "settle": "living-loop",
+        "hud": "art-first-auto-dim",
+        "reduced_motion": "static-readable-low-energy"
+      }
     }
   },
   "sensory": {

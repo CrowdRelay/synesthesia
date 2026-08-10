@@ -116,7 +116,17 @@
         "scanline_drift",
         "micro_spark"
       ],
-      "reduced_motion_strength": 0.18
+      "reduced_motion_strength": 0.18,
+      "signature_interaction": "cable_arc_afterglow",
+      "motion_grammar": {
+        "ambient": "async crt jitter + led decay + cable tension",
+        "reactive": "repair_glitches",
+        "reveal": "noise-to-clarity",
+        "hero": "breaker-signal-lock",
+        "settle": "living-loop",
+        "hud": "art-first-auto-dim",
+        "reduced_motion": "static-readable-low-energy"
+      }
     }
   },
   "sensory": {

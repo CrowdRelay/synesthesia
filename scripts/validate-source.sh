@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
+python3 scripts/check-ci-policy.py
 
 # One canonical, platform-independent gate set. Native/Web/Android builders add
 # their own engine/toolchain/export proofs after this script succeeds.
@@ -32,6 +33,7 @@ python3 tests/gesture_semantics_contract.py
 python3 tests/startup_latency_contract.py
 python3 tests/runtime_resilience_contract.py
 python3 tests/runtime_hot_path_contract.py
+python3 tests/room_preload_cache_contract.py
 python3 tests/save_state_cache_contract.py
 python3 tests/save_reliability_contract.py
 python3 tests/service_worker_consistency_contract.py
@@ -55,6 +57,9 @@ python3 tests/door_transition_contract.py
 python3 tests/cinematic_video_contract.py
 python3 tests/presentation_contract.py
 python3 tests/post_reveal_living_contract.py
+python3 tests/post_reveal_gameplay_v8_contract.py
+python3 tests/room_signature_grammar_v9_contract.py
+python3 tests/living_rooms_v4_contract.py
 python3 tests/virya_world_contract.py
 python3 tests/gamefeel_v5_contract.py
 python3 tests/comic_skin_contract.py
@@ -62,6 +67,7 @@ python3 tests/ui_input_contract.py
 python3 tests/ui_performance_contract.py
 python3 tests/ui_scale_flow_contract.py
 python3 tests/ui_quality_polish_contract.py
+python3 tests/mobile_feedback_contract.py
 python3 tests/signal_design_system_contract.py
 python3 tests/game_feel_v3_contract.py
 python3 tests/synesthesia_v2_art_contract.py

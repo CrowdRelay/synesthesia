@@ -23,6 +23,13 @@ critical = (
 for token in critical:
     if token not in source_gate:
         failures.append(f'canonical source gate missing: {token}')
+
+# Every platform-independent Python contract belongs to the canonical source
+# gate. This prevents new regression tests from silently existing outside CI.
+for contract in sorted((ROOT / 'tests').glob('*_contract.py')):
+    token = f'tests/{contract.name}'
+    if token not in source_gate:
+        failures.append(f'canonical source gate missing contract: {token}')
 for name, text in (
     ('validate.sh', validate),
     ('build-web-preview.sh', web),

@@ -19,7 +19,6 @@ for token in required_fx:
 
 for token in [
     'Technophobia: residual horizontal sync errors',
-    'Invaluable: tiny glass refraction',
     'Seed: sap current gently bends',
     'Ashes: heat haze around phoenix',
     'Hybrid: radial motor vibration',
@@ -28,6 +27,19 @@ for token in [
 ]:
     if token not in shader:
         failures.append(f'missing shader living effect: {token}')
+
+# Assert Invaluable behavior rather than an old comment string. The effect was
+# intentionally strengthened from a tiny refraction into shard/crystal motion
+# plus a travelling reflection sweep; comment wording is not the contract.
+for token in [
+    'unlock_profile == 7',
+    'float shard = sin(',
+    'float crystal = sin(',
+    'float sweep = smoothstep(',
+    'Invaluable: moving glass glint.',
+]:
+    if token not in shader:
+        failures.append(f'missing Invaluable glass behavior: {token}')
 
 for token in ['Start the living loop before the hero beat fully settles', 'overlap_target', 'delta * 0.88']:
     if token not in runtime:

@@ -78,7 +78,17 @@
         "wing_breath",
         "ash_drift"
       ],
-      "reduced_motion_strength": 0.18
+      "reduced_motion_strength": 0.18,
+      "signature_interaction": "phoenix_ember_breath",
+      "motion_grammar": {
+        "ambient": "ember convection + wing breath + ash lift",
+        "reactive": "raise_phoenix",
+        "reveal": "noise-to-clarity",
+        "hero": "phoenix-ember-bloom",
+        "settle": "living-loop",
+        "hud": "art-first-auto-dim",
+        "reduced_motion": "static-readable-low-energy"
+      }
     }
   },
   "sensory": {

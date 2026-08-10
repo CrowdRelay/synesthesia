@@ -78,7 +78,17 @@
         "reflection_sweep",
         "glass_dust"
       ],
-      "reduced_motion_strength": 0.18
+      "reduced_motion_strength": 0.18,
+      "signature_interaction": "glass_reflection_sweep",
+      "motion_grammar": {
+        "ambient": "reflection shimmer + shard drift + crack light",
+        "reactive": "crack_mirrors",
+        "reveal": "noise-to-clarity",
+        "hero": "mirror-shatter-glint",
+        "settle": "living-loop",
+        "hud": "art-first-auto-dim",
+        "reduced_motion": "static-readable-low-energy"
+      }
     }
   },
   "sensory": {

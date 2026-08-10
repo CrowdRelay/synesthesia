@@ -78,7 +78,17 @@
         "spore_rise",
         "canopy_breath"
       ],
-      "reduced_motion_strength": 0.18
+      "reduced_motion_strength": 0.18,
+      "signature_interaction": "root_sap_pulse",
+      "motion_grammar": {
+        "ambient": "root heartbeat + rising motes + trunk current",
+        "reactive": "grow_tree",
+        "reveal": "noise-to-clarity",
+        "hero": "root-heartbeat-rise",
+        "settle": "living-loop",
+        "hud": "art-first-auto-dim",
+        "reduced_motion": "static-readable-low-energy"
+      }
     }
   },
   "sensory": {

@@ -78,7 +78,17 @@
         "metal_glint",
         "dust_orbit"
       ],
-      "reduced_motion_strength": 0.18
+      "reduced_motion_strength": 0.18,
+      "signature_interaction": "frequency_lock_pulse",
+      "motion_grammar": {
+        "ambient": "counter-rotating frequency rings + unstable bands",
+        "reactive": "western_duel",
+        "reveal": "noise-to-clarity",
+        "hero": "frequency-core-lock",
+        "settle": "living-loop",
+        "hud": "art-first-auto-dim",
+        "reduced_motion": "static-readable-low-energy"
+      }
     }
   },
   "sensory": {
