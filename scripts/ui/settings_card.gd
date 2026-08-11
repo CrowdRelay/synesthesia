@@ -94,18 +94,27 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     content.add_theme_constant_override("separation", 8)
     scroll.add_child(content)
 
-    # Keep the close affordance in a bounded corner rectangle. Putting it in an
-    # expanding row made the styled button read as a full-height/right rail.
+    # PanelContainer stretches each direct Control child to its content rect.
+    # Keep the close button inside a full-panel overlay so only its small corner
+    # rectangle receives input instead of becoming a right-side rail.
+    var chrome := Control.new()
+    chrome.name = "SettingsChrome"
+    chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    panel.add_child(chrome)
+    chrome.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     var close_x := UIFactory.button("X", true)
     close_x.name = "CloseSettingsX"
     close_x.tooltip_text = "Wróć do malowania"
+    close_x.alignment = HORIZONTAL_ALIGNMENT_CENTER
+    close_x.custom_minimum_size = Vector2(42.0, 42.0) * _ui_scale
+    close_x.size_flags_horizontal = Control.SIZE_SHRINK_END
+    chrome.add_child(close_x)
     close_x.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-    close_x.offset_left = -56.0 * _ui_scale
+    close_x.offset_left = -52.0 * _ui_scale
     close_x.offset_right = -10.0 * _ui_scale
     close_x.offset_top = 10.0 * _ui_scale
     close_x.offset_bottom = 52.0 * _ui_scale
     close_x.pressed.connect(func() -> void: close_requested.emit())
-    panel.add_child(close_x)
 
     var eyebrow: Label = Label.new()
     eyebrow.text = "VIRYA · SYNESTEZJA"
