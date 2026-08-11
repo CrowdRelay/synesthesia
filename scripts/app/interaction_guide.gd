@@ -4,7 +4,7 @@ signal hint_ready(text: String)
 signal visual_hint_changed(strength: float)
 signal assist_level_changed(level: int)
 
-const FIRST_IDLE_SECONDS := 7.5
+const FIRST_IDLE_SECONDS := 4.2
 const FOLLOWUP_IDLE_SECONDS := 11.0
 const PROGRESS_EPSILON := 0.025
 const MISS_COOLDOWN_MS := 650
@@ -34,7 +34,7 @@ func configure(interaction: String) -> void:
     _miss_count = 0
     _resume_boost_pending = false
     _set_assist_level(0)
-    visual_hint_changed.emit(0.28)
+    visual_hint_changed.emit(0.44)
     _restart(FIRST_IDLE_SECONDS)
 
 func suspend() -> void:
@@ -47,7 +47,7 @@ func resume() -> void:
     if _interaction.is_empty():
         return
     _enabled = true
-    visual_hint_changed.emit(0.32 if _resume_boost_pending else 0.28)
+    visual_hint_changed.emit(0.48 if _resume_boost_pending else 0.42)
     _restart(2.8 if _resume_boost_pending else FIRST_IDLE_SECONDS)
     _resume_boost_pending = false
 
@@ -56,7 +56,7 @@ func prime_after_resume() -> void:
     # The first hint arrives sooner once, without making new runs tutorial-heavy.
     _resume_boost_pending = true
     if _enabled:
-        visual_hint_changed.emit(0.34)
+        visual_hint_changed.emit(0.50)
         _restart(2.8)
 
 func note_miss() -> void:
@@ -76,7 +76,7 @@ func note_miss() -> void:
 func note_interaction() -> void:
     if not _enabled:
         return
-    visual_hint_changed.emit(0.10)
+    visual_hint_changed.emit(0.06)
     _restart(FOLLOWUP_IDLE_SECONDS)
 
 func note_progress(normalized: float) -> void:
@@ -90,7 +90,7 @@ func note_progress(normalized: float) -> void:
         _last_progress = progress
         _miss_count = maxi(0, _miss_count - 2)
         _set_assist_level(3 if _miss_count >= 6 else (2 if _miss_count >= 4 else (1 if _miss_count >= 2 else 0)))
-        visual_hint_changed.emit(0.10)
+        visual_hint_changed.emit(0.06)
         _restart(FOLLOWUP_IDLE_SECONDS)
 
 func _restart(delay: float) -> void:

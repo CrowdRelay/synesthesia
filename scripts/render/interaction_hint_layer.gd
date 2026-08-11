@@ -71,13 +71,13 @@ func _draw_target(target: Dictionary, index: int) -> void:
     var radius_norm := clampf(float(target.get("radius", 0.075)), 0.035, 0.20)
     var base_radius := minf(size.x, size.y) * radius_norm
     var pulse: float = 0.5 if _reduced_motion else 0.5 + sin(_phase * 2.0 + float(index) * 1.47) * 0.5
-    var alpha: float = _strength * (0.18 + pulse * 0.13)
+    var alpha: float = _strength * (0.25 + pulse * 0.15)
     var radius := base_radius * (0.82 + pulse * 0.12)
 
     # Thin concentric rings match the approved Signal mockup and never resemble
     # a mobile-game glowing hotspot.
-    draw_arc(center, radius, -PI * 0.84, PI * 0.84, 36, Color(_accent, alpha), 1.35)
-    draw_arc(center, radius * 0.68, PI * 0.18, PI * 1.82, 28, Color(Color.WHITE, alpha * 0.30), 1.0)
+    draw_arc(center, radius, -PI * 0.84, PI * 0.84, 36, Color(_accent, alpha), 1.55)
+    draw_arc(center, radius * 0.68, PI * 0.18, PI * 1.82, 28, Color(Color.WHITE, alpha * 0.34), 1.1)
     _draw_gesture_glyph(center, radius, kind, alpha)
 
 func _draw_gesture_glyph(center: Vector2, radius: float, kind: String, alpha: float) -> void:

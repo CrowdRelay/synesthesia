@@ -28,6 +28,9 @@ var bottom_content: VBoxContainer
 var progress_row: HBoxContainer
 var settings_button: Button
 var instruction_label: Label
+var mobile_instruction_panel: PanelContainer
+var mobile_instruction_label: Label
+var mobile_instruction_accent_bar: ColorRect
 var top_accent_bar: ColorRect
 var bottom_accent_bar: ColorRect
 var toast_panel: PanelContainer
@@ -57,6 +60,7 @@ func _ready() -> void:
     _build_header_row()
     _build_top()
     _build_bottom()
+    _build_mobile_instruction()
     _build_toast()
     _build_act_banner()
     _restore_timer = _timer(0.72, func() -> void: set_painting(false))
@@ -127,6 +131,8 @@ func _build_top() -> void:
     _layout_flow._build_top()
 func _build_bottom() -> void:
     _layout_flow._build_bottom()
+func _build_mobile_instruction() -> void:
+    _layout_flow._build_mobile_instruction()
 func _build_toast() -> void:
     _layout_flow._build_toast()
 func _build_act_banner() -> void:
@@ -175,9 +181,16 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
         toast_panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(_accent, true))
     if toast_accent_bar != null:
         toast_accent_bar.color = _accent
+    if mobile_instruction_panel != null:
+        mobile_instruction_panel.modulate.a = 1.0
+        mobile_instruction_panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(_accent, true))
+    if mobile_instruction_accent_bar != null:
+        mobile_instruction_accent_bar.color = _accent
     _set_palette(room_data)
     var interaction := str(room_data.get("interaction", "paint"))
     instruction_label.text = _interaction_prompt(interaction)
+    if mobile_instruction_label != null:
+        mobile_instruction_label.text = instruction_label.text
     _interaction_guide.configure(interaction)
     _rebuild_journey()
     _hide_toast()
@@ -201,6 +214,8 @@ func enter_completion_beat() -> void:
     set_painting(false)
     if instruction_label != null:
         instruction_label.text = "Komnata odpowiedziała. Przejście już czeka."
+    if mobile_instruction_label != null:
+        mobile_instruction_label.text = "KOMNATA ODPOWIEDZIAŁA · PRZEJŚCIE CZEKA"
     # After full reveal the artwork, not the instrument panel, owns the screen.
     # Keep the navigation affordance readable while secondary HUD chrome recedes.
     subtitle_label.visible = false
@@ -221,6 +236,8 @@ func update_instruction(text_value: String) -> void:
     if instruction_label == null or text_value.strip_edges().is_empty():
         return
     instruction_label.text = text_value.strip_edges().to_upper()
+    if mobile_instruction_label != null:
+        mobile_instruction_label.text = instruction_label.text
 
 func update_discovery(text_value: String) -> void:
     if text_value.is_empty() or not visible:
@@ -270,6 +287,9 @@ func set_painting(value: bool) -> void:
     tween.set_ease(Tween.EASE_OUT)
     tween.tween_property(top_panel, "modulate:a", target_alpha, 0.16)
     tween.tween_property(bottom_panel, "modulate:a", target_bottom_alpha, 0.16)
+    if mobile_instruction_panel != null:
+        var mobile_alpha: float = 0.38 if value else (0.70 if _context_seen else 1.0)
+        tween.tween_property(mobile_instruction_panel, "modulate:a", mobile_alpha, 0.16)
     subtitle_label.visible = true
     palette_row.visible = true
     brush_label.visible = true

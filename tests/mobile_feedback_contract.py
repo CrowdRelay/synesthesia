@@ -8,6 +8,7 @@ finale = (ROOT / "scripts/ui/signal_finale_card.gd").read_text(errors="replace")
 router = (ROOT / "scripts/input/interaction_router.gd").read_text(errors="replace")
 interaction = (ROOT / "scripts/render/room_interaction_flow.gd").read_text(errors="replace")
 hud = (ROOT / "scripts/ui/hud_layout_flow.gd").read_text(errors="replace")
+app_hud = (ROOT / "scripts/ui/app_hud.gd").read_text(errors="replace")
 composite = (ROOT / "shaders/room_composite.gdshader").read_text(errors="replace")
 failures: list[str] = []
 
@@ -56,9 +57,16 @@ for token in ("app.get_global_rect().position", "* (1.0 - app.current_progress) 
     if token not in interaction:
         failures.append(f"room_interaction_flow.gd: missing mobile interaction/readability guard {token}")
 
-for token in ("PORTRAIT_HEADER_HEIGHT: float = 184.0", "PORTRAIT_PANEL_HEIGHT: float = 164.0", "34.0 if portrait else 22.0"):
+for token in ("PORTRAIT_HEADER_HEIGHT: float = 184.0", "PORTRAIT_PANEL_HEIGHT: float = 164.0", "34.0 if portrait else 22.0", "MobileInstructionPanel", "app.bottom_margin.visible = not portrait", "safe_bottom_px", "app.toast_panel.offset_bottom = app.mobile_instruction_panel.offset_top"):
     if token not in hud:
         failures.append(f"hud_layout_flow.gd: missing portrait hint sizing {token}")
+scale_flow = hud[hud.index("func _apply_ui_scale"):hud.index("func _build_header_row")]
+if scale_flow.index("_layout_story_overlays()") > scale_flow.index("_apply_mobile_safe_area()"):
+    failures.append("hud_layout_flow.gd: safe area must be applied after overlay layout")
+
+for token in ("mobile_instruction_panel.modulate.a = 1.0", "mobile_alpha: float = 0.38 if value", "UIFactory.product_surface_style(_accent, true)"):
+    if token not in app_hud:
+        failures.append(f"app_hud.gd: missing mobile instruction lifecycle {token}")
 
 for token in ("clamp(static_alpha, 0.0, 0.28)", "float reveal_lift", "0.026 * grain_strength"):
     if token not in composite:
