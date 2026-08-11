@@ -17,7 +17,7 @@ require(
     "scripts/ui/ui_metrics.gd",
     "REFERENCE_VIEWPORT: Vector2 = Vector2(540.0, 960.0)",
     "MAX_SCALE: float = 2.0",
-    "PORTRAIT_CONTENT_BOOST: float = 1.15",
+    "PORTRAIT_CONTENT_BOOST: float = 1.30",
     "PORTRAIT_ASPECT_THRESHOLD: float = 0.82",
     "LOCAL_DEBUG_MIN_SCALE: float = 1.30",
     "static func scale_for_viewport",

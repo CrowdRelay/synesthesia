@@ -8,7 +8,7 @@ extends RefCounted
 const REFERENCE_VIEWPORT: Vector2 = Vector2(540.0, 960.0)
 const MIN_SCALE: float = 0.95
 const MAX_SCALE: float = 2.0
-const PORTRAIT_CONTENT_BOOST: float = 1.15
+const PORTRAIT_CONTENT_BOOST: float = 1.30
 const PORTRAIT_ASPECT_THRESHOLD: float = 0.82
 const MIN_LABEL_FONT_SIZE: int = 10
 const MIN_INTERACTIVE_FONT_SIZE: int = 12

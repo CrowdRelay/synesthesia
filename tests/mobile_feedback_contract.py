@@ -10,7 +10,7 @@ failures: list[str] = []
 for token in (
     "MIN_SCALE: float = 0.95",
     "MAX_SCALE: float = 2.0",
-    "PORTRAIT_CONTENT_BOOST: float = 1.15",
+    "PORTRAIT_CONTENT_BOOST: float = 1.30",
     "MIN_LABEL_FONT_SIZE: int = 10",
     "MIN_INTERACTIVE_FONT_SIZE: int = 12",
 ):
