@@ -75,7 +75,7 @@ func _build(room_index: int, room_total: int, room_name: String, intro_text: Str
         _content.add_child(guide)
 
     var hint := Label.new()
-    hint.text = "ROZEJRZYJ SIĘ · SZUKAJ REAKCJI · SZUM → MUZYKA"
+    hint.text = "ROZEJRZYJ SIĘ · SZUKAJ REAKCJI · SZUM USTĘPUJE MUZYCE"
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     UIFactory.apply_display_font(hint)
     hint.add_theme_font_size_override("font_size", 8)

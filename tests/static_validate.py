@@ -335,7 +335,7 @@ def main() -> int:
     for token in ('SettingsGearIcon', 'SettingsGearIcon.new()', 'SettingsGearIcon'):
         if token not in hud_contract_source:
             fail(f"procedural settings gear button contract missing: {token}", failures)
-    for token in ('instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM → MUZYKA"', 'top_accent_bar', 'bottom_accent_bar', 'subtitle_label.visible = true'):
+    for token in ('instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM USTĘPUJE MUZYCE"', 'top_accent_bar', 'bottom_accent_bar', 'subtitle_label.visible = true'):
         if token not in hud_contract_source:
             fail(f"persistent HUD information/style contract missing: {token}", failures)
     intro_source = (ROOT / "scripts/ui/experience_intro_card.gd").read_text()

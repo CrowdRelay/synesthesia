@@ -124,10 +124,10 @@ func _build() -> void:
     var progress_track := ColorRect.new()
     progress_track.color = Color("1d2633b8")
     progress_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    progress_track.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+    progress_track.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
     var line_half: float = minf(120.0 * _ui_scale, viewport_size.x * 0.22)
-    progress_track.offset_left = viewport_size.x * 0.5 - line_half
-    progress_track.offset_right = viewport_size.x * 0.5 + line_half
+    progress_track.offset_left = -line_half
+    progress_track.offset_right = line_half
     progress_track.offset_top = -24.0 * _ui_scale
     progress_track.offset_bottom = -21.0 * _ui_scale
     add_child(progress_track)

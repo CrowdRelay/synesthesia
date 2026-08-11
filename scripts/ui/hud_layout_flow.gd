@@ -192,7 +192,7 @@ func _build_bottom() -> void:
 
     app.instruction_label = Label.new()
     app.instruction_label.name = "InstructionLabel"
-    app.instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM → MUZYKA"
+    app.instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM USTĘPUJE MUZYCE"
     app.instruction_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     app.instruction_label.custom_minimum_size = Vector2(0.0, 22.0)
     app.instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

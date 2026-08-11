@@ -16,7 +16,7 @@ for token in (
     'header_row = HBoxContainer.new()',
     'top_panel.custom_minimum_size = Vector2(0.0, 146.0)',
     'bottom_panel.custom_minimum_size = Vector2(0.0, 146.0)',
-    'instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM → MUZYKA"',
+    'instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM USTĘPUJE MUZYCE"',
     'subtitle_label.visible = true',
     'palette_row.visible = true',
     'brush_label.visible = true',
