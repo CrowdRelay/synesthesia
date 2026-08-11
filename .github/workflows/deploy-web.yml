@@ -156,3 +156,24 @@ jobs:
             --site="${NETLIFY_SITE_ID}" \
             --auth="${NETLIFY_AUTH_TOKEN}" \
             --message="GitHub Actions artifact ${SOURCE_SHA}"
+
+      - name: Report Synesthesia release to CrowdRelay ledger
+        if: steps.freshness.outputs.current == 'true'
+        continue-on-error: true
+        env:
+          CROWDRELAY_BASE_URL: ${{ vars.CROWDRELAY_PRODUCTION_BASE_URL }}
+          CROWDRELAY_COMMERCE_API_KEY: ${{ secrets.CROWDRELAY_COMMERCE_API_KEY }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${CROWDRELAY_BASE_URL:-}" || -z "${CROWDRELAY_COMMERCE_API_KEY:-}" ]]; then
+            echo "SYNESTHESIA_RELEASE_LEDGER=SKIP reason=not-configured"
+            exit 0
+          fi
+          jq -n --arg sha "${SOURCE_SHA}" --arg ref "${GITHUB_RUN_ID}" '{component_key:"synesthesia",environment:"production",source_sha:$sha,artifact_digest:null,deploy_ref:$ref,version:null,manifest_sha:null,metadata:{reporter:"github-actions"},observed_at:(now|todateiso8601)}' | \
+            curl --fail-with-body --silent --show-error --max-time 15 \
+              -H 'content-type: application/json' \
+              -H "Authorization: Bearer ${CROWDRELAY_COMMERCE_API_KEY}" \
+              --data-binary @- "${CROWDRELAY_BASE_URL%/}/v1/internal/autopilot/release-components"
+          echo "SYNESTHESIA_RELEASE_LEDGER=PASS sha=${SOURCE_SHA}"

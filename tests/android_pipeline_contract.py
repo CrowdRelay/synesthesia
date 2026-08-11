@@ -23,7 +23,13 @@ if not script:
     failures.append("scripts/build-android-apk.sh missing")
 
 for token in (
-    "branches: [main]",
+    "workflow_run:",
+    'workflows: ["CI"]',
+    "github.event.workflow_run.conclusion == 'success'",
+    "github.event.workflow_run.event == 'push'",
+    "github.event.workflow_run.head_branch == 'main'",
+    "SOURCE_SHA:",
+    "ref: ${{ env.SOURCE_SHA }}",
     "workflow_dispatch:",
     'java-version: "17"',
     "android-actions/setup-android@",
@@ -123,4 +129,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_ANDROID_PIPELINE=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_ANDROID_PIPELINE=PASS target=arm64 rust=required apk=verified sdk=35 artifact=on-main")
+print("SYNESTHESIA_ANDROID_PIPELINE=PASS target=arm64 rust=required apk=verified sdk=35 artifact=after-green-main-ci")

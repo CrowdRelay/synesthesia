@@ -2,9 +2,9 @@ name: Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths-ignore: ["**/*.md", "docs/**"]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -16,17 +16,25 @@ concurrency:
 jobs:
   apk:
     name: Build arm64 debug APK
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
+      SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       ANDROID_DEBUG_KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
       ANDROID_DEBUG_KEYSTORE_USER_SECRET: ${{ secrets.ANDROID_DEBUG_KEYSTORE_USER }}
       ANDROID_DEBUG_KEYSTORE_PASSWORD_SECRET: ${{ secrets.ANDROID_DEBUG_KEYSTORE_PASSWORD }}
       SYNESTHESIA_ANDROID_VERSION_CODE: ${{ github.run_number }}
 
     steps:
-      - name: Check out repository
+      - name: Check out exact validated source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.SOURCE_SHA }}
 
       - name: Validate canonical source contracts
         run: ./scripts/validate-source.sh
@@ -96,14 +104,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 tools/artifact_manifest.py create build/android build/android-artifact-manifest.json --source-sha "${GITHUB_SHA}"
-          python3 tools/artifact_manifest.py verify build/android build/android-artifact-manifest.json --source-sha "${GITHUB_SHA}"
+          python3 tools/artifact_manifest.py create build/android build/android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
+          python3 tools/artifact_manifest.py verify build/android build/android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
 
       - name: Upload Godot validation diagnostics
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: synesthesia-android-godot-logs-${{ github.sha }}
+          name: synesthesia-android-godot-logs-${{ env.SOURCE_SHA }}
           path: build/ci-logs/*.log
           if-no-files-found: ignore
           retention-days: 7
@@ -111,7 +119,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: synesthesia-android-debug-${{ github.sha }}
+          name: synesthesia-android-debug-${{ env.SOURCE_SHA }}
           path: |
             build/android/synesthesia-debug.apk
             build/android/synesthesia-debug.apk.sha256

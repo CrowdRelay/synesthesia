@@ -62,6 +62,7 @@ python3 tests/room_signature_grammar_v9_contract.py
 python3 tests/living_rooms_v4_contract.py
 python3 tests/virya_world_contract.py
 python3 tests/gamefeel_v5_contract.py
+python3 tests/rum_contract.py
 python3 tests/comic_skin_contract.py
 python3 tests/ui_input_contract.py
 python3 tests/ui_performance_contract.py

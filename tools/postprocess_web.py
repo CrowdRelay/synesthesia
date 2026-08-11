@@ -25,6 +25,7 @@ font_preload_tags = [
 boot_style_tag = '<link rel="stylesheet" href="/boot-shell.css">'
 boot_script_tag = '<script src="/boot-shell.js"></script>'
 register_tag = '<script src="/register-sw.js" defer></script>'
+rum_tag = '<script src="/rum.js" defer></script>'
 boot_markup = '''<div id="synesthesia-boot" role="status" aria-label="Ładowanie Synesthesii">
   <h1 class="synesthesia-boot__title">SYNESTHESIA</h1>
   <div class="synesthesia-boot__sub">VIRYA · ECHOES OF THE MODERN MIND</div>
@@ -48,6 +49,8 @@ if 'id="synesthesia-boot"' not in html:
     html = html.replace("<body>", f"<body>\n{boot_markup}", 1)
 if register_tag not in html:
     html = html.replace("</body>", f"  {register_tag}\n</body>")
+if rum_tag not in html:
+    html = html.replace("</body>", f"  {rum_tag}\n</body>")
 index_path.write_text(html)
 
 manifest_path = BUILD / "manifest.webmanifest"

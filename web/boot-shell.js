@@ -147,6 +147,7 @@
   function removeBoot() {
     if (removed || migrationActive) return;
     removed = true;
+    window.dispatchEvent(new CustomEvent("synesthesia:interactive", { detail: { durationMs: performance.now() } }));
     stopBootVideo();
     const el = bootElement();
     if (!el) return;
