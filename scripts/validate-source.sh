@@ -69,6 +69,7 @@ python3 tests/ui_performance_contract.py
 python3 tests/ui_scale_flow_contract.py
 python3 tests/ui_quality_polish_contract.py
 python3 tests/mobile_feedback_contract.py
+python3 tests/mobile_clarity_contract.py
 python3 tests/signal_design_system_contract.py
 python3 tests/game_feel_v3_contract.py
 python3 tests/synesthesia_v2_art_contract.py

@@ -29,6 +29,7 @@ uniform vec2 brush_point = vec2(0.5, 0.5);
 uniform float brush_energy : hint_range(0.0, 1.0) = 0.0;
 uniform float film_grain_strength : hint_range(0.0, 1.0) = 0.32;
 uniform float subject_lift : hint_range(0.0, 1.0) = 0.0;
+uniform float display_clarity : hint_range(0.0, 1.0) = 0.0;
 uniform float runtime_scale : hint_range(0.5, 1.0) = 1.0;
 uniform float cinematic_time = 0.0;
 uniform float unlock_motion : hint_range(0.0, 1.0) = 0.0;
@@ -226,6 +227,7 @@ void fragment() {
     vec3 lifted_subject = subject.rgb * (1.0 + subject_lift * 0.075);
     photographed = mix(photographed, lifted_subject, subject.a * (0.88 + subject_lift * 0.10));
     photographed = mix(photographed, foreground.rgb, foreground.a * 0.96);
+    photographed = mix(photographed, sqrt(max(photographed, vec3(0.0))), display_clarity * 0.10);
 
     float mask = texture(reveal_mask, UV).r;
     float reveal_radius = completion_reveal * 1.45;
@@ -260,6 +262,7 @@ void fragment() {
     static_alpha *= 1.0 + (scan - 0.5) * scanline_strength;
     static_alpha += hidden * rolling * roll_strength * noise_intensity * 0.65;
     static_alpha += hidden * tear * horizontal_jitter * noise_intensity * 0.18;
+    static_alpha *= mix(1.0, 0.72, display_clarity);
     if (quiet_visuals) {
         static_alpha *= 0.22;
     }
@@ -272,7 +275,7 @@ void fragment() {
     // Revealed artwork gets a gentle luminance lift for phone screens. This is
     // tied to the mask/cinematic reveal, so the hidden state still reads as
     // signal loss while discovered details remain legible.
-    float reveal_lift = reveal * 0.08 + completion_reveal * 0.07;
+    float reveal_lift = reveal * (0.08 + display_clarity * 0.07) + completion_reveal * 0.07;
     color = mix(color, sqrt(max(color, vec3(0.0))), clamp(reveal_lift, 0.0, 0.15));
 
     // Localized post-process details after reveal: candle flicker/liquid ripple,
@@ -362,7 +365,7 @@ void fragment() {
     color *= 1.0 + (revealed_grain - 0.5) * 0.026 * grain_strength * reveal;
 
     float vignette = 1.0 - smoothstep(0.22, 0.78, distance(UV, vec2(0.5)));
-    color *= mix(0.72, 1.0, vignette);
+    color *= mix(mix(0.72, 0.80, display_clarity), 1.0, vignette);
 
     // Accepted Signal board grade: cool steel in shadows, selective accent in
     // highlights, high black floor and no broad comic-poster quantisation.

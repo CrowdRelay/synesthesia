@@ -108,6 +108,9 @@ func _configure_art(room_data: Dictionary, asset_source = null) -> void:
     app.composite_material.set_shader_parameter("brush_point", app.pointer_norm)
     app.composite_material.set_shader_parameter("brush_energy", 0.0)
     app.composite_material.set_shader_parameter("subject_lift", 0.0)
+    var viewport_size: Vector2 = app.get_viewport_rect().size
+    var portrait_clarity: float = 1.0 if viewport_size.y > viewport_size.x else 0.35 if OS.has_feature("mobile") else 0.0
+    app.composite_material.set_shader_parameter("display_clarity", portrait_clarity)
     app.composite_material.set_shader_parameter("runtime_scale", app._runtime_scale)
     app.composite_material.set_shader_parameter("cinematic_time", 0.0)
     app.composite_material.set_shader_parameter("unlock_motion", 0.0)

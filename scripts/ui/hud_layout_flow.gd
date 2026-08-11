@@ -5,8 +5,8 @@ const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 
 const PORTRAIT_ASPECT_THRESHOLD: float = 0.82
-const PORTRAIT_HEADER_HEIGHT: float = 184.0
-const PORTRAIT_PANEL_HEIGHT: float = 164.0
+const PORTRAIT_HEADER_HEIGHT: float = 172.0
+const PORTRAIT_PANEL_HEIGHT: float = 152.0
 
 var app: Control
 
@@ -238,7 +238,7 @@ func _build_mobile_instruction() -> void:
 
     app.mobile_instruction_accent_bar = ColorRect.new()
     app.mobile_instruction_accent_bar.color = app._accent
-    app.mobile_instruction_accent_bar.custom_minimum_size = Vector2(4.0, 34.0)
+    app.mobile_instruction_accent_bar.custom_minimum_size = Vector2(5.0, 48.0)
     app.mobile_instruction_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(app.mobile_instruction_accent_bar)
 
@@ -249,7 +249,7 @@ func _build_mobile_instruction() -> void:
     app.mobile_instruction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     app.mobile_instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     UIFactory.apply_display_font(app.mobile_instruction_label)
-    app.mobile_instruction_label.add_theme_font_size_override("font_size", 11)
+    app.mobile_instruction_label.add_theme_font_size_override("font_size", 15)
     app.mobile_instruction_label.add_theme_color_override("font_color", Color("edf5ff"))
     row.add_child(app.mobile_instruction_label)
 
@@ -318,9 +318,9 @@ func _layout_story_overlays() -> void:
         app.mobile_instruction_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
         app.mobile_instruction_panel.offset_left = side
         app.mobile_instruction_panel.offset_right = -side
-        app.mobile_instruction_panel.offset_top = -102.0 * app._ui_scale
+        app.mobile_instruction_panel.offset_top = -132.0 * app._ui_scale
         app.mobile_instruction_panel.offset_bottom = -24.0 * app._ui_scale
-        app.mobile_instruction_panel.custom_minimum_size = Vector2(maxf(360.0 * app._ui_scale, viewport_size.x - side * 2.0), 78.0 * app._ui_scale)
+        app.mobile_instruction_panel.custom_minimum_size = Vector2(maxf(360.0 * app._ui_scale, viewport_size.x - side * 2.0), 108.0 * app._ui_scale)
     if app.toast_panel != null:
         app.toast_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
         app.toast_panel.offset_left = side
@@ -400,7 +400,7 @@ func _apply_mobile_safe_area() -> void:
     var bottom_extra: int = clampi(int(round(float(safe_bottom_px) * scale_y)), 0, max_safe_inset)
     if app.mobile_instruction_panel != null and app.mobile_instruction_panel.visible:
         app.mobile_instruction_panel.offset_bottom = -(24.0 * app._ui_scale + float(bottom_extra))
-        app.mobile_instruction_panel.offset_top = app.mobile_instruction_panel.offset_bottom - 78.0 * app._ui_scale
+        app.mobile_instruction_panel.offset_top = app.mobile_instruction_panel.offset_bottom - 108.0 * app._ui_scale
         if app.toast_panel != null:
             app.toast_panel.offset_bottom = app.mobile_instruction_panel.offset_top - 6.0 * app._ui_scale
             app.toast_panel.offset_top = app.toast_panel.offset_bottom - 72.0 * app._ui_scale

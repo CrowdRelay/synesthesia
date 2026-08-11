@@ -50,18 +50,18 @@ func _build(room_index: int, room_total: int, room_name: String, intro_text: Str
     var eyebrow := Label.new()
     eyebrow.text = "ROZDZIAŁ %02d / %02d  ·  %s" % [room_index + 1, room_total, caption if not caption.is_empty() else "VIRYA · SYNESTEZJA"]
     UIFactory.apply_display_font(eyebrow)
-    eyebrow.add_theme_font_size_override("font_size", 8)
+    eyebrow.add_theme_font_size_override("font_size", 9)
     eyebrow.add_theme_color_override("font_color", _accent)
     _content.add_child(eyebrow)
 
     var heading := UIFactory.heading(room_name)
     heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    heading.add_theme_font_size_override("font_size", 20)
+    heading.add_theme_font_size_override("font_size", 23)
     _content.add_child(heading)
 
     _body = UIFactory.body(_shorten(intro_text, 150))
     _body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    _body.add_theme_font_size_override("font_size", 10)
+    _body.add_theme_font_size_override("font_size", 12)
     _content.add_child(_body)
 
     var identity_line := _identity_line(identity)
@@ -70,7 +70,7 @@ func _build(room_index: int, room_total: int, room_name: String, intro_text: Str
         guide.text = identity_line
         guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         UIFactory.apply_display_font(guide)
-        guide.add_theme_font_size_override("font_size", 8)
+        guide.add_theme_font_size_override("font_size", 9)
         guide.add_theme_color_override("font_color", Color("f0cf88"))
         _content.add_child(guide)
 
@@ -78,7 +78,7 @@ func _build(room_index: int, room_total: int, room_name: String, intro_text: Str
     hint.text = "ROZEJRZYJ SIĘ · ODCZYTAJ ZNAKI · POZWÓL SZUMOWI OPAŚĆ"
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     UIFactory.apply_display_font(hint)
-    hint.add_theme_font_size_override("font_size", 8)
+    hint.add_theme_font_size_override("font_size", 10)
     hint.add_theme_color_override("font_color", Color("8fa4bc"))
     _content.add_child(hint)
 
@@ -95,7 +95,7 @@ func _build(room_index: int, room_total: int, room_name: String, intro_text: Str
 
     _timer = Timer.new()
     _timer.one_shot = true
-    _timer.wait_time = 3.6
+    _timer.wait_time = 4.4
     _timer.timeout.connect(_fade_out)
     add_child(_timer)
     _timer.start()
@@ -120,13 +120,13 @@ func _layout_sheet() -> void:
             _motif.custom_minimum_size = Vector2(82.0, 116.0) * _ui_scale
     else:
         _sheet.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-        _sheet.offset_left = 14.0 * _ui_scale
-        _sheet.offset_right = -14.0 * _ui_scale
-        _sheet.offset_top = 18.0 * _ui_scale
-        _sheet.offset_bottom = 214.0 * _ui_scale
+        _sheet.offset_left = 12.0 * _ui_scale
+        _sheet.offset_right = -12.0 * _ui_scale
+        _sheet.offset_top = 12.0 * _ui_scale
+        _sheet.offset_bottom = 286.0 * _ui_scale
         _set_copy_minimum(0.0)
         if _motif != null:
-            _motif.custom_minimum_size = Vector2(72.0, 102.0) * _ui_scale
+            _motif.custom_minimum_size = Vector2(84.0, 122.0) * _ui_scale
 
 func _apply_ui_scale() -> void:
     if _sheet != null:

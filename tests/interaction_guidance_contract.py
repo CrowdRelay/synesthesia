@@ -12,9 +12,9 @@ required_interactions = [
 for interaction in required_interactions:
     assert f'"{interaction}"' in guide, interaction
 
-assert "FIRST_IDLE_SECONDS := 4.2" in guide
+assert "FIRST_IDLE_SECONDS := 2.8" in guide
 assert "FOLLOWUP_IDLE_SECONDS := 11.0" in guide
-assert "visual_hint_changed.emit(0.44)" in guide
+assert "visual_hint_changed.emit(0.62)" in guide
 assert "PROGRESS_EPSILON" in guide
 assert "hint_ready.emit" in guide
 assert "func note_progress" in guide

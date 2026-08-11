@@ -126,7 +126,7 @@ hud = require_group(
     "size_flags_stretch_ratio = 0.82",
     "tylko muzyka",
 )
-require("scripts/ui/chapter_card.gd", "ROZEJRZYJ SIĘ", "_timer.wait_time = 3.6", "MOUSE_FILTER_IGNORE")
+require("scripts/ui/chapter_card.gd", "ROZEJRZYJ SIĘ", "_timer.wait_time = 4.4", "MOUSE_FILTER_IGNORE")
 require("scripts/ui/confirm_card.gd", "signal confirmed", "signal cancelled", "UIFactory.modal_content")
 require("scripts/ui/completion_card.gd", "DRZWI OTWARTE", "Zostań i słuchaj")
 require("scripts/ui/signal_finale_card.gd", "Sygnał dotarł.", "ECHOES OF THE MODERN MIND", "DOŁĄCZ DO LOSOWANIA 5 PŁYT", "DoorEyeMotif")

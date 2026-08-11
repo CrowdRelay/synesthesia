@@ -190,7 +190,7 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     var interaction := str(room_data.get("interaction", "paint"))
     instruction_label.text = _interaction_prompt(interaction)
     if mobile_instruction_label != null:
-        mobile_instruction_label.text = instruction_label.text
+        mobile_instruction_label.text = instruction_label.text.replace(" · ", "\n", true)
     _interaction_guide.configure(interaction)
     _rebuild_journey()
     _hide_toast()

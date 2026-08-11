@@ -36,7 +36,7 @@ REQUIRED_FILES = [
     "data/release_index.json", "data/room_asset_slots.json", "tests/validate_project.gd",
     "tests/room_pipeline_contract.py", "tests/capture_rooms.gd",
     "tests/visual_snapshot_contract.py", "tests/visual_snapshots.json",
-    "tests/new_release_pack_contract.py", "tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py", "assets/video/manifest.json", "tools/update_visual_snapshots.py",
+    "tests/new_release_pack_contract.py", "tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py", "tests/mobile_clarity_contract.py", "assets/video/manifest.json", "tools/update_visual_snapshots.py",
     "tools/perf_budget.py", "tools/memory_budget.py", "tools/audio_mix_budget.py",
     "tools/new_release_pack.py", "tools/asset_report.py", "tools/reset_local_progress.gd", "tests/lifecycle_smoke.gd",
     "web/boot-shell.css", "web/boot-shell.js", "web/_headers", "web/register-sw.js",
@@ -343,7 +343,7 @@ def main() -> int:
         if token not in intro_source:
             fail(f"experience menu contract missing: {token}", failures)
     chapter_source = (ROOT / "scripts/ui/chapter_card.gd").read_text()
-    for token in ('mouse_filter = Control.MOUSE_FILTER_IGNORE', '_timer.wait_time = 3.6', 'ROZEJRZYJ SIĘ'):
+    for token in ('mouse_filter = Control.MOUSE_FILTER_IGNORE', '_timer.wait_time = 4.4', 'ROZEJRZYJ SIĘ'):
         if token not in chapter_source:
             fail(f"non-blocking chapter rail contract missing: {token}", failures)
     eye_source = (ROOT / "scripts/ui/door_eye_motif.gd").read_text()
