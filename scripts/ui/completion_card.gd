@@ -103,9 +103,9 @@ func _enter_listen_mode() -> void:
     if _stay_button != null:
         _stay_button.visible = false
     if _status != null:
-        _status.text = "PEŁNA MUZYKA · POKÓJ ODSŁONIĘTY"
+        _status.text = "PEŁNA MUZYKA · KOMNATA ODSŁONIĘTA"
     if _heading != null:
-        _heading.text = "Zostań i słuchaj — kiedy chcesz, idź dalej"
+        _heading.text = "Zostań w echu — gdy poczujesz przejście, rusz dalej"
     _refresh_layout()
     stay_requested.emit()
 

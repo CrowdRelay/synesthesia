@@ -102,7 +102,7 @@ if "MOUSE_BEHAVIOR_ENABLED if active else Control.MOUSE_BEHAVIOR_DISABLED" not i
 
 lifecycle = (ROOT / "tests/lifecycle_smoke.gd").read_text()
 for token in (
-    '_click_button(experience, "WEJDŹ DO ŚRODKA"',
+    '_click_button(experience, "PRZEKROCZ PRÓG"',
     "_exercise_live_ui_stack()",
     "gui_get_hovered_control()",
     "live-ui-stack pointer click did not reach menu Button.pressed",

@@ -5,6 +5,10 @@ ROOT = Path(__file__).resolve().parents[1]
 metrics = (ROOT / "scripts/ui/ui_metrics.gd").read_text(errors="replace")
 factory = (ROOT / "scripts/ui/ui_factory.gd").read_text(errors="replace")
 finale = (ROOT / "scripts/ui/signal_finale_card.gd").read_text(errors="replace")
+router = (ROOT / "scripts/input/interaction_router.gd").read_text(errors="replace")
+interaction = (ROOT / "scripts/render/room_interaction_flow.gd").read_text(errors="replace")
+hud = (ROOT / "scripts/ui/hud_layout_flow.gd").read_text(errors="replace")
+composite = (ROOT / "shaders/room_composite.gdshader").read_text(errors="replace")
 failures: list[str] = []
 
 for token in (
@@ -43,6 +47,22 @@ for token in (
 ):
     if token not in finale:
         failures.append(f"signal_finale_card.gd: missing mobile/finale fix {token}")
+
+for token in ("touch_origin: Vector2", "touch.position - touch_origin", "drag.position - touch_origin"):
+    if token not in router:
+        failures.append(f"interaction_router.gd: missing cover-fit touch mapping {token}")
+
+for token in ("app.get_global_rect().position", "* (1.0 - app.current_progress) * 1.8"):
+    if token not in interaction:
+        failures.append(f"room_interaction_flow.gd: missing mobile interaction/readability guard {token}")
+
+for token in ("PORTRAIT_HEADER_HEIGHT: float = 184.0", "PORTRAIT_PANEL_HEIGHT: float = 164.0", "34.0 if portrait else 22.0"):
+    if token not in hud:
+        failures.append(f"hud_layout_flow.gd: missing portrait hint sizing {token}")
+
+for token in ("clamp(static_alpha, 0.0, 0.28)", "float reveal_lift", "0.026 * grain_strength"):
+    if token not in composite:
+        failures.append(f"room_composite.gdshader: missing mobile reveal readability {token}")
 
 if failures:
     for failure in failures:

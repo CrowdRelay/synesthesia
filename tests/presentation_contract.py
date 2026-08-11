@@ -31,9 +31,10 @@ for token in (
 
 for token in (
     'SYNESTHESIA',
-    'Interaktywny album w 11 pokojach',
-    'WEJDŹ DO ŚRODKA',
-    'NOWA PODRÓŻ',
+    'Jedenaście komnat utkanych z obrazu',
+    'ZANURZ SIĘ',
+    'PRZEKROCZ PRÓG',
+    'NOWA WĘDRÓWKA',
     'USTAWIENIA',
     'SYGNAŁ',
     'TWÓRCY',
@@ -74,7 +75,7 @@ if complete_block.find('audio_director.reveal_release_excerpt') > complete_block
 
 lifecycle = (ROOT / "tests/lifecycle_smoke.gd").read_text()
 for token in (
-    '_require_button_width(experience, "WEJDŹ DO ŚRODKA"',
+    '_require_button_width(experience, "PRZEKROCZ PRÓG"',
     "func _find_button_with_prefix",
     "func _dispose_node",
 ):

@@ -42,7 +42,7 @@ tech = (behaviors / "technophobia.gd").read_text()
 assert 'state.get("screens", []).size() >= 5' in tech
 
 hud = (ROOT / "scripts" / "ui" / "app_hud.gd").read_text()
-assert 'PĘDZEL POMOCNICZY' in hud
-assert 'GŁÓWNA MECHANIKA ODSZUMIA POKÓJ' in hud
+assert 'ŚLAD DŁONI' in hud
+assert 'GŁÓWNY RYTUAŁ ROZPRASZA SZUM' in hud
 
 print('SYNESTHESIA_ROOM_MECHANICS_V2=PASS rooms=11 progress=mechanic-first brush=assist-only')

@@ -8,7 +8,8 @@ func bind(owner: Control) -> void:
 func _gui_input(event: InputEvent) -> void:
     if not app.interaction_enabled or app.interaction_router == null:
         return
-    var routed: Dictionary = app.interaction_router.route_input(event, app.size, Time.get_ticks_msec(), app.drawing, app._drawing_pointer_id)
+    var touch_origin: Vector2 = app.get_global_rect().position
+    var routed: Dictionary = app.interaction_router.route_input(event, app.size, Time.get_ticks_msec(), app.drawing, app._drawing_pointer_id, touch_origin)
     if not bool(routed.get("handled", false)):
         return
     var point_value: Variant = routed.get("point", app.pointer_norm)
@@ -149,7 +150,9 @@ func _set_progress_from_mask() -> void:
     app.composite_material.set_shader_parameter("progress", app.current_progress)
     app.composite_material.set_shader_parameter("subject_lift", pow(app.current_progress, 0.72))
     var base_noise: float = float(app.sensory.get("visual_snow_calm", 0.032)) if app.calm_mode else float(app.sensory.get("visual_snow_full", 0.064))
-    app.composite_material.set_shader_parameter("noise_intensity", base_noise * (1.0 - app.current_progress) * 3.0)
+    # Keep the discovery veil atmospheric on small OLED screens without hiding
+    # the authored targets. Progress clears it quickly as the artwork appears.
+    app.composite_material.set_shader_parameter("noise_intensity", base_noise * (1.0 - app.current_progress) * 1.8)
     app.atmosphere.set_progress(app.current_progress)
     if app.room_dressing != null:
         app.room_dressing.set_progress(app.current_progress)

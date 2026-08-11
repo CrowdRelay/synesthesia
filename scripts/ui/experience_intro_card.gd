@@ -158,13 +158,13 @@ func _build() -> void:
     _layout.add_child(_action_column)
 
     var menu_label := Label.new()
-    menu_label.text = "WEJDŹ GŁĘBIEJ"
+    menu_label.text = "ZANURZ SIĘ"
     UIFactory.apply_display_font(menu_label)
     menu_label.add_theme_font_size_override("font_size", 9)
     menu_label.add_theme_color_override("font_color", Color("99a9be"))
     _action_column.add_child(menu_label)
 
-    var continue_label: String = "ZOBACZ FINAŁ" if _album_completed else ("KONTYNUUJ" if _has_progress else "WEJDŹ DO ŚRODKA")
+    var continue_label: String = "ZOBACZ FINAŁ" if _album_completed else ("WRÓĆ DO WĘDRÓWKI" if _has_progress else "PRZEKROCZ PRÓG")
     var continue_button := UIFactory.product_button(continue_label, _accent, true)
     continue_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     continue_button.pressed.connect(func() -> void: begin_requested.emit())
@@ -176,7 +176,7 @@ func _build() -> void:
     album_mode_button.pressed.connect(func() -> void: album_mode_requested.emit())
     _action_column.add_child(album_mode_button)
 
-    var new_button := UIFactory.product_button("NOWA PODRÓŻ", _accent)
+    var new_button := UIFactory.product_button("NOWA WĘDRÓWKA", _accent)
     new_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     new_button.visible = _has_progress or _album_completed
     new_button.pressed.connect(func() -> void: new_journey_requested.emit())
@@ -185,7 +185,7 @@ func _build() -> void:
     var utility_divider := UIFactory.signal_rule(_accent, 0.22)
     _action_column.add_child(utility_divider)
     var utility_label := Label.new()
-    utility_label.text = "SYGNAŁ · USTAWIENIA · ŚWIAT VIRYA"
+    utility_label.text = "SYGNAŁ · KRĄG USTAWIEŃ · ŚWIAT VIRYA"
     UIFactory.apply_display_font(utility_label)
     utility_label.add_theme_font_size_override("font_size", 8)
     utility_label.add_theme_color_override("font_color", Color("788ba2"))
@@ -339,7 +339,7 @@ func _restore_description() -> void:
     _description.text = _default_description()
 
 func _default_description() -> String:
-    return "Interaktywny album w 11 pokojach. Dotykasz, przesuwasz, przytrzymujesz i odsłaniasz świat ruchem dłoni, a szum ustępuje muzyce. To nie zagadka ani test — wejdź i sprawdź, jak pokój odpowiada. Każdy pokój ma też rosnąć razem z Viryatkowem i postaciami zespołu."
+    return "Jedenaście komnat utkanych z obrazu, szumu i muzyki. Dotykaj znaków, prowadź światło i budź echa ruchem dłoni. To nie próba ani zagadka — każda komnata odpowiada inaczej, a za ostatnim progiem czeka Sygnał. Ten świat będzie rósł razem z Viryatkowem i postaciami zespołu."
 
 func _exit_requested() -> void:
     if OS.has_feature("web"):

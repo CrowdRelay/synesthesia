@@ -47,7 +47,7 @@ for token in (
     "mouse_filter = Control.MOUSE_FILTER_IGNORE",
     "_next_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER",
     "_stay_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER",
-    '_heading.text = "Zostań i słuchaj — kiedy chcesz, idź dalej"',
+    '_heading.text = "Zostań w echu — gdy poczujesz przejście, rusz dalej"',
 ):
     if token not in completion:
         failures.append(f"completion_card.gd: missing polish {token}")
@@ -90,7 +90,7 @@ require(
     'BootAuthoredEye',
     '_motif.arm_authored_animation(true)',
     'UIFactory.apply_display_font(_title)',
-    'SZUKAJ  ·  DOTKNIJ  ·  ODSZUM',
+    'NASŁUCHUJ  ·  DOTKNIJ  ·  ODSŁOŃ',
 )
 intro = read("scripts/ui/experience_intro_card.gd")
 for token in ('_motif.configure(_accent, "menu", Color("ef6fbd"))',):

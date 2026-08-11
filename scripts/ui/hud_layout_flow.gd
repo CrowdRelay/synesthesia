@@ -4,6 +4,10 @@ const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 
+const PORTRAIT_ASPECT_THRESHOLD: float = 0.82
+const PORTRAIT_HEADER_HEIGHT: float = 184.0
+const PORTRAIT_PANEL_HEIGHT: float = 164.0
+
 var app: Control
 
 func bind(owner: Control) -> void:
@@ -13,15 +17,20 @@ func _apply_ui_scale() -> void:
     var viewport_size: Vector2 = app.get_viewport_rect().size
     app._ui_scale = UiMetrics.scale_for_viewport(viewport_size)
     UiMetrics.apply_tree(app, app._ui_scale)
+    var portrait: bool = viewport_size.x / maxf(1.0, viewport_size.y) <= PORTRAIT_ASPECT_THRESHOLD
+    var header_height: float = PORTRAIT_HEADER_HEIGHT if portrait else 166.0
+    var panel_height: float = PORTRAIT_PANEL_HEIGHT if portrait else 146.0
     if app.header_row != null:
         app.header_row.offset_left = 12.0 * app._ui_scale
         app.header_row.offset_right = -12.0 * app._ui_scale
         app.header_row.offset_top = 12.0 * app._ui_scale
-        app.header_row.offset_bottom = 166.0 * app._ui_scale
+        app.header_row.offset_bottom = header_height * app._ui_scale
     if app.top_panel != null:
-        app.top_panel.custom_minimum_size.y = 146.0 * app._ui_scale
+        app.top_panel.custom_minimum_size.y = panel_height * app._ui_scale
     if app.bottom_panel != null:
-        app.bottom_panel.custom_minimum_size.y = 146.0 * app._ui_scale
+        app.bottom_panel.custom_minimum_size.y = panel_height * app._ui_scale
+    if app.instruction_label != null:
+        app.instruction_label.custom_minimum_size.y = (34.0 if portrait else 22.0) * app._ui_scale
     _apply_mobile_safe_area()
     _layout_story_overlays()
 
@@ -352,7 +361,9 @@ func _apply_mobile_safe_area() -> void:
     var top_extra: int = clampi(int(round(float(safe.position.y) * scale_y)), 0, max_safe_inset)
     if app.header_row != null:
         app.header_row.offset_top = 12.0 * app._ui_scale + float(top_extra)
-        app.header_row.offset_bottom = 166.0 * app._ui_scale + float(top_extra)
+        var portrait: bool = viewport_size.x / maxf(1.0, viewport_size.y) <= PORTRAIT_ASPECT_THRESHOLD
+        var header_height: float = PORTRAIT_HEADER_HEIGHT if portrait else 166.0
+        app.header_row.offset_bottom = header_height * app._ui_scale + float(top_extra)
 
 func _bar_style(color: Color) -> StyleBoxFlat:
     var style := StyleBoxFlat.new()

@@ -127,11 +127,11 @@ func _run() -> void:
     experience.configure(Color("64e8d9"))
     await process_frame
     await process_frame
-    _require_label_width(experience, "Interaktywny album", 260.0, "experience-menu")
-    _require_button_width(experience, "WEJDŹ DO ŚRODKA", 220.0, "experience-menu-button")
+    _require_label_width(experience, "Jedenaście komnat", 260.0, "experience-menu")
+    _require_button_width(experience, "PRZEKROCZ PRÓG", 220.0, "experience-menu-button")
     var begin_state := {"fired": false}
     experience.begin_requested.connect(func() -> void: begin_state["fired"] = true)
-    await _click_button(experience, "WEJDŹ DO ŚRODKA", "experience-menu")
+    await _click_button(experience, "PRZEKROCZ PRÓG", "experience-menu")
     if not bool(begin_state["fired"]):
         _fail("experience-menu real pointer click did not reach Button.pressed")
     await _dispose_node(experience)
@@ -334,7 +334,7 @@ func _exercise_live_ui_stack() -> void:
     if menu.get_mouse_filter_with_override() != Control.MOUSE_FILTER_STOP:
         _fail("live-ui menu root mouse filter overridden: %d" % menu.get_mouse_filter_with_override())
 
-    await _click_button(menu, "WEJDŹ DO ŚRODKA", "live-ui-stack")
+    await _click_button(menu, "PRZEKROCZ PRÓG", "live-ui-stack")
     if not bool(fired["value"]):
         _fail("live-ui-stack pointer click did not reach menu Button.pressed")
 

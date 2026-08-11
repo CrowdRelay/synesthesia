@@ -91,7 +91,7 @@ require(
 require(
     "scripts/ui/completion_card.gd",
     "func _enter_listen_mode() -> void:",
-    '_heading.text = "Zostań i słuchaj — kiedy chcesz, idź dalej"',
+    '_heading.text = "Zostań w echu — gdy poczujesz przejście, rusz dalej"',
     "_stay_button.visible = false",
     "_next_button.pressed.connect",
 )

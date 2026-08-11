@@ -200,7 +200,7 @@ func enter_completion_beat() -> void:
         _interaction_guide.suspend()
     set_painting(false)
     if instruction_label != null:
-        instruction_label.text = "Pokój odpowiedział. Drzwi już prowadzą dalej."
+        instruction_label.text = "Komnata odpowiedziała. Przejście już czeka."
     # After full reveal the artwork, not the instrument panel, owns the screen.
     # Keep the navigation affordance readable while secondary HUD chrome recedes.
     subtitle_label.visible = false
@@ -319,7 +319,7 @@ func _set_palette(room_data: Dictionary) -> void:
             palette_row.add_child(swatch)
     var brush_value: Variant = room_data.get("brush", {})
     var brush: Dictionary = brush_value if brush_value is Dictionary else {}
-    brush_label.text = "PĘDZEL POMOCNICZY %s · GŁÓWNA MECHANIKA ODSZUMIA POKÓJ" % _brush_name(str(brush.get("profile", "soft"))).to_upper()
+    brush_label.text = "ŚLAD DŁONI %s · GŁÓWNY RYTUAŁ ROZPRASZA SZUM" % _brush_name(str(brush.get("profile", "soft"))).to_upper()
 
 func _interaction_prompt(interaction: String) -> String:
     var prompts: Dictionary = {
@@ -335,7 +335,7 @@ func _interaction_prompt(interaction: String) -> String:
         "intimate_bedroom": "PRZYTRZYMAJ OBECNOŚĆ · ZBLIŻ DWA PUNKTY",
         "rise_atrium": "DOTKNIJ ŚWIATŁA · PRZYTRZYMAJ · UNIEŚ",
     }
-    return str(prompts.get(interaction, "DOTKNIJ ŚWIATA · PĘDZEL NADAL DZIAŁA"))
+    return str(prompts.get(interaction, "DOTKNIJ ŚWIATA · ZOSTAW ŚLAD · ODSŁOŃ PRZEJŚCIE"))
 
 func _hide_toast() -> void:
     if toast_panel == null or not toast_panel.visible:

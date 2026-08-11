@@ -221,13 +221,17 @@ func _clamp_point(value: Vector2) -> Vector2:
 
 ## Translate a Godot GUI input event into normalized gesture + stroke commands.
 ## RoomStage remains responsible for the brush and render state.
-func route_input(event: InputEvent, room_size: Vector2, now_ms: int, drawing: bool, drawing_pointer_id: int) -> Dictionary:
+func route_input(event: InputEvent, room_size: Vector2, now_ms: int, drawing: bool, drawing_pointer_id: int, touch_origin: Vector2 = Vector2.ZERO) -> Dictionary:
     if room_size.x <= 1.0 or room_size.y <= 1.0:
         return {}
     var result: Dictionary = {"handled": false, "stroke": "", "pointer_id": -999}
     if event is InputEventScreenTouch:
         var touch: InputEventScreenTouch = event as InputEventScreenTouch
-        var point: Vector2 = _normalize_local(touch.position, room_size)
+        # ScreenTouch/ScreenDrag positions stay in viewport coordinates even
+        # when delivered through Control._gui_input. The room may be a cropped
+        # 9:16 cover rect with a negative origin on tall phones, so translate
+        # into room-local coordinates before normalizing against the mask.
+        var point: Vector2 = _normalize_local(touch.position - touch_origin, room_size)
         result["handled"] = true
         result["point"] = point
         result["pointer_id"] = touch.index
@@ -244,7 +248,7 @@ func route_input(event: InputEvent, room_size: Vector2, now_ms: int, drawing: bo
                 result["stroke"] = "begin"
     elif event is InputEventScreenDrag:
         var drag: InputEventScreenDrag = event as InputEventScreenDrag
-        var point: Vector2 = _normalize_local(drag.position, room_size)
+        var point: Vector2 = _normalize_local(drag.position - touch_origin, room_size)
         result["handled"] = true
         result["point"] = point
         result["pointer_id"] = drag.index

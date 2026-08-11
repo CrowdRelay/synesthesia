@@ -100,7 +100,7 @@ func _build() -> void:
     _motif.set_reduced_motion(_reduced_motion)
 
     _tagline = Label.new()
-    _tagline.text = "SZUKAJ  ·  DOTKNIJ  ·  ODSZUM"
+    _tagline.text = "NASŁUCHUJ  ·  DOTKNIJ  ·  ODSŁOŃ"
     _tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _tagline.add_theme_font_size_override("font_size", 9)
     _tagline.add_theme_color_override("font_color", Color("a895b8"))

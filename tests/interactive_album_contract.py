@@ -67,7 +67,7 @@ require(
 hud = require(
     "scripts/ui/app_hud.gd",
     'progress_label.text = "SZUM"', 'progress_label.text = "SYGNAŁ"',
-    'progress_label.text = "MUZYKA"', "_interaction_prompt", "PĘDZEL POMOCNICZY %s · GŁÓWNA MECHANIKA ODSZUMIA POKÓJ",
+    'progress_label.text = "MUZYKA"', "_interaction_prompt", "ŚLAD DŁONI %s · GŁÓWNY RYTUAŁ ROZPRASZA SZUM",
 )
 if "%d%% ·" in hud:
     failures.append("production HUD still exposes numeric/debug reveal percentages")
@@ -120,7 +120,7 @@ require(
 require(
     "scripts/ui/experience_intro_card.gd",
     "album_mode_requested", "ALBUM MODE · KORYTARZ",
-    "Dotykasz, przesuwasz, przytrzymujesz",
+    "Dotykaj znaków, prowadź światło i budź echa",
 )
 
 if failures:

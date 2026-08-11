@@ -267,7 +267,13 @@ void fragment() {
     vec3 static_color = mix(vec3(0.18, 0.21, 0.24), noise_tint.rgb * 0.58, 0.54) * (0.70 + pink * 0.48);
     vec3 color = mix(obscured, photographed, reveal);
     color += accent_color.rgb * profile_light * unlock * reveal;
-    color = mix(color, static_color, clamp(static_alpha, 0.0, 0.42));
+    color = mix(color, static_color, clamp(static_alpha, 0.0, 0.28));
+
+    // Revealed artwork gets a gentle luminance lift for phone screens. This is
+    // tied to the mask/cinematic reveal, so the hidden state still reads as
+    // signal loss while discovered details remain legible.
+    float reveal_lift = reveal * 0.08 + completion_reveal * 0.07;
+    color = mix(color, sqrt(max(color, vec3(0.0))), clamp(reveal_lift, 0.0, 0.15));
 
     // Localized post-process details after reveal: candle flicker/liquid ripple,
     // membrane gloss, glass sweeps, curtain light and other room signatures.
@@ -353,7 +359,7 @@ void fragment() {
 
     float revealed_grain = hash21(floor(pixel * 0.34) + vec2(19.0, 73.0));
     float grain_strength = film_grain_strength * runtime_scale * (quiet_visuals ? 0.20 : 1.0);
-    color *= 1.0 + (revealed_grain - 0.5) * 0.042 * grain_strength * reveal;
+    color *= 1.0 + (revealed_grain - 0.5) * 0.026 * grain_strength * reveal;
 
     float vignette = 1.0 - smoothstep(0.22, 0.78, distance(UV, vec2(0.5)));
     color *= mix(0.72, 1.0, vignette);

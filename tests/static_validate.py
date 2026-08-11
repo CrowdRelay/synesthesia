@@ -339,7 +339,7 @@ def main() -> int:
         if token not in hud_contract_source:
             fail(f"persistent HUD information/style contract missing: {token}", failures)
     intro_source = (ROOT / "scripts/ui/experience_intro_card.gd").read_text()
-    for token in ('SYNESTHESIA', 'WEJDŹ DO ŚRODKA', 'NOWA PODRÓŻ', 'USTAWIENIA', 'SYGNAŁ', 'TWÓRCY', 'Interaktywny album w 11 pokojach', 'SignalSignupClient', 'nie daje losu w puli 5 płyt', 'begin_requested'):
+    for token in ('SYNESTHESIA', 'ZANURZ SIĘ', 'PRZEKROCZ PRÓG', 'NOWA WĘDRÓWKA', 'USTAWIENIA', 'SYGNAŁ', 'TWÓRCY', 'Jedenaście komnat utkanych z obrazu', 'SignalSignupClient', 'nie daje losu w puli 5 płyt', 'begin_requested'):
         if token not in intro_source:
             fail(f"experience menu contract missing: {token}", failures)
     chapter_source = (ROOT / "scripts/ui/chapter_card.gd").read_text()
