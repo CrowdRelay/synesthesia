@@ -190,7 +190,7 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     var interaction := str(room_data.get("interaction", "paint"))
     instruction_label.text = _interaction_prompt(interaction)
     if mobile_instruction_label != null:
-        mobile_instruction_label.text = instruction_label.text.replace(" · ", "\n", true)
+        mobile_instruction_label.text = instruction_label.text.replace(" · ", "\n")
     _interaction_guide.configure(interaction)
     _rebuild_journey()
     _hide_toast()
@@ -207,6 +207,11 @@ func prime_hint_after_resume() -> void:
 func note_success() -> void:
     if _interaction_guide != null:
         _interaction_guide.note_interaction()
+
+func guidance_stats() -> Dictionary:
+    if _interaction_guide != null:
+        return _interaction_guide.get_stats()
+    return {}
 
 func enter_completion_beat() -> void:
     if _interaction_guide != null:

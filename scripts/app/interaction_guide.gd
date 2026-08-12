@@ -19,12 +19,14 @@ var _miss_count := 0
 var _last_miss_ms := 0
 var _resume_boost_pending := false
 var _assist_level := 0
+var app: Node
 
 func _ready() -> void:
     _timer = Timer.new()
     _timer.one_shot = true
     _timer.timeout.connect(_on_timeout)
     add_child(_timer)
+    app = get_node("/root/app")
 
 func configure(interaction: String) -> void:
     _interaction = interaction
@@ -105,6 +107,20 @@ func _set_assist_level(level: int) -> void:
         return
     _assist_level = next_level
     assist_level_changed.emit(_assist_level)
+
+func get_stats() -> Dictionary:
+    var now_ms: int = Time.get_ticks_msec()
+    var first_success_ms: int = -1
+    if _last_progress >= 0.99 and now_ms - _last_miss_ms > 1000:
+        var app = get_node("/root/app")
+        if app != null and app.room != null:
+            first_success_ms = now_ms - app.room_started_ms
+    return {
+        "first_success_ms": first_success_ms,
+        "miss_count": _miss_count,
+        "hint_count": _hint_level,
+        "max_assist_level": _assist_level,
+    }
 
 func _on_timeout() -> void:
     if not _enabled:

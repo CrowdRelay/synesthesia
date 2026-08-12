@@ -24,6 +24,7 @@ assert 'gameplay_telemetry.begin_room' in flow
 assert 'gameplay_telemetry.complete_room' in flow
 assert 'gameplay_telemetry.abandon_room' in flow
 assert 'gameplay_telemetry.note_quality_scale' in main
+assert 'func guidance_stats()' in hud
 assert '_hud.note_success()' in feedback
 assert 'synesthesia:gameplay-metric' in rum
 assert '`${key}:${roomId}`' in rum

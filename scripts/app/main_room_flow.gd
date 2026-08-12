@@ -113,8 +113,8 @@ func _preload_next_room() -> void:
         app.asset_preloader.prepare(str(next_value.get("manifest", "")))
 func _clear_room_runtime() -> void:
     if app.gameplay_telemetry != null and app.room != null and is_instance_valid(app.room) and app.room_timer_running:
-        var elapsed_ms := app.ProgressMetrics.current_room_elapsed_ms(app.room_started_ms, app.room_elapsed_before_start_ms, true)
-        var guidance := app.hud.guidance_stats() if app.hud != null and app.hud.has_method("guidance_stats") else {}
+        var elapsed_ms: int = app.ProgressMetrics.current_room_elapsed_ms(app.room_started_ms, app.room_elapsed_before_start_ms, true)
+        var guidance: Dictionary = app.hud.guidance_stats() if app.hud != null and app.hud.has_method("guidance_stats") else {}
         app.gameplay_telemetry.abandon_room(elapsed_ms, guidance)
     if app.hud != null and is_instance_valid(app.hud):
         app.hud.clear_transient_overlays()
@@ -283,7 +283,7 @@ func _complete_current_room() -> void:
     app.completion_announced = true
     app.room_timer_running = false
     if app.gameplay_telemetry != null:
-        var guidance := app.hud.guidance_stats() if app.hud != null and app.hud.has_method("guidance_stats") else {}
+        var guidance: Dictionary = app.hud.guidance_stats() if app.hud != null and app.hud.has_method("guidance_stats") else {}
         app.gameplay_telemetry.complete_room(elapsed_at_completion, guidance)
     app.room.set_interaction_enabled(false)
     app.room.set_cinematic_reveal(true)
