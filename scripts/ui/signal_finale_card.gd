@@ -1,7 +1,7 @@
 extends Control
 
 signal draw_entry_requested(email: String)
-signal leaderboard_publish_requested(display_name: String)
+signal leaderboard_publish_requested
 signal leaderboard_refresh_requested
 signal reset_requested
 signal album_mode_requested
@@ -219,7 +219,7 @@ func _build_leaderboard(summary: Dictionary) -> void:
     _leaderboard_panel.name = "SignalLeaderboardPanel"
     _form.add_child(_leaderboard_panel)
     _leaderboard_panel.configure(summary, _scroll)
-    _leaderboard_panel.publish_requested.connect(func(name: String) -> void: leaderboard_publish_requested.emit(name))
+    _leaderboard_panel.publish_requested.connect(func() -> void: leaderboard_publish_requested.emit())
     _leaderboard_panel.refresh_requested.connect(func() -> void: leaderboard_refresh_requested.emit())
 
 func set_leaderboard_items(items: Array) -> void:
@@ -244,6 +244,7 @@ func apply_signal_context(context: Dictionary) -> void:
         return
     var linked: bool = bool(_signal_context.get("linked_to_fan", false))
     var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
+    set_leaderboard_publish_enabled(linked)
     if linked:
         _signal_button.text = "OTWÓRZ MÓJ SYGNAŁ"
     elif handoff.length() == 64:
@@ -272,7 +273,7 @@ func apply_signal_context(context: Dictionary) -> void:
 
 func _open_signal() -> void:
     var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
-    var url := "https://virya.music/pl/signal/?source=synesthesia"
+    var url := "https://virya.music/pl/my-signal/?source=synesthesia"
     # Only the short-lived single-fan completion handoff travels in the fragment.
     # Fan/session credentials never leave the API cookie/native secure store.
     if handoff.length() == 64:

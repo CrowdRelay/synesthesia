@@ -1,19 +1,16 @@
 class_name SignalLeaderboardPanel
 extends VBoxContainer
 
-signal publish_requested(display_name: String)
+signal publish_requested
 signal refresh_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 
-var _name_input: LineEdit
 var _status: Label
 var _list: VBoxContainer
 var _publish: Button
-var _scroll: ScrollContainer
 
-func configure(summary: Dictionary, scroll: ScrollContainer) -> void:
-    _scroll = scroll
+func configure(summary: Dictionary, _scroll: ScrollContainer) -> void:
     add_theme_constant_override("separation", 8)
     var divider := HSeparator.new()
     divider.modulate = Color(1.0, 1.0, 1.0, 0.16)
@@ -36,14 +33,7 @@ func configure(summary: Dictionary, scroll: ScrollContainer) -> void:
     _list.add_theme_constant_override("separation", 3)
     add_child(_list)
 
-    _name_input = UIFactory.line_edit("Nick do rankingu", Color("7fd7ef"))
-    _name_input.name = "LeaderboardName"
-    _name_input.max_length = 20
-    _name_input.text = str(summary.get("leaderboard_name", ""))
-    _name_input.focus_entered.connect(_ensure_name_visible)
-    add_child(_name_input)
-
-    var privacy := UIFactory.body("Publikacja jest dobrowolna. Ranking pokazuje tylko nick i najlepszy czas — bez e-maila i identyfikatora urządzenia. Nie wpływa na losowanie.")
+    var privacy := UIFactory.body("Publikacja jest dobrowolna. CrowdRelay pokaże wyłącznie zamaskowany adres, np. woj••••, i Twój najlepszy czas. Pełny e-mail, konto Signal i urządzenie nigdy nie trafiają na publiczną listę. Ranking nie wpływa na losowanie.")
     privacy.add_theme_font_size_override("font_size", 11)
     privacy.add_theme_color_override("font_color", Color("9eafc3"))
     add_child(privacy)
@@ -53,8 +43,9 @@ func configure(summary: Dictionary, scroll: ScrollContainer) -> void:
     _status.add_theme_color_override("font_color", Color("82d7ff"))
     add_child(_status)
 
-    _publish = UIFactory.product_button("ZAPISZ MÓJ WYNIK", Color("7fd7ef"))
-    _publish.pressed.connect(func() -> void: publish_requested.emit(_name_input.text.strip_edges()))
+    _publish = UIFactory.product_button("DODAJ ANONIMOWO DO TOP", Color("7fd7ef"))
+    _publish.disabled = true
+    _publish.pressed.connect(func() -> void: publish_requested.emit())
     add_child(_publish)
 
     var refresh := UIFactory.product_button("ODŚWIEŻ TOP 10", Color("73869d"))
@@ -79,7 +70,7 @@ func set_items(items: Array) -> void:
             index += 1
             var item: Dictionary = value as Dictionary
             var rank: int = maxi(1, int(item.get("rank", index)))
-            var name: String = str(item.get("display_name", "?"))
+            var name: String = str(item.get("display_name", "•••"))
             var elapsed_ms: int = maxi(0, int(item.get("elapsed_ms", 0)))
             var row := Label.new()
             row.text = "%02d · %s · %s" % [rank, name.left(20), format_time(elapsed_ms)]
@@ -88,12 +79,13 @@ func set_items(items: Array) -> void:
             row.add_theme_font_size_override("font_size", 12 if rank <= 3 else 11)
             row.add_theme_color_override("font_color", Color("f0cf88") if rank <= 3 else Color("d9e8f4"))
             _list.add_child(row)
-    set_status("TOP 10 aktualne · liczy się najlepszy przebieg na instalację.")
+    set_status("TOP 10 aktualne · liczy się najlepszy przebieg jednej osoby.")
 
 func set_publish_result(context: Dictionary) -> void:
     var rank: int = maxi(1, int(context.get("rank", 1)))
     var best_elapsed_ms: int = maxi(0, int(context.get("best_elapsed_ms", 0)))
-    set_status("Zapisane · Twoje miejsce #%d · PB %s" % [rank, format_time(best_elapsed_ms)])
+    var alias: String = str(context.get("display_name", "•••"))
+    set_status("Zapisane jako %s · miejsce #%d · PB %s" % [alias, rank, format_time(best_elapsed_ms)])
 
 func set_status(text_value: String) -> void:
     if _status != null:
@@ -102,10 +94,8 @@ func set_status(text_value: String) -> void:
 func set_publish_enabled(value: bool) -> void:
     if _publish != null:
         _publish.disabled = not value
-
-func _ensure_name_visible() -> void:
-    if _scroll != null and _name_input != null:
-        _scroll.ensure_control_visible(_name_input)
+        if not value:
+            _status.text = "Połącz wynik z Sygnałem lub użyj e-maila do losowania, aby opublikować go anonimowo."
 
 static func format_time(elapsed_ms: int) -> String:
     var safe_ms: int = maxi(0, elapsed_ms)

@@ -9,6 +9,7 @@ def read(path: str) -> str:
 progress = read("scripts/progress_store.gd")
 reward = read("scripts/reward_client.gd")
 reward_flow = read("scripts/app/main_reward_flow.gd")
+main = read("scripts/main.gd")
 room_flow = read("scripts/app/main_room_flow.gd")
 interaction = read("scripts/render/room_interaction_flow.gd")
 world_fx = read("scripts/render/world_micro_fx_layer.gd")
@@ -39,7 +40,12 @@ assert "SignalLeaderboardPanel" in finale
 assert "TOP 10" in leaderboard and "TWÓJ CZAS" in leaderboard
 assert "format_time" in leaderboard and "%03d" in leaderboard
 assert "best_elapsed_ms" in leaderboard
-assert "leaderboard_name" in reward_flow
+assert "DODAJ ANONIMOWO DO TOP" in leaderboard
+assert "woj••••" in leaderboard
+assert "publish_leaderboard()" in reward_flow
+assert "refresh_link_context_after_resume" in reward_flow
+assert "NOTIFICATION_APPLICATION_RESUMED" in main
+assert "reward_flow.refresh_link_context_after_resume()" in main
 
 assert "set_post_reveal_interaction(true)" in room_flow
 assert "app.post_reveal_interaction" in interaction
@@ -56,5 +62,5 @@ assert "gameplay_journey_completed_ms" in telemetry
 print(
     "SYNESTHESIA_V1_GAME_LOOP=PASS "
     "replay=attempt-scoped leaderboard=top10 post-reveal=interactive "
-    "completion=timed+33/33 mobile=boosted telemetry=journey-summary"
+    "completion=timed+33/33 resume=handoff-refresh mobile=boosted telemetry=journey-summary"
 )

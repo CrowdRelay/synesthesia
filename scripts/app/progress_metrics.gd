@@ -58,7 +58,6 @@ static func completion_summary(release_entries: Array, album_state: Dictionary) 
         "echoes_found": echoes_found,
         "echoes_total": echoes_total,
         "elapsed_ms": maxi(0, int(album_state.get("total_elapsed_ms", 0))),
-        "leaderboard_name": str(album_state.get("leaderboard_name", "")),
         "journey_marks": marks.slice(0, 3),
     }
 

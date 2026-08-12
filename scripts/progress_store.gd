@@ -130,7 +130,7 @@ static func reset_local_journey() -> bool:
         fresh["reward"] = previous_reward_value.duplicate(true)
     var fresh_album_value: Variant = fresh.get("album", {})
     var fresh_album: Dictionary = fresh_album_value if fresh_album_value is Dictionary else {}
-    for key in ["calm_mode", "quiet_mode", "quiet_visuals", "reduced_motion", "high_readability", "haptics_enabled", "quality_profile", "music_level", "noise_level", "leaderboard_name"]:
+    for key in ["calm_mode", "quiet_mode", "quiet_visuals", "reduced_motion", "high_readability", "haptics_enabled", "quality_profile", "music_level", "noise_level"]:
         if previous_album.has(key):
             var value: Variant = previous_album[key]
             fresh_album[key] = value.duplicate(true) if value is Dictionary or value is Array else value
@@ -170,7 +170,6 @@ static func _blank_document() -> Dictionary:
         "album": {
             "current_room_index": 0,
             "journey_id": "",
-            "leaderboard_name": "",
             "completed_room_ids": [],
             "server_recorded_room_ids": [],
             "pending_room_completions": [],

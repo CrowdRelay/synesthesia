@@ -130,21 +130,17 @@ func fetch_leaderboard(limit: int = 10) -> void:
         "payload": {},
     })
 
-func publish_leaderboard(display_name: String) -> void:
+func publish_leaderboard() -> void:
     if not has_run():
         request_failed.emit("leaderboard_publish", "Najpierw kończę synchronizację przebiegu.")
-        return
-    var clean_name: String = display_name.strip_edges()
-    if clean_name.length() < 2 or clean_name.length() > 20:
-        request_failed.emit("leaderboard_publish", "Nick powinien mieć od 2 do 20 znaków.")
         return
     _enqueue({
         "operation": "leaderboard_publish",
         "method": "POST",
         "path": "/v1/public/synesthesia/runs/%s/leaderboard" % _run_id,
         "authorized": true,
-        "idempotency_key": "leaderboard-publish-%s-%s" % [_run_id, clean_name.to_lower().md5_text()],
-        "payload": {"display_name": clean_name},
+        "idempotency_key": "leaderboard-publish-%s" % _run_id,
+        "payload": {},
     })
 
 func enter_draw(email: String, policy_version: String) -> void:

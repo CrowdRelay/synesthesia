@@ -404,7 +404,7 @@ func _notification(what: int) -> void:
         if room != null and is_instance_valid(room): _save_progress()
         else: _save_album_state()
     if what == NOTIFICATION_APPLICATION_PAUSED: MenuRuntimeGuard.suspend_for_background(experience_surface, ui_root, room_layer, audio_director, adaptive_performance)
-    elif what == NOTIFICATION_APPLICATION_RESUMED: MenuRuntimeGuard.resume_from_background(experience_surface, ui_root, room_layer, audio_director, adaptive_performance)
+    elif what == NOTIFICATION_APPLICATION_RESUMED: MenuRuntimeGuard.resume_from_background(experience_surface, ui_root, room_layer, audio_director, adaptive_performance); reward_flow.refresh_link_context_after_resume()
 func _exit_tree() -> void:
     if save_timer != null and not save_timer.is_stopped():
         save_timer.stop()

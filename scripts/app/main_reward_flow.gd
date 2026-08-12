@@ -69,7 +69,7 @@ func _show_reward_panel() -> void:
         # Refresh the short-lived handoff/event context without changing completion state.
         app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
     app.reward_panel.draw_entry_requested.connect(_submit_reward_claim_values)
-    app.reward_panel.leaderboard_publish_requested.connect(_publish_leaderboard_name)
+    app.reward_panel.leaderboard_publish_requested.connect(_publish_leaderboard)
     app.reward_panel.leaderboard_refresh_requested.connect(_refresh_leaderboard)
     app.reward_panel.reset_requested.connect(app._confirm_reset_album)
     app.reward_panel.album_mode_requested.connect(app._show_album_archive)
@@ -81,7 +81,18 @@ func _refresh_leaderboard() -> void:
     if app.reward_client != null:
         app.reward_client.fetch_leaderboard(10)
 
-func _publish_leaderboard_name(display_name: String) -> void:
+func refresh_link_context_after_resume() -> void:
+    if app.reward_panel == null or not is_instance_valid(app.reward_panel):
+        return
+    if app.reward_client == null or not bool(app.album_state.get("server_album_completed", false)):
+        return
+    if bool(app.completion_context.get("linked_to_fan", false)):
+        return
+    # Returning from My Signal is the natural non-polling moment to discover
+    # that a short-lived handoff has been consumed by another surface.
+    app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
+
+func _publish_leaderboard() -> void:
     if app.reward_panel == null or not is_instance_valid(app.reward_panel):
         return
     if app.reward_client == null or not bool(app.album_state.get("server_album_completed", false)):
@@ -89,20 +100,16 @@ func _publish_leaderboard_name(display_name: String) -> void:
         return
     app.reward_panel.set_leaderboard_publish_enabled(false)
     app.reward_panel.set_leaderboard_status("Zapisuję najlepszy czas…")
-    app.reward_client.publish_leaderboard(display_name)
+    app.reward_client.publish_leaderboard()
 
 func _on_leaderboard_loaded(items: Array) -> void:
     if app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_leaderboard_items(items)
 
 func _on_leaderboard_published(context: Dictionary) -> void:
-    var name: String = str(context.get("display_name", "")).strip_edges()
-    if not name.is_empty():
-        app.album_state["leaderboard_name"] = name
-        app._save_album_state()
     if app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_leaderboard_publish_result(context)
-        app.reward_panel.set_leaderboard_publish_enabled(true)
+        app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
     if app.reward_client != null:
         app.reward_client.fetch_leaderboard(10)
 
@@ -170,7 +177,7 @@ func _on_album_recorded(context: Dictionary = {}) -> void:
         app.reward_panel.apply_signal_context(app.completion_context)
         app.reward_panel.set_status("Ukończenie potwierdzone. Możesz połączyć podróż z Sygnałem lub dołączyć do losowania 5 płyt.")
         app.reward_panel.set_claim_enabled(true)
-        app.reward_panel.set_leaderboard_publish_enabled(true)
+        app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
 
 func _on_draw_entered(status: String, message: String) -> void:
     app.ProgressStoreScript.save_reward({"status": status, "message": message, "claimed_at_unix": int(Time.get_unix_time_from_system())})
@@ -188,7 +195,7 @@ func _on_reward_request_failed(operation: String, message: String) -> void:
         app.reward_panel.set_claim_enabled(true)
     elif operation.begins_with("leaderboard_") and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_leaderboard_status(message)
-        app.reward_panel.set_leaderboard_publish_enabled(true)
+        app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
     else:
         app.hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")
 
