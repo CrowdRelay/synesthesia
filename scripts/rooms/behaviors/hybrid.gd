@@ -51,8 +51,10 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
         var direction := -1.0 if ring % 2 else 1.0
         var rotation := phase * (0.23 + ring * 0.035) * direction
         var span := lerpf(4.15, 5.90, aim)
-        var alpha := 0.065 + aim * 0.16 + progress * 0.035
+        var alpha := 0.065 + aim * 0.16 + progress * 0.035 + float(assist_level) * 0.018
         canvas.draw_arc(core, radius, rotation, rotation + span, 52, Color(accent if ring % 2 == 0 else secondary, alpha), 1.0 + aim * 0.55)
+    if not resolved and assist_level > 0:
+        canvas.draw_circle(core, 3.0 + float(assist_level), Color(Color.WHITE, 0.08 + float(assist_level) * 0.045))
     var instability := (1.0 - aim) * (0.5 + 0.5 * sin(phase * 9.0))
     for band in range(5):
         var y := core.y + (float(band) - 2.0) * 13.0

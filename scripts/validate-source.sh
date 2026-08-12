@@ -5,6 +5,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
 python3 scripts/check-ci-policy.py
 
+# Fast preflight for gameplay/mobile/hot-path contracts during development
+./scripts/validate-fast.sh
+
 # One canonical, platform-independent gate set. Native/Web/Android builders add
 # their own engine/toolchain/export proofs after this script succeeds.
 ./scripts/prepare-bundled-fonts.sh
@@ -70,8 +73,10 @@ python3 tests/ui_scale_flow_contract.py
 python3 tests/ui_quality_polish_contract.py
 python3 tests/mobile_feedback_contract.py
 python3 tests/mobile_clarity_contract.py
+python3 tests/mobile_product_readability_contract.py
 python3 tests/signal_design_system_contract.py
 python3 tests/game_feel_v3_contract.py
+python3 tests/gameplay_telemetry_contract.py
 python3 tests/synesthesia_v2_art_contract.py
 python3 tests/android_pipeline_contract.py
 python3 tests/godot_log_gate_contract.py

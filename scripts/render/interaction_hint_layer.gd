@@ -29,7 +29,7 @@ func set_targets(value: Array) -> void:
     _targets.clear()
     for raw in value:
         if raw is Dictionary:
-            _targets.append((raw as Dictionary).duplicate(true))
+            _targets.append(raw as Dictionary)
     if _strength > 0.001:
         queue_redraw()
 

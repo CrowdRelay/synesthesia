@@ -17,6 +17,8 @@ func _on_interaction_missed(_point: Vector2) -> void:
         _hud.note_miss()
 
 func _on_interaction_confirmed(_point: Vector2, strength: float) -> void:
+    if _hud != null and is_instance_valid(_hud):
+        _hud.note_success()
     if _haptics != null and is_instance_valid(_haptics):
         _haptics.confirmation(strength)
     if _audio != null and is_instance_valid(_audio):

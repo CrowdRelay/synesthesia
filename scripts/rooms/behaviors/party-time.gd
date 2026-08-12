@@ -111,7 +111,8 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
                 sin(phase * 1.25 + float(index) * 1.1) * 3.4,
                 sin(phase * 1.65 + float(index) * 0.8) * 4.2
             )
-            _draw_membrane(canvas, center, color, 0.72 + progress * 0.08, float(index), phase)
+            var affordance := 0.72 + progress * 0.08 + float(assist_level) * 0.055
+            _draw_membrane(canvas, center, color, affordance, float(index), phase)
         if index < ages.size():
             var age := float(ages[index])
             if age >= 0.0 and age < 0.72:

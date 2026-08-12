@@ -6,6 +6,7 @@ extends "res://scripts/rooms/behavior_base.gd"
 const NODE_START := Vector2(0.34, 0.56)
 const NODE_TARGET := Vector2(0.50, 0.56)
 const CORE_POINT := Vector2(0.50, 0.62)
+const WAVE_HEIGHTS := [3.0, 7.0, 12.0, 5.0, 15.0, 8.0, 4.0]
 
 func configure(data: Dictionary) -> void:
     super.configure(data)
@@ -58,7 +59,8 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
     for ring_index in range(4):
         var rx := 34.0 + ring_index * 22.0 + pulse * 2.0
         canvas.draw_arc(center, rx, -2.85, -0.28, 34, Color(signal_color, 0.065 + progress * 0.05 - ring_index * 0.009), 1.0)
-    canvas.draw_arc(center, 22.0 + pulse * 1.5, -PI, 0.0, 28, Color(pale, 0.10), 1.2)
+    var affordance := float(assist_level) * 0.035
+    canvas.draw_arc(center, 22.0 + pulse * 1.5, -PI, 0.0, 28, Color(pale, 0.10 + affordance), 1.2 + float(assist_level) * 0.10)
     if bool(state.get("poured", false)):
         canvas.draw_circle(center - Vector2(0.0, 4.0), 8.0 + pulse * 1.2, Color(signal_color, 0.10 + pulse * 0.055))
         _draw_wave(canvas, center - Vector2(0.0, 5.0), signal_color, 0.16)
@@ -66,7 +68,7 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
     if not cinematic_active() and not bool(state.get("toast", false)):
         var node_norm := _node_position()
         var node := Vector2(node_norm.x * viewport_size.x, node_norm.y * viewport_size.y)
-        _draw_signal_node(canvas, node, signal_color, pale, 0.92)
+        _draw_signal_node(canvas, node, signal_color, pale, 0.92 + float(assist_level) * 0.07)
         if bool(state.get("poured", false)):
             canvas.draw_line(node, center, Color(signal_color, 0.035), 1.0)
     elif bool(state.get("toast", false)) and not cinematic_active():
@@ -131,8 +133,7 @@ func _draw_signal_node(canvas, center: Vector2, signal_color: Color, pale: Color
     _draw_wave(canvas, center, signal_color, 0.16 * alpha_scale)
 
 func _draw_wave(canvas, center: Vector2, color: Color, alpha: float) -> void:
-    var heights := [3.0, 7.0, 12.0, 5.0, 15.0, 8.0, 4.0]
-    for index in range(heights.size()):
+    for index in range(WAVE_HEIGHTS.size()):
         var x := center.x + (index - 3) * 4.0
-        var h: float = heights[index]
+        var h: float = WAVE_HEIGHTS[index]
         canvas.draw_line(Vector2(x, center.y - h * 0.5), Vector2(x, center.y + h * 0.5), Color(color, alpha), 1.0)

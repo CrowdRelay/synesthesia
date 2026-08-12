@@ -42,8 +42,6 @@ func _load_room(index: int, show_intro: bool) -> void:
     app.room.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     app.room.configure(room_data, collectible_entries, app.manifest.get("sensory", {}), app.quality, app.asset_preloader)
     app.room.set_interaction_enabled(false)
-    if app.hud != null and app.room.has_method("get_interaction_hint"):
-        app.hud.update_instruction(app.room.get_interaction_hint())
     if app.adaptive_performance != null:
         app.room.set_runtime_budget(float(app.adaptive_performance.get_scale()))
     var room_accent: Color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
@@ -76,6 +74,8 @@ func _load_room(index: int, show_intro: bool) -> void:
     app.room_elapsed_before_start_ms = maxi(0, int(elapsed.get(str(app.manifest.get("release_id", "")), 0)))
     app.room_started_ms = Time.get_ticks_msec()
     app.room_timer_running = false
+    if app.gameplay_telemetry != null:
+        app.gameplay_telemetry.begin_room(str(app.manifest.get("release_id", "")))
     app.hud.configure_room(
         str(app.manifest.get("title", "VIRYA: Synestezja")),
         str(app.manifest.get("subtitle", "")),
@@ -84,6 +84,11 @@ func _load_room(index: int, show_intro: bool) -> void:
         float(app.current_room_index) / float(maxi(1, app.release_entries.size() - 1)),
         room_data,
     )
+    # configure_room establishes generic interaction chrome. Apply the room-owned
+    # semantic verb afterwards so the first thing a player reads is actually
+    # specific to this mechanic instead of being overwritten during setup.
+    if app.room.has_method("get_interaction_hint"):
+        app.hud.update_instruction(app.room.get_interaction_hint())
     app._apply_sensory_mode()
     _preload_next_room()
     app.call_deferred("_restore_room_after_layout", show_intro)
@@ -106,8 +111,11 @@ func _preload_next_room() -> void:
     var next_value: Variant = app.release_entries[app.current_room_index + 1]
     if next_value is Dictionary:
         app.asset_preloader.prepare(str(next_value.get("manifest", "")))
-
 func _clear_room_runtime() -> void:
+    if app.gameplay_telemetry != null and app.room != null and is_instance_valid(app.room) and app.room_timer_running:
+        var elapsed_ms := app.ProgressMetrics.current_room_elapsed_ms(app.room_started_ms, app.room_elapsed_before_start_ms, true)
+        var guidance := app.hud.guidance_stats() if app.hud != null and app.hud.has_method("guidance_stats") else {}
+        app.gameplay_telemetry.abandon_room(elapsed_ms, guidance)
     if app.hud != null and is_instance_valid(app.hud):
         app.hud.clear_transient_overlays()
     if app.save_timer != null and not app.save_timer.is_stopped():
@@ -274,6 +282,9 @@ func _complete_current_room() -> void:
     var elapsed_at_completion: int = app.ProgressMetrics.current_room_elapsed_ms(app.room_started_ms, app.room_elapsed_before_start_ms, app.room_timer_running)
     app.completion_announced = true
     app.room_timer_running = false
+    if app.gameplay_telemetry != null:
+        var guidance := app.hud.guidance_stats() if app.hud != null and app.hud.has_method("guidance_stats") else {}
+        app.gameplay_telemetry.complete_room(elapsed_at_completion, guidance)
     app.room.set_interaction_enabled(false)
     app.room.set_cinematic_reveal(true)
     # Echoes remain optional discoveries. Opening the door never grants them for

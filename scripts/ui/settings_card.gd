@@ -8,6 +8,7 @@ signal calm_changed(value: bool)
 signal quiet_changed(value: bool)
 signal visuals_changed(value: bool)
 signal motion_changed(value: bool)
+signal readability_changed(value: bool)
 signal haptics_changed(value: bool)
 signal quality_cycle_requested
 signal music_changed(value: float)
@@ -20,6 +21,7 @@ var _calm: bool = true
 var _quiet: bool = false
 var _quiet_visuals: bool = false
 var _reduced_motion: bool = false
+var _high_readability: bool = false
 var _haptics: bool = true
 var _quality_button: Button
 var _has_room: bool = true
@@ -42,6 +44,7 @@ func configure(state: Dictionary, quality_label: String, version: String) -> voi
     _quiet = bool(state.get("quiet", false))
     _quiet_visuals = bool(state.get("quiet_visuals", false))
     _reduced_motion = bool(state.get("reduced_motion", false))
+    _high_readability = bool(state.get("high_readability", false))
     _haptics = bool(state.get("haptics", true))
     _has_room = bool(state.get("has_room", true))
     _album_completed = bool(state.get("album_completed", false))
@@ -147,6 +150,14 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     )
     content.add_child(visual_button)
 
+    var readability_button: Button = UIFactory.button(_readability_text())
+    readability_button.pressed.connect(func() -> void:
+        _high_readability = not _high_readability
+        readability_button.text = _readability_text()
+        readability_changed.emit(_high_readability)
+    )
+    content.add_child(readability_button)
+
     var motion_button: Button = UIFactory.button(_motion_text())
     motion_button.pressed.connect(func() -> void:
         _reduced_motion = not _reduced_motion
@@ -251,6 +262,9 @@ func _quiet_text() -> String:
 
 func _visual_text() -> String:
     return "VSS: %s" % ("minimalne" if _quiet_visuals else "albumowe")
+
+func _readability_text() -> String:
+    return "Czytelność: %s" % ("wysoka" if _high_readability else "kinowa")
 
 func _motion_text() -> String:
     return "Ruch: %s" % ("ograniczony" if _reduced_motion else "pełny")

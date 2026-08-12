@@ -3,11 +3,13 @@ extends RefCounted
 var room_data: Dictionary = {}
 var state: Dictionary = {}
 var interaction_forgiveness: float = 1.12
+var assist_level: int = 0
 
 func configure(data: Dictionary) -> void:
     room_data = data.duplicate(true)
     state = {}
     interaction_forgiveness = 1.12
+    assist_level = 0
 
 func acts() -> Array[String]:
     return ["ROZPOZNANIE", "PRZEŁAMANIE", "TRANSFORMACJA"]
@@ -78,9 +80,10 @@ func restore_state(saved: Dictionary) -> void:
     state = saved.duplicate(true)
 
 func set_assist_level(level: int) -> void:
-    # Assist changes only invisible touch tolerance. Visual geometry and mechanic
-    # state stay identical, so help can rise/fall without changing the room.
-    interaction_forgiveness = [1.12, 1.18, 1.25, 1.32][clampi(level, 0, 3)]
+    # Assist primarily changes invisible touch tolerance. Rooms may also use the
+    # level for a tiny authored affordance lift, never to change mechanic state.
+    assist_level = clampi(level, 0, 3)
+    interaction_forgiveness = [1.12, 1.20, 1.30, 1.40][assist_level]
 
 func _near(point: Vector2, target: Vector2, radius: float) -> bool:
     # Touch targets are intentionally a little more forgiving than their visual

@@ -41,6 +41,9 @@ for token in (
     "synesthesia-android-godot-logs-",
     "if: always()",
     'SYNESTHESIA_DISABLE_RUST_NATIVE: "0"',
+    "Validate canonical source contracts for manual builds",
+    "if: github.event_name == 'workflow_dispatch'",
+    "SYNESTHESIA_ANDROID_SOURCE_PROVENANCE=CI_VALIDATED",
 ):
     if token not in workflow:
         failures.append(f"Android workflow missing token: {token}")

@@ -22,6 +22,7 @@ const SoundscapeRuntime := preload("res://scripts/app/soundscape_runtime.gd")
 const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
 const ProgressMetrics := preload("res://scripts/app/progress_metrics.gd")
+const GameplayTelemetryScript := preload("res://scripts/app/gameplay_telemetry.gd")
 const ChapterCardScript := preload("res://scripts/ui/chapter_card.gd")
 const ExperienceIntroCardScript := preload("res://scripts/ui/experience_intro_card.gd")
 const AlbumModeControllerScript := preload("res://scripts/app/album_mode_controller.gd")
@@ -52,6 +53,7 @@ var calm_mode: bool = true
 var quiet_mode: bool = false
 var quiet_visuals: bool = false
 var reduced_motion: bool = false
+var high_readability: bool = false
 var haptics_enabled: bool = true
 var quality_profile: String = "balanced"
 var music_level: float = 1.0
@@ -71,6 +73,7 @@ var hud
 var transition_director
 var asset_preloader
 var adaptive_performance
+var gameplay_telemetry
 var save_timer: Timer
 var settings_dirty: bool = false
 var intro_panel
@@ -104,6 +107,7 @@ func _ready() -> void:
     quiet_mode = bool(album_state.get("quiet_mode", false))
     quiet_visuals = bool(album_state.get("quiet_visuals", false))
     reduced_motion = bool(album_state.get("reduced_motion", false))
+    high_readability = bool(album_state.get("high_readability", false))
     haptics_enabled = bool(album_state.get("haptics_enabled", true))
     quality_profile = str(album_state.get("quality_profile", QualityManager.recommended()))
     music_level = clampf(float(album_state.get("music_level", 1.0)), 0.0, 1.0)
@@ -155,6 +159,8 @@ func _build_application_shell() -> void:
     add_child(adaptive_performance)
     adaptive_performance.budget_changed.connect(_on_runtime_budget_changed)
     adaptive_performance.configure(quality_profile)
+    gameplay_telemetry = GameplayTelemetryScript.new(); gameplay_telemetry.name = "GameplayTelemetry"
+    add_child(gameplay_telemetry)
     menu_soundscape = SoundscapeRuntime.install(self, music_level, noise_level, quiet_mode)
     if ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH):
         var diagnostics_script: Script = load(DIAGNOSTICS_OVERLAY_PATH) as Script
@@ -314,6 +320,8 @@ func _apply_audio_levels() -> void:
     settings_flow._apply_audio_levels()
 func _on_runtime_budget_changed(scale: float, _reason: String) -> void:
     settings_flow._on_runtime_budget_changed(scale, _reason)
+    if gameplay_telemetry != null:
+        gameplay_telemetry.note_quality_scale(scale)
 func _schedule_save() -> void:
     settings_flow._schedule_save()
 func _save_progress() -> void:

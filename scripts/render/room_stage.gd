@@ -26,6 +26,7 @@ const InteractionHintLayerScript := preload("res://scripts/render/interaction_hi
 const InteractionAttemptFeedbackScript := preload("res://scripts/input/interaction_attempt_feedback.gd")
 const CompositeShader := preload("res://shaders/room_composite.gdshader")
 const RoomVisualSetupScript := preload("res://scripts/render/room_visual_setup.gd")
+const RoomRenderProfile := preload("res://scripts/render/room_render_profile.gd")
 @export var room_id: String = ""
 var manifest_room: Dictionary = {}
 var sensory: Dictionary = {}
@@ -49,7 +50,8 @@ var world_micro_fx; var post_reveal_runtime; var interaction_enabled: bool = tru
 var calm_mode: bool = true
 var reduced_motion: bool = false
 var quiet_visuals: bool = false
-var cinematic_revealed: bool = false
+var high_readability: bool = false
+var mobile_readability: Dictionary = {}; var cinematic_revealed: bool = false
 var door_target_open: bool = false
 var door_open_amount: float = 0.0
 var completion_threshold: float = 0.44
@@ -77,8 +79,7 @@ var _interaction_energy: float = 0.0
 var _last_parallax_sent: Vector2 = Vector2(99.0, 99.0)
 var _last_coverage_emitted: float = -1.0
 var _cinematic_elapsed: float = 0.0
-var _unlock_profile: int = 0
-var _accent_color: Color = Color("72afff")
+var _unlock_profile: int = 0; var _accent_color: Color = Color("72afff")
 var _interaction_flow: Node
 var _state_flow: Node
 var _visual_setup: Node
@@ -98,6 +99,8 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     manifest_room = room_data.duplicate(true)
     sensory = sensory_data.duplicate(true)
     quality = quality_data.duplicate(true)
+    var readability_value: Variant = room_data.get("mobile_readability", {})
+    mobile_readability = readability_value.duplicate(true) if readability_value is Dictionary else {}
     room_id = str(room_data.get("id", room_id))
     completion_threshold = clampf(float(room_data.get("completion_coverage", 0.44)), 0.20, 0.75)
     _base_texture_upload_hz = clampf(float(quality.get("texture_upload_hz", 30.0)), 12.0, 60.0)
@@ -147,7 +150,7 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
         world_micro_fx.configure(visual_style, _accent_color, secondary_color, behavior)
     room_dressing.set_reduced_motion(reduced_motion)
     video_layer.configure(visual_style, reduced_motion, quiet_visuals, calm_mode)
-    _unlock_profile = _unlock_profile_index(visual_style)
+    _unlock_profile = RoomRenderProfile.unlock_index(visual_style)
     composite_material.set_shader_parameter("unlock_profile", _unlock_profile)
     composite_material.set_shader_parameter("cinematic_time", 0.0)
     composite_material.set_shader_parameter("unlock_motion", 0.0)
@@ -159,10 +162,13 @@ func _take_texture(path: String, asset_source = null) -> Texture2D: return _visu
 func _process(delta: float) -> void:
     if behavior != null and (not _behavior_tick_gated or behavior.needs_tick()):
         behavior.advance(delta)
-    _hint_refresh_accumulator += delta
-    if _hint_refresh_accumulator >= 0.20:
+    if hint_layer != null and hint_layer.has_method("is_active") and hint_layer.is_active():
+        _hint_refresh_accumulator += delta
+        if _hint_refresh_accumulator >= 0.20:
+            _hint_refresh_accumulator = 0.0
+            _refresh_hint_targets()
+    else:
         _hint_refresh_accumulator = 0.0
-        _refresh_hint_targets()
     _idle_motion_time = fmod(_idle_motion_time + delta, 10000.0)
     _interaction_energy = move_toward(_interaction_energy, 0.0, delta * 1.9)
     if world_micro_fx != null:
@@ -245,6 +251,11 @@ func set_quiet_visuals(value: bool) -> void:
     quiet_visuals = value
     video_layer.set_quiet_visuals(value)
     composite_material.set_shader_parameter("quiet_visuals", value)
+
+func set_high_readability(value: bool) -> void:
+    high_readability = value; _apply_readability_profile()
+func _apply_readability_profile() -> void:
+    RoomRenderProfile.apply_readability(composite_material, mobile_readability, high_readability, get_viewport_rect().size)
 func set_interaction_enabled(value: bool) -> void:
     interaction_enabled = value
     if not value and drawing:
@@ -288,6 +299,8 @@ func set_runtime_budget(scale: float) -> void:
 func set_assist_level(level: int) -> void:
     if behavior != null and behavior.has_method("set_assist_level"):
         behavior.set_assist_level(level)
+    if hint_layer != null and hint_layer.has_method("set_assist_level"):
+        hint_layer.set_assist_level(level)
 func set_hint_strength(value: float) -> void:
     if hint_layer != null:
         _refresh_hint_targets()
@@ -336,6 +349,10 @@ func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void:
     _interaction_flow._check_collectibles(point_norm, radius_norm)
 func _check_behavior(point_norm: Vector2, radius_norm: float) -> void:
     _interaction_flow._check_behavior(point_norm, radius_norm)
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_RESIZED: call_deferred("_apply_readability_profile")
+
 func _draw() -> void:
     if behavior != null:
         behavior.render(self, size, current_progress, _phase)
@@ -401,17 +418,3 @@ func _render_doors() -> void:
     draw_line(Vector2(center_x + threshold_half, bottom_y), Vector2(center_x + threshold_half * 0.72, top_y), Color(_accent_color, alpha * 0.78), 1.2)
     draw_line(Vector2(center_x - threshold_half * 0.72, top_y), Vector2(center_x + threshold_half * 0.72, top_y), Color(_accent_color, alpha * 0.60), 1.1)
     draw_circle(Vector2(center_x, lerpf(bottom_y, top_y, 0.46)), size.x * 0.075 * door_open_amount, Color(_accent_color, alpha * 0.07))
-func _unlock_profile_index(style: String) -> int:
-    match style:
-        "uncertainty": return 0
-        "party": return 1
-        "unmasked": return 2
-        "calling": return 3
-        "seed": return 4
-        "hybrid": return 5
-        "technophobia": return 6
-        "invaluable": return 7
-        "ashes": return 8
-        "waves": return 9
-        "rise": return 10
-        _: return 0

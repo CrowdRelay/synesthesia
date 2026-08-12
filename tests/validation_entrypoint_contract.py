@@ -3,6 +3,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 source_gate = (ROOT / 'scripts/validate-source.sh').read_text()
+fast_gate = (ROOT / 'scripts/validate-fast.sh').read_text()
+canonical_gates = source_gate + '\n' + fast_gate
 validate = (ROOT / 'validate.sh').read_text()
 web = (ROOT / 'scripts/build-web-preview.sh').read_text()
 linux = (ROOT / 'scripts/build-linux-release.sh').read_text()
@@ -21,14 +23,17 @@ critical = (
     'tests/android_pipeline_contract.py',
 )
 for token in critical:
-    if token not in source_gate:
+    if token not in canonical_gates:
         failures.append(f'canonical source gate missing: {token}')
+
+
+
 
 # Every platform-independent Python contract belongs to the canonical source
 # gate. This prevents new regression tests from silently existing outside CI.
 for contract in sorted((ROOT / 'tests').glob('*_contract.py')):
     token = f'tests/{contract.name}'
-    if token not in source_gate:
+    if token not in canonical_gates:
         failures.append(f'canonical source gate missing contract: {token}')
 for name, text in (
     ('validate.sh', validate),
@@ -43,7 +48,7 @@ if 'if [[ ! -f "$ROOT/synesthesia_rust.gdextension" ]]' not in validate or './sc
     failures.append('validate.sh: stale generated GDExtension registration is not purged for source-only validation')
 if 'res://tests/gdscript_parse_smoke.gd' not in validate or 'SYNESTHESIA_GDSCRIPT_PARSE=PASS' not in validate:
     failures.append('validate.sh: repository-wide GDScript parse sweep is missing')
-if 'tests/netlify_artifact_deploy_contract.py' not in source_gate:
+if 'tests/netlify_artifact_deploy_contract.py' not in canonical_gates:
     failures.append('validate-source.sh: zero-build Netlify artifact contract is missing')
 if 'preload("res://scripts/app/diagnostics_overlay.gd")' in (ROOT / 'scripts/main.gd').read_text():
     failures.append('main.gd: optional diagnostics overlay is a hard parser dependency')

@@ -37,7 +37,7 @@ assert 'hud.prime_hint_after_resume()' in main
 
 # Mobile touch forgiveness is invisible and centralized across room behaviors.
 assert 'interaction_forgiveness: float = 1.12' in base
-assert '[1.12, 1.18, 1.25, 1.32]' in base
+assert '[1.12, 1.20, 1.30, 1.40]' in base
 assert 'radius * interaction_forgiveness' in base
 
 # HUD gets out of the way during interaction and the completion moment is diegetic.

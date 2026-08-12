@@ -2,12 +2,17 @@ extends "res://scripts/rooms/behavior_base.gd"
 
 const FIRST := Vector2(0.42, 0.58)
 const SECOND := Vector2(0.58, 0.58)
+const RESONANCE_HEIGHTS := [3.0, 8.0, 13.0, 6.0, 11.0, 7.0, 3.0]
+const BRIDGE_SAMPLES := 22
+
+var _bridge_points: PackedVector2Array = PackedVector2Array()
 
 func configure(data: Dictionary) -> void:
     super.configure(data)
     state["presence"] = false
     state["closeness"] = 0.0
     state["active_presence"] = -1
+    _bridge_points.resize(BRIDGE_SAMPLES)
 
 func acts() -> Array[String]:
     return ["ZOSTAŃ W PÓŁMROKU", "USŁYSZ DRUGĄ FALĘ", "ZSYNCHRONIZUJ ODDECH"]
@@ -121,17 +126,17 @@ func _draw_resonance(canvas, center: Vector2, tint: Color, alpha: float, breath:
     var radius := 10.0 + breath * 4.0
     canvas.draw_arc(center, radius, -2.6 + phase_offset * 0.03, 0.35 + phase_offset * 0.03, 20, Color(tint, alpha), 1.2)
     canvas.draw_arc(center, radius + 7.0, 0.55, 3.55, 20, Color(tint, alpha * 0.42), 1.0)
-    var heights := [3.0, 8.0, 13.0, 6.0, 11.0, 7.0, 3.0]
-    for i in range(heights.size()):
+    for i in range(RESONANCE_HEIGHTS.size()):
         var x := center.x + (i - 3) * 3.4
-        var h: float = heights[i] * (0.7 + breath * 0.3)
+        var h: float = RESONANCE_HEIGHTS[i] * (0.7 + breath * 0.3)
         canvas.draw_line(Vector2(x, center.y - h * 0.5), Vector2(x, center.y + h * 0.5), Color(tint, alpha * 0.70), 1.0)
 
 func _draw_bridge_wave(canvas, a: Vector2, b: Vector2, tint: Color, alpha: float, phase: float) -> void:
-    var points := PackedVector2Array()
-    for i in range(22):
-        var t := float(i) / 21.0
+    if _bridge_points.size() != BRIDGE_SAMPLES:
+        _bridge_points.resize(BRIDGE_SAMPLES)
+    for i in range(BRIDGE_SAMPLES):
+        var t := float(i) / float(BRIDGE_SAMPLES - 1)
         var p := a.lerp(b, t)
         p.y += sin(t * TAU * 2.0 + phase * 2.2) * (2.0 + alpha * 22.0)
-        points.append(p)
-    canvas.draw_polyline(points, Color(tint, alpha), 1.1)
+        _bridge_points[i] = p
+    canvas.draw_polyline(_bridge_points, Color(tint, alpha), 1.1)

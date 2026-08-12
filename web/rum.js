@@ -3,9 +3,9 @@
   const endpoint = "https://signal-api.virya.music/v1/public/telemetry/rum";
   const deviceClass = innerWidth < 768 ? "mobile" : innerWidth < 1200 ? "tablet" : "desktop";
   const sent = new Set();
-  function report(metricKey, value, metadata = {}) {
-    if (!Number.isFinite(value) || value < 0 || sent.has(metricKey)) return;
-    sent.add(metricKey);
+  function report(metricKey, value, metadata = {}, dedupeKey = metricKey) {
+    if (!Number.isFinite(value) || value < 0 || sent.has(dedupeKey)) return;
+    sent.add(dedupeKey);
     fetch(endpoint, {
       method: "POST", mode: "cors", credentials: "omit", keepalive: true,
       headers: { "content-type": "application/json" },
@@ -25,4 +25,12 @@
   requestAnimationFrame(frame);
   addEventListener("synesthesia:room-loaded", (event) => report("room_load_ms", Number(event.detail?.durationMs || 0)), { once: true });
   addEventListener("synesthesia:transition-complete", (event) => report("transition_ms", Number(event.detail?.durationMs || 0)), { once: true });
+  addEventListener("synesthesia:gameplay-metric", (event) => {
+    const detail = event.detail || {};
+    const key = String(detail.metricKey || "");
+    if (!key.startsWith("gameplay_room_")) return;
+    const metadata = detail.metadata || {};
+    const roomId = String(metadata.room_id || "unknown").slice(0, 64);
+    report(key, Number(detail.value || 0), metadata, `${key}:${roomId}`);
+  });
 })();

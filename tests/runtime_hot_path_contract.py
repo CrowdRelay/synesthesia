@@ -21,6 +21,8 @@ transition=text('scripts/app/transition_director.gd')
 atmosphere=text('scripts/render/atmosphere_layer.gd')
 dressing=text('scripts/render/room_dressing_layer.gd')
 reveal=text('scripts/render/reveal_mask.gd')
+hints=text('scripts/render/interaction_hint_layer.gd')
+waves=text('scripts/rooms/behaviors/waves.gd')
 
 checks={
     'local pointer mirror': 'var _active_points: Dictionary = {}' in router,
@@ -39,6 +41,10 @@ checks={
     'reduced dressing sleeps': 'set_process(not _reduced_motion)' in dressing,
     'mask grain profile hoisted': 'var grain_mode: int = _grain_mode(profile)' in reveal and 'func _grain(x: int, y: int, seed: int, mode: int)' in reveal,
     'mask grain dead hash removed': reveal.find('match mode:') < reveal.find('var base: float = _hash01(x, y, seed)'),
+    'hint refresh sleeps while inactive': 'hint_layer.is_active()' in stage,
+    'hint targets avoid deep-copy churn': 'duplicate(true)' not in hints,
+    'waves bridge buffer reused': 'var _bridge_points: PackedVector2Array' in waves and '_bridge_points[i] = p' in waves,
+    'waves render literals hoisted': 'const RESONANCE_HEIGHTS' in waves,
 }
 for name,ok in checks.items():
     if not ok: failures.append(name)

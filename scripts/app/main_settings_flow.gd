@@ -18,6 +18,7 @@ func _show_settings() -> void:
         "quiet": app.quiet_mode,
         "quiet_visuals": app.quiet_visuals,
         "reduced_motion": app.reduced_motion,
+        "high_readability": app.high_readability,
         "haptics": app.haptics_enabled,
         "music": app.music_level,
         "noise": app.noise_level,
@@ -54,6 +55,11 @@ func _show_settings() -> void:
     )
     app.settings_panel.motion_changed.connect(func(value: bool) -> void:
         app.reduced_motion = value
+        _apply_sensory_mode()
+        app._mark_settings_dirty()
+    )
+    app.settings_panel.readability_changed.connect(func(value: bool) -> void:
+        app.high_readability = value
         _apply_sensory_mode()
         app._mark_settings_dirty()
     )
@@ -159,6 +165,8 @@ func _apply_sensory_mode() -> void:
         app.room.set_calm_mode(app.calm_mode)
         app.room.set_reduced_motion(app.reduced_motion)
         app.room.set_quiet_visuals(app.quiet_visuals)
+        if app.room.has_method("set_high_readability"):
+            app.room.set_high_readability(app.high_readability)
     if app.audio_director != null:
         app.audio_director.set_calm_mode(app.calm_mode)
         app.audio_director.set_quiet(app.quiet_mode)
@@ -209,6 +217,7 @@ func _populate_settings_state() -> void:
     app.album_state["quiet_mode"] = app.quiet_mode
     app.album_state["quiet_visuals"] = app.quiet_visuals
     app.album_state["reduced_motion"] = app.reduced_motion
+    app.album_state["high_readability"] = app.high_readability
     app.album_state["haptics_enabled"] = app.haptics_enabled
     app.album_state["quality_profile"] = app.quality_profile
     app.album_state["music_level"] = app.music_level

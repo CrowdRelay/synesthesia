@@ -90,6 +90,12 @@
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
       }
+    },
+    "mobile_readability": {
+      "shadow_lift": 0.42,
+      "subject_lift": 0.58,
+      "noise_scale": 0.88,
+      "vignette_floor": 0.81
     }
   },
   "sensory": {

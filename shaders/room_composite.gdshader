@@ -30,6 +30,10 @@ uniform float brush_energy : hint_range(0.0, 1.0) = 0.0;
 uniform float film_grain_strength : hint_range(0.0, 1.0) = 0.32;
 uniform float subject_lift : hint_range(0.0, 1.0) = 0.0;
 uniform float display_clarity : hint_range(0.0, 1.0) = 0.0;
+uniform float readability_shadow_lift : hint_range(0.0, 1.0) = 0.0;
+uniform float readability_subject_lift : hint_range(0.0, 1.0) = 0.0;
+uniform float readability_noise_scale : hint_range(0.0, 1.0) = 1.0;
+uniform float readability_vignette_floor : hint_range(0.0, 1.0) = 0.8;
 uniform float runtime_scale : hint_range(0.5, 1.0) = 1.0;
 uniform float cinematic_time = 0.0;
 uniform float unlock_motion : hint_range(0.0, 1.0) = 0.0;
@@ -224,10 +228,11 @@ void fragment() {
     float edge_distance = min(min(UV.x, 1.0 - UV.x), min(UV.y, 1.0 - UV.y));
     float edge_blend = smoothstep(0.0, 0.19, edge_distance);
     vec3 photographed = mix(back.rgb, scene.rgb, edge_blend);
-    vec3 lifted_subject = subject.rgb * (1.0 + subject_lift * 0.075);
+    vec3 lifted_subject = subject.rgb * (1.0 + subject_lift * 0.075 + readability_subject_lift * 0.12);
     photographed = mix(photographed, lifted_subject, subject.a * (0.88 + subject_lift * 0.10));
     photographed = mix(photographed, foreground.rgb, foreground.a * 0.96);
     photographed = mix(photographed, sqrt(max(photographed, vec3(0.0))), display_clarity * 0.10);
+    photographed = mix(photographed, photographed * (1.0 + readability_shadow_lift * 0.18), readability_shadow_lift);
 
     float mask = texture(reveal_mask, UV).r;
     float reveal_radius = completion_reveal * 1.45;
@@ -361,11 +366,11 @@ void fragment() {
     color += accent_color.rgb * cinematic_edge * 0.16;
 
     float revealed_grain = hash21(floor(pixel * 0.34) + vec2(19.0, 73.0));
-    float grain_strength = film_grain_strength * runtime_scale * (quiet_visuals ? 0.20 : 1.0);
+    float grain_strength = film_grain_strength * runtime_scale * readability_noise_scale * (quiet_visuals ? 0.20 : 1.0);
     color *= 1.0 + (revealed_grain - 0.5) * 0.026 * grain_strength * reveal;
 
     float vignette = 1.0 - smoothstep(0.22, 0.78, distance(UV, vec2(0.5)));
-    color *= mix(mix(0.72, 0.80, display_clarity), 1.0, vignette);
+    color *= mix(mix(readability_vignette_floor, 0.80, display_clarity), 1.0, vignette);
 
     // Accepted Signal board grade: cool steel in shadows, selective accent in
     // highlights, high black floor and no broad comic-poster quantisation.

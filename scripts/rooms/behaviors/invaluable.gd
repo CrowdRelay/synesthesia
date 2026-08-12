@@ -56,7 +56,11 @@ func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> v
                 canvas.draw_line(p - tangent, p + tangent, Color(accent, 0.38 * alpha), 1.2)
             continue
         var rect: Rect2 = Rect2(center - Vector2(34.0, 58.0), Vector2(68.0, 116.0))
-        canvas.draw_rect(rect, Color(accent, 0.08 + progress * 0.08), false, 1.4)
+        var edge_alpha := 0.08 + progress * 0.08 + float(assist_level) * 0.035
+        canvas.draw_rect(rect, Color(accent, edge_alpha), false, 1.4 + float(assist_level) * 0.12)
+        if assist_level > 0 and not cracked.has(index):
+            var glint_x := rect.position.x + rect.size.x * (0.30 + 0.12 * sin(float(index) * 1.7))
+            canvas.draw_line(Vector2(glint_x, rect.position.y + 12.0), Vector2(glint_x + 14.0, rect.end.y - 16.0), Color(Color.WHITE, 0.035 * float(assist_level)), 1.0)
         if cracked.has(index):
             for branch in range(8):
                 var angle: float = float(branch) * TAU / 8.0 + float(index) * 0.13

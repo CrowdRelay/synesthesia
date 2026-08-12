@@ -52,7 +52,8 @@ Native production builds are Rust-primary: macOS/Linux load the native GDExtensi
 
 ```bash
 # Fast canonical source/contracts gate (shared by local, CI and Android builders)
-./scripts/validate-source.sh
+./scripts/validate-fast.sh    # szybki gameplay/mobile/hot-path preflight
+./scripts/validate-source.sh  # pełny canonical release gate
 
 # Source gates + real Godot import/runtime smoke when Godot is installed
 ./validate.sh
@@ -106,3 +107,10 @@ New room packs must satisfy the schema encoded by `data/release_index.json`, `da
 See [`SECURITY.md`](SECURITY.md). Run bearers are scoped to the Synesthesia lifecycle; reward entry stores only the minimum identity needed for a draw. No address, phone, location, marketing consent or gameplay brush data is sent with the draw entry.
 
 VIRYA names, recordings and artwork remain with their respective rights holders.
+
+
+## Mobile product QA
+
+- `docs/MOBILE_CLARITY.md` — renderer/UI invariants.
+- `docs/MOBILE_PLAYTEST.md` — real-phone daylight/smudged-screen playtest.
+- `docs/PRODUCT_READABILITY_PASS_2026-08-11.md` — current product-readability architecture and telemetry.

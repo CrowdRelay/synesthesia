@@ -11,7 +11,7 @@ reward_flow=read('scripts/app/main_reward_flow.gd')
 assert 'assist_level_changed' in guide
 for level in ('_miss_count >= 6','_miss_count >= 4','_miss_count >= 2'):
     assert level in guide
-assert '[1.12, 1.18, 1.25, 1.32]' in base
+assert '[1.12, 1.20, 1.30, 1.40]' in base
 assert 'latest_echo' in flow and 'ECHO Z POPRZEDNIEGO POKOJU' in flow
 assert 'journey_marks' in metrics and 'PEŁNY REZONANS' in metrics
 assert 'ŚLADY · %s' in finale
