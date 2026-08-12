@@ -19,14 +19,12 @@ var _miss_count := 0
 var _last_miss_ms := 0
 var _resume_boost_pending := false
 var _assist_level := 0
-var app: Node
 
 func _ready() -> void:
     _timer = Timer.new()
     _timer.one_shot = true
     _timer.timeout.connect(_on_timeout)
     add_child(_timer)
-    app = get_node("/root/app")
 
 func configure(interaction: String) -> void:
     _interaction = interaction
@@ -112,9 +110,13 @@ func get_stats() -> Dictionary:
     var now_ms: int = Time.get_ticks_msec()
     var first_success_ms: int = -1
     if _last_progress >= 0.99 and now_ms - _last_miss_ms > 1000:
-        var app = get_node("/root/app")
-        if app != null and app.room != null:
-            first_success_ms = now_ms - app.room_started_ms
+        var app_node = get_node_or_null("/root/app")
+        if app_node != null and app_node.has_method("get") and app_node.get("room") != null:
+            var room = app_node.get("room")
+            if room != null and room.has_method("get"):
+                var room_started = room.get("room_started_ms")
+                if room_started != null:
+                    first_success_ms = now_ms - room_started
     return {
         "first_success_ms": first_success_ms,
         "miss_count": _miss_count,
