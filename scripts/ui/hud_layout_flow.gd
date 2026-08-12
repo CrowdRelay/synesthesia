@@ -238,7 +238,7 @@ func _build_mobile_instruction() -> void:
 
     app.mobile_instruction_accent_bar = ColorRect.new()
     app.mobile_instruction_accent_bar.color = app._accent
-    app.mobile_instruction_accent_bar.custom_minimum_size = Vector2(5.0, 48.0)
+    app.mobile_instruction_accent_bar.custom_minimum_size = Vector2(6.0, 54.0)
     app.mobile_instruction_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(app.mobile_instruction_accent_bar)
 
@@ -249,7 +249,7 @@ func _build_mobile_instruction() -> void:
     app.mobile_instruction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     app.mobile_instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     UIFactory.apply_display_font(app.mobile_instruction_label)
-    app.mobile_instruction_label.add_theme_font_size_override("font_size", 15)
+    app.mobile_instruction_label.add_theme_font_size_override("font_size", 16)
     app.mobile_instruction_label.add_theme_color_override("font_color", Color("edf5ff"))
     row.add_child(app.mobile_instruction_label)
 
@@ -400,7 +400,7 @@ func _apply_mobile_safe_area() -> void:
     var bottom_extra: int = clampi(int(round(float(safe_bottom_px) * scale_y)), 0, max_safe_inset)
     if app.mobile_instruction_panel != null and app.mobile_instruction_panel.visible:
         app.mobile_instruction_panel.offset_bottom = -(24.0 * app._ui_scale + float(bottom_extra))
-        app.mobile_instruction_panel.offset_top = app.mobile_instruction_panel.offset_bottom - 108.0 * app._ui_scale
+        app.mobile_instruction_panel.offset_top = app.mobile_instruction_panel.offset_bottom - 116.0 * app._ui_scale
         if app.toast_panel != null:
             app.toast_panel.offset_bottom = app.mobile_instruction_panel.offset_top - 6.0 * app._ui_scale
             app.toast_panel.offset_top = app.toast_panel.offset_bottom - 72.0 * app._ui_scale

@@ -73,6 +73,7 @@ func _draw() -> void:
     if living_strength > 0.01:
         WorldMicroFXDrawHelpers.draw_living_state(self, style, accent, secondary, base_alpha, living_strength, _time)
         _draw_gameplay_living_accents(base_alpha)
+        _draw_post_reveal_touch_signature(base_alpha)
     if cinematic > 0.001:
         WorldMicroFXDrawHelpers.draw_hero_beat(self, style, accent, secondary, cinematic)
 
@@ -251,6 +252,47 @@ func _draw_uncertainty(alpha: float) -> void:
             points.append(Vector2(x, y + wobble))
         draw_polyline(points, Color(accent if channel % 2 == 0 else secondary, alpha * (0.20 + channel * 0.04)), 1.0)
 
+
+func _draw_post_reveal_touch_signature(alpha: float) -> void:
+    if living_strength <= 0.01 or interaction_energy <= 0.02:
+        return
+    var center: Vector2 = pointer * size
+    var energy: float = clampf(interaction_energy, 0.0, 1.0)
+    var pulse: float = 0.5 + 0.5 * sin(_time * 5.2)
+    match style:
+        "technophobia":
+            var jitter: float = 3.0 + energy * 8.0
+            draw_polyline(PackedVector2Array([
+                center + Vector2(-22, 0),
+                center + Vector2(-10, -jitter),
+                center + Vector2(0, jitter * 0.55),
+                center + Vector2(11, -jitter * 0.75),
+                center + Vector2(24, 1),
+            ]), Color(secondary, alpha * energy * 2.4), 1.5)
+        "invaluable":
+            for i in range(4):
+                var angle: float = float(i) * PI * 0.5 + _time * 0.12
+                var ray: Vector2 = Vector2.from_angle(angle) * (15.0 + energy * 18.0)
+                draw_line(center - ray * 0.25, center + ray, Color(Color.WHITE, alpha * energy * (1.3 + pulse)), 1.2)
+        "party":
+            for i in range(6):
+                var angle: float = float(i) / 6.0 * TAU + _time * 0.26
+                var point: Vector2 = center + Vector2.from_angle(angle) * (12.0 + pulse * 14.0)
+                draw_circle(point, 1.4 + energy * 1.8, Color(secondary if i % 2 == 0 else accent, alpha * energy * 1.8))
+        "calling", "waves", "hybrid":
+            for i in range(3):
+                var radius: float = 10.0 + float(i) * 11.0 + pulse * 6.0
+                draw_arc(center, radius, -2.7, 2.7, 28, Color(accent if i % 2 == 0 else secondary, alpha * energy * (1.6 - i * 0.25)), 1.1)
+        "ashes", "seed", "rise":
+            for i in range(7):
+                var travel: float = fmod(_time * (0.42 + i * 0.025) + i * 0.14, 1.0)
+                var point: Vector2 = center + Vector2(sin(i * 2.1) * (8.0 + i * 2.0), -travel * (22.0 + energy * 24.0))
+                draw_circle(point, 1.0 + energy, Color(secondary if i % 2 == 0 else accent, alpha * energy * (1.0 - travel) * 1.8))
+        "unmasked":
+            draw_arc(center, 15.0 + pulse * 9.0, -2.6, 2.6, 30, Color(Color.WHITE, alpha * energy * 1.7), 1.2)
+            draw_line(center + Vector2(-18, 13), center + Vector2(20, -15), Color(secondary, alpha * energy * 1.5), 1.0)
+        _:
+            draw_arc(center, 14.0 + pulse * 13.0, 0.0, TAU, 34, Color(accent, alpha * energy * 1.7), 1.1)
 
 func _draw_gameplay_living_accents(alpha: float) -> void:
     if living_strength <= 0.01:

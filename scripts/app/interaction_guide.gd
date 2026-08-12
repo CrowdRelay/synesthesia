@@ -37,6 +37,12 @@ func configure(interaction: String) -> void:
     visual_hint_changed.emit(0.62)
     _restart(FIRST_IDLE_SECONDS)
 
+func boost_mobile_first_entry() -> void:
+    if not _enabled:
+        return
+    visual_hint_changed.emit(0.72)
+    _restart(2.25)
+
 func suspend() -> void:
     _enabled = false
     visual_hint_changed.emit(0.0)

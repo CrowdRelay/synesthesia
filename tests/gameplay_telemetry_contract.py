@@ -11,7 +11,9 @@ rum = (ROOT / "web/rum.js").read_text()
 
 for token in (
     'const SAMPLE_RATE := 0.05', 'const MAX_QUEUE := 4', 'func begin_room',
-    'func complete_room', 'func abandon_room', 'first_success_ms', 'miss_count',
+    'func complete_room', 'func abandon_room', 'func begin_journey', 'func complete_journey',
+    'gameplay_journey_started', 'gameplay_journey_resumed_ms', 'gameplay_journey_completed_ms',
+    'first_success_ms', 'miss_count',
     'hint_count', 'max_assist_level', 'quality_min_scale', 'credentials',
 ):
     if token == 'credentials':
@@ -24,9 +26,11 @@ assert 'gameplay_telemetry.begin_room' in flow
 assert 'gameplay_telemetry.complete_room' in flow
 assert 'gameplay_telemetry.abandon_room' in flow
 assert 'gameplay_telemetry.note_quality_scale' in main
+assert 'gameplay_telemetry.begin_journey' in main
+assert 'gameplay_telemetry.complete_journey' in (ROOT / 'scripts/app/main_reward_flow.gd').read_text()
 assert 'func guidance_stats()' in hud
 assert '_hud.note_success()' in feedback
 assert 'synesthesia:gameplay-metric' in rum
-assert '`${key}:${roomId}`' in rum
+assert '`${key}:${roomId}`' in rum and 'gameplay_journey_' in rum
 assert 'note_miss' not in telemetry and 'note_interaction' not in telemetry
-print('SYNESTHESIA_GAMEPLAY_TELEMETRY=PASS sample=5% summary=room-only identity=none queue<=4 per-room-dedupe=true')
+print('SYNESTHESIA_GAMEPLAY_TELEMETRY=PASS sample=5% summary=room+journey identity=none queue<=4 dedupe=true')

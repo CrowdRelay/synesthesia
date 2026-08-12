@@ -20,12 +20,15 @@ func _configure_reward_client() -> void:
         str(app.index_document.get("campaign_slug", "")),
         app.ReleaseReader.read_text(app.VERSION_PATH, "0.12.8"),
         app.ProgressStoreScript.get_install_id(),
+        str(app.album_state.get("journey_id", "legacy")),
     )
     app.reward_client.restore_run(app.ProgressStoreScript.load_run())
     app.reward_client.run_started.connect(_on_run_started)
     app.reward_client.room_recorded.connect(_on_room_recorded)
     app.reward_client.album_recorded.connect(_on_album_recorded)
     app.reward_client.draw_entered.connect(_on_draw_entered)
+    app.reward_client.leaderboard_loaded.connect(_on_leaderboard_loaded)
+    app.reward_client.leaderboard_published.connect(_on_leaderboard_published)
     app.reward_client.request_failed.connect(_on_reward_request_failed)
     app.reward_client.retry_scheduled.connect(_on_reward_retry_scheduled)
     app.reward_client.run_invalidated.connect(_on_reward_run_invalidated)
@@ -49,6 +52,13 @@ func _show_reward_panel() -> void:
     app.reward_panel = app.SignalFinaleCardScript.new()
     app.reward_panel.name = "SignalFinaleCard"
     app.ui_root.attach(app.reward_panel, 40)
+    if app.gameplay_telemetry != null:
+        var summary: Dictionary = app.ProgressMetrics.completion_summary(app.release_entries, app.album_state)
+        app.gameplay_telemetry.complete_journey(
+            int(summary.get("elapsed_ms", 0)),
+            int(summary.get("echoes_found", 0)),
+            int(summary.get("echoes_total", 0)),
+        )
     app.reward_panel.configure(
         bool(app.album_state.get("server_album_completed", false)),
         app.ProgressStoreScript.load_reward(),
@@ -59,8 +69,42 @@ func _show_reward_panel() -> void:
         # Refresh the short-lived handoff/event context without changing completion state.
         app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
     app.reward_panel.draw_entry_requested.connect(_submit_reward_claim_values)
+    app.reward_panel.leaderboard_publish_requested.connect(_publish_leaderboard_name)
+    app.reward_panel.leaderboard_refresh_requested.connect(_refresh_leaderboard)
     app.reward_panel.reset_requested.connect(app._confirm_reset_album)
     app.reward_panel.album_mode_requested.connect(app._show_album_archive)
+    _refresh_leaderboard()
+
+func _refresh_leaderboard() -> void:
+    if app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app.reward_panel.set_leaderboard_status("Ładuję TOP 10…")
+    if app.reward_client != null:
+        app.reward_client.fetch_leaderboard(10)
+
+func _publish_leaderboard_name(display_name: String) -> void:
+    if app.reward_panel == null or not is_instance_valid(app.reward_panel):
+        return
+    if app.reward_client == null or not bool(app.album_state.get("server_album_completed", false)):
+        app.reward_panel.set_leaderboard_status("Najpierw kończę synchronizację wyniku z CrowdRelay.")
+        return
+    app.reward_panel.set_leaderboard_publish_enabled(false)
+    app.reward_panel.set_leaderboard_status("Zapisuję najlepszy czas…")
+    app.reward_client.publish_leaderboard(display_name)
+
+func _on_leaderboard_loaded(items: Array) -> void:
+    if app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app.reward_panel.set_leaderboard_items(items)
+
+func _on_leaderboard_published(context: Dictionary) -> void:
+    var name: String = str(context.get("display_name", "")).strip_edges()
+    if not name.is_empty():
+        app.album_state["leaderboard_name"] = name
+        app._save_album_state()
+    if app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app.reward_panel.set_leaderboard_publish_result(context)
+        app.reward_panel.set_leaderboard_publish_enabled(true)
+    if app.reward_client != null:
+        app.reward_client.fetch_leaderboard(10)
 
 func _submit_reward_claim_values(email: String) -> void:
     if app.reward_client == null:
@@ -126,6 +170,7 @@ func _on_album_recorded(context: Dictionary = {}) -> void:
         app.reward_panel.apply_signal_context(app.completion_context)
         app.reward_panel.set_status("Ukończenie potwierdzone. Możesz połączyć podróż z Sygnałem lub dołączyć do losowania 5 płyt.")
         app.reward_panel.set_claim_enabled(true)
+        app.reward_panel.set_leaderboard_publish_enabled(true)
 
 func _on_draw_entered(status: String, message: String) -> void:
     app.ProgressStoreScript.save_reward({"status": status, "message": message, "claimed_at_unix": int(Time.get_unix_time_from_system())})
@@ -141,6 +186,9 @@ func _on_reward_request_failed(operation: String, message: String) -> void:
     if operation == "enter_draw" and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_status(message)
         app.reward_panel.set_claim_enabled(true)
+    elif operation.begins_with("leaderboard_") and app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app.reward_panel.set_leaderboard_status(message)
+        app.reward_panel.set_leaderboard_publish_enabled(true)
     else:
         app.hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")
 
@@ -148,6 +196,8 @@ func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
     var text_value: String = "Ponawiam połączenie z Sygnałem · próba %d/3" % attempt
     if operation == "enter_draw" and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_status(text_value)
+    elif operation.begins_with("leaderboard_") and app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app.reward_panel.set_leaderboard_status(text_value)
     else:
         app.hud.update_discovery(text_value)
 
@@ -160,3 +210,6 @@ func _on_reward_run_invalidated() -> void:
     if app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_status("Odnawiam bezpieczne połączenie z Sygnałem…")
         app.reward_panel.set_claim_enabled(false)
+        app.reward_panel.set_leaderboard_publish_enabled(false)
+    if app.reward_client != null:
+        app.reward_client.start_run()

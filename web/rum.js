@@ -28,9 +28,9 @@
   addEventListener("synesthesia:gameplay-metric", (event) => {
     const detail = event.detail || {};
     const key = String(detail.metricKey || "");
-    if (!key.startsWith("gameplay_room_")) return;
+    if (!key.startsWith("gameplay_room_") && !key.startsWith("gameplay_journey_")) return;
     const metadata = detail.metadata || {};
-    const roomId = String(metadata.room_id || "unknown").slice(0, 64);
+    const roomId = String(metadata.room_id || "journey").slice(0, 64);
     report(key, Number(detail.value || 0), metadata, `${key}:${roomId}`);
   });
 })();

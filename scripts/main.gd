@@ -118,6 +118,9 @@ func _ready() -> void:
         album_state["started_at_unix"] = int(Time.get_unix_time_from_system())
     if not album_state.has("total_elapsed_ms"):
         album_state["total_elapsed_ms"] = 0
+    if str(album_state.get("journey_id", "")).is_empty():
+        album_state["journey_id"] = ProgressStoreScript.new_journey_id()
+        ProgressStoreScript.save_album(album_state)
     room_flow = MainRoomFlowScript.new(); room_flow.bind(self); add_child(room_flow)
     settings_flow = MainSettingsFlowScript.new(); settings_flow.bind(self); add_child(settings_flow)
     reward_flow = MainRewardFlowScript.new(); reward_flow.bind(self); add_child(reward_flow)
@@ -225,6 +228,11 @@ func _enter_album_mode_room(index: int) -> void:
 func _begin_experience() -> void:
     if transition_running:
         return
+    if gameplay_telemetry != null:
+        gameplay_telemetry.begin_journey(
+            _array_value(album_state.get("completed_room_ids", [])).size(),
+            int(album_state.get("total_elapsed_ms", 0)),
+        )
     if bool(album_state.get("album_completed", false)):
         _remove_modal(experience_intro_panel)
         experience_intro_panel = null

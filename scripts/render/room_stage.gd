@@ -47,6 +47,7 @@ var room_dressing
 var video_layer
 var hint_layer
 var world_micro_fx; var post_reveal_runtime; var interaction_enabled: bool = true
+var post_reveal_interaction: bool = false
 var calm_mode: bool = true
 var reduced_motion: bool = false
 var quiet_visuals: bool = false
@@ -262,6 +263,10 @@ func set_interaction_enabled(value: bool) -> void:
         _end_stroke()
     if not value and interaction_router != null:
         interaction_router.reset()
+func set_post_reveal_interaction(value: bool) -> void:
+    post_reveal_interaction = value
+    if value: set_interaction_enabled(true)
+    elif interaction_router != null: interaction_router.reset()
 func set_cinematic_reveal(value: bool, instant: bool = false) -> void:
     var was_revealed: bool = cinematic_revealed
     cinematic_revealed = value
@@ -319,6 +324,7 @@ func get_interaction_hint() -> String:
 func set_door_open(value: bool) -> void: door_target_open = value
 func get_door_open_amount() -> float: return door_open_amount
 func reset_room() -> void:
+    post_reveal_interaction = false
     _state_flow.reset_room()
 func get_found_count() -> int: return _state_flow.get_found_count()
 func get_coverage() -> float: return _state_flow.get_coverage()
@@ -331,25 +337,18 @@ func _gui_input(event: InputEvent) -> void: _interaction_flow._gui_input(event)
 func _handle_gestures(gestures: Array) -> void: _interaction_flow._handle_gestures(gestures)
 func _on_runtime_special(kind: String, index: int) -> void: _interaction_flow._on_runtime_special(kind, index)
 func _on_attempt_confirmed(point: Vector2, strength: float) -> void: _interaction_flow._on_attempt_confirmed(point, strength)
-func _on_gesture_reveal_changed(point: Vector2, radius: float) -> void:
-    _interaction_flow._on_gesture_reveal_changed(point, radius)
-func _begin_stroke(point_norm: Vector2, pointer_id: int = -1) -> void:
-    _interaction_flow._begin_stroke(point_norm, pointer_id)
-func _continue_stroke(point_norm: Vector2) -> void:
-    _interaction_flow._continue_stroke(point_norm)
+func _on_gesture_reveal_changed(point: Vector2, radius: float) -> void: _interaction_flow._on_gesture_reveal_changed(point, radius)
+func _begin_stroke(point_norm: Vector2, pointer_id: int = -1) -> void: _interaction_flow._begin_stroke(point_norm, pointer_id)
+func _continue_stroke(point_norm: Vector2) -> void: _interaction_flow._continue_stroke(point_norm)
 func _end_stroke() -> void:
     _interaction_flow._end_stroke()
-func _apply_stamps(stamps: Array[Dictionary]) -> void:
-    _interaction_flow._apply_stamps(stamps)
+func _apply_stamps(stamps: Array[Dictionary]) -> void: _interaction_flow._apply_stamps(stamps)
 func _set_progress_from_mask() -> void:
     _interaction_flow._set_progress_from_mask()
 func _update_act(progress_value: float) -> void:
     _interaction_flow._update_act(progress_value)
-func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void:
-    _interaction_flow._check_collectibles(point_norm, radius_norm)
-func _check_behavior(point_norm: Vector2, radius_norm: float) -> void:
-    _interaction_flow._check_behavior(point_norm, radius_norm)
-
+func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void: _interaction_flow._check_collectibles(point_norm, radius_norm)
+func _check_behavior(point_norm: Vector2, radius_norm: float) -> void: _interaction_flow._check_behavior(point_norm, radius_norm)
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED: call_deferred("_apply_readability_profile")
 

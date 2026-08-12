@@ -1,6 +1,8 @@
 extends Control
 
 signal draw_entry_requested(email: String)
+signal leaderboard_publish_requested(display_name: String)
+signal leaderboard_refresh_requested
 signal reset_requested
 signal album_mode_requested
 
@@ -9,6 +11,8 @@ const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const ViryaRosterStrip := preload("res://scripts/ui/virya_roster_strip.gd")
 const SignalResonanceRitual := preload("res://scripts/ui/signal_resonance_ritual.gd")
+const SignalLeaderboardPanel := preload("res://scripts/ui/signal_leaderboard_panel.gd")
+const SignalJourneySummary := preload("res://scripts/ui/signal_journey_summary.gd")
 
 var _panel: PanelContainer
 var _scroll: ScrollContainer
@@ -19,6 +23,7 @@ var _body: Label
 var _email: LineEdit
 var _status: Label
 var _claim: Button
+var _leaderboard_panel: SignalLeaderboardPanel
 var _signal_button: Button
 var _next_event: Label
 var _next_event_button: Button
@@ -131,6 +136,8 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     form_title.add_theme_color_override("font_color", _accent)
     _form.add_child(form_title)
 
+    _build_leaderboard(journey_summary)
+
     _email = UIFactory.line_edit("E-mail do losowania", Color("7fd7ef"))
     _email.name = "RewardEmail"
     _email.focus_entered.connect(_on_email_focus_entered)
@@ -203,46 +210,33 @@ func _on_ritual_completed() -> void:
 func _build_journey_summary(summary: Dictionary) -> void:
     if summary.is_empty():
         return
-    var card := PanelContainer.new()
-    card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    card.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent, 0.24))
+    var card := SignalJourneySummary.new()
+    card.configure(summary, _accent)
     _visual.add_child(card)
-    var content := VBoxContainer.new()
-    content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    content.add_theme_constant_override("separation", 4)
-    card.add_child(content)
 
-    var kicker := Label.new()
-    kicker.text = "TWÓJ PRZEBIEG"
-    UIFactory.apply_display_font(kicker)
-    kicker.add_theme_font_size_override("font_size", 8)
-    kicker.add_theme_color_override("font_color", _accent)
-    content.add_child(kicker)
+func _build_leaderboard(summary: Dictionary) -> void:
+    _leaderboard_panel = SignalLeaderboardPanel.new()
+    _leaderboard_panel.name = "SignalLeaderboardPanel"
+    _form.add_child(_leaderboard_panel)
+    _leaderboard_panel.configure(summary, _scroll)
+    _leaderboard_panel.publish_requested.connect(func(name: String) -> void: leaderboard_publish_requested.emit(name))
+    _leaderboard_panel.refresh_requested.connect(func() -> void: leaderboard_refresh_requested.emit())
 
-    var rooms_done: int = maxi(0, int(summary.get("rooms_completed", 0)))
-    var rooms_total: int = maxi(rooms_done, int(summary.get("rooms_total", rooms_done)))
-    var echoes_found: int = maxi(0, int(summary.get("echoes_found", 0)))
-    var echoes_total: int = maxi(echoes_found, int(summary.get("echoes_total", echoes_found)))
-    var elapsed_ms: int = maxi(0, int(summary.get("elapsed_ms", 0)))
-    var line := UIFactory.body("POKOJE %d/%d  ·  ECHA %d/%d  ·  %s" % [rooms_done, rooms_total, echoes_found, echoes_total, _format_elapsed(elapsed_ms)])
-    line.add_theme_font_size_override("font_size", 10)
-    line.add_theme_color_override("font_color", Color("d9e8f4"))
-    content.add_child(line)
+func set_leaderboard_items(items: Array) -> void:
+    if _leaderboard_panel != null:
+        _leaderboard_panel.set_items(items)
 
-    var marks_value: Variant = summary.get("journey_marks", [])
-    if marks_value is Array and not (marks_value as Array).is_empty():
-        var mark_labels: PackedStringArray = PackedStringArray()
-        for value in marks_value as Array:
-            mark_labels.append(str(value))
-        var marks := UIFactory.body("ŚLADY · %s" % " · ".join(mark_labels))
-        marks.add_theme_font_size_override("font_size", 9)
-        marks.add_theme_color_override("font_color", Color("f0cf88"))
-        content.add_child(marks)
+func set_leaderboard_publish_result(context: Dictionary) -> void:
+    if _leaderboard_panel != null:
+        _leaderboard_panel.set_publish_result(context)
 
-    var unlock := UIFactory.body("Album Mode odblokowany · możesz wracać do dowolnego pokoju bez kasowania tej podróży.")
-    unlock.add_theme_font_size_override("font_size", 9)
-    unlock.add_theme_color_override("font_color", Color("8fdff0"))
-    content.add_child(unlock)
+func set_leaderboard_status(text_value: String) -> void:
+    if _leaderboard_panel != null:
+        _leaderboard_panel.set_status(text_value)
+
+func set_leaderboard_publish_enabled(value: bool) -> void:
+    if _leaderboard_panel != null:
+        _leaderboard_panel.set_publish_enabled(value)
 
 func apply_signal_context(context: Dictionary) -> void:
     _signal_context = context.duplicate(true)
@@ -310,14 +304,6 @@ func _on_email_gui_input(event: InputEvent) -> void:
 func _ensure_email_visible() -> void:
     if _scroll != null and _email != null:
         _scroll.ensure_control_visible(_email)
-
-func _format_elapsed(elapsed_ms: int) -> String:
-    var total_seconds: int = maxi(0, int(elapsed_ms / 1000))
-    var minutes: int = int(total_seconds / 60)
-    var seconds: int = total_seconds % 60
-    if minutes >= 60:
-        return "%dh %02dm" % [int(minutes / 60), minutes % 60]
-    return "%dm %02ds" % [minutes, seconds]
 
 func _emit_claim() -> void:
     draw_entry_requested.emit(_email.text.strip_edges())

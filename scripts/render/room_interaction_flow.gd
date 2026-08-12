@@ -15,6 +15,11 @@ func _gui_input(event: InputEvent) -> void:
     var point_value: Variant = routed.get("point", app.pointer_norm)
     app.pointer_norm = point_value if point_value is Vector2 else app.pointer_norm
     app.target_parallax = (app.pointer_norm - Vector2(0.5, 0.5)) * 2.0
+    if app.post_reveal_interaction:
+        _handle_post_reveal_gestures(routed["gestures"])
+        app.accept_event()
+        app.queue_redraw()
+        return
     _handle_gestures(routed["gestures"])
     match str(routed.get("stroke", "")):
         "begin":
@@ -25,6 +30,32 @@ func _gui_input(event: InputEvent) -> void:
         "end": _end_stroke()
     app.accept_event()
     app.queue_redraw()
+
+func _handle_post_reveal_gestures(gestures: Array) -> void:
+    if gestures.is_empty():
+        return
+    var style: String = str(app.manifest_room.get("visual_style", "uncertainty"))
+    for value in gestures:
+        if not value is Dictionary:
+            continue
+        var gesture: Dictionary = value as Dictionary
+        var kind: String = str(gesture.get("kind", ""))
+        if kind not in ["tap", "press", "drag", "hold", "two_finger"]:
+            continue
+        var point_value: Variant = gesture.get("point", app.pointer_norm)
+        var point: Vector2 = point_value if point_value is Vector2 else app.pointer_norm
+        var velocity: float = clampf(float(gesture.get("velocity", 0.0)) * 0.72, 0.0, 1.0)
+        var distance: float = clampf(float(gesture.get("distance", 0.0)) * 3.8, 0.0, 1.0)
+        var strength: float = maxf(0.40 if kind in ["tap", "press"] else 0.24, maxf(velocity, distance))
+        if kind == "hold":
+            strength = maxf(strength, 0.68)
+        app._interaction_energy = maxf(app._interaction_energy, strength)
+        app._brush_energy = maxf(app._brush_energy, strength * 0.48)
+        app.composite_material.set_shader_parameter("brush_point", point)
+        if app.interaction_fx != null and kind in ["tap", "press", "hold"]:
+            app.interaction_fx.spawn(point, "confirm")
+        _check_collectibles(point, 0.045 + strength * 0.035)
+        app.interaction_motion.emit(_motion_kind(style, kind), strength)
 
 func _handle_gestures(gestures: Array) -> void:
     if app.interaction_runtime == null or gestures.is_empty():

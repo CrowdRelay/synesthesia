@@ -192,6 +192,9 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     if mobile_instruction_label != null:
         mobile_instruction_label.text = instruction_label.text.replace(" · ", "\n")
     _interaction_guide.configure(interaction)
+    var viewport_size: Vector2 = get_viewport_rect().size
+    if viewport_size.y > viewport_size.x and viewport_size.x <= 900.0 * _ui_scale:
+        _interaction_guide.boost_mobile_first_entry()
     _rebuild_journey()
     _hide_toast()
     _hide_act_banner()

@@ -72,7 +72,8 @@ func _draw_target(target: Dictionary, index: int) -> void:
     var base_radius := minf(size.x, size.y) * radius_norm
     var pulse: float = 0.5 if _reduced_motion else 0.5 + sin(_phase * 2.0 + float(index) * 1.47) * 0.5
     var portrait_gain: float = 1.16 if size.y > size.x else 1.0
-    var alpha: float = clampf(_strength * (0.34 + pulse * 0.22) * portrait_gain, 0.0, 0.82)
+    if size.y > size.x: portrait_gain = 1.28
+    var alpha: float = clampf(_strength * (0.36 + pulse * 0.24) * portrait_gain, 0.0, 0.90)
     var radius := base_radius * (0.92 + pulse * 0.14) * portrait_gain
 
     # Thin concentric rings match the approved Signal mockup and never resemble

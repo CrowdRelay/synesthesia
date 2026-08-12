@@ -24,6 +24,23 @@ func _ready() -> void:
     _http.request_completed.connect(_on_request_completed)
     add_child(_http)
 
+func begin_journey(completed_rooms: int, elapsed_ms: int) -> void:
+    var resumed: bool = completed_rooms > 0 or elapsed_ms > 0
+    _emit_summary(
+        "gameplay_journey_resumed_ms" if resumed else "gameplay_journey_started",
+        maxi(0, elapsed_ms) if resumed else 1,
+        {"completed_rooms": maxi(0, completed_rooms)},
+        "/journey",
+    )
+
+func complete_journey(elapsed_ms: int, echoes_found: int, echoes_total: int) -> void:
+    _emit_summary(
+        "gameplay_journey_completed_ms",
+        maxi(0, elapsed_ms),
+        {"echoes_found": maxi(0, echoes_found), "echoes_total": maxi(0, echoes_total)},
+        "/finale",
+    )
+
 func begin_room(room_id: String) -> void:
     _room_id = room_id
     _quality_min_scale = 1.0
@@ -60,19 +77,25 @@ func _finish(metric_key: String, elapsed_ms: int, guidance: Dictionary) -> void:
     _room_id = ""
     _quality_min_scale = 1.0
 
+func _emit_summary(metric_key: String, value: int, metadata: Dictionary, route: String) -> void:
+    if OS.has_feature("web"):
+        _dispatch_web(metric_key, value, metadata)
+    elif _sampled_native:
+        _enqueue_native(metric_key, value, metadata, route)
+
 func _dispatch_web(metric_key: String, value: int, metadata: Dictionary) -> void:
     var detail := JSON.stringify({"metricKey": metric_key, "value": value, "metadata": metadata})
     var js := "window.dispatchEvent(new CustomEvent('synesthesia:gameplay-metric',{detail:%s}));" % detail
     JavaScriptBridge.eval(js, true)
 
-func _enqueue_native(metric_key: String, value: int, metadata: Dictionary) -> void:
+func _enqueue_native(metric_key: String, value: int, metadata: Dictionary, route_override: String = "") -> void:
     if _queue.size() >= MAX_QUEUE:
         _queue.pop_front()
     _queue.append({
         "surface": "synesthesia",
         "metric_key": metric_key,
         "value": value,
-        "route": "/room/%s" % _room_id.left(96),
+        "route": route_override if not route_override.is_empty() else "/room/%s" % _room_id.left(96),
         "device_class": "mobile" if OS.has_feature("android") else "desktop",
         "metadata": metadata,
         "observed_at": Time.get_datetime_string_from_system(true),

@@ -4,6 +4,8 @@ signal run_started(run_id: String, run_token: String, next_room_index: int)
 signal room_recorded(room_id: String, next_room_index: int)
 signal album_recorded(context: Dictionary)
 signal draw_entered(status: String, message: String)
+signal leaderboard_loaded(items: Array)
+signal leaderboard_published(context: Dictionary)
 signal request_failed(operation: String, message: String)
 signal retry_scheduled(operation: String, attempt: int)
 signal run_invalidated()
@@ -16,6 +18,7 @@ var _api_url: String = ""
 var _campaign_slug: String = ""
 var _app_version: String = ""
 var _install_id: String = ""
+var _attempt_id: String = ""
 var _run_id: String = ""
 var _run_token: String = ""
 var _server_next_room_index: int = 0
@@ -39,11 +42,12 @@ func _ready() -> void:
     _retry_timer.timeout.connect(_on_retry_timeout)
     add_child(_retry_timer)
 
-func configure(api_url: String, campaign_slug: String, app_version: String, install_id: String) -> void:
+func configure(api_url: String, campaign_slug: String, app_version: String, install_id: String, attempt_id: String = "legacy") -> void:
     _api_url = api_url.trim_suffix("/")
     _campaign_slug = campaign_slug
     _app_version = app_version
     _install_id = install_id
+    _attempt_id = attempt_id if not attempt_id.is_empty() else "legacy"
 
 func restore_run(run_state: Dictionary) -> void:
     _run_id = str(run_state.get("run_id", ""))
@@ -58,6 +62,7 @@ func get_run_state() -> Dictionary:
         "run_id": _run_id,
         "run_token": _run_token,
         "campaign_slug": _campaign_slug,
+        "attempt_id": _attempt_id,
         "next_room_index": _server_next_room_index,
     }
 
@@ -72,11 +77,12 @@ func start_run() -> void:
         "operation": "start_run",
         "path": "/v1/public/synesthesia/runs",
         "authorized": false,
-        "idempotency_key": "synesthesia-start-%s" % _install_id,
+        "idempotency_key": "synesthesia-start-%s-%s" % [_install_id, _attempt_id],
         "payload": {
             "campaign_slug": _campaign_slug,
             "install_id": _install_id,
             "app_version": _app_version,
+            "attempt_id": _attempt_id,
             "locale": TranslationServer.get_locale(),
         },
     })
@@ -109,6 +115,36 @@ func complete_album(total_elapsed_ms: int) -> void:
         "payload": {
             "client_total_elapsed_ms": maxi(0, total_elapsed_ms),
         },
+    })
+
+func fetch_leaderboard(limit: int = 10) -> void:
+    if _api_url.is_empty():
+        request_failed.emit("leaderboard_load", "Top lista jest chwilowo niedostępna.")
+        return
+    _enqueue({
+        "operation": "leaderboard_load",
+        "method": "GET",
+        "path": "/v1/public/synesthesia/leaderboard?limit=%d" % clampi(limit, 1, 50),
+        "authorized": false,
+        "idempotency_key": "leaderboard-load-%d" % clampi(limit, 1, 50),
+        "payload": {},
+    })
+
+func publish_leaderboard(display_name: String) -> void:
+    if not has_run():
+        request_failed.emit("leaderboard_publish", "Najpierw kończę synchronizację przebiegu.")
+        return
+    var clean_name: String = display_name.strip_edges()
+    if clean_name.length() < 2 or clean_name.length() > 20:
+        request_failed.emit("leaderboard_publish", "Nick powinien mieć od 2 do 20 znaków.")
+        return
+    _enqueue({
+        "operation": "leaderboard_publish",
+        "method": "POST",
+        "path": "/v1/public/synesthesia/runs/%s/leaderboard" % _run_id,
+        "authorized": true,
+        "idempotency_key": "leaderboard-publish-%s-%s" % [_run_id, clean_name.to_lower().md5_text()],
+        "payload": {"display_name": clean_name},
     })
 
 func enter_draw(email: String, policy_version: String) -> void:
@@ -154,16 +190,19 @@ func _pump() -> void:
         return
     _active = _queue.pop_front()
     _busy = true
-    var headers: PackedStringArray = PackedStringArray([
-        "Accept: application/json",
-        "Content-Type: application/json",
-        "Idempotency-Key: %s" % str(_active.get("idempotency_key", "")),
-    ])
+    var method_name: String = str(_active.get("method", "POST")).to_upper()
+    var headers: PackedStringArray = PackedStringArray(["Accept: application/json"])
+    if method_name != "GET":
+        headers.append("Content-Type: application/json")
+        var idempotency_key: String = str(_active.get("idempotency_key", ""))
+        if not idempotency_key.is_empty():
+            headers.append("Idempotency-Key: %s" % idempotency_key)
     if bool(_active.get("authorized", false)):
         headers.append("Authorization: Bearer %s" % _run_token)
-    var body: String = JSON.stringify(_active.get("payload", {}))
+    var body: String = "" if method_name == "GET" else JSON.stringify(_active.get("payload", {}))
     var url: String = "%s%s" % [_api_url, str(_active.get("path", ""))]
-    var error: Error = _http.request(url, headers, HTTPClient.METHOD_POST, body)
+    var method: int = HTTPClient.METHOD_GET if method_name == "GET" else HTTPClient.METHOD_POST
+    var error: Error = _http.request(url, headers, method, body)
     if error != OK:
         var active_copy: Dictionary = _active.duplicate(true)
         _busy = false
@@ -208,6 +247,11 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
                 str(parsed.get("status", "entered_draw")),
                 str(parsed.get("message", "Jesteś w losowaniu jednej z 5 płyt.")),
             )
+        "leaderboard_load":
+            var items_value: Variant = parsed.get("items", [])
+            leaderboard_loaded.emit(items_value.duplicate(true) if items_value is Array else [])
+        "leaderboard_publish":
+            leaderboard_published.emit(parsed.duplicate(true))
         _:
             request_failed.emit(operation, "Nieznana odpowiedź Sygnału.")
     call_deferred("_pump")

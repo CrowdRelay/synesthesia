@@ -109,26 +109,38 @@ static func get_install_id() -> String:
         _ephemeral_install_id = current
     return current
 
+static func new_journey_id() -> String:
+    var crypto: Crypto = Crypto.new()
+    var random_bytes: PackedByteArray = crypto.generate_random_bytes(16)
+    var value: String = random_bytes.hex_encode()
+    if value.is_empty():
+        value = "%x-%x" % [Time.get_ticks_usec(), randi()]
+    return value
+
 static func reset_local_journey() -> bool:
     var document: Dictionary = _document_for_write()
     var previous_album_value: Variant = document.get("album", {})
     var previous_album: Dictionary = previous_album_value if previous_album_value is Dictionary else {}
     var fresh: Dictionary = _blank_document()
     fresh["install_id"] = str(document.get("install_id", ""))
-    var previous_run_value: Variant = document.get("run", {})
-    if previous_run_value is Dictionary:
-        fresh["run"] = previous_run_value.duplicate(true)
+    # A replay is a real new attempt. Keep user settings/reward history, but never
+    # reuse the old server run or its completion cursor.
     var previous_reward_value: Variant = document.get("reward", {})
     if previous_reward_value is Dictionary:
         fresh["reward"] = previous_reward_value.duplicate(true)
     var fresh_album_value: Variant = fresh.get("album", {})
     var fresh_album: Dictionary = fresh_album_value if fresh_album_value is Dictionary else {}
-    for key in ["calm_mode", "quiet_mode", "quiet_visuals", "reduced_motion", "high_readability", "haptics_enabled", "quality_profile", "music_level", "noise_level", "server_recorded_room_ids", "server_album_completed"]:
+    for key in ["calm_mode", "quiet_mode", "quiet_visuals", "reduced_motion", "high_readability", "haptics_enabled", "quality_profile", "music_level", "noise_level", "leaderboard_name"]:
         if previous_album.has(key):
             var value: Variant = previous_album[key]
             fresh_album[key] = value.duplicate(true) if value is Dictionary or value is Array else value
+    fresh_album["journey_id"] = new_journey_id()
     fresh_album["started_at_unix"] = int(Time.get_unix_time_from_system())
+    fresh_album["total_elapsed_ms"] = 0
+    fresh_album["server_recorded_room_ids"] = []
+    fresh_album["server_album_completed"] = false
     fresh["album"] = fresh_album
+    fresh["run"] = {}
     return _write_document(fresh)
 
 static func reset_all() -> bool:
@@ -157,6 +169,8 @@ static func _blank_document() -> Dictionary:
         "releases": {},
         "album": {
             "current_room_index": 0,
+            "journey_id": "",
+            "leaderboard_name": "",
             "completed_room_ids": [],
             "server_recorded_room_ids": [],
             "pending_room_completions": [],

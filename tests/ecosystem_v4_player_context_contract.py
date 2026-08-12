@@ -6,6 +6,7 @@ base=read('scripts/rooms/behavior_base.gd')
 flow=read('scripts/app/main_room_flow.gd')
 metrics=read('scripts/app/progress_metrics.gd')
 finale=read('scripts/ui/signal_finale_card.gd')
+journey_summary=read('scripts/ui/signal_journey_summary.gd')
 reward=read('scripts/reward_client.gd')
 reward_flow=read('scripts/app/main_reward_flow.gd')
 assert 'assist_level_changed' in guide
@@ -14,7 +15,7 @@ for level in ('_miss_count >= 6','_miss_count >= 4','_miss_count >= 2'):
 assert '[1.12, 1.20, 1.30, 1.40]' in base
 assert 'latest_echo' in flow and 'ECHO Z POPRZEDNIEGO POKOJU' in flow
 assert 'journey_marks' in metrics and 'PEŁNY REZONANS' in metrics
-assert 'ŚLADY · %s' in finale
+assert 'SignalJourneySummary' in finale and 'ŚLADY · %s' in journey_summary
 assert 'album_recorded(context: Dictionary)' in reward
 assert '#handoff=' in finale and 'fan_session' not in finale.lower()
 assert 'reward_client.complete_album' in reward_flow and 'Reward entry durably links the run' in reward_flow

@@ -151,7 +151,7 @@ func _restore_room_after_layout(show_intro: bool) -> void:
         app.room_timer_running = false
         app.room.set_cinematic_reveal(true, true)
         app.room.set_door_open(false)
-        app.room.set_interaction_enabled(true)
+        app.room.set_post_reveal_interaction(true)
         var listen_progress: float = float(app.room.get_normalized_progress())
         var listen_found: int = int(app.room.get_found_count())
         app.audio_director.set_progress(listen_progress, listen_found)
@@ -159,7 +159,8 @@ func _restore_room_after_layout(show_intro: bool) -> void:
         app.hud.visible = false
         app.restoring_progress = false
         return
-    app.room.set_interaction_enabled(not app.completion_announced)
+    app.room.set_post_reveal_interaction(app.completion_announced)
+    app.room.set_interaction_enabled(true)
     if restored:
         app.current_coverage = float(app.room.get_coverage())
         var normalized: float = float(app.room.get_normalized_progress())
@@ -285,7 +286,7 @@ func _complete_current_room() -> void:
     if app.gameplay_telemetry != null:
         var guidance: Dictionary = app.hud.guidance_stats() if app.hud != null and app.hud.has_method("guidance_stats") else {}
         app.gameplay_telemetry.complete_room(elapsed_at_completion, guidance)
-    app.room.set_interaction_enabled(false)
+    app.room.set_post_reveal_interaction(true)
     app.room.set_cinematic_reveal(true)
     # Echoes remain optional discoveries. Opening the door never grants them for
     # free; players can stay, search, or revisit the room later in Album Mode.
@@ -399,7 +400,6 @@ func _transition_to_room(next_index: int) -> void:
         await app.transition_director.travel_in()
     if app.audio_director != null and app.audio_director.has_method("end_transition_in"): app.audio_director.end_transition_in()
     app.transition_running = false
-
 func _transition_to_reward() -> void:
     if app.transition_running:
         return
