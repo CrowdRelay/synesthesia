@@ -1,16 +1,13 @@
 extends Node
-
 const EchoArchive := preload("res://scripts/app/echo_archive.gd")
 const RoomCinematicRuntime := preload("res://scripts/app/room_cinematic_runtime.gd")
 const ViryaWorld := preload("res://scripts/app/virya_world.gd")
-
 var app: Node
 var cinematic_runtime: Node
-
+var _completion_performance: Dictionary = {}
 func bind(owner: Node) -> void:
     app = owner
     cinematic_runtime = RoomCinematicRuntime.new(); cinematic_runtime.bind(app); add_child(cinematic_runtime)
-
 func _load_room(index: int, show_intro: bool) -> void:
     if index < 0 or index >= app.release_entries.size():
         app._show_fatal_error("Próba wejścia do nieznanego pokoju.")
@@ -68,6 +65,7 @@ func _load_room(index: int, show_intro: bool) -> void:
     app.room.add_child(feedback_bridge)
     feedback_bridge.bind(app.room, app.hud, app.haptics, app.audio_director)
     app.completion_announced = false
+    _completion_performance = {}
     app.current_coverage = 0.0
     var elapsed_value: Variant = app.album_state.get("room_elapsed_ms", {})
     var elapsed: Dictionary = elapsed_value if elapsed_value is Dictionary else {}
@@ -92,7 +90,6 @@ func _load_room(index: int, show_intro: bool) -> void:
     app._apply_sensory_mode()
     _preload_next_room()
     app.call_deferred("_restore_room_after_layout", show_intro)
-
 func _instantiate_room(room_data: Dictionary):
     var scene_path: String = str(room_data.get("scene_path", ""))
     var resource: Resource = null
@@ -104,7 +101,6 @@ func _instantiate_room(room_data: Dictionary):
         return (resource as PackedScene).instantiate()
     push_warning("Falling back to generic app.room stage: %s" % scene_path)
     return app.RoomStageScript.new()
-
 func _preload_next_room() -> void:
     if app.asset_preloader == null or app.current_room_index + 1 >= app.release_entries.size():
         return
@@ -129,7 +125,6 @@ func _clear_room_runtime() -> void:
     app.room = null
     app.audio_director = null
     app.haptics = null
-
 func _restore_room_after_layout(show_intro: bool) -> void:
     await get_tree().process_frame
     await get_tree().process_frame
@@ -182,13 +177,11 @@ func _restore_room_after_layout(show_intro: bool) -> void:
     else:
         app.room.set_interaction_enabled(app.experience_intro_panel == null)
     app.restoring_progress = false
-
 func _collectible_total() -> int:
     var value: Variant = app.manifest.get("collectibles", [])
     if value is Array:
         return maxi(1, value.size())
     return 1
-
 func _show_intro() -> void:
     if app.room == null:
         return
@@ -214,9 +207,9 @@ func _show_intro() -> void:
         str(art.get("caption", "VIRYA · SYNESTEZJA")),
         accent,
         ViryaWorld.manifest_identity(app.manifest),
+        _completion_performance,
     )
     app.intro_panel.dismissed.connect(_dismiss_intro)
-
 func _dismiss_intro() -> void:
     app._remove_modal(app.intro_panel)
     app.intro_panel = null
@@ -318,11 +311,16 @@ func _complete_current_room() -> void:
     elapsed[release_id] = maxi(int(elapsed.get(release_id, 0)), elapsed_at_completion)
     app.album_state["room_elapsed_ms"] = elapsed
     app.album_state["total_elapsed_ms"] = app.ProgressMetrics.sum_elapsed_ms(elapsed)
-    app.room_elapsed_before_start_ms = elapsed_at_completion
-    app.room_started_ms = Time.get_ticks_msec()
+
     if app.current_room_index == app.release_entries.size() - 1:
         app.album_state["album_completed"] = true
+    _completion_performance = app.ProgressMetrics.record_personal_best(
+        app.album_state, release_id, elapsed_at_completion,
+        app.current_room_index == app.release_entries.size() - 1,
+    )
     app._save_progress()
+    app.room_elapsed_before_start_ms = elapsed_at_completion
+    app.room_started_ms = Time.get_ticks_msec()
     if app.current_room_index == 5 and not bool(app.album_state.get("signal_breach_seen", false)):
         app.album_state["signal_breach_seen"] = true
         app._save_album_state()
@@ -369,6 +367,7 @@ func _show_completion_panel() -> void:
         next_label,
         accent,
         ViryaWorld.manifest_identity(app.manifest),
+        _completion_performance,
     )
     if app.current_room_index < app.release_entries.size() - 1:
         app.completion_panel.continue_requested.connect(func() -> void: _transition_to_room(next_index))

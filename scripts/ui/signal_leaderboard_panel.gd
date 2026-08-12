@@ -9,6 +9,9 @@ const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 var _status: Label
 var _list: VBoxContainer
 var _publish: Button
+var _own_alias: String = ""
+var _own_rank: int = 0
+var _own_best_elapsed_ms: int = 0
 
 func configure(summary: Dictionary, _scroll: ScrollContainer) -> void:
     add_theme_constant_override("separation", 8)
@@ -72,20 +75,24 @@ func set_items(items: Array) -> void:
             var rank: int = maxi(1, int(item.get("rank", index)))
             var name: String = str(item.get("display_name", "•••"))
             var elapsed_ms: int = maxi(0, int(item.get("elapsed_ms", 0)))
+            var own: bool = rank == _own_rank and not _own_alias.is_empty() and name == _own_alias
             var row := Label.new()
-            row.text = "%02d · %s · %s" % [rank, name.left(20), format_time(elapsed_ms)]
+            row.text = "%s%02d · %s · %s" % ["▶ " if own else "", rank, name.left(20), format_time(elapsed_ms)]
             UIFactory.apply_display_font(row)
             row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-            row.add_theme_font_size_override("font_size", 12 if rank <= 3 else 11)
-            row.add_theme_color_override("font_color", Color("f0cf88") if rank <= 3 else Color("d9e8f4"))
+            row.add_theme_font_size_override("font_size", 13 if own else (12 if rank <= 3 else 11))
+            row.add_theme_color_override("font_color", Color("7fd7ef") if own else (Color("f0cf88") if rank <= 3 else Color("d9e8f4")))
             _list.add_child(row)
-    set_status("TOP 10 aktualne · liczy się najlepszy przebieg jednej osoby.")
+    if _own_rank > 0:
+        set_status("TWÓJ RANK · #%d · PB %s" % [_own_rank, format_time(_own_best_elapsed_ms)])
+    else:
+        set_status("TOP 10 aktualne · liczy się najlepszy przebieg jednej osoby.")
 
 func set_publish_result(context: Dictionary) -> void:
-    var rank: int = maxi(1, int(context.get("rank", 1)))
-    var best_elapsed_ms: int = maxi(0, int(context.get("best_elapsed_ms", 0)))
-    var alias: String = str(context.get("display_name", "•••"))
-    set_status("Zapisane jako %s · miejsce #%d · PB %s" % [alias, rank, format_time(best_elapsed_ms)])
+    _own_rank = maxi(1, int(context.get("rank", 1)))
+    _own_best_elapsed_ms = maxi(0, int(context.get("best_elapsed_ms", 0)))
+    _own_alias = str(context.get("display_name", "•••"))
+    set_status("Zapisane jako %s · miejsce #%d · PB %s" % [_own_alias, _own_rank, format_time(_own_best_elapsed_ms)])
 
 func set_status(text_value: String) -> void:
     if _status != null:

@@ -25,7 +25,7 @@ func _ready() -> void:
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(title: String, message: String, next_label: String, accent: Color, identity: Dictionary = {}) -> void:
+func configure(title: String, message: String, next_label: String, accent: Color, identity: Dictionary = {}, performance: Dictionary = {}) -> void:
     _sheet = PanelContainer.new()
     _sheet.mouse_filter = Control.MOUSE_FILTER_PASS
     _sheet.add_theme_stylebox_override("panel", UIFactory.product_surface_style(accent, true))
@@ -66,6 +66,8 @@ func configure(title: String, message: String, next_label: String, accent: Color
         afterglow.add_theme_color_override("font_color", Color("f0cf88"))
         _content.add_child(afterglow)
 
+    _add_performance_line(performance, accent)
+
     _actions = VBoxContainer.new()
     _actions.mouse_filter = Control.MOUSE_FILTER_PASS
     _actions.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -93,6 +95,47 @@ func configure(title: String, message: String, next_label: String, accent: Color
     var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     tween.tween_property(self, "modulate:a", 1.0, 0.20)
     tween.tween_property(self, "position:y", 0.0, 0.24)
+
+func _add_performance_line(performance: Dictionary, accent: Color) -> void:
+    if performance.is_empty():
+        return
+    var elapsed_ms: int = maxi(0, int(performance.get("room_elapsed_ms", 0)))
+    if elapsed_ms <= 0:
+        return
+    var previous_best: int = maxi(0, int(performance.get("previous_room_best_ms", 0)))
+    var personal_best: bool = bool(performance.get("room_personal_best", false))
+    var label := Label.new()
+    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    UIFactory.apply_display_font(label)
+    label.add_theme_font_size_override("font_size", 10)
+    label.add_theme_color_override("font_color", Color("f0cf88") if personal_best else accent)
+    var suffix := "NOWY PB" if personal_best else "%s DO PB" % _signed_delta(elapsed_ms - previous_best)
+    label.text = "CZAS POKOJU · %s · %s" % [_format_time(elapsed_ms), suffix]
+    _content.add_child(label)
+
+    if performance.has("journey_personal_best"):
+        var journey_elapsed: int = maxi(0, int(performance.get("journey_elapsed_ms", 0)))
+        var total_pb: bool = bool(performance.get("journey_personal_best", false))
+        var total := Label.new()
+        total.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        UIFactory.apply_display_font(total)
+        total.add_theme_font_size_override("font_size", 9)
+        total.add_theme_color_override("font_color", Color("f0cf88") if total_pb else Color("9eafc3"))
+        total.text = "PRZEBIEG · %s%s" % [_format_time(journey_elapsed), " · NOWY PB" if total_pb else ""]
+        _content.add_child(total)
+
+func _signed_delta(delta_ms: int) -> String:
+    if delta_ms == 0:
+        return "±00:00.000"
+    return "%s%s" % ["+" if delta_ms > 0 else "−", _format_time(absi(delta_ms))]
+
+func _format_time(elapsed_ms: int) -> String:
+    var safe_ms: int = maxi(0, elapsed_ms)
+    var total_seconds: int = int(safe_ms / 1000)
+    var minutes: int = int(total_seconds / 60)
+    var seconds: int = total_seconds % 60
+    var millis: int = safe_ms % 1000
+    return "%02d:%02d.%03d" % [minutes, seconds, millis]
 
 func _enter_listen_mode() -> void:
     if _listening:

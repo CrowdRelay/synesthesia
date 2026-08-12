@@ -58,8 +58,36 @@ static func completion_summary(release_entries: Array, album_state: Dictionary) 
         "echoes_found": echoes_found,
         "echoes_total": echoes_total,
         "elapsed_ms": maxi(0, int(album_state.get("total_elapsed_ms", 0))),
+        "personal_best_total_ms": maxi(0, int(album_state.get("personal_best_total_ms", 0))),
+        "completed_runs_local": maxi(0, int(album_state.get("completed_runs_local", 0))),
         "journey_marks": marks.slice(0, 3),
     }
+
+static func record_personal_best(album_state: Dictionary, release_id: String, room_elapsed_ms: int, journey_completed: bool) -> Dictionary:
+    # Local-only performance feedback: no network, no reward or eligibility input.
+    var best_rooms_value: Variant = album_state.get("personal_best_room_ms", {})
+    var best_rooms: Dictionary = best_rooms_value if best_rooms_value is Dictionary else {}
+    var previous_room_best: int = maxi(0, int(best_rooms.get(release_id, 0)))
+    var room_personal_best: bool = previous_room_best <= 0 or room_elapsed_ms < previous_room_best
+    if room_personal_best:
+        best_rooms[release_id] = room_elapsed_ms
+    album_state["personal_best_room_ms"] = best_rooms
+    var performance := {
+        "room_elapsed_ms": room_elapsed_ms,
+        "previous_room_best_ms": previous_room_best,
+        "room_personal_best": room_personal_best,
+        "journey_elapsed_ms": maxi(0, int(album_state.get("total_elapsed_ms", 0))),
+    }
+    if journey_completed:
+        var total_elapsed: int = int(performance["journey_elapsed_ms"])
+        var previous_total_best: int = maxi(0, int(album_state.get("personal_best_total_ms", 0)))
+        var journey_personal_best: bool = previous_total_best <= 0 or total_elapsed < previous_total_best
+        if journey_personal_best:
+            album_state["personal_best_total_ms"] = total_elapsed
+        album_state["completed_runs_local"] = maxi(0, int(album_state.get("completed_runs_local", 0))) + 1
+        performance["previous_total_best_ms"] = previous_total_best
+        performance["journey_personal_best"] = journey_personal_best
+    return performance
 
 static func current_room_elapsed_ms(room_started_ms: int, room_elapsed_before_start_ms: int, room_timer_running: bool) -> int:
     if room_started_ms <= 0 or not room_timer_running:

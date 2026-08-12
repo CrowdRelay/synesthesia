@@ -31,6 +31,14 @@ func configure(summary: Dictionary, accent: Color) -> void:
     time_line.add_theme_color_override("font_color", Color("f2f8ff"))
     content.add_child(time_line)
 
+    var personal_best_ms: int = maxi(0, int(summary.get("personal_best_total_ms", 0)))
+    var completed_runs: int = maxi(0, int(summary.get("completed_runs_local", 0)))
+    if personal_best_ms > 0:
+        var pb := UIFactory.body("PB · %s%s" % [SignalLeaderboardPanel.format_time(personal_best_ms), " · %d przebiegów" % completed_runs if completed_runs > 1 else ""])
+        pb.add_theme_font_size_override("font_size", 9)
+        pb.add_theme_color_override("font_color", Color("f0cf88"))
+        content.add_child(pb)
+
     var line := UIFactory.body("POKOJE %d/%d  ·  ECHA %d/%d" % [rooms_done, rooms_total, echoes_found, echoes_total])
     line.add_theme_font_size_override("font_size", 10)
     line.add_theme_color_override("font_color", Color("d9e8f4"))

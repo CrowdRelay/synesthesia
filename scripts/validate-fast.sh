@@ -26,5 +26,7 @@ python3 tests/mobile_clarity_contract.py
 python3 tests/mobile_product_readability_contract.py
 python3 tests/gameplay_telemetry_contract.py
 python3 tests/v1_game_loop_contract.py
+python3 tests/mobile_speedrun_feedback_contract.py
+python3 tests/leaderboard_player_feedback_contract.py
 
 printf '%s\n' 'SYNESTHESIA_FAST_VALIDATION=PASS scope=gameplay+mobile+hot-path+source'
