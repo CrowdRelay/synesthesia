@@ -5,20 +5,20 @@ const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 
 # Keeps lifecycle suspend/resume and shutdown concerns out of the gameplay root.
 static func handle(app: Node, what: int) -> void:
-    if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+    if what == Window.NOTIFICATION_WM_GO_BACK_REQUEST:
         app._handle_back_request()
         return
-    if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
-        if what == NOTIFICATION_APPLICATION_PAUSED and app.room_flow != null:
+    if what == Window.NOTIFICATION_WM_CLOSE_REQUEST or what == Node.NOTIFICATION_APPLICATION_PAUSED:
+        if what == Node.NOTIFICATION_APPLICATION_PAUSED and app.room_flow != null:
             app.room_timer_paused_by_background = app.room_timer_running
             app.room_flow.pause_room_timer()
         if app.room != null and is_instance_valid(app.room):
             app._save_progress()
         else:
             app._save_album_state()
-    if what == NOTIFICATION_APPLICATION_PAUSED:
+    if what == Node.NOTIFICATION_APPLICATION_PAUSED:
         MenuRuntimeGuard.suspend_for_background(app.experience_surface, app.ui_root, app.room_layer, app.audio_director, app.adaptive_performance)
-    elif what == NOTIFICATION_APPLICATION_RESUMED:
+    elif what == Node.NOTIFICATION_APPLICATION_RESUMED:
         MenuRuntimeGuard.resume_from_background(app.experience_surface, app.ui_root, app.room_layer, app.audio_director, app.adaptive_performance)
         if app.room_timer_paused_by_background and app.room_flow != null:
             app.room_flow.resume_room_timer()
