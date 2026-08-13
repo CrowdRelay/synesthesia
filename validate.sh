@@ -28,6 +28,48 @@ if ! command -v "$GODOT_BIN" >/dev/null 2>&1; then
   exit 0
 fi
 
+# Platform builders may intentionally skip the source suite after CI has
+# validated it, but generated OFL fonts are ignored build inputs and must still
+# exist in every fresh checkout before Godot scans imports.
+./scripts/prepare-bundled-fonts.sh
+
+repair_missing_font_import_remaps() {
+  local metadata mapped relative
+  for metadata in \
+    assets/fonts/generated/SynesthesiaTitle.ttf.import \
+    assets/fonts/generated/SynesthesiaDisplay.ttf.import; do
+    [[ -f "$metadata" ]] || continue
+    mapped="$(sed -n 's/^path="\(res:\/\/.*\)"$/\1/p' "$metadata" | head -n 1)"
+    [[ -n "$mapped" ]] || continue
+    relative="${mapped#res://}"
+    if [[ ! -s "$ROOT/$relative" ]]; then
+      # A tracked remap can survive while its ignored .godot artifact does not.
+      # Removing only stale metadata makes the editor perform a real import.
+      rm -f "$metadata"
+      echo "SYNESTHESIA_FONT_IMPORT_REPAIR=STALE metadata=$metadata"
+    fi
+  done
+}
+
+verify_font_import_artifacts() {
+  local metadata mapped relative
+  for metadata in \
+    assets/fonts/generated/SynesthesiaTitle.ttf.import \
+    assets/fonts/generated/SynesthesiaDisplay.ttf.import; do
+    if [[ ! -f "$metadata" ]]; then
+      echo "SYNESTHESIA_GODOT_RUNTIME=FAIL stage=import reason=font-remap-missing file=$metadata" >&2
+      return 1
+    fi
+    mapped="$(sed -n 's/^path="\(res:\/\/.*\)"$/\1/p' "$metadata" | head -n 1)"
+    relative="${mapped#res://}"
+    if [[ -z "$mapped" || ! -s "$ROOT/$relative" ]]; then
+      echo "SYNESTHESIA_GODOT_RUNTIME=FAIL stage=import reason=font-artifact-missing file=${mapped:-unknown}" >&2
+      return 1
+    fi
+  done
+  echo "SYNESTHESIA_FONT_IMPORT_ARTIFACTS=PASS files=2"
+}
+
 # A source-only checkout may inherit .godot/extension_list.cfg from an earlier
 # native build even after the generated descriptor was removed. Purge only that
 # stale registration; a present generated descriptor remains untouched so native
@@ -82,7 +124,9 @@ run_godot_checked() {
   rm -f "$log_file"
 }
 
+repair_missing_font_import_remaps
 run_godot_checked import "" 0 --headless --editor --path "$ROOT" --quit
+verify_font_import_artifacts
 run_godot_checked font-glyphs "SYNESTHESIA_FONT_GLYPHS=PASS" 0 --headless --path "$ROOT" --script res://tests/font_glyph_smoke.gd
 run_godot_checked gdscript-parse "SYNESTHESIA_GDSCRIPT_PARSE=PASS" 0 --headless --path "$ROOT" --script res://tests/gdscript_parse_smoke.gd
 run_godot_checked validation "SYNESTHESIA_VALIDATION=PASS" 0 --headless --path "$ROOT" --script res://tests/validate_project.gd

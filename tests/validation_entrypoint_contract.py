@@ -63,6 +63,10 @@ if 'var preload:' in diagnostics:
 
 if 'tests/font_glyph_smoke.gd' not in validate or 'SYNESTHESIA_FONT_GLYPHS=PASS' not in validate:
     failures.append('validate.sh: bundled title font Polish glyph coverage is not runtime-gated')
+if validate.count('./scripts/prepare-bundled-fonts.sh') < 1:
+    failures.append('validate.sh: skipped source validation can leave generated font inputs absent')
+if 'repair_missing_font_import_remaps' not in validate or 'SYNESTHESIA_FONT_IMPORT_ARTIFACTS=PASS' not in validate:
+    failures.append('validate.sh: stale tracked font remaps are not repaired and verified before glyph smoke')
 
 # Tagged/manual release validates once before cache/toolchain setup, then delegates
 # platform-specific work to builders with source validation explicitly skipped.
