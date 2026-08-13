@@ -106,6 +106,7 @@ func _show_reward_panel() -> void:
     app.reward_panel.leaderboard_publish_requested.connect(_publish_leaderboard)
     app.reward_panel.leaderboard_refresh_requested.connect(_refresh_leaderboard)
     app.reward_panel.signal_context_refresh_requested.connect(_refresh_signal_context)
+    app.reward_panel.signal_handoff_requested.connect(_issue_signal_handoff)
     app.reward_panel.reset_requested.connect(app._confirm_reset_album)
     app.reward_panel.album_mode_requested.connect(app._show_album_archive)
     _refresh_leaderboard()
@@ -134,6 +135,15 @@ func _refresh_signal_context() -> void:
         app.reward_panel.set_status("Ukończenie nie jest jeszcze zsynchronizowane z CrowdRelay.")
         return
     app.reward_client.refresh_completion_context(int(app.album_state.get("total_elapsed_ms", 0)))
+
+
+func _issue_signal_handoff() -> void:
+    if app.reward_panel == null or not is_instance_valid(app.reward_panel):
+        return
+    if app.reward_client == null or not bool(app.album_state.get("server_album_completed", false)):
+        app.reward_panel.set_status("Ukończenie nie jest jeszcze zsynchronizowane z CrowdRelay.")
+        return
+    app.reward_client.request_handoff()
 
 func _publish_leaderboard() -> void:
     if app.reward_panel == null or not is_instance_valid(app.reward_panel):
@@ -179,6 +189,14 @@ func _submit_reward_claim_values(email: String) -> void:
 
 func _on_run_started(_run_id: String, _run_token: String, next_room_index: int) -> void:
     app.ProgressStoreScript.save_run(app.reward_client.get_run_state())
+    var local_complete: bool = bool(app.album_state.get("album_completed", false))
+    var timing_complete: bool = app.ProgressMetrics.has_complete_journey_timing(app.release_entries, app.album_state)
+    if local_complete and not timing_complete and not bool(app.album_state.get("server_album_completed", false)):
+        # Compatibility for saves produced by the historical timing-capture bug:
+        # link/reward continuity is recoverable, but no elapsed time is invented
+        # and the leaderboard stays locked until a fresh competitive 11/11 run.
+        app.reward_client.recover_album(app._array_value(app.album_state.get("completed_room_ids", [])))
+        return
     _sync_completed_rooms_to_server(next_room_index)
 
 func _sync_completed_rooms_to_server(next_room_index: int) -> void:
@@ -244,8 +262,9 @@ func _on_reward_request_failed(operation: String, message: String) -> void:
     elif operation.begins_with("leaderboard_") and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_leaderboard_status(message)
         app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
-    elif operation == "completion_context_refresh" and app.reward_panel != null and is_instance_valid(app.reward_panel):
+    elif operation in ["recover_album", "completion_context_refresh", "handoff_issue"] and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_status(message)
+        app.reward_panel.apply_signal_context(app.completion_context)
     else:
         app.hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")
 
@@ -255,7 +274,7 @@ func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
         app.reward_panel.set_status(text_value)
     elif operation.begins_with("leaderboard_") and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_leaderboard_status(text_value)
-    elif operation == "completion_context_refresh" and app.reward_panel != null and is_instance_valid(app.reward_panel):
+    elif operation in ["recover_album", "completion_context_refresh", "handoff_issue"] and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_status(text_value)
     else:
         app.hud.update_discovery(text_value)

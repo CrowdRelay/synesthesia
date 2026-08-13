@@ -4,7 +4,7 @@ signal collectible_found(item: Dictionary)
 signal paint_pulse(speed_normalized: float)
 signal special_interaction(kind: String, index: int)
 signal interaction_feedback(message: String)
-signal interaction_started
+signal interaction_started; signal gameplay_input_activity
 signal interaction_ended
 signal interaction_missed(point: Vector2)
 signal interaction_confirmed(point: Vector2, strength: float)

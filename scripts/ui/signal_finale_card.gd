@@ -4,6 +4,7 @@ signal draw_entry_requested(email: String)
 signal leaderboard_publish_requested
 signal leaderboard_refresh_requested
 signal signal_context_refresh_requested
+signal signal_handoff_requested
 signal reset_requested
 signal album_mode_requested
 
@@ -36,6 +37,7 @@ var _ritual
 var _ritual_complete: bool = false
 var _server_completed: bool = false
 var _awaiting_signal_return: bool = false
+var _awaiting_handoff_issue: bool = false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -265,9 +267,13 @@ func apply_signal_context(context: Dictionary) -> void:
     elif handoff.length() == 64:
         _signal_button.disabled = false
         _signal_button.text = "PO POWROCIE: SPRAWDŹ POŁĄCZENIE" if _awaiting_signal_return else "POŁĄCZ WYNIK Z SYGNAŁEM"
+        if _awaiting_handoff_issue:
+            _awaiting_handoff_issue = false
+            _awaiting_signal_return = true
+            call_deferred("_open_signal")
     else:
         _signal_button.disabled = false
-        _signal_button.text = "ODŚWIEŻ POŁĄCZENIE Z SYGNAŁEM"
+        _signal_button.text = "POŁĄCZ WYNIK Z SYGNAŁEM"
 
     var event_value: Variant = _signal_context.get("next_event", {})
     var event: Dictionary = event_value if event_value is Dictionary else {}
@@ -304,9 +310,16 @@ func _handle_signal_action() -> void:
     if not _server_completed:
         set_status("Najpierw kończę synchronizację ukończenia z CrowdRelay.")
         return
-    if _awaiting_signal_return or handoff.length() != 64:
+    if _awaiting_signal_return:
         set_status("Sprawdzam, czy wynik jest już połączony z Twoim Sygnałem…")
         signal_context_refresh_requested.emit()
+        return
+    if handoff.length() != 64:
+        _awaiting_handoff_issue = true
+        _signal_button.disabled = true
+        _signal_button.text = "PRZYGOTOWUJĘ BEZPIECZNE ŁĄCZE…"
+        set_status("Przygotowuję krótkotrwałe, bezpieczne łącze do My Signal…")
+        signal_handoff_requested.emit()
         return
     _awaiting_signal_return = true
     _signal_button.text = "PO POWROCIE: SPRAWDŹ POŁĄCZENIE"
@@ -388,7 +401,6 @@ func _layout_columns() -> void:
     var panel_width := minf(1120.0 * _ui_scale, maxf(320.0 * _ui_scale, viewport.x - margin * 2.0))
     var usable_width := maxf(272.0 * _ui_scale, panel_width - 48.0 * _ui_scale)
     _layout.custom_minimum_size.x = usable_width
-
     if _visual != null:
         _visual.custom_minimum_size.x = 0.0 if portrait_layout else 380.0 * _ui_scale
         _visual.size_flags_stretch_ratio = 1.25
@@ -398,11 +410,9 @@ func _layout_columns() -> void:
         _body.custom_minimum_size.x = 0.0 if portrait_layout else 360.0 * _ui_scale
     if _motif != null:
         _motif.custom_minimum_size = Vector2(0.0, 190.0 * _ui_scale) if portrait_layout else Vector2(260.0, 330.0) * _ui_scale
-
 func _apply_ui_scale() -> void:
     if _panel != null:
         UiMetrics.apply_tree(_panel, _ui_scale)
-
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         call_deferred("_layout_panel")

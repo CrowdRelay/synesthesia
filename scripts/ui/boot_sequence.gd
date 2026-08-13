@@ -10,9 +10,9 @@ const MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"
 # Keep startup branded but bounded. The authored Theora loop is armed only after
 # the first real Godot frame, so these timings do not move decoder work back onto
 # the critical first-frame path.
-const BOOT_HOLD: float = 0.28
-const EYE_REVEAL_DURATION: float = 0.50
-const FADE_DURATION: float = 0.20
+const BOOT_HOLD: float = 0.22
+const EYE_REVEAL_DURATION: float = 0.42
+const FADE_DURATION: float = 0.16
 
 var _motif
 var _title: Label

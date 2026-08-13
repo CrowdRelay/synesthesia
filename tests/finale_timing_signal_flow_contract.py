@@ -40,11 +40,14 @@ assert "if not app.restoring_progress and not app.completion_announced: resume_r
 assert "func reconcile_album_timings" in store
 assert "ProgressStoreScript.reconcile_album_timings(release_entries, album_state)" in main
 
-# Context refresh must not reuse the original completion idempotency response;
-# otherwise returning from My Signal can keep replaying linked_to_fan=false.
+# Context refresh is a read-only GET and carries no idempotency identity; it must
+# never replay the original completion response or rotate the live handoff token.
 assert "func refresh_completion_context" in reward
-assert "synesthesia-completion-context-%s-%s" in reward
-assert '"complete_album", "completion_context_refresh"' in reward
+refresh = reward.split("func refresh_completion_context", 1)[1].split("func request_handoff", 1)[0]
+assert '"method": "GET"' in refresh
+assert '/context' in refresh
+assert '"idempotency_key": ""' in refresh
+assert '"complete_album", "recover_album", "completion_context_refresh", "handoff_issue"' in reward
 assert "refresh_completion_context" in reward_flow
 assert "signal_context_refresh_requested" in finale
 assert "PO POWROCIE: SPRAWDŹ POŁĄCZENIE" in finale

@@ -9,6 +9,7 @@ reward_flow = (ROOT / "scripts/app/main_reward_flow.gd").read_text()
 boot = (ROOT / "scripts/ui/boot_sequence.gd").read_text()
 warmup = (ROOT / "scripts/app/main_warmup_flow.gd").read_text()
 eye = (ROOT / "scripts/ui/door_eye_motif.gd").read_text()
+startup_cache = (ROOT / "scripts/app/startup_script_cache.gd").read_text()
 failures: list[str] = []
 
 ready = main[main.index("func _ready()"):main.index("func _build_application_shell()")]
@@ -17,6 +18,19 @@ begin = main[main.index("func _begin_experience()"):main.index("func _enter_main
 reward_config = reward_flow[reward_flow.index("func _configure_reward_client()"):reward_flow.index("func _prepare_finale_background()")]
 if "_load_room(" in ready:
     failures.append("_ready still constructs a room before the first usable frame")
+if 'preload("res://scripts/app/main_room_flow.gd")' in main:
+    failures.append("main room orchestration graph is still parsed on the first-frame path")
+if 'preload("res://scripts/ui/experience_intro_card.gd")' in main:
+    failures.append("interactive menu graph is still parsed before the branded first frame")
+for token in (
+    "await RenderingServer.frame_post_draw",
+    "EXPERIENCE_INTRO_CARD_PATH",
+    "MAIN_ROOM_FLOW_PATH",
+    "ResourceLoader.load_threaded_request",
+    "app.asset_preloader.queue_critical(MAIN_ROOM_FLOW_PATH)",
+):
+    if token not in startup_cache:
+        failures.append(f"post-first-frame script streaming missing: {token}")
 if "reward_client.start_run()" in reward_config:
     failures.append("reward networking still starts during boot configuration")
 if 'warmup_flow.call_deferred("warm_under_main_menu")' not in intro:
@@ -43,15 +57,21 @@ if 'func arm_authored_animation(restart: bool = true)' not in eye:
 if 'await RenderingServer.frame_post_draw' not in boot or '_motif.arm_authored_animation(true)' not in boot:
     failures.append("splash eye is not armed strictly after the first rendered Godot frame")
 for token in (
-    "const BOOT_HOLD: float = 0.28",
-    "const EYE_REVEAL_DURATION: float = 0.50",
-    "const FADE_DURATION: float = 0.20",
+    "const BOOT_HOLD: float = 0.22",
+    "const EYE_REVEAL_DURATION: float = 0.42",
+    "const FADE_DURATION: float = 0.16",
 ):
     if token not in boot:
         failures.append(f"bounded branded boot timing missing: {token}")
+if "while status == ResourceLoader.THREAD_LOAD_IN_PROGRESS" not in startup_cache:
+    failures.append("menu script stream does not yield while parsing is still in progress")
+if "if status == ResourceLoader.THREAD_LOAD_LOADED:" not in startup_cache:
+    failures.append("menu script stream does not gate blocking get on loaded status")
+if "await startup_scripts.experience_intro_script()" not in intro:
+    failures.append("main menu does not await the non-blocking script handoff")
 
 if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_STARTUP_LATENCY=FAIL count={len(failures)}")
-print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=poster-only menu=present-then-warm room=thread-warm+runtime-support+door-wait network=interaction-gated audio=post-menu-threaded branded-boot=0.98s")
+print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=poster-only script-graphs=post-first-frame-threaded menu=present-then-warm room=thread-warm+runtime-support+door-wait network=interaction-gated audio=post-menu-threaded branded-boot=0.80s")

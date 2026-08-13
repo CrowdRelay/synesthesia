@@ -1,5 +1,5 @@
 extends Control
-const MainRoomFlowScript := preload("res://scripts/app/main_room_flow.gd")
+const StartupScriptCache := preload("res://scripts/app/startup_script_cache.gd")
 const MainSettingsFlowScript := preload("res://scripts/app/main_settings_flow.gd")
 const MainRewardFlowScript := preload("res://scripts/app/main_reward_flow.gd")
 const MainWarmupFlowScript := preload("res://scripts/app/main_warmup_flow.gd")
@@ -7,24 +7,17 @@ const FatalErrorPresenter := preload("res://scripts/app/fatal_error_presenter.gd
 const ProgressStoreScript := preload("res://scripts/progress_store.gd")
 const QualityManager := preload("res://scripts/app/quality_manager.gd")
 const AppHudScript := preload("res://scripts/ui/app_hud.gd")
-const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const TransitionDirectorScript := preload("res://scripts/app/transition_director.gd")
 const AssetPreloaderScript := preload("res://scripts/app/asset_preloader.gd")
 const AdaptivePerformanceScript := preload("res://scripts/app/adaptive_performance.gd")
 const NativeExperienceSurfaceScript := preload("res://scripts/app/native_experience_surface.gd")
 const InteractiveUiRootScript := preload("res://scripts/app/interactive_ui_root.gd")
-const MenuRuntimeGuard := preload("res://scripts/app/menu_runtime_guard.gd")
 const SoundscapeRuntime := preload("res://scripts/app/soundscape_runtime.gd")
 const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
-const ProgressMetrics := preload("res://scripts/app/progress_metrics.gd")
 const GameplayTelemetryScript := preload("res://scripts/app/gameplay_telemetry.gd")
 const AppLifecycle := preload("res://scripts/app/app_lifecycle.gd")
-const ExperienceIntroCardScript := preload("res://scripts/ui/experience_intro_card.gd")
 const AlbumModeControllerScript := preload("res://scripts/app/album_mode_controller.gd")
-const EchoArchive := preload("res://scripts/app/echo_archive.gd")
-const SettingsCardScript := preload("res://scripts/ui/settings_card.gd")
-const ConfirmCardScript := preload("res://scripts/ui/confirm_card.gd")
 const BootSequenceScript := preload("res://scripts/ui/boot_sequence.gd")
 const RELEASE_INDEX_PATH: String = "res://data/release_index.json"
 const VERSION_PATH: String = "res://VERSION"
@@ -71,6 +64,7 @@ var save_timer: Timer
 var settings_dirty: bool = false
 var intro_panel
 var experience_intro_panel
+var experience_intro_opening: bool = false
 var completion_panel
 var confirmation_panel
 var reward_panel
@@ -81,6 +75,7 @@ var room_flow: Node
 var settings_flow: Node
 var reward_flow: Node
 var warmup_flow: Node
+var startup_scripts: Node
 func _ready() -> void:
     DebugProfile.fit_macos_window_to_screen()
     index_document = ReleaseReader.load_json(RELEASE_INDEX_PATH)
@@ -116,10 +111,10 @@ func _ready() -> void:
     if str(album_state.get("journey_id", "")).is_empty():
         album_state["journey_id"] = ProgressStoreScript.new_journey_id()
         ProgressStoreScript.save_album(album_state)
-    room_flow = MainRoomFlowScript.new(); room_flow.bind(self); add_child(room_flow)
     settings_flow = MainSettingsFlowScript.new(); settings_flow.bind(self); add_child(settings_flow)
     reward_flow = MainRewardFlowScript.new(); reward_flow.bind(self); add_child(reward_flow)
     warmup_flow = MainWarmupFlowScript.new(); warmup_flow.bind(self); add_child(warmup_flow)
+    startup_scripts = StartupScriptCache.new(); startup_scripts.bind(self); add_child(startup_scripts)
     _build_application_shell()
     room_layer.visible = false
     _enter_main_menu_mode()
@@ -171,6 +166,7 @@ func _build_application_shell() -> void:
     boot.configure(reduced_motion)
     ui_root.attach(boot, 100)
     boot.released.connect(_show_experience_intro)
+    startup_scripts.call_deferred("prime_after_first_frame")
 func _apply_native_geometry() -> void:
     if experience_surface == null or room_layer == null:
         return
@@ -178,10 +174,17 @@ func _apply_native_geometry() -> void:
     room_layer.position = art_rect.position
     room_layer.size = art_rect.size
 func _show_experience_intro() -> void:
-    if experience_intro_panel != null:
+    if experience_intro_panel != null or experience_intro_opening:
         return
+    experience_intro_opening = true
     _enter_main_menu_mode()
-    experience_intro_panel = ExperienceIntroCardScript.new()
+    var intro_script: Script = await startup_scripts.experience_intro_script()
+    if intro_script == null:
+        experience_intro_opening = false
+        _show_fatal_error("Nie udało się przygotować menu Synesthesii.")
+        return
+    experience_intro_panel = intro_script.new()
+    experience_intro_opening = false
     experience_intro_panel.name = "ExperienceMenu"
     ui_root.attach(experience_intro_panel, 20)
     var reward_value: Variant = index_document.get("reward", {})
@@ -271,6 +274,9 @@ func _configure_reward_client() -> void:
     if reward_client == null:
         reward_flow._configure_reward_client()
 func _load_room(index: int, show_intro: bool) -> void:
+    if startup_scripts == null or not startup_scripts.ensure_room_flow():
+        _show_fatal_error("Nie udało się przygotować silnika pokoju.")
+        return
     room_flow._load_room(index, show_intro)
 func _instantiate_room(room_data: Dictionary):
     room_flow._instantiate_room(room_data)
@@ -281,7 +287,7 @@ func _clear_room_runtime() -> void:
 func _restore_room_after_layout(show_intro: bool) -> void:
     room_flow._restore_room_after_layout(show_intro)
 func _collectible_total() -> int:
-    return room_flow._collectible_total()
+    return room_flow._collectible_total() if room_flow != null else 0
 func _show_intro() -> void:
     room_flow._show_intro()
 func _dismiss_intro() -> void:

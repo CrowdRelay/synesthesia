@@ -12,6 +12,14 @@ func _gui_input(event: InputEvent) -> void:
     var routed: Dictionary = app.interaction_router.route_input(event, app.size, Time.get_ticks_msec(), app.drawing, app._drawing_pointer_id, touch_origin)
     if not bool(routed.get("handled", false)):
         return
+    # Timer activity is intentionally lower-level than brush interaction_started.
+    # Several authored mechanics capture the pointer and never begin a brush
+    # stroke, but their press/drag is still real gameplay and must start timing
+    # before a same-frame progress/completion signal can fire.
+    var gestures_value: Variant = routed.get("gestures", [])
+    var gestures: Array = gestures_value if gestures_value is Array else []
+    if not gestures.is_empty() or not str(routed.get("stroke", "")).is_empty():
+        app.gameplay_input_activity.emit()
     var point_value: Variant = routed.get("point", app.pointer_norm)
     app.pointer_norm = point_value if point_value is Vector2 else app.pointer_norm
     app.target_parallax = (app.pointer_norm - Vector2(0.5, 0.5)) * 2.0

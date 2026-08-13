@@ -1,9 +1,25 @@
 extends Node
 
+const SETTINGS_CARD_PATH: String = "res://scripts/ui/settings_card.gd"
+const CONFIRM_CARD_PATH: String = "res://scripts/ui/confirm_card.gd"
+
+var _runtime_scripts: Dictionary = {}
+
 var app: Node
 
 func bind(owner: Node) -> void:
     app = owner
+
+func _runtime_script(path: String) -> Script:
+    if _runtime_scripts.has(path):
+        return _runtime_scripts[path] as Script
+    if not ResourceLoader.exists(path):
+        return null
+    var resource: Resource = load(path)
+    if resource is Script:
+        _runtime_scripts[path] = resource
+        return resource as Script
+    return null
 
 func _show_settings() -> void:
     if app.settings_panel != null:
@@ -12,7 +28,11 @@ func _show_settings() -> void:
         if app.room_flow != null:
             app.room_flow.pause_room_timer()
         app.room.set_interaction_enabled(false)
-    app.settings_panel = app.SettingsCardScript.new()
+    var SettingsCardScript: Script = _runtime_script(SETTINGS_CARD_PATH)
+    if SettingsCardScript == null:
+        app._show_fatal_error("Nie udało się otworzyć ustawień.")
+        return
+    app.settings_panel = SettingsCardScript.new()
     app.settings_panel.name = "SettingsCard"
     app.ui_root.attach(app.settings_panel, 60)
     app.settings_panel.configure({
@@ -159,7 +179,11 @@ func _confirm_reset_album() -> void:
 func _show_confirmation(title: String, message: String, confirm_text: String, action: Callable) -> void:
     if app.room_flow != null:
         app.room_flow.pause_room_timer()
-    var card = app.ConfirmCardScript.new()
+    var ConfirmCardScript: Script = _runtime_script(CONFIRM_CARD_PATH)
+    if ConfirmCardScript == null:
+        app._show_fatal_error("Nie udało się otworzyć potwierdzenia.")
+        return
+    var card = ConfirmCardScript.new()
     app.confirmation_panel = card
     app.ui_root.attach(card, 80)
     card.configure(title, message, confirm_text)

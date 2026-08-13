@@ -117,23 +117,48 @@ func complete_album(total_elapsed_ms: int) -> void:
         },
     })
 
-func refresh_completion_context(total_elapsed_ms: int) -> void:
+func recover_album(completed_room_ids: Array) -> void:
+    if not has_run():
+        request_failed.emit("recover_album", "Brak aktywnego przebiegu Sygnału.")
+        return
+    _enqueue({
+        "operation": "recover_album",
+        "method": "POST",
+        "path": "/v1/public/synesthesia/runs/%s/recover" % _run_id,
+        "authorized": true,
+        "idempotency_key": "synesthesia-recover-%s" % _run_id,
+        "payload": {
+            "completed_room_ids": completed_room_ids.duplicate(),
+        },
+    })
+
+func refresh_completion_context(_total_elapsed_ms: int = 0) -> void:
     if not has_run():
         request_failed.emit("completion_context_refresh", "Brak aktywnego przebiegu Sygnału.")
         return
-    # Completion is durable, but linked_to_fan/handoff context can change after
-    # the player visits My Signal. Reusing the original idempotency key can replay
-    # the first completion response forever, so context refreshes get a fresh key
-    # while retries of this exact request still reuse it.
-    var refresh_nonce: String = "%d-%d" % [int(Time.get_unix_time_from_system()), Time.get_ticks_msec()]
+    # Read-only by contract. Status refresh must never rotate the short-lived
+    # handoff that My Signal may be consuming in another tab/app.
     _enqueue({
         "operation": "completion_context_refresh",
-        "path": "/v1/public/synesthesia/runs/%s/complete" % _run_id,
+        "method": "GET",
+        "path": "/v1/public/synesthesia/runs/%s/context" % _run_id,
         "authorized": true,
-        "idempotency_key": "synesthesia-completion-context-%s-%s" % [_run_id, refresh_nonce],
-        "payload": {
-            "client_total_elapsed_ms": maxi(0, total_elapsed_ms),
-        },
+        "idempotency_key": "",
+        "payload": {},
+    })
+
+func request_handoff() -> void:
+    if not has_run():
+        request_failed.emit("handoff_issue", "Brak aktywnego przebiegu Sygnału.")
+        return
+    var nonce: String = "%d-%d" % [int(Time.get_unix_time_from_system()), Time.get_ticks_msec()]
+    _enqueue({
+        "operation": "handoff_issue",
+        "method": "POST",
+        "path": "/v1/public/synesthesia/runs/%s/handoff" % _run_id,
+        "authorized": true,
+        "idempotency_key": "synesthesia-handoff-%s-%s" % [_run_id, nonce],
+        "payload": {},
     })
 
 func fetch_leaderboard(limit: int = 10) -> void:
@@ -255,7 +280,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
         "record_room":
             _server_next_room_index = maxi(0, int(parsed.get("next_room_index", _server_next_room_index)))
             room_recorded.emit(str(active_copy.get("room_id", "")), _server_next_room_index)
-        "complete_album", "completion_context_refresh":
+        "complete_album", "recover_album", "completion_context_refresh", "handoff_issue":
             album_recorded.emit(parsed.duplicate(true))
         "enter_draw":
             draw_entered.emit(

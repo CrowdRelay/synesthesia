@@ -7,6 +7,7 @@ failures: list[str] = []
 hud = (ROOT / "scripts/ui/app_hud.gd").read_text(errors="replace") + "\n" + (ROOT / "scripts/ui/hud_layout_flow.gd").read_text(errors="replace")
 intro = (ROOT / "scripts/ui/experience_intro_card.gd").read_text(errors="replace")
 main = (ROOT / "scripts/main.gd").read_text(errors="replace")
+startup = (ROOT / "scripts/app/startup_script_cache.gd").read_text(errors="replace")
 room_flow = (ROOT / "scripts/app/main_room_flow.gd").read_text(errors="replace")
 main_flow = main + "\n" + room_flow
 transition = (ROOT / "scripts/app/transition_director.gd").read_text(errors="replace")
@@ -45,7 +46,7 @@ for token in (
         failures.append(f"experience menu token missing: {token}")
 
 for token in (
-    'ExperienceIntroCardScript',
+    'startup_scripts.experience_intro_script()',
     'experience_intro_seen',
     "boot.released.connect(_show_experience_intro)",
     'await transition_director.travel_out()',
@@ -53,6 +54,16 @@ for token in (
 ):
     if token not in main_flow:
         failures.append(f"main intro/door flow token missing: {token}")
+
+for token in (
+    'EXPERIENCE_INTRO_CARD_PATH',
+    'ResourceLoader.load_threaded_request',
+    'func experience_intro_script() -> Script:',
+):
+    if token not in startup:
+        failures.append(f"lazy intro startup token missing: {token}")
+if 'preload("res://scripts/ui/experience_intro_card.gd")' in main:
+    failures.append("experience intro must remain out of the pre-first-frame preload graph")
 
 for token in ('overlay.z_index = 930', 'door_layer.z_index = 940'):
     if token not in transition:
