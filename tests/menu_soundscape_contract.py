@@ -40,4 +40,9 @@ for token in (
     assert token in runtime, token
 
 assert source.count('_rng.randf() < 0.5') == 1
-print('SYNESTHESIA_MENU_SOUNDSCAPE=PASS menu=50/50-per-run outro=random-always tracks=11 fade=bounded')
+
+ready = source[source.index('func _ready() -> void:'):source.index('func set_user_levels')]
+assert 'load(' not in ready, 'menu soundscape performs synchronous resource load in _ready'
+for token in ('load_threaded_request', 'load_threaded_get_status', 'load_threaded_get', '_pending_noise', '_pending_track_index'):
+    assert token in source, token
+print('SYNESTHESIA_MENU_SOUNDSCAPE=PASS menu=50/50-per-run outro=random-always tracks=11 load=post-menu-threaded fade=bounded')

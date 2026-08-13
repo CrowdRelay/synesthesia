@@ -88,13 +88,21 @@
         "settle": "living-loop",
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
-      }
+      },
+      "layers": [
+        "ambient",
+        "reactive",
+        "semantic_burst"
+      ],
+      "anti_static_seconds": 2.6,
+      "performance_budget": "adaptive-event-driven-v2"
     },
     "mobile_readability": {
-      "shadow_lift": 0.66,
-      "subject_lift": 0.92,
-      "noise_scale": 0.76,
-      "vignette_floor": 0.85
+      "shadow_lift": 0.58,
+      "subject_lift": 0.9,
+      "highlight_lift": 0.94,
+      "noise_scale": 0.72,
+      "vignette_floor": 0.86
     }
   },
   "sensory": {
@@ -170,7 +178,8 @@
       "source": "Lubek",
       "source_role": "bas · fundament i cień",
       "echo_type": "memory_shard",
-      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
+      "reward_hint": "To echo budzi charakterystyczny gest pokoju; po odsłonięciu dotknij jego śladu.",
+      "semantic_kind": "mirror"
     }
   ],
   "intro": "Dotykaj luster, żeby trzaskały. Każda pęknięta tafla odsłania kolor zamiast kolejnej oceny.",

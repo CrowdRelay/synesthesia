@@ -35,6 +35,9 @@ var _noise_level := 1.0
 var _quiet := false
 var _music_target_db := SILENCE_DB
 var _noise_target_db := SILENCE_DB
+var _pending_noise: bool = false
+var _pending_track_index: int = -1
+var _deferred_track_index: int = -1
 
 func _ready() -> void:
     _rng.randomize()
@@ -50,7 +53,9 @@ func _ready() -> void:
     _noise_player.bus = &"Sensory"
     _noise_player.volume_db = SILENCE_DB
     add_child(_noise_player)
-    _attach_noise()
+    # No decoder/resource work in _ready(): the first branded/menu frame wins.
+    # enter_menu()/enter_outro() only issue threaded requests and attachment is
+    # polled later from _process().
     set_process(false)
 
 func set_user_levels(music_linear: float, noise_linear: float, quiet: bool) -> void:
@@ -68,6 +73,7 @@ func enter_menu() -> void:
             _menu_track_index = _start_random_track(-1)
     elif _menu_has_music and _menu_track_index >= 0 and _current_track_index != _menu_track_index:
         _start_track(_menu_track_index)
+    _request_noise()
     _ensure_noise_playing()
     _refresh_targets()
     set_process(true)
@@ -75,33 +81,32 @@ func enter_menu() -> void:
 func enter_outro() -> void:
     _mode = "outro"
     _start_random_track(_current_track_index)
+    _request_noise()
     _ensure_noise_playing()
     _refresh_targets()
     set_process(true)
 
 func leave_soundscape() -> void:
     _mode = "off"
+    _deferred_track_index = -1
     _music_target_db = SILENCE_DB
     _noise_target_db = SILENCE_DB
+    # Keep processing until pending threaded loads are drained and any audible
+    # streams have faded out. No synchronous cleanup join on a transition.
     set_process(true)
 
 func is_menu_music_active() -> bool:
     return _mode == "menu" and _menu_has_music and not _quiet
 
-func _attach_noise() -> void:
-    if not ResourceLoader.exists(PINK_NOISE_PATH):
+func _request_noise() -> void:
+    if _noise_player.stream != null or _pending_noise or not ResourceLoader.exists(PINK_NOISE_PATH):
         return
-    var resource: Resource = load(PINK_NOISE_PATH)
-    if not resource is AudioStream:
-        return
-    if resource is AudioStreamOggVorbis:
-        var stream := resource as AudioStreamOggVorbis
-        stream.loop = true
-        stream.loop_offset = 0.0
-    _noise_player.stream = resource as AudioStream
+    var error: Error = ResourceLoader.load_threaded_request(PINK_NOISE_PATH, "", false, ResourceLoader.CACHE_MODE_REUSE)
+    if error == OK:
+        _pending_noise = true
 
 func _ensure_noise_playing() -> void:
-    if _noise_player.stream != null and not _noise_player.playing:
+    if _noise_player.stream != null and not _noise_player.playing and _mode != "off":
         _noise_player.play()
 
 func _start_random_track(exclude_index: int) -> int:
@@ -123,9 +128,67 @@ func _start_random_track(exclude_index: int) -> int:
 func _start_track(index: int) -> bool:
     if index < 0 or index >= TRACKS.size() or not ResourceLoader.exists(TRACKS[index]):
         return false
-    var resource: Resource = load(TRACKS[index])
-    if not resource is AudioStream:
+    if _current_track_index == index and _music_player.stream != null:
+        if _mode != "off" and not _music_player.playing:
+            _play_attached_track(_music_player.stream as AudioStream, index)
+        return true
+    if _pending_track_index == index:
+        return true
+    # Keep only one outstanding music request. A mode change can happen while
+    # the menu excerpt is still decoding on a slow phone; remember the newest
+    # desired track rather than orphaning the original ResourceLoader request.
+    if _pending_track_index >= 0:
+        _deferred_track_index = index
+        return true
+    var error: Error = ResourceLoader.load_threaded_request(TRACKS[index], "", false, ResourceLoader.CACHE_MODE_REUSE)
+    if error != OK:
         return false
+    _pending_track_index = index
+    return true
+
+func _resolve_pending_audio() -> void:
+    if _pending_noise:
+        var noise_status: int = int(ResourceLoader.load_threaded_get_status(PINK_NOISE_PATH))
+        if noise_status == ResourceLoader.THREAD_LOAD_LOADED:
+            var noise_resource: Resource = ResourceLoader.load_threaded_get(PINK_NOISE_PATH)
+            _pending_noise = false
+            _attach_noise(noise_resource)
+        elif noise_status == ResourceLoader.THREAD_LOAD_FAILED or noise_status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+            _pending_noise = false
+
+    if _pending_track_index >= 0:
+        var index: int = _pending_track_index
+        var path: String = TRACKS[index]
+        var track_status: int = int(ResourceLoader.load_threaded_get_status(path))
+        if track_status == ResourceLoader.THREAD_LOAD_LOADED:
+            var resource: Resource = ResourceLoader.load_threaded_get(path)
+            _pending_track_index = -1
+            var next_index: int = _deferred_track_index
+            _deferred_track_index = -1
+            if _mode != "off" and next_index < 0 and resource is AudioStream:
+                _play_attached_track(resource as AudioStream, index)
+            if _mode != "off" and next_index >= 0:
+                _start_track(next_index)
+        elif track_status == ResourceLoader.THREAD_LOAD_FAILED or track_status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+            _pending_track_index = -1
+            var retry_index: int = _deferred_track_index
+            _deferred_track_index = -1
+            if _mode != "off" and retry_index >= 0:
+                _start_track(retry_index)
+
+func _attach_noise(resource: Resource) -> void:
+    if not resource is AudioStream:
+        return
+    if resource is AudioStreamOggVorbis:
+        var stream := resource as AudioStreamOggVorbis
+        stream.loop = true
+        stream.loop_offset = 0.0
+    _noise_player.stream = resource as AudioStream
+    _ensure_noise_playing()
+
+func _play_attached_track(resource: AudioStream, index: int) -> void:
+    if resource == null:
+        return
     if resource is AudioStreamMP3:
         var stream := resource as AudioStreamMP3
         stream.loop = true
@@ -136,14 +199,13 @@ func _start_track(index: int) -> bool:
         ogg.loop_offset = 0.0
     _current_track_index = index
     _music_player.stop()
-    _music_player.stream = resource as AudioStream
+    _music_player.stream = resource
     _music_player.volume_db = SILENCE_DB
     var from_position := 0.0
-    var length := float((resource as AudioStream).get_length())
+    var length := float(resource.get_length())
     if length > 28.0:
         from_position = _rng.randf_range(4.0, maxf(4.0, length - 18.0))
     _music_player.play(from_position)
-    return true
 
 func _refresh_targets() -> void:
     if _quiet or _mode == "off":
@@ -160,13 +222,14 @@ func _refresh_targets() -> void:
         _noise_target_db = OUTRO_NOISE_DB + noise_gain if _noise_level > 0.0 else SILENCE_DB
 
 func _process(delta: float) -> void:
+    _resolve_pending_audio()
     var step := FADE_DB_PER_SECOND * minf(delta, 0.1)
     if _music_player != null:
         _music_player.volume_db = move_toward(_music_player.volume_db, _music_target_db, step)
     if _noise_player != null:
         _noise_player.volume_db = move_toward(_noise_player.volume_db, _noise_target_db, step)
 
-    if _mode == "off" and _music_player.volume_db <= SILENCE_DB + 0.2 and _noise_player.volume_db <= SILENCE_DB + 0.2:
+    if _mode == "off" and not _pending_noise and _pending_track_index < 0 and _music_player.volume_db <= SILENCE_DB + 0.2 and _noise_player.volume_db <= SILENCE_DB + 0.2:
         if _music_player.playing:
             _music_player.stop()
         if _noise_player.playing:

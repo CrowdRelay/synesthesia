@@ -62,14 +62,18 @@ func _build_composite() -> void:
     app.add_child(app.interaction_fx)
     app.interaction_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func _configure_behavior(room_data: Dictionary) -> void:
+func _configure_behavior(room_data: Dictionary, asset_source = null) -> void:
     app.behavior = null
     app._behavior_tick_gated = false
     var behavior_path: String = str(room_data.get("behavior_script", ""))
     if behavior_path.is_empty() or not ResourceLoader.exists(behavior_path):
         push_warning("Missing room app.behavior: %s" % behavior_path)
         return
-    var resource: Resource = load(behavior_path)
+    var resource: Resource = null
+    if asset_source != null and asset_source.has_method("take"):
+        resource = asset_source.take(behavior_path)
+    if resource == null:
+        resource = load(behavior_path)
     if resource is Script:
         app.behavior = (resource as Script).new()
         app.behavior.configure(room_data)

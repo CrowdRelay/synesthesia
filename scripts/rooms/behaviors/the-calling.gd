@@ -92,9 +92,10 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
     if kind == "press" and _near(point, _node_position(), 0.12):
         state["glass_dragging"] = true
     elif kind == "drag" and bool(state.get("glass_dragging", false)):
-        var next := point
-        next.x = clampf(next.x, 0.27, 0.63)
-        next.y = clampf(next.y, 0.45, 0.64)
+        var current := _node_position()
+        var target := Vector2(clampf(point.x, 0.27, 0.63), clampf(point.y, 0.45, 0.64))
+        var target_pull := 0.46 + 0.18 * clampf(1.0 - target.distance_to(NODE_TARGET) / 0.28, 0.0, 1.0)
+        var next := current.lerp(target, target_pull)
         state["glass_position"] = [next.x, next.y]
     elif kind == "release" and bool(state.get("glass_dragging", false)):
         state["glass_dragging"] = false

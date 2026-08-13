@@ -90,12 +90,20 @@
         "settle": "living-loop",
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
-      }
+      },
+      "layers": [
+        "ambient",
+        "reactive",
+        "semantic_burst"
+      ],
+      "anti_static_seconds": 2.6,
+      "performance_budget": "adaptive-event-driven-v2"
     },
     "mobile_readability": {
-      "shadow_lift": 0.8,
-      "subject_lift": 0.95,
-      "noise_scale": 0.68,
+      "shadow_lift": 0.72,
+      "subject_lift": 0.9,
+      "highlight_lift": 0.88,
+      "noise_scale": 0.66,
       "vignette_floor": 0.88
     }
   },
@@ -172,7 +180,8 @@
       "source": "Yanusin",
       "source_role": "frontman · rzecznik emocji",
       "echo_type": "memory_shard",
-      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
+      "reward_hint": "To echo budzi charakterystyczny gest pokoju; po odsłonięciu dotknij jego śladu.",
+      "semantic_kind": "toast"
     }
   ],
   "intro": "Wykwintna kuchnia prawie straciła kolor. Maluj ludzi przy stole; czerwień pozostaje tylko w winie i toaście.",

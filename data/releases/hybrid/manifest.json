@@ -88,11 +88,19 @@
         "settle": "living-loop",
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
-      }
+      },
+      "layers": [
+        "ambient",
+        "reactive",
+        "semantic_burst"
+      ],
+      "anti_static_seconds": 2.6,
+      "performance_budget": "adaptive-event-driven-v2"
     },
     "mobile_readability": {
-      "shadow_lift": 0.82,
-      "subject_lift": 0.88,
+      "shadow_lift": 0.7,
+      "subject_lift": 0.86,
+      "highlight_lift": 0.84,
       "noise_scale": 0.68,
       "vignette_floor": 0.87
     }
@@ -170,7 +178,8 @@
       "source": "Mr R",
       "source_role": "gitara · operator sygnału",
       "echo_type": "memory_shard",
-      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
+      "reward_hint": "To echo budzi charakterystyczny gest pokoju; po odsłonięciu dotknij jego śladu.",
+      "semantic_kind": "duel"
     }
   ],
   "intro": "Stoisz na środku pustej ulicy jak w westernie. Zamalowuj i glitchuj przeciwnika — jedynego boga, którego dotąd znałeś.",

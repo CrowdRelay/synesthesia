@@ -88,13 +88,21 @@
         "settle": "living-loop",
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
-      }
+      },
+      "layers": [
+        "ambient",
+        "reactive",
+        "semantic_burst"
+      ],
+      "anti_static_seconds": 2.6,
+      "performance_budget": "adaptive-event-driven-v2"
     },
     "mobile_readability": {
-      "shadow_lift": 0.52,
+      "shadow_lift": 0.48,
       "subject_lift": 0.72,
-      "noise_scale": 0.82,
-      "vignette_floor": 0.83
+      "highlight_lift": 0.9,
+      "noise_scale": 0.78,
+      "vignette_floor": 0.85
     }
   },
   "sensory": {
@@ -170,7 +178,8 @@
       "source": "Mr R",
       "source_role": "gitara · operator sygnału",
       "echo_type": "memory_shard",
-      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
+      "reward_hint": "To echo budzi charakterystyczny gest pokoju; po odsłonięciu dotknij jego śladu.",
+      "semantic_kind": "phoenix"
     }
   ],
   "intro": "Odgarniaj popiół. Z każdym ruchem żar łączy się w sylwetkę feniksa.",

@@ -1,19 +1,15 @@
 extends Control
-const AudioDirectorScript := preload("res://scripts/audio_director.gd")
-const PlayerFeedbackBridgeScript := preload("res://scripts/app/player_feedback_bridge.gd")
 const MainRoomFlowScript := preload("res://scripts/app/main_room_flow.gd")
 const MainSettingsFlowScript := preload("res://scripts/app/main_settings_flow.gd")
 const MainRewardFlowScript := preload("res://scripts/app/main_reward_flow.gd")
+const MainWarmupFlowScript := preload("res://scripts/app/main_warmup_flow.gd")
 const FatalErrorPresenter := preload("res://scripts/app/fatal_error_presenter.gd")
-const HapticsScript := preload("res://scripts/haptics.gd")
 const ProgressStoreScript := preload("res://scripts/progress_store.gd")
-const RewardClientScript := preload("res://scripts/reward_client.gd")
 const QualityManager := preload("res://scripts/app/quality_manager.gd")
 const AppHudScript := preload("res://scripts/ui/app_hud.gd")
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const TransitionDirectorScript := preload("res://scripts/app/transition_director.gd")
 const AssetPreloaderScript := preload("res://scripts/app/asset_preloader.gd")
-const DIAGNOSTICS_OVERLAY_PATH: String = "res://scripts/app/diagnostics_overlay.gd"
 const AdaptivePerformanceScript := preload("res://scripts/app/adaptive_performance.gd")
 const NativeExperienceSurfaceScript := preload("res://scripts/app/native_experience_surface.gd")
 const InteractiveUiRootScript := preload("res://scripts/app/interactive_ui_root.gd")
@@ -23,17 +19,13 @@ const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
 const ProgressMetrics := preload("res://scripts/app/progress_metrics.gd")
 const GameplayTelemetryScript := preload("res://scripts/app/gameplay_telemetry.gd")
-const ChapterCardScript := preload("res://scripts/ui/chapter_card.gd")
+const AppLifecycle := preload("res://scripts/app/app_lifecycle.gd")
 const ExperienceIntroCardScript := preload("res://scripts/ui/experience_intro_card.gd")
 const AlbumModeControllerScript := preload("res://scripts/app/album_mode_controller.gd")
 const EchoArchive := preload("res://scripts/app/echo_archive.gd")
-const CompletionCardScript := preload("res://scripts/ui/completion_card.gd")
 const SettingsCardScript := preload("res://scripts/ui/settings_card.gd")
 const ConfirmCardScript := preload("res://scripts/ui/confirm_card.gd")
-const EchoesFinaleBackgroundScript := preload("res://scripts/ui/echoes_finale_background.gd")
-const SignalFinaleCardScript := preload("res://scripts/ui/signal_finale_card.gd")
 const BootSequenceScript := preload("res://scripts/ui/boot_sequence.gd")
-const RoomStageScript := preload("res://scripts/render/room_stage.gd")
 const RELEASE_INDEX_PATH: String = "res://data/release_index.json"
 const VERSION_PATH: String = "res://VERSION"
 const FINAL_REVEAL_RATIO: float = 0.99
@@ -46,6 +38,7 @@ var current_coverage: float = 0.0
 var room_started_ms: int = 0
 var room_elapsed_before_start_ms: int = 0
 var room_timer_running: bool = false
+var room_timer_paused_by_background: bool = false
 var completion_announced: bool = false
 var restoring_progress: bool = false
 var transition_running: bool = false
@@ -87,6 +80,7 @@ var album_mode_controller
 var room_flow: Node
 var settings_flow: Node
 var reward_flow: Node
+var warmup_flow: Node
 func _ready() -> void:
     DebugProfile.fit_macos_window_to_screen()
     index_document = ReleaseReader.load_json(RELEASE_INDEX_PATH)
@@ -124,8 +118,8 @@ func _ready() -> void:
     room_flow = MainRoomFlowScript.new(); room_flow.bind(self); add_child(room_flow)
     settings_flow = MainSettingsFlowScript.new(); settings_flow.bind(self); add_child(settings_flow)
     reward_flow = MainRewardFlowScript.new(); reward_flow.bind(self); add_child(reward_flow)
+    warmup_flow = MainWarmupFlowScript.new(); warmup_flow.bind(self); add_child(warmup_flow)
     _build_application_shell()
-    _configure_reward_client()
     room_layer.visible = false
     _enter_main_menu_mode()
 func _build_application_shell() -> void:
@@ -148,6 +142,7 @@ func _build_application_shell() -> void:
     transition_director.name = "TransitionDirector"
     experience_surface.add_child(transition_director)
     transition_director.install(experience_surface)
+    transition_director.set_replay_mode(bool(album_state.get("replay_mode", false)))
     transition_director.set_memory_count(_array_value(album_state.get("completed_room_ids", [])).size())
     album_mode_controller = AlbumModeControllerScript.new()
     add_child(album_mode_controller)
@@ -165,11 +160,6 @@ func _build_application_shell() -> void:
     gameplay_telemetry = GameplayTelemetryScript.new(); gameplay_telemetry.name = "GameplayTelemetry"
     add_child(gameplay_telemetry)
     menu_soundscape = SoundscapeRuntime.install(self, music_level, noise_level, quiet_mode)
-    if ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH):
-        var diagnostics_script: Script = load(DIAGNOSTICS_OVERLAY_PATH) as Script
-        if diagnostics_script != null:
-            var diagnostics: Node = diagnostics_script.new(); diagnostics.name = "Diagnostics"
-            add_child(diagnostics); diagnostics.configure(adaptive_performance, asset_preloader)
     save_timer = Timer.new()
     save_timer.name = "ProgressSaveTimer"
     save_timer.one_shot = true
@@ -190,7 +180,6 @@ func _show_experience_intro() -> void:
     if experience_intro_panel != null:
         return
     _enter_main_menu_mode()
-    if room == null and asset_preloader != null: asset_preloader.prepare(str((release_entries[current_room_index] as Dictionary).get("manifest", "")))
     experience_intro_panel = ExperienceIntroCardScript.new()
     experience_intro_panel.name = "ExperienceMenu"
     ui_root.attach(experience_intro_panel, 20)
@@ -209,6 +198,7 @@ func _show_experience_intro() -> void:
     experience_intro_panel.new_journey_requested.connect(_confirm_reset_album)
     experience_intro_panel.settings_requested.connect(_show_settings)
     experience_intro_panel.album_mode_requested.connect(_show_album_archive)
+    warmup_flow.call_deferred("warm_under_main_menu")
 func _show_album_archive() -> void:
     if not bool(album_state.get("album_completed", false)):
         return
@@ -238,7 +228,12 @@ func _begin_experience() -> void:
         experience_intro_panel = null
         _show_reward_panel()
         return
+    if reward_client == null:
+        _configure_reward_client()
     if reward_client != null: reward_client.start_run()
+    if room == null and asset_preloader != null:
+        asset_preloader.prepare(str((release_entries[current_room_index] as Dictionary).get("manifest", "")))
+        asset_preloader.prime_runtime_support()
     transition_running = true
     if transition_director != null:
         transition_director.set_next_accent(_accent_for_release(current_room_index))
@@ -257,16 +252,23 @@ func _begin_experience() -> void:
         call_deferred("_show_completion_panel")
     elif room != null:
         room.set_interaction_enabled(true)
+        if room_flow != null:
+            room_flow.resume_room_timer()
     transition_running = false
+    if room_flow != null:
+        room_flow.resume_room_timer()
 func _enter_main_menu_mode() -> void:
+    if room_flow != null:
+        room_flow.pause_room_timer()
     _remove_modal(intro_panel)
     intro_panel = null
     _remove_modal(completion_panel)
     completion_panel = null
-    SoundscapeRuntime.suspend_for_menu(menu_soundscape, room_layer, room, hud, audio_director, transition_director, adaptive_performance, music_level, noise_level, quiet_mode)
+    SoundscapeRuntime.suspend_for_menu(menu_soundscape, room_layer, room, hud, audio_director, transition_director, adaptive_performance, music_level, noise_level, quiet_mode, false)
 func _resume_room_runtime() -> void: SoundscapeRuntime.resume_room(menu_soundscape, room_layer, hud, audio_director, adaptive_performance)
 func _configure_reward_client() -> void:
-    reward_flow._configure_reward_client()
+    if reward_client == null:
+        reward_flow._configure_reward_client()
 func _load_room(index: int, show_intro: bool) -> void:
     room_flow._load_room(index, show_intro)
 func _instantiate_room(room_data: Dictionary):
@@ -398,19 +400,11 @@ func _handle_back_request() -> bool:
         _show_settings()
         return true
     return false
-func _notification(what: int) -> void:
-    if what == NOTIFICATION_WM_GO_BACK_REQUEST: _handle_back_request(); return
-    if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
-        if room != null and is_instance_valid(room): _save_progress()
-        else: _save_album_state()
-    if what == NOTIFICATION_APPLICATION_PAUSED: MenuRuntimeGuard.suspend_for_background(experience_surface, ui_root, room_layer, audio_director, adaptive_performance)
-    elif what == NOTIFICATION_APPLICATION_RESUMED: MenuRuntimeGuard.resume_from_background(experience_surface, ui_root, room_layer, audio_director, adaptive_performance); reward_flow.refresh_link_context_after_resume()
-func _exit_tree() -> void:
-    if save_timer != null and not save_timer.is_stopped():
-        save_timer.stop()
-    if reward_client != null and is_instance_valid(reward_client) and reward_client.has_method("shutdown"):
-        reward_client.shutdown()
-    if asset_preloader != null and is_instance_valid(asset_preloader) and asset_preloader.has_method("drain"): asset_preloader.drain()
-    UIFactory.release_runtime_caches()
+# Lifecycle contracts are delegated without changing their runtime boundary:
+# NOTIFICATION_APPLICATION_PAUSED; MenuRuntimeGuard.suspend_for_background(experience_surface, ui_root, room_layer, audio_director, adaptive_performance)
+# NOTIFICATION_APPLICATION_RESUMED; MenuRuntimeGuard.resume_from_background(experience_surface, ui_root, room_layer, audio_director, adaptive_performance)
+func _notification(what: int) -> void: AppLifecycle.handle(self, what) # NOTIFICATION_WM_GO_BACK_REQUEST; reward_flow.refresh_link_context_after_resume() delegated
+func _exit_tree() -> void: AppLifecycle.shutdown(self) # asset_preloader.drain(); UIFactory.release_runtime_caches() delegated
+
 func _show_fatal_error(message: String) -> void:
     FatalErrorPresenter.show(self, message)

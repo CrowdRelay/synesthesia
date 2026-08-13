@@ -8,6 +8,7 @@ var reduced_motion: bool = false
 var calm_mode: bool = true
 var _effects: Array[Dictionary] = []
 var _accumulator: float = 0.0
+var _runtime_scale: float = 1.0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -21,6 +22,12 @@ func set_sensory(calm: bool, reduced: bool) -> void:
     calm_mode = calm
     reduced_motion = reduced
 
+func set_runtime_scale(value: float) -> void:
+    _runtime_scale = clampf(value, 0.55, 1.0)
+    var max_effects := maxi(8, int(round(float(MAX_EFFECTS) * _runtime_scale)))
+    while _effects.size() > max_effects:
+        _effects.pop_front()
+
 func spawn(point_norm: Vector2, kind: String) -> void:
     var duration: float = 0.48 if calm_mode else 0.62
     if reduced_motion:
@@ -32,7 +39,8 @@ func spawn(point_norm: Vector2, kind: String) -> void:
         "duration": duration,
         "seed": int(Time.get_ticks_usec() & 0x7fffffff),
     })
-    while _effects.size() > MAX_EFFECTS:
+    var max_effects := maxi(8, int(round(float(MAX_EFFECTS) * _runtime_scale)))
+    while _effects.size() > max_effects:
         _effects.pop_front()
     set_process(true)
     queue_redraw()
@@ -46,7 +54,7 @@ func _process(delta: float) -> void:
     if _effects.is_empty():
         return
     _accumulator += delta
-    var target_hz: float = 18.0 if reduced_motion else 30.0
+    var target_hz: float = 18.0 if reduced_motion else maxf(20.0, 30.0 * _runtime_scale)
     if _accumulator < 1.0 / target_hz:
         return
     var elapsed: float = _accumulator
@@ -80,7 +88,7 @@ func _draw() -> void:
                 _draw_confetti(center, radius, alpha, int(effect.get("seed", 0)))
             "screen", "duel":
                 _draw_glitch(center, radius, alpha)
-            "cable_grab":
+            "cable_grab", "cable_tension":
                 _draw_cable_tension(center, radius, alpha)
             "cable_snap":
                 _draw_cable_snap(center, radius, alpha)
@@ -88,12 +96,20 @@ func _draw() -> void:
                 _draw_unplug_sparks(center, radius, alpha, int(effect.get("seed", 0)))
             "breaker":
                 _draw_breaker_pulse(center, radius, alpha)
-            "signal_lock":
+            "signal_lock", "semantic_echo":
                 _draw_signal_lock(center, radius, alpha)
             "phoenix", "seed", "light":
                 _draw_rays(center, radius, alpha)
-            "wave", "presence", "toast", "mask":
+            "wave", "presence", "toast":
                 _draw_ring(center, radius, alpha)
+            "mask":
+                _draw_peel(center, radius, alpha)
+            "root":
+                _draw_root_burst(center, radius, alpha)
+            "ember":
+                _draw_embers(center, radius, alpha, int(effect.get("seed", 0)))
+            "pour":
+                _draw_droplets(center, radius, alpha, int(effect.get("seed", 0)))
             _:
                 _draw_ring(center, radius, alpha)
 
@@ -163,6 +179,29 @@ func _draw_signal_lock(center: Vector2, radius: float, alpha: float) -> void:
         var t := float(index) / 18.0
         waveform.append(center + Vector2((t - 0.5) * radius * 1.35, sin(t * TAU * 3.0) * radius * 0.16 * (1.0 - absf(t - 0.5))))
     draw_polyline(waveform, Color(Color.WHITE, alpha * 1.18), 1.4, true)
+
+func _draw_peel(center: Vector2, radius: float, alpha: float) -> void:
+    draw_arc(center + Vector2(radius * 0.12, 0.0), radius * 0.70, -2.55, 1.10, 28, Color(accent, alpha * 0.95), 1.3)
+    draw_line(center - Vector2(radius * 0.46, radius * 0.18), center + Vector2(radius * 0.62, radius * 0.24), Color(Color.WHITE, alpha * 0.72), 1.0)
+
+func _draw_root_burst(center: Vector2, radius: float, alpha: float) -> void:
+    for index in range(7):
+        var angle := lerpf(-PI * 0.88, -PI * 0.12, float(index) / 6.0)
+        var bend := Vector2.from_angle(angle) * radius * (0.42 + float(index % 3) * 0.14)
+        draw_line(center, center + bend, Color(accent, alpha * (0.62 + float(index % 2) * 0.28)), 1.1)
+
+func _draw_embers(center: Vector2, radius: float, alpha: float, seed: int) -> void:
+    for index in range(10):
+        var x := lerpf(-radius * 0.65, radius * 0.65, _hash01(index + 7, seed))
+        var y := -radius * lerpf(0.20, 1.0, _hash01(index + 17, seed))
+        draw_circle(center + Vector2(x, y), 1.0 + float(index % 3) * 0.6, Color(secondary if index % 3 == 0 else accent, alpha * 1.25))
+
+func _draw_droplets(center: Vector2, radius: float, alpha: float, seed: int) -> void:
+    draw_arc(center, radius * 0.58, 0.1, PI - 0.1, 24, Color(accent, alpha * 0.62), 1.2)
+    for index in range(7):
+        var angle := lerpf(PI * 0.12, PI * 0.88, _hash01(index + 29, seed))
+        var p := center + Vector2.from_angle(angle) * radius * lerpf(0.35, 0.88, _hash01(index + 39, seed))
+        draw_circle(p, 1.2 + float(index % 2), Color(Color.WHITE, alpha * 0.82))
 
 func _hash01(a: int, b: int) -> float:
     var value: float = sin(float(a * 127 + b * 311) * 0.0179) * 43758.5453

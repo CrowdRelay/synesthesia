@@ -28,10 +28,12 @@ func captures_pointer_at(point_norm: Vector2) -> bool:
     return not bool(state.get("duel", false)) and (_near(point_norm, OPPONENT, 0.18) or bool(state.get("aim_locked", false)))
 
 func needs_tick() -> bool:
-    return cinematic_active() or (bool(state.get("duel", false)) and float(state.get("duel_elapsed", 0.0)) < 3.0)
+    return cinematic_active() or bool(state.get("aim_locked", false)) or (bool(state.get("duel", false)) and float(state.get("duel_elapsed", 0.0)) < 3.0)
 
 func advance(delta: float) -> void:
     super.advance(delta)
+    if bool(state.get("aim_locked", false)) and not bool(state.get("duel", false)):
+        state["aim_strength"] = minf(1.0, float(state.get("aim_strength", 0.0)) + delta * 0.48)
     if bool(state.get("duel", false)):
         state["duel_elapsed"] = minf(float(state.get("duel_elapsed", 0.0)) + delta, 3.0)
 
@@ -75,15 +77,20 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
     var point: Vector2 = _gesture_point(gesture)
     if kind == "hold" and not bool(state.get("duel", false)) and _near(point, OPPONENT, 0.16):
         state["aim_locked"] = true
-        state["aim_strength"] = maxf(float(state.get("aim_strength", 0.0)), 0.72)
+        state["aim_strength"] = maxf(float(state.get("aim_strength", 0.0)), 0.56)
         return [_interaction_event("aim", 0, "Cel się uspokoił — decyzja należy do Ciebie", OPPONENT, 0.07, 0.74)]
     if kind == "drag" and bool(state.get("aim_locked", false)) and _near(point, OPPONENT, 0.20):
-        state["aim_strength"] = clampf(float(state.get("aim_strength", 0.0)) + 0.025, 0.0, 1.0)
+        var velocity: float = clampf(float(gesture.get("velocity", 0.0)), 0.0, 1.5)
+        state["aim_strength"] = clampf(float(state.get("aim_strength", 0.0)) + 0.018 + velocity * 0.012, 0.0, 1.0)
     if kind in ["release", "swipe"] and bool(state.get("aim_locked", false)) and not bool(state.get("duel", false)):
-        if _near(point, OPPONENT, 0.22) or _distance_to_segment(OPPONENT, _gesture_start(gesture), point) < 0.13:
+        var aim: float = clampf(float(state.get("aim_strength", 0.0)), 0.0, 1.0)
+        if aim >= 0.82 and (_near(point, OPPONENT, 0.22) or _distance_to_segment(OPPONENT, _gesture_start(gesture), point) < 0.13):
             state["duel"] = true
             state["duel_elapsed"] = 0.0
             return [_interaction_event("duel", 0, "Strzał jest wyborem — cudzy plan traci kształt", OPPONENT, 0.12, 0.96)]
+        state["aim_locked"] = false
+        state["aim_strength"] = aim * 0.52
+        return [_interaction_event("aim", 1, "Za wcześnie — ustabilizuj rezonans i puść dopiero przy pełnym skupieniu", OPPONENT, 0.025, 0.36)]
     return []
 
 func mechanic_progress() -> float:

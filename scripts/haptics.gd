@@ -88,7 +88,7 @@ func confirmation(strength: float = 0.6) -> void:
     var duration: int = roundi(lerpf(7.0, 16.0 if calm_mode else 22.0, amount))
     Input.vibrate_handheld(duration, clampf(base * lerpf(0.48, 0.92, amount), 0.04, 0.42))
 
-func special(kind: String) -> void:
+func special(kind: String, index: int = 0) -> void:
     if not enabled:
         return
     var base: float = calm_amplitude if calm_mode else full_amplitude
@@ -118,7 +118,13 @@ func special(kind: String) -> void:
         "cable_grab":
             Input.vibrate_handheld(6, clampf(base * 0.30, 0.03, 0.16))
         "cable_tension":
-            Input.vibrate_handheld(5 if calm_mode else 8, clampf(base * 0.22, 0.025, 0.14))
+            var bucket: int = clampi(index % 10, 0, 4)
+            var tension: float = float(bucket) / 4.0
+            var duration: int = roundi(lerpf(4.0, 9.0 if calm_mode else 13.0, tension))
+            var amplitude: float = clampf(base * lerpf(0.18, 0.72, pow(tension, 1.25)), 0.025, 0.30)
+            Input.vibrate_handheld(duration, amplitude)
+            if bucket >= 3:
+                _pulse_after_delay(24, 4 if calm_mode else 6, clampf(amplitude * 0.48, 0.025, 0.16))
         "cable_snap":
             Input.vibrate_handheld(7, clampf(base * 0.34, 0.03, 0.18))
         "cable_unplug":

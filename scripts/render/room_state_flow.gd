@@ -17,6 +17,7 @@ func reset_room() -> void:
         app.interaction_runtime.reset()
     for item in app.collectibles:
         item["found"] = false
+        item["semantic_ready"] = str(item.get("semantic_kind", "")).is_empty()
     app.set_cinematic_reveal(false, true)
     app._cinematic_elapsed = 0.0
     app.target_parallax = Vector2.ZERO
@@ -50,14 +51,19 @@ func get_current_act() -> int: return app.current_act
 
 func export_state() -> Dictionary:
     var found_ids: Array[String] = []
+    var semantic_ready_ids: Array[String] = []
     for item in app.collectibles:
+        var item_id := str(item.get("id", ""))
         if bool(item.get("found", false)):
-            found_ids.append(str(item.get("id", "")))
+            found_ids.append(item_id)
+        if not str(item.get("semantic_kind", "")).is_empty() and bool(item.get("semantic_ready", false)):
+            semantic_ready_ids.append(item_id)
     return {
         "renderer": "mask-v2",
         "mask": app.reveal_mask.export_state(),
         "behavior": app.behavior.export_state() if app.behavior != null else {},
         "found_collectibles": found_ids,
+        "semantic_ready_collectibles": semantic_ready_ids,
         "cinematic_revealed": app.cinematic_revealed,
         "door_open": app.door_target_open,
     }
@@ -75,8 +81,16 @@ func restore_state(saved: Dictionary) -> bool:
     if found_value is Array:
         for raw_id in found_value:
             found_lookup[str(raw_id)] = true
+    var semantic_lookup: Dictionary = {}
+    var legacy_semantic_save: bool = not saved.has("semantic_ready_collectibles")
+    var semantic_value: Variant = saved.get("semantic_ready_collectibles", [])
+    if semantic_value is Array:
+        for raw_id in semantic_value:
+            semantic_lookup[str(raw_id)] = true
     for item in app.collectibles:
-        item["found"] = bool(found_lookup.get(str(item.get("id", "")), false))
+        var item_id := str(item.get("id", ""))
+        item["found"] = bool(found_lookup.get(item_id, false))
+        item["semantic_ready"] = legacy_semantic_save or str(item.get("semantic_kind", "")).is_empty() or bool(semantic_lookup.get(item_id, false)) or bool(item.get("found", false))
     var behavior_value: Variant = saved.get("behavior", saved.get("special_state", {}))
     if app.behavior != null and behavior_value is Dictionary:
         app.behavior.restore_state(behavior_value)

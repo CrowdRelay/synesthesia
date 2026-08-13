@@ -92,7 +92,7 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             state["active_mask"] = active
             var delta_value: Variant = gesture.get("delta", Vector2.ZERO)
             var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
-            _shift_offset(active, delta * 0.88)
+            _shift_offset(active, delta * 0.58)
     elif kind == "release":
         var active := int(state.get("active_mask", -1))
         state["active_mask"] = -1

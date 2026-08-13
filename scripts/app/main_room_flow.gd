@@ -1,13 +1,10 @@
 extends Node
-const EchoArchive := preload("res://scripts/app/echo_archive.gd")
-const RoomCinematicRuntime := preload("res://scripts/app/room_cinematic_runtime.gd")
-const ViryaWorld := preload("res://scripts/app/virya_world.gd")
-var app: Node
-var cinematic_runtime: Node
-var _completion_performance: Dictionary = {}
+const EchoArchive := preload("res://scripts/app/echo_archive.gd"); const RoomCinematicRuntime := preload("res://scripts/app/room_cinematic_runtime.gd")
+const ViryaWorld := preload("res://scripts/app/virya_world.gd"); const RoomTimingRuntime := preload("res://scripts/app/room_timing_runtime.gd"); const RuntimeFactory := preload("res://scripts/app/room_runtime_factory.gd") # ChapterCardScript + CompletionCardScript are lazy factory products
+var app: Node; var cinematic_runtime: Node; var _completion_performance: Dictionary = {}; var timing_runtime: Node
 func bind(owner: Node) -> void:
-    app = owner
-    cinematic_runtime = RoomCinematicRuntime.new(); cinematic_runtime.bind(app); add_child(cinematic_runtime)
+    app = owner; cinematic_runtime = RoomCinematicRuntime.new(); cinematic_runtime.bind(app); add_child(cinematic_runtime)
+    timing_runtime = RoomTimingRuntime.new(); timing_runtime.bind(app); add_child(timing_runtime)
 func _load_room(index: int, show_intro: bool) -> void:
     if index < 0 or index >= app.release_entries.size():
         app._show_fatal_error("Próba wejścia do nieznanego pokoju.")
@@ -52,16 +49,16 @@ func _load_room(index: int, show_intro: bool) -> void:
     app.room.interaction_started.connect(func() -> void: app.hud.set_painting(true))
     app.room.interaction_ended.connect(func() -> void: app.hud.set_painting(false))
     app.room.act_changed.connect(_on_act_changed)
-    app.audio_director = app.AudioDirectorScript.new()
+    app.audio_director = RuntimeFactory.audio_director(app.asset_preloader)
     app.audio_director.name = "AudioDirector"
     app.add_child(app.audio_director)
     app.audio_director.configure(app.manifest.get("sensory", {}), app.manifest.get("audio", {}), maxi(1, collectible_entries.size()), app.asset_preloader, str(room_data.get("visual_style", "uncertainty")))
     app.audio_director.set_user_levels(app.music_level, app.noise_level)
-    app.haptics = app.HapticsScript.new()
+    app.haptics = RuntimeFactory.haptics(app.asset_preloader)
     app.haptics.name = "Haptics"
     app.add_child(app.haptics)
     app.haptics.configure(app.manifest.get("sensory", {}), str(room_data.get("visual_style", "paint")))
-    var feedback_bridge = app.PlayerFeedbackBridgeScript.new()
+    var feedback_bridge = RuntimeFactory.feedback_bridge(app.asset_preloader)
     app.room.add_child(feedback_bridge)
     feedback_bridge.bind(app.room, app.hud, app.haptics, app.audio_director)
     app.completion_announced = false
@@ -70,8 +67,9 @@ func _load_room(index: int, show_intro: bool) -> void:
     var elapsed_value: Variant = app.album_state.get("room_elapsed_ms", {})
     var elapsed: Dictionary = elapsed_value if elapsed_value is Dictionary else {}
     app.room_elapsed_before_start_ms = maxi(0, int(elapsed.get(str(app.manifest.get("release_id", "")), 0)))
-    app.room_started_ms = Time.get_ticks_msec()
+    app.room_started_ms = 0
     app.room_timer_running = false
+    timing_runtime.reset_splits()
     if app.gameplay_telemetry != null:
         app.gameplay_telemetry.begin_room(str(app.manifest.get("release_id", "")))
     app.hud.configure_room(
@@ -100,7 +98,7 @@ func _instantiate_room(room_data: Dictionary):
     if resource is PackedScene:
         return (resource as PackedScene).instantiate()
     push_warning("Falling back to generic app.room stage: %s" % scene_path)
-    return app.RoomStageScript.new()
+    return RuntimeFactory.room_stage(app.asset_preloader)
 func _preload_next_room() -> void:
     if app.asset_preloader == null or app.current_room_index + 1 >= app.release_entries.size():
         return
@@ -165,17 +163,19 @@ func _restore_room_after_layout(show_intro: bool) -> void:
             app.hud.update_reveal(normalized)
             app.hud.update_discovery("ECHA %d/%d · pokój pamięta poprzedni dotyk" % [found, _collectible_total()])
             app.hud.prime_hint_after_resume()
-    app.room_timer_running = not app.completion_announced
+    app.room_timer_running = false
     if app.completion_announced:
         app.room.set_cinematic_reveal(true)
         app.room.set_door_open(true)
         app.audio_director.reveal_release_excerpt()
         if app.experience_intro_panel == null:
             app.call_deferred("_show_completion_panel")
-    elif saved.is_empty() and show_intro:
+    elif saved.is_empty() and show_intro and not _replay_mode():
         _show_intro()
     else:
         app.room.set_interaction_enabled(app.experience_intro_panel == null)
+        if app.experience_intro_panel == null:
+            resume_room_timer()
     app.restoring_progress = false
 func _collectible_total() -> int:
     var value: Variant = app.manifest.get("collectibles", [])
@@ -185,7 +185,7 @@ func _collectible_total() -> int:
 func _show_intro() -> void:
     if app.room == null:
         return
-    app.intro_panel = app.ChapterCardScript.new()
+    app.intro_panel = RuntimeFactory.chapter_card(app.asset_preloader)
     app.intro_panel.name = "ChapterCard"
     app.ui_root.attach(app.intro_panel, 20)
     var room_value: Variant = app.manifest.get("room", {})
@@ -215,8 +215,8 @@ func _dismiss_intro() -> void:
     app.intro_panel = null
     if app.room != null:
         app.room.set_interaction_enabled(true)
+    resume_room_timer()
     app._schedule_save()
-
 func _on_coverage_changed(value: float) -> void:
     if app.room == null:
         return
@@ -232,7 +232,6 @@ func _on_coverage_changed(value: float) -> void:
     if normalized >= reveal_at:
         _complete_current_room()
     app._schedule_save()
-
 func _on_collectible_found(item: Dictionary) -> void:
     if app.room == null:
         return
@@ -250,26 +249,23 @@ func _on_collectible_found(item: Dictionary) -> void:
         if app.audio_director != null and app.audio_director.has_method("play_interaction_sfx"):
             app.audio_director.play_interaction_sfx("echo_complete", count)
     app._schedule_save()
-
 func _on_act_changed(index: int, title: String) -> void:
     app.hud.update_act(index, title)
+    timing_runtime.capture_split(index)
     if app.room != null and app.room.has_method("get_interaction_hint"):
         app.hud.update_instruction(app.room.get_interaction_hint())
     if app.haptics != null and index > 0:
         app.haptics.discovery()
-
 func _on_paint_pulse(speed_normalized: float) -> void:
     if app.haptics != null:
         app.haptics.paint_tick(speed_normalized)
-
 func _on_special_interaction(kind: String, index: int) -> void:
     if app.haptics != null:
-        app.haptics.special(kind)
+        app.haptics.special(kind, index)
     if app.audio_director != null and app.audio_director.has_method("play_interaction_sfx"):
         app.audio_director.play_interaction_sfx(kind, index)
     if app.room != null and app.room.has_method("get_interaction_hint"):
         app.hud.update_instruction(app.room.get_interaction_hint())
-
 func _complete_current_room() -> void:
     if app.completion_announced or app.room == null:
         return
@@ -311,16 +307,17 @@ func _complete_current_room() -> void:
     elapsed[release_id] = maxi(int(elapsed.get(release_id, 0)), elapsed_at_completion)
     app.album_state["room_elapsed_ms"] = elapsed
     app.album_state["total_elapsed_ms"] = app.ProgressMetrics.sum_elapsed_ms(elapsed)
-
     if app.current_room_index == app.release_entries.size() - 1:
         app.album_state["album_completed"] = true
+        app.album_state["replay_unlocked"] = true
     _completion_performance = app.ProgressMetrics.record_personal_best(
         app.album_state, release_id, elapsed_at_completion,
         app.current_room_index == app.release_entries.size() - 1,
     )
+    timing_runtime.record_pb_splits(release_id, bool(_completion_performance.get("room_personal_best", false)))
     app._save_progress()
     app.room_elapsed_before_start_ms = elapsed_at_completion
-    app.room_started_ms = Time.get_ticks_msec()
+    app.room_started_ms = 0
     if app.current_room_index == 5 and not bool(app.album_state.get("signal_breach_seen", false)):
         app.album_state["signal_breach_seen"] = true
         app._save_album_state()
@@ -330,9 +327,13 @@ func _complete_current_room() -> void:
         if app.current_room_index == app.release_entries.size() - 1:
             app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
     app.call_deferred("_show_completion_panel")
-
+func pause_room_timer() -> void: timing_runtime.pause()
+func resume_room_timer() -> void: timing_runtime.resume()
+func reset_room_timer(start_now: bool = true) -> void: timing_runtime.reset(start_now)
+func _replay_mode() -> bool: return timing_runtime.is_replay_mode()
 func _show_completion_panel() -> void:
-    await get_tree().create_timer(cinematic_runtime.hero_beat_delay()).timeout
+    var hold_seconds: float = 0.52 if _replay_mode() else cinematic_runtime.hero_beat_delay()
+    await get_tree().create_timer(hold_seconds).timeout
     if app.completion_panel != null or app.transition_running or app.reward_panel != null or app.experience_intro_panel != null or not app.room_layer.visible:
         return
     var room_value: Variant = app.manifest.get("room", {})
@@ -351,7 +352,7 @@ func _show_completion_panel() -> void:
         next_label = "Dalej · %s" % next_name
     else:
         next_label = "Przejdź przez ostatnie drzwi"
-    app.completion_panel = app.CompletionCardScript.new()
+    app.completion_panel = RuntimeFactory.completion_card(app.asset_preloader)
     app.completion_panel.name = "CompletionCard"
     app.ui_root.attach(app.completion_panel, 30)
     var completion_message := str(app.manifest.get("completion_message", "Obraz i muzyka zostały odsłonięte."))
@@ -378,7 +379,6 @@ func _show_completion_panel() -> void:
         if app.room != null and is_instance_valid(app.room):
             app.room.set_interaction_enabled(false)
     )
-
 func _transition_to_room(next_index: int) -> void:
     if app.transition_running:
         return
@@ -399,6 +399,7 @@ func _transition_to_room(next_index: int) -> void:
         await app.transition_director.travel_in()
     if app.audio_director != null and app.audio_director.has_method("end_transition_in"): app.audio_director.end_transition_in()
     app.transition_running = false
+    resume_room_timer()
 func _transition_to_reward() -> void:
     if app.transition_running:
         return

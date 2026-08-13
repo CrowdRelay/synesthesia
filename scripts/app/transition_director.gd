@@ -12,6 +12,7 @@ var transition_audio: AudioStreamPlayer
 var _accent: Color = Color("72afff")
 var _next_accent: Color = Color("72afff")
 var _reduced_motion: bool = false
+var _replay_mode: bool = false
 
 func install(host: Control) -> void:
     overlay = ColorRect.new()
@@ -73,6 +74,12 @@ func set_reduced_motion(value: bool) -> void:
     _reduced_motion = value
     if door_layer != null:
         door_layer.set_reduced_motion(value)
+
+func set_replay_mode(value: bool) -> void:
+    _replay_mode = value
+
+func _pace(duration: float) -> float:
+    return duration * (0.58 if _replay_mode else 1.0)
 
 func set_memory_count(value: int) -> void:
     if door_layer != null and door_layer.has_method("set_memory_count"):
@@ -139,7 +146,7 @@ func travel_out() -> void:
     door_layer.set_flash_mix(0.0)
 
     _play_transition_sfx(DOOR_OPEN_STREAM, -13.0)
-    var door_duration: float = 0.18 if _reduced_motion else 0.34
+    var door_duration: float = _pace(0.18 if _reduced_motion else 0.34)
     var threshold_tween: Tween = create_tween()
     threshold_tween.set_parallel(true)
     threshold_tween.set_trans(Tween.TRANS_CUBIC)
@@ -149,7 +156,7 @@ func travel_out() -> void:
     await threshold_tween.finished
 
     _play_transition_sfx(TELEPORT_STREAM, -10.5)
-    var boost_duration: float = 0.11 if _reduced_motion else 0.27
+    var boost_duration: float = _pace(0.11 if _reduced_motion else 0.27)
     var boost_tween: Tween = create_tween()
     boost_tween.set_parallel(true)
     boost_tween.set_trans(Tween.TRANS_EXPO)
@@ -158,7 +165,7 @@ func travel_out() -> void:
     boost_tween.tween_method(Callable(door_layer, "set_warp_mix"), 0.0, 1.0, boost_duration)
     await boost_tween.finished
 
-    var snap_duration: float = 0.035 if _reduced_motion else 0.065
+    var snap_duration: float = _pace(0.035 if _reduced_motion else 0.065)
     var snap_tween: Tween = create_tween()
     snap_tween.set_trans(Tween.TRANS_EXPO)
     snap_tween.set_ease(Tween.EASE_IN)
@@ -178,14 +185,14 @@ func travel_in() -> void:
     door_layer.set_warp_mix(1.0)
     door_layer.set_flash_mix(1.0)
 
-    var snap_release: float = 0.05 if _reduced_motion else 0.095
+    var snap_release: float = _pace(0.05 if _reduced_motion else 0.095)
     var flash_tween: Tween = create_tween()
     flash_tween.set_trans(Tween.TRANS_EXPO)
     flash_tween.set_ease(Tween.EASE_OUT)
     flash_tween.tween_method(Callable(door_layer, "set_flash_mix"), 1.0, 0.0, snap_release)
     await flash_tween.finished
 
-    var brake_duration: float = 0.12 if _reduced_motion else 0.25
+    var brake_duration: float = _pace(0.12 if _reduced_motion else 0.25)
     var brake_tween: Tween = create_tween()
     brake_tween.set_parallel(true)
     brake_tween.set_trans(Tween.TRANS_EXPO)
@@ -194,7 +201,7 @@ func travel_in() -> void:
     brake_tween.tween_method(Callable(door_layer, "set_approach_mix"), 1.0, 0.32, brake_duration)
     await brake_tween.finished
 
-    var settle_duration: float = 0.10 if _reduced_motion else 0.24
+    var settle_duration: float = _pace(0.10 if _reduced_motion else 0.24)
     var settle_tween: Tween = create_tween()
     settle_tween.set_parallel(true)
     settle_tween.set_trans(Tween.TRANS_QUINT)

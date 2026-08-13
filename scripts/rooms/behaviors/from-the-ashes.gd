@@ -62,7 +62,9 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
         if bool(state.get("has_angle", false)):
             var previous: float = float(state.get("last_angle", angle))
             var diff: float = absf(wrapf(angle - previous, -PI, PI))
-            var swirl: float = clampf(float(state.get("swirl", 0.0)) + diff / TAU * 0.46, 0.0, 1.0)
+            var velocity: float = clampf(float(gesture.get("velocity", 0.0)), 0.0, 1.8)
+            var speed_gain: float = lerpf(0.88, 1.28, clampf(velocity / 1.2, 0.0, 1.0))
+            var swirl: float = clampf(float(state.get("swirl", 0.0)) + diff / TAU * 0.46 * speed_gain, 0.0, 1.0)
             state["swirl"] = swirl
             if swirl >= 0.78 and not bool(state.get("phoenix", false)):
                 state["phoenix"] = true

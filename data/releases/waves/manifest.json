@@ -90,13 +90,21 @@
         "settle": "living-loop",
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
-      }
+      },
+      "layers": [
+        "ambient",
+        "reactive",
+        "semantic_burst"
+      ],
+      "anti_static_seconds": 2.6,
+      "performance_budget": "adaptive-event-driven-v2"
     },
     "mobile_readability": {
-      "shadow_lift": 0.44,
-      "subject_lift": 0.64,
-      "noise_scale": 0.85,
-      "vignette_floor": 0.82
+      "shadow_lift": 0.5,
+      "subject_lift": 0.72,
+      "highlight_lift": 0.78,
+      "noise_scale": 0.8,
+      "vignette_floor": 0.84
     }
   },
   "sensory": {
@@ -172,7 +180,8 @@
       "source": "Lubek",
       "source_role": "bas · fundament i cień",
       "echo_type": "memory_shard",
-      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
+      "reward_hint": "To echo budzi charakterystyczny gest pokoju; po odsłonięciu dotknij jego śladu.",
+      "semantic_kind": "presence"
     }
   ],
   "intro": "Półmrok, miękka pościel i druga osoba obok. Maluj pokój spokojnie; odsłaniaj intymność zamiast ją objaśniać.",

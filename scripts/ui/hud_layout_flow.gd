@@ -1,18 +1,13 @@
 extends Node
-
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
-
 const PORTRAIT_ASPECT_THRESHOLD: float = 0.82
 const PORTRAIT_HEADER_HEIGHT: float = 172.0
 const PORTRAIT_PANEL_HEIGHT: float = 152.0
-
 var app: Control
-
 func bind(owner: Control) -> void:
     app = owner
-
 func _apply_ui_scale() -> void:
     var viewport_size: Vector2 = app.get_viewport_rect().size
     app._ui_scale = UiMetrics.scale_for_viewport(viewport_size)
@@ -39,7 +34,6 @@ func _apply_ui_scale() -> void:
         app.mobile_instruction_panel.visible = portrait
     _layout_story_overlays()
     _apply_mobile_safe_area()
-
 func _build_header_row() -> void:
     app.header_row = HBoxContainer.new()
     app.header_row.name = "HeaderRow"
@@ -51,7 +45,6 @@ func _build_header_row() -> void:
     app.header_row.offset_right = -12.0
     app.header_row.offset_top = 12.0
     app.header_row.offset_bottom = 166.0
-
 func _build_top() -> void:
     app.top_margin = MarginContainer.new()
     app.top_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -59,7 +52,6 @@ func _build_top() -> void:
     app.top_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
     app.top_margin.size_flags_stretch_ratio = 1.18
     app.header_row.add_child(app.top_margin)
-
     app.top_panel = PanelContainer.new()
     app.top_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     app.top_panel.custom_minimum_size = Vector2(0.0, 146.0)
@@ -92,6 +84,15 @@ func _build_top() -> void:
     app.counter_label.add_theme_font_size_override("font_size", 10)
     app.counter_label.add_theme_color_override("font_color", Color("88bfff"))
     row.add_child(app.counter_label)
+    app.split_label = Label.new()
+    app.split_label.name = "SplitDelta"
+    app.split_label.visible = false
+    app.split_label.custom_minimum_size = Vector2(68.0, 22.0)
+    app.split_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    UIFactory.apply_display_font(app.split_label)
+    app.split_label.add_theme_font_size_override("font_size", 9)
+    app.split_label.add_theme_color_override("font_color", Color("8fe3b0"))
+    row.add_child(app.split_label)
     app.title_label = Label.new()
     app.title_label.name = "RoomTitle"
     app.title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -152,7 +153,6 @@ func _build_top() -> void:
     app.journey_row.alignment = BoxContainer.ALIGNMENT_CENTER
     app.journey_row.add_theme_constant_override("separation", 4)
     content.add_child(app.journey_row)
-
 func _build_bottom() -> void:
     app.bottom_margin = MarginContainer.new()
     app.bottom_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -160,13 +160,11 @@ func _build_bottom() -> void:
     app.bottom_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
     app.bottom_margin.size_flags_stretch_ratio = 0.82
     app.header_row.add_child(app.bottom_margin)
-
     app.bottom_panel = PanelContainer.new()
     app.bottom_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     app.bottom_panel.custom_minimum_size = Vector2(0.0, 146.0)
     app.bottom_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(Color("f0cf88"), 0.18))
     app.bottom_margin.add_child(app.bottom_panel)
-
     var shell := HBoxContainer.new()
     shell.add_theme_constant_override("separation", 10)
     app.bottom_panel.add_child(shell)
@@ -175,7 +173,6 @@ func _build_bottom() -> void:
     app.bottom_accent_bar.custom_minimum_size = Vector2(3.0, 0.0)
     app.bottom_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
     shell.add_child(app.bottom_accent_bar)
-
     app.bottom_content = VBoxContainer.new()
     app.bottom_content.name = "BottomContent"
     app.bottom_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -194,7 +191,6 @@ func _build_bottom() -> void:
     app.act_label.add_theme_font_size_override("font_size", 10)
     app.act_label.add_theme_color_override("font_color", Color("f0d39d"))
     content.add_child(app.act_label)
-
     app.instruction_label = Label.new()
     app.instruction_label.name = "InstructionLabel"
     app.instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM USTĘPUJE MUZYCE"
@@ -205,14 +201,12 @@ func _build_bottom() -> void:
     app.instruction_label.add_theme_font_size_override("font_size", 9)
     app.instruction_label.add_theme_color_override("font_color", Color("b5c3d4"))
     content.add_child(app.instruction_label)
-
     app.palette_row = HBoxContainer.new()
     app.palette_row.name = "PaletteRow"
     app.palette_row.custom_minimum_size = Vector2(0.0, 10.0)
     app.palette_row.alignment = BoxContainer.ALIGNMENT_BEGIN
     app.palette_row.add_theme_constant_override("separation", 4)
     content.add_child(app.palette_row)
-
     app.brush_label = Label.new()
     app.brush_label.name = "BrushLabel"
     app.brush_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -222,7 +216,6 @@ func _build_bottom() -> void:
     app.brush_label.add_theme_font_size_override("font_size", 9)
     app.brush_label.add_theme_color_override("font_color", Color("8d9fb5"))
     content.add_child(app.brush_label)
-
 func _build_mobile_instruction() -> void:
     app.mobile_instruction_panel = PanelContainer.new()
     app.mobile_instruction_panel.name = "MobileInstructionPanel"
@@ -230,18 +223,15 @@ func _build_mobile_instruction() -> void:
     app.mobile_instruction_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     app.mobile_instruction_panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(app._accent, true))
     add_child(app.mobile_instruction_panel)
-
     var row := HBoxContainer.new()
     row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     row.add_theme_constant_override("separation", 10)
     app.mobile_instruction_panel.add_child(row)
-
     app.mobile_instruction_accent_bar = ColorRect.new()
     app.mobile_instruction_accent_bar.color = app._accent
     app.mobile_instruction_accent_bar.custom_minimum_size = Vector2(6.0, 54.0)
     app.mobile_instruction_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(app.mobile_instruction_accent_bar)
-
     app.mobile_instruction_label = Label.new()
     app.mobile_instruction_label.name = "MobileInstructionLabel"
     app.mobile_instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM USTĘPUJE MUZYCE"
@@ -252,7 +242,6 @@ func _build_mobile_instruction() -> void:
     app.mobile_instruction_label.add_theme_font_size_override("font_size", 16)
     app.mobile_instruction_label.add_theme_color_override("font_color", Color("edf5ff"))
     row.add_child(app.mobile_instruction_label)
-
 func _build_toast() -> void:
     app.toast_panel = PanelContainer.new()
     app.toast_panel.visible = false
@@ -279,7 +268,6 @@ func _build_toast() -> void:
     app.toast_label.add_theme_font_size_override("font_size", 11)
     app.toast_label.add_theme_color_override("font_color", Color("e6f1ff"))
     row.add_child(app.toast_label)
-
 func _build_act_banner() -> void:
     app.act_banner = PanelContainer.new()
     app.act_banner.visible = false
@@ -308,7 +296,6 @@ func _build_act_banner() -> void:
     app.act_banner_label.add_theme_color_override("font_color", Color("f7e7c7"))
     row.add_child(app.act_banner_label)
     _layout_story_overlays()
-
 func _layout_story_overlays() -> void:
     var viewport_size: Vector2 = app.get_viewport_rect().size
     if viewport_size.x <= 1.0 or viewport_size.y <= 1.0:
@@ -345,10 +332,11 @@ func _layout_story_overlays() -> void:
         app.act_banner.custom_minimum_size = Vector2(act_width, 46.0 * app._ui_scale)
         app.act_banner_label.custom_minimum_size = Vector2(maxf(138.0 * app._ui_scale, act_width - 36.0 * app._ui_scale), 0.0)
         app.act_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-
 func _repair_runtime_refs() -> void:
     if not is_instance_valid(app.counter_label):
         app.counter_label = find_child("RoomCounter", true, false) as Label
+    if not is_instance_valid(app.split_label):
+        app.split_label = find_child("SplitDelta", true, false) as Label
     if not is_instance_valid(app.title_label):
         app.title_label = find_child("RoomTitle", true, false) as Label
     if not is_instance_valid(app.subtitle_label):
@@ -384,7 +372,6 @@ func _repair_runtime_refs() -> void:
         app.progress_bar.add_theme_stylebox_override("background", _bar_style(Color("0b1320d9")))
         app.progress_bar.add_theme_stylebox_override("fill", _bar_style(app._accent))
         app.progress_row.add_child(app.progress_bar)
-
 func _apply_mobile_safe_area() -> void:
     if not OS.has_feature("mobile"):
         return
@@ -409,7 +396,6 @@ func _apply_mobile_safe_area() -> void:
         var portrait: bool = viewport_size.x / maxf(1.0, viewport_size.y) <= PORTRAIT_ASPECT_THRESHOLD
         var header_height: float = PORTRAIT_HEADER_HEIGHT if portrait else 166.0
         app.header_row.offset_bottom = header_height * app._ui_scale + float(top_extra)
-
 func _bar_style(color: Color) -> StyleBoxFlat:
     var style := StyleBoxFlat.new()
     style.bg_color = color

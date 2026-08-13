@@ -88,13 +88,21 @@
         "settle": "living-loop",
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
-      }
+      },
+      "layers": [
+        "ambient",
+        "reactive",
+        "semantic_burst"
+      ],
+      "anti_static_seconds": 2.6,
+      "performance_budget": "adaptive-event-driven-v2"
     },
     "mobile_readability": {
-      "shadow_lift": 0.36,
-      "subject_lift": 0.54,
-      "noise_scale": 0.88,
-      "vignette_floor": 0.81
+      "shadow_lift": 0.43,
+      "subject_lift": 0.62,
+      "highlight_lift": 0.72,
+      "noise_scale": 0.84,
+      "vignette_floor": 0.83
     }
   },
   "sensory": {
@@ -170,7 +178,8 @@
       "source": "Lubek",
       "source_role": "bas · fundament i cień",
       "echo_type": "memory_shard",
-      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
+      "reward_hint": "To echo budzi charakterystyczny gest pokoju; po odsłonięciu dotknij jego śladu.",
+      "semantic_kind": "wave"
     }
   ],
   "intro": "Prowadź kolor przez spokojne fale i odsłaniaj pokój spod śniegu. Nie ma czasu ani jednej poprawnej drogi.",

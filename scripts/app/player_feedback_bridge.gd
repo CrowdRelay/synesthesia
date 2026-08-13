@@ -3,8 +3,11 @@ extends Node
 var _hud
 var _haptics
 var _audio
+var _room
+var _resonance_chain: int = 0
 
 func bind(room, hud, haptics, audio) -> void:
+    _room = room
     _hud = hud
     _haptics = haptics
     _audio = audio
@@ -13,16 +16,22 @@ func bind(room, hud, haptics, audio) -> void:
     room.interaction_motion.connect(_on_interaction_motion)
 
 func _on_interaction_missed(_point: Vector2) -> void:
+    _resonance_chain = 0
     if _hud != null and is_instance_valid(_hud):
         _hud.note_miss()
 
 func _on_interaction_confirmed(_point: Vector2, strength: float) -> void:
+    _resonance_chain = mini(6, _resonance_chain + 1)
+    var chain_gain: float = float(_resonance_chain - 1) / 5.0
+    var felt_strength: float = clampf(strength + chain_gain * 0.16, 0.0, 1.0)
     if _hud != null and is_instance_valid(_hud):
         _hud.note_success()
     if _haptics != null and is_instance_valid(_haptics):
-        _haptics.confirmation(strength)
+        _haptics.confirmation(felt_strength)
     if _audio != null and is_instance_valid(_audio):
-        _audio.play_confirmation_tick(strength)
+        _audio.play_confirmation_tick(felt_strength)
+    if _room != null and is_instance_valid(_room):
+        _room.set("_interaction_energy", maxf(float(_room.get("_interaction_energy")), 0.24 + chain_gain * 0.34))
 
 func _on_interaction_motion(kind: String, strength: float) -> void:
     if _haptics != null and is_instance_valid(_haptics) and _haptics.has_method("motion"):

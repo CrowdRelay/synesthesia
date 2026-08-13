@@ -7,6 +7,7 @@ func configure(data: Dictionary) -> void:
     state["seed"] = false
     state["growth"] = 0.0
     state["milestones"] = []
+    state["growth_bias_x"] = 0.0
 
 func acts() -> Array[String]:
     return ["ZNAJDŹ ZIARNO", "NARYSUJ KORZENIOM DROGĘ", "WYROŚNIJ PONAD WĄTPLIWOŚĆ"]
@@ -39,7 +40,8 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
     var root: Vector2 = Vector2(viewport_size.x * 0.5, viewport_size.y * 0.74)
     var cinematic_t: float = cinematic_time()
     var twist: float = sin(cinematic_t * 1.45) * 24.0 if cinematic_active() else 0.0
-    var trunk_top: Vector2 = root - Vector2(-twist * 0.28, viewport_size.y * (0.10 + effective * 0.43))
+    var growth_bias: float = clampf(float(state.get("growth_bias_x", 0.0)), -0.13, 0.13)
+    var trunk_top: Vector2 = root + Vector2(viewport_size.x * growth_bias + twist * 0.28, -viewport_size.y * (0.10 + effective * 0.43))
     canvas.draw_circle(root, 7.0 + effective * 4.0, Color(accent, 0.12 + effective * 0.18))
     canvas.draw_line(root, trunk_top, Color(accent, 0.15 + effective * 0.18), 4.0 + effective * 6.0)
     var branches: int = 2 + int(floor(effective * 9.0))
@@ -63,6 +65,7 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
         var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
         var growth: float = clampf(float(state.get("growth", 0.0)) + maxf(0.0, -delta.y) * 1.08 + absf(delta.x) * 0.075, 0.0, 1.0)
         state["growth"] = growth
+        state["growth_bias_x"] = clampf(lerpf(float(state.get("growth_bias_x", 0.0)), (point.x - 0.5) * 0.34, 0.18), -0.13, 0.13)
         var milestones: Array = state.get("milestones", [])
         for index in range(3):
             var threshold: float = 0.30 + float(index) * 0.20

@@ -104,6 +104,7 @@ func _motion_kind(style: String, gesture_kind: String) -> String:
         _: return "wave_pressure"
 
 func _on_runtime_special(kind: String, index: int) -> void:
+    _unlock_semantic_collectibles(kind)
     app.attempt_feedback.success(app.pointer_norm, 0.78)
     app.special_interaction.emit(kind, index)
 
@@ -208,6 +209,8 @@ func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void:
     for item in app.collectibles:
         if bool(item.get("found", false)):
             continue
+        if not bool(item.get("semantic_ready", true)):
+            continue
         var position_value: Variant = item.get("position", [])
         if not position_value is Array or position_value.size() != 2:
             continue
@@ -218,6 +221,19 @@ func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void:
             app.interaction_fx.spawn(target, "discovery")
             app.attempt_feedback.success(target, 0.92)
             app.collectible_found.emit(item.duplicate(true))
+
+func _unlock_semantic_collectibles(kind: String) -> void:
+    for item in app.collectibles:
+        if bool(item.get("found", false)) or bool(item.get("semantic_ready", true)):
+            continue
+        if str(item.get("semantic_kind", "")) != kind:
+            continue
+        item["semantic_ready"] = true
+        var position_value: Variant = item.get("position", [])
+        if position_value is Array and position_value.size() == 2 and app.interaction_fx != null:
+            var target := Vector2(float(position_value[0]), float(position_value[1]))
+            app.interaction_fx.spawn(target, "semantic_echo")
+        app.interaction_feedback.emit("ECHO ZAREAGOWAŁO · po odsłonięciu dotknij jego śladu")
 
 func _check_behavior(point_norm: Vector2, radius_norm: float) -> void:
     if app.interaction_runtime != null:

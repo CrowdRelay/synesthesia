@@ -15,6 +15,7 @@ var cinematic: float = 0.0
 var interaction_energy: float = 0.0
 var living_strength: float = 0.0
 var target_fps: float = 24.0
+var runtime_scale: float = 1.0
 var _time: float = 0.0
 var _accum: float = 0.0
 var _behavior
@@ -40,6 +41,7 @@ func set_cinematic(value: float) -> void: cinematic = clampf(value, 0.0, 1.0)
 func set_interaction_energy(value: float) -> void: interaction_energy = maxf(interaction_energy, clampf(value, 0.0, 1.0))
 func set_living_strength(value: float) -> void: living_strength = clampf(value, 0.0, 1.0)
 func set_target_fps(value: float) -> void: target_fps = clampf(value, 12.0, 30.0)
+func set_runtime_scale(value: float) -> void: runtime_scale = clampf(value, 0.55, 1.0)
 
 func _process(delta: float) -> void:
     interaction_energy = move_toward(interaction_energy, 0.0, delta * 1.7)
@@ -49,7 +51,8 @@ func _process(delta: float) -> void:
         return
     _time = fmod(_time + delta, 10000.0)
     _accum += delta
-    if _accum >= 1.0 / target_fps:
+    var effective_fps: float = maxf(12.0, target_fps * runtime_scale)
+    if _accum >= 1.0 / effective_fps:
         _accum = 0.0
         queue_redraw()
 

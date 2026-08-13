@@ -10,8 +10,17 @@ static func install(parent: Node, music: float, noise: float, quiet: bool):
     soundscape.set_user_levels(music, noise, quiet)
     return soundscape
 
-static func suspend_for_menu(soundscape, room_layer, room, hud, audio_director, transition_director, adaptive_performance, music: float, noise: float, quiet: bool) -> void:
+static func suspend_for_menu(soundscape, room_layer, room, hud, audio_director, transition_director, adaptive_performance, music: float, noise: float, quiet: bool, start_audio: bool = true) -> void:
     MenuRuntimeGuard.suspend(room_layer, room, hud, audio_director, transition_director, adaptive_performance)
+    soundscape.set_user_levels(music, noise, quiet)
+    if start_audio:
+        soundscape.enter_menu()
+    else:
+        # Boot/menu construction owns the first frame; audio starts only after
+        # the actual menu has been presented.
+        soundscape.leave_soundscape()
+
+static func begin_menu_soundscape(soundscape, music: float, noise: float, quiet: bool) -> void:
     soundscape.set_user_levels(music, noise, quiet)
     soundscape.enter_menu()
 

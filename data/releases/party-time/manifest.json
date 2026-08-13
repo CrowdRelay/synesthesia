@@ -89,11 +89,19 @@
         "settle": "living-loop",
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
-      }
+      },
+      "layers": [
+        "ambient",
+        "reactive",
+        "semantic_burst"
+      ],
+      "anti_static_seconds": 2.6,
+      "performance_budget": "adaptive-event-driven-v2"
     },
     "mobile_readability": {
-      "shadow_lift": 0.86,
-      "subject_lift": 0.92,
+      "shadow_lift": 0.74,
+      "subject_lift": 0.88,
+      "highlight_lift": 0.82,
       "noise_scale": 0.66,
       "vignette_floor": 0.87
     }
@@ -171,7 +179,8 @@
       "source": "Koobosky",
       "source_role": "perkusja · mad doctor",
       "echo_type": "memory_shard",
-      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
+      "reward_hint": "To echo budzi charakterystyczny gest pokoju; po odsłonięciu dotknij jego śladu.",
+      "semantic_kind": "balloon"
     }
   ],
   "intro": "Przebijaj balony dotykiem, maluj po ścianach i rób kolorowy bałagan. To jest czysta zabawa.",

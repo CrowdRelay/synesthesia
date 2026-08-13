@@ -36,9 +36,9 @@ for token in (
     if token not in preloader:
         failures.append(f"preloader observability contract missing: {token}")
 
-main = (ROOT / "scripts/main.gd").read_text() + "\n" + (ROOT / "scripts/app/main_room_flow.gd").read_text()
+main = "\n".join((ROOT / path).read_text() for path in ("scripts/main.gd", "scripts/app/main_room_flow.gd", "scripts/app/main_warmup_flow.gd"))
 for token in (
-    'diagnostics.configure(adaptive_performance, asset_preloader)',
+    'diagnostics.configure(app.adaptive_performance, app.asset_preloader)',
     'await asset_preloader.wait_for_queued()',
 ):
     if token not in main:

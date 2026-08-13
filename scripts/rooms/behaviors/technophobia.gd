@@ -1,10 +1,8 @@
 extends "res://scripts/rooms/behavior_base.gd"
-
 # Technophobia is the vertical slice for Synesthesia's exploration-first room
 # design: discover physical causes of interference, manipulate them, then hear
 # the mix react. Screen taps remain as a forgiving secondary interaction, but
 # they cannot complete the room on their own.
-
 const SCREEN_TARGETS: Array[Vector2] = [
     Vector2(0.185, 0.182), Vector2(0.470, 0.182), Vector2(0.756, 0.182),
     Vector2(0.185, 0.303), Vector2(0.470, 0.303), Vector2(0.756, 0.303),
@@ -25,7 +23,6 @@ const CABLE_GRAB_RADIUS: float = 0.075
 const CABLE_RELEASE_DISTANCE: float = 0.145
 const BREAKER_RADIUS: float = 0.090
 const TUNER_RADIUS: float = 0.135
-
 func configure(data: Dictionary) -> void:
     super.configure(data)
     state["screens"] = []
@@ -33,15 +30,28 @@ func configure(data: Dictionary) -> void:
     state["active_cable"] = -1
     state["cable_drag_point"] = Vector2.ZERO
     state["tension_bucket"] = -1
+    state["snap_cable"] = -1
+    state["snap_time"] = 0.0
+    state["snap_from"] = Vector2.ZERO
     state["breaker_off"] = false
     state["signal_tune"] = 0.0
     state["signal_locked"] = false
     state["failed_pulls"] = 0
     state["tension_bucket"] = -1
-
+func needs_tick() -> bool:
+    return cinematic_active() or int(state.get("active_cable", -1)) >= 0 or int(state.get("snap_cable", -1)) >= 0
+func advance(delta: float) -> void:
+    super.advance(delta)
+    var snap_index: int = int(state.get("snap_cable", -1))
+    if snap_index >= 0:
+        var snap_time: float = float(state.get("snap_time", 0.0)) + minf(delta, 0.08)
+        state["snap_time"] = snap_time
+        if snap_time >= 0.24:
+            state["snap_cable"] = -1
+            state["snap_time"] = 0.0
+            state["snap_from"] = Vector2.ZERO
 func acts() -> Array[String]:
     return ["ZNAJDŹ ŹRÓDŁA SZUMU", "ODŁĄCZ PRZECIĄŻENIE", "DOSTRÓJ WŁASNY SYGNAŁ"]
-
 func interaction_hint() -> String:
     var unplugged: Array = state.get("cables_unplugged", [])
     if unplugged.size() < CABLE_PLUGS.size():
@@ -51,7 +61,6 @@ func interaction_hint() -> String:
     if not bool(state.get("signal_locked", false)):
         return "SZUM UCICHŁ · PRZESUWAJ TUNER, AŻ ZŁAPIESZ SYGNAŁ"
     return "SYGNAŁ CZYSTY · POSZUKAJ OSTATNICH ECH"
-
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#6AB8FF")), Color("6ab8ff"))
     var secondary: Color = Color.from_string(str(room_data.get("secondary_color", "#FF5F7C")), Color("ff5f7c"))
@@ -59,7 +68,6 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
     _render_cables(canvas, viewport_size, phase, accent)
     _render_breaker(canvas, viewport_size, phase, accent, secondary)
     _render_tuner(canvas, viewport_size, phase, accent)
-
 func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Dictionary]:
     var point: Vector2 = _gesture_point(gesture)
     match kind:
@@ -93,7 +101,6 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
                     _advance_tune(spread_delta * 1.05)
                     return _maybe_lock_signal(point)
     return []
-
 func hint_targets() -> Array[Dictionary]:
     var unplugged: Array = state.get("cables_unplugged", [])
     if unplugged.size() < CABLE_PLUGS.size():
@@ -107,7 +114,6 @@ func hint_targets() -> Array[Dictionary]:
     if not bool(state.get("signal_locked", false)):
         return [{"point": TUNER_TARGET, "kind": "tune", "radius": TUNER_RADIUS}]
     return []
-
 func mechanic_progress() -> float:
     if bool(state.get("signal_locked", false)):
         return 1.0
@@ -118,11 +124,9 @@ func mechanic_progress() -> float:
     # Old V2 contract intentionally remains true while the new room requires
     # the physical cable/breaker path as well: state.get("screens", []).size() >= 5
     return clampf(cable_ratio * 0.48 + breaker_ratio * 0.22 + tune * 0.295, 0.0, 0.995)
-
 func brush_assist_weight() -> float:
     # Painting can reveal details/find echoes, but cannot solve the room.
     return 0.14
-
 func captures_pointer_at(point_norm: Vector2) -> bool:
     var unplugged: Array = state.get("cables_unplugged", [])
     for index in range(CABLE_PLUGS.size()):
@@ -133,12 +137,10 @@ func captures_pointer_at(point_norm: Vector2) -> bool:
     if bool(state.get("breaker_off", false)) and not bool(state.get("signal_locked", false)) and _near(point_norm, TUNER_TARGET, TUNER_RADIUS):
         return true
     return int(state.get("active_cable", -1)) >= 0
-
 func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Array[Dictionary]:
     # Painting only quiets individual screens. The puzzle still requires cables,
     # breaker and tuning, which prevents accidental completion by scribbling.
     return _repair_near(point_norm, radius_norm + 0.07, 1)
-
 func _begin_cable_pull(point: Vector2) -> Array[Dictionary]:
     if int(state.get("active_cable", -1)) >= 0:
         return []
@@ -149,15 +151,16 @@ func _begin_cable_pull(point: Vector2) -> Array[Dictionary]:
         if not _near(point, CABLE_PLUGS[index], CABLE_GRAB_RADIUS):
             continue
         state["active_cable"] = index
-        state["cable_drag_point"] = point
+        state["snap_cable"] = -1
+        state["snap_time"] = 0.0
+        state["cable_drag_point"] = CABLE_PLUGS[index]
         return [_interaction_event("cable_grab", index, "Kabel napręża się pod palcem", point, 0.0, 0.0)]
     return []
-
 func _drag_cable(point: Vector2) -> Array[Dictionary]:
     var index := int(state.get("active_cable", -1))
     if index < 0 or index >= CABLE_PLUGS.size():
         return []
-    state["cable_drag_point"] = point
+    state["cable_drag_point"] = _resisted_cable_point(index, point)
     var distance := point.distance_to(CABLE_PLUGS[index])
     var bucket := mini(4, int(floor(distance / 0.035)))
     var previous := int(state.get("tension_bucket", -1))
@@ -165,18 +168,22 @@ func _drag_cable(point: Vector2) -> Array[Dictionary]:
         state["tension_bucket"] = bucket
         return [_interaction_event("cable_tension", index * 10 + bucket, "", point, 0.0, 0.0)]
     return []
-
 func _release_cable(point: Vector2) -> Array[Dictionary]:
     var index := int(state.get("active_cable", -1))
     if index < 0 or index >= CABLE_PLUGS.size():
         return []
+    var visual_drag_value: Variant = state.get("cable_drag_point", CABLE_PLUGS[index])
+    var visual_drag: Vector2 = visual_drag_value if visual_drag_value is Vector2 else CABLE_PLUGS[index]
     state["active_cable"] = -1
     state["cable_drag_point"] = Vector2.ZERO
     state["tension_bucket"] = -1
     var distance := point.distance_to(CABLE_PLUGS[index])
     if distance < CABLE_RELEASE_DISTANCE:
         state["failed_pulls"] = int(state.get("failed_pulls", 0)) + 1
-        return [_interaction_event("cable_snap", index, "Za mało — wyciągnij wtyczkę dalej od gniazda", CABLE_PLUGS[index], 0.0, 0.0)]
+        state["snap_cable"] = index
+        state["snap_time"] = 0.0
+        state["snap_from"] = visual_drag
+        return [_interaction_event("cable_snap", index, "Za mało — kabel odbija. Wyciągnij dalej od gniazda", visual_drag, 0.0, 0.0)]
     var unplugged: Array = state.get("cables_unplugged", [])
     if unplugged.has(index):
         return []
@@ -188,7 +195,6 @@ func _release_cable(point: Vector2) -> Array[Dictionary]:
     if unplugged.size() == CABLE_PLUGS.size():
         message = "Wszystkie przewody odpięte — znajdź główny wyłącznik"
     return [_interaction_event("cable_unplug", index, message, CABLE_PLUGS[index], 0.085, 0.92)]
-
 func _drag_tuner(point: Vector2, gesture: Dictionary) -> Array[Dictionary]:
     if not bool(state.get("breaker_off", false)) or bool(state.get("signal_locked", false)):
         return []
@@ -201,10 +207,8 @@ func _drag_tuner(point: Vector2, gesture: Dictionary) -> Array[Dictionary]:
         return []
     _advance_tune(amount)
     return _maybe_lock_signal(point)
-
 func _advance_tune(amount: float) -> void:
     state["signal_tune"] = clampf(float(state.get("signal_tune", 0.0)) + amount, 0.0, 1.0)
-
 func _maybe_lock_signal(point: Vector2) -> Array[Dictionary]:
     var tune := clampf(float(state.get("signal_tune", 0.0)), 0.0, 1.0)
     # Keep the old signal_tune/screens relationship for backwards-compatible
@@ -213,10 +217,8 @@ func _maybe_lock_signal(point: Vector2) -> Array[Dictionary]:
         state["signal_locked"] = true
         return [_interaction_event("signal_lock", 90, "Sygnał złapany — szum znika, zostaje muzyka", point, 0.14, 1.0)]
     return []
-
 func _breaker_available() -> bool:
     return (state.get("cables_unplugged", []) as Array).size() >= 2
-
 func _silence_screen_pair(cable_index: int) -> void:
     var screens: Array = state.get("screens", [])
     var first := clampi(cable_index * 2, 0, SCREEN_TARGETS.size() - 1)
@@ -225,14 +227,12 @@ func _silence_screen_pair(cable_index: int) -> void:
         if not screens.has(screen_index):
             screens.append(screen_index)
     state["screens"] = screens
-
 func _silence_all_screens() -> void:
     var screens: Array = state.get("screens", [])
     for index in range(SCREEN_TARGETS.size()):
         if not screens.has(index):
             screens.append(index)
     state["screens"] = screens
-
 func _repair_near(point: Vector2, radius: float, limit: int) -> Array[Dictionary]:
     var events: Array[Dictionary] = []
     var screens: Array = state.get("screens", [])
@@ -245,7 +245,6 @@ func _repair_near(point: Vector2, radius: float, limit: int) -> Array[Dictionary
             break
     state["screens"] = screens
     return events
-
 func _repair_segment(start: Vector2, finish: Vector2) -> Array[Dictionary]:
     var events: Array[Dictionary] = []
     var screens: Array = state.get("screens", [])
@@ -258,7 +257,6 @@ func _repair_segment(start: Vector2, finish: Vector2) -> Array[Dictionary]:
             break
     state["screens"] = screens
     return events
-
 func _render_screens(canvas, viewport_size: Vector2, progress: float, phase: float, accent: Color, secondary: Color) -> void:
     var screens: Array = state.get("screens", [])
     var cinematic_t: float = cinematic_time()
@@ -285,17 +283,23 @@ func _render_screens(canvas, viewport_size: Vector2, progress: float, phase: flo
                 var line_y := rect.position.y + rect.size.y * (0.24 + float(line_index) * 0.22)
                 var chop := 0.62 + 0.24 * sin(phase * (7.0 + line_index) + float(index))
                 canvas.draw_line(Vector2(rect.position.x + rect.size.x * 0.08, line_y), Vector2(rect.position.x + rect.size.x * chop, line_y), Color(accent, 0.11), 1.0)
-
 func _render_cables(canvas, viewport_size: Vector2, phase: float, accent: Color) -> void:
     var unplugged: Array = state.get("cables_unplugged", [])
     var active := int(state.get("active_cable", -1))
     var drag_value: Variant = state.get("cable_drag_point", Vector2.ZERO)
     var drag_point: Vector2 = drag_value if drag_value is Vector2 else Vector2.ZERO
+    var snap_index: int = int(state.get("snap_cable", -1))
+    var snap_from_value: Variant = state.get("snap_from", Vector2.ZERO)
+    var snap_from: Vector2 = snap_from_value if snap_from_value is Vector2 else Vector2.ZERO
+    var snap_t: float = clampf(float(state.get("snap_time", 0.0)) / 0.24, 0.0, 1.0)
+    var snap_ease: float = 1.0 - pow(1.0 - snap_t, 3.0)
     for index in range(CABLE_PLUGS.size()):
         var source := _px(CABLE_SOURCES[index], viewport_size)
         var plug_norm := CABLE_PLUGS[index]
         if index == active and drag_point != Vector2.ZERO:
             plug_norm = drag_point
+        elif index == snap_index and snap_from != Vector2.ZERO:
+            plug_norm = snap_from.lerp(CABLE_PLUGS[index], snap_ease)
         elif unplugged.has(index):
             var sway := Vector2(sin(phase * 3.1 + float(index)) * 0.022, 0.085 + 0.012 * cos(phase * 2.2 + float(index)))
             plug_norm += sway
@@ -303,10 +307,14 @@ func _render_cables(canvas, viewport_size: Vector2, phase: float, accent: Color)
         var color := CABLE_COLORS[index] if index < CABLE_COLORS.size() else accent
         _draw_cable(canvas, source, plug, viewport_size, color, unplugged.has(index), index == active, phase + float(index))
         _draw_plug(canvas, plug, viewport_size, color, unplugged.has(index), index == active)
+        if index == active:
+            var tension: float = clampf(float(int(state.get("tension_bucket", 0))) / 4.0, 0.0, 1.0)
+            var halo_radius: float = viewport_size.x * (0.014 + tension * 0.010)
+            canvas.draw_arc(plug, halo_radius, -PI * 0.85, PI * 0.85, 24, Color(color, 0.16 + tension * 0.28), maxf(1.0, viewport_size.x * 0.0015))
+            canvas.draw_line(plug, plug + (CABLE_PLUGS[index] - plug_norm).normalized() * viewport_size.x * (0.010 + tension * 0.012), Color(Color.WHITE, 0.10 + tension * 0.20), maxf(1.0, viewport_size.x * 0.0012))
         if not unplugged.has(index) and index != active:
             var pulse := 0.5 + 0.5 * sin(phase * 5.0 + float(index) * 1.8)
             canvas.draw_arc(plug, viewport_size.x * (0.018 + pulse * 0.003), 0.0, TAU, 28, Color(color, 0.10 + pulse * 0.11), maxf(1.0, viewport_size.x * 0.0012))
-
 func _render_breaker(canvas, viewport_size: Vector2, phase: float, accent: Color, secondary: Color) -> void:
     var center := _px(BREAKER_TARGET, viewport_size)
     var available := _breaker_available()
@@ -323,7 +331,6 @@ func _render_breaker(canvas, viewport_size: Vector2, phase: float, accent: Color
     if available and not off:
         var pulse := 0.5 + 0.5 * sin(phase * 4.3)
         canvas.draw_arc(center, box_size.x * (0.60 + pulse * 0.05), 0.0, TAU, 28, Color(secondary, 0.08 + pulse * 0.08), 1.0)
-
 func _render_tuner(canvas, viewport_size: Vector2, phase: float, accent: Color) -> void:
     var center := _px(TUNER_TARGET, viewport_size)
     var tune := clampf(float(state.get("signal_tune", 0.0)), 0.0, 1.0)
@@ -339,14 +346,14 @@ func _render_tuner(canvas, viewport_size: Vector2, phase: float, accent: Color) 
     if active and not locked:
         var sweep := phase * 2.4
         canvas.draw_arc(center, radius * 1.18, sweep, sweep + PI * 0.65, 18, Color(accent, 0.11), 1.0)
-
 func _draw_cable(canvas, start: Vector2, finish: Vector2, viewport_size: Vector2, color: Color, unplugged: bool, grabbed: bool, phase: float) -> void:
     var points := PackedVector2Array()
     var segments := 18
     var delta := finish - start
     var sag := viewport_size.y * (0.055 if unplugged else 0.035)
     if grabbed:
-        sag *= 0.45
+        var tension: float = clampf(float(int(state.get("tension_bucket", 0))) / 4.0, 0.0, 1.0)
+        sag *= lerpf(0.56, 0.20, tension)
     for step in range(segments + 1):
         var t := float(step) / float(segments)
         var point := start.lerp(finish, t)
@@ -357,7 +364,6 @@ func _draw_cable(canvas, start: Vector2, finish: Vector2, viewport_size: Vector2
     canvas.draw_polyline(points, Color(color, 0.72 if grabbed else (0.38 if unplugged else 0.54)), maxf(1.5, viewport_size.x * 0.0032), true)
     if grabbed:
         canvas.draw_polyline(points, Color(color, 0.14), maxf(6.0, viewport_size.x * 0.011), true)
-
 func _draw_plug(canvas, center: Vector2, viewport_size: Vector2, color: Color, unplugged: bool, grabbed: bool) -> void:
     var size_px := Vector2(viewport_size.x * 0.034, viewport_size.y * 0.022)
     var rect := Rect2(center - size_px * 0.5, size_px)
@@ -366,6 +372,18 @@ func _draw_plug(canvas, center: Vector2, viewport_size: Vector2, color: Color, u
     var pin_color := Color(color, 0.58 if not unplugged else 0.20)
     canvas.draw_line(Vector2(rect.end.x, center.y - size_px.y * 0.23), Vector2(rect.end.x + size_px.x * 0.22, center.y - size_px.y * 0.23), pin_color, maxf(1.0, viewport_size.x * 0.0015))
     canvas.draw_line(Vector2(rect.end.x, center.y + size_px.y * 0.23), Vector2(rect.end.x + size_px.x * 0.22, center.y + size_px.y * 0.23), pin_color, maxf(1.0, viewport_size.x * 0.0015))
-
+func _resisted_cable_point(index: int, touch: Vector2) -> Vector2:
+    var origin: Vector2 = CABLE_PLUGS[index]
+    var delta: Vector2 = touch - origin
+    var distance: float = delta.length()
+    if distance <= 0.0001:
+        return origin
+    var tension: float = clampf(distance / (CABLE_RELEASE_DISTANCE * 1.35), 0.0, 1.0)
+    # Visual plug travel deliberately lags behind the finger. The curve gets
+    # stiffer near unplug distance, faking resistance without changing the
+    # actual generous success threshold used by the gesture.
+    var response: float = lerpf(0.92, 0.64, pow(tension, 1.35))
+    var micro_drag: float = sin(distance * 173.0) * 0.0022 * tension
+    return origin + delta * response + delta.normalized().orthogonal() * micro_drag
 func _px(norm: Vector2, viewport_size: Vector2) -> Vector2:
     return Vector2(norm.x * viewport_size.x, norm.y * viewport_size.y)

@@ -32,6 +32,7 @@ uniform float subject_lift : hint_range(0.0, 1.0) = 0.0;
 uniform float display_clarity : hint_range(0.0, 1.0) = 0.0;
 uniform float readability_shadow_lift : hint_range(0.0, 1.0) = 0.0;
 uniform float readability_subject_lift : hint_range(0.0, 1.0) = 0.0;
+uniform float readability_highlight_lift : hint_range(0.0, 1.0) = 0.0;
 uniform float readability_noise_scale : hint_range(0.0, 1.0) = 1.0;
 uniform float readability_vignette_floor : hint_range(0.0, 1.0) = 0.8;
 uniform float runtime_scale : hint_range(0.5, 1.0) = 1.0;
@@ -232,7 +233,13 @@ void fragment() {
     photographed = mix(photographed, lifted_subject, subject.a * (0.88 + subject_lift * 0.10));
     photographed = mix(photographed, foreground.rgb, foreground.a * 0.96);
     photographed = mix(photographed, sqrt(max(photographed, vec3(0.0))), display_clarity * 0.10);
-    photographed = mix(photographed, photographed * (1.0 + readability_shadow_lift * 0.18), readability_shadow_lift);
+    float readability_luma = dot(photographed, vec3(0.2126, 0.7152, 0.0722));
+    float readable_mids = smoothstep(0.035, 0.30, readability_luma) * (1.0 - smoothstep(0.78, 0.98, readability_luma));
+    float readable_highlights = smoothstep(0.20, 0.84, readability_luma);
+    // Preserve real blacks. Mobile readability raises photographed mid/high exposure
+    // points instead of adding a flat brightness wash across the room.
+    photographed += photographed * readability_shadow_lift * readable_mids * 0.105;
+    photographed += photographed * readability_highlight_lift * readable_highlights * 0.115;
 
     float mask = texture(reveal_mask, UV).r;
     float reveal_radius = completion_reveal * 1.45;

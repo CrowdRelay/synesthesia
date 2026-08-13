@@ -45,7 +45,8 @@ const INTERACTION_BLOOM: Dictionary = {
     "presence": 0.24,
     "wave": 0.26,
     "light": 0.46,
-    "cable_grab": 0.08,
+    "cable_grab": 0.06,
+    "cable_tension": 0.035,
     "cable_snap": 0.10,
     "cable_unplug": 0.42,
     "breaker": 0.58,
@@ -162,7 +163,8 @@ func play_interaction_sfx(kind: String, index: int = 0) -> void:
         "light": 0.11, "screen": 0.04, "echo_complete": 0.12,
     }
     _semantic_clearance = clampf(_semantic_clearance + float(semantic_steps.get(kind, 0.0)), 0.0, 0.58)
-    _foreground_duck_target = maxf(_foreground_duck_target, 0.72)
+    var duck: float = 0.24 if kind in ["cable_grab", "cable_tension", "aim"] else 0.72
+    _foreground_duck_target = maxf(_foreground_duck_target, duck)
     if kind == "balloon":
         _play_sfx_stream(_balloon_pop_stream, 0.96 + float(index % 5) * 0.018, -9.0)
         return

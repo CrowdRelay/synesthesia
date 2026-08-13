@@ -88,13 +88,21 @@
         "settle": "living-loop",
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
-      }
+      },
+      "layers": [
+        "ambient",
+        "reactive",
+        "semantic_burst"
+      ],
+      "anti_static_seconds": 2.6,
+      "performance_budget": "adaptive-event-driven-v2"
     },
     "mobile_readability": {
-      "shadow_lift": 0.22,
-      "subject_lift": 0.38,
-      "noise_scale": 0.92,
-      "vignette_floor": 0.79
+      "shadow_lift": 0.34,
+      "subject_lift": 0.52,
+      "highlight_lift": 0.72,
+      "noise_scale": 0.86,
+      "vignette_floor": 0.82
     }
   },
   "sensory": {
@@ -170,7 +178,8 @@
       "source": "Mr R",
       "source_role": "gitara · operator sygnału",
       "echo_type": "memory_shard",
-      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
+      "reward_hint": "To echo budzi charakterystyczny gest pokoju; po odsłonięciu dotknij jego śladu.",
+      "semantic_kind": "root"
     }
   ],
   "intro": "Zacznij od ziarna przy podłodze. Każdy odsłonięty fragment pozwoli drzewu wypuścić korzeń, pień i koronę.",

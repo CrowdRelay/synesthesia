@@ -8,6 +8,7 @@ func configure(data: Dictionary) -> void:
     state["shattered"] = []
     state["active_mirror"] = -1
     state["mirror_drag_start"] = Vector2.ZERO
+    state["mirror_offsets"] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
 
 func acts() -> Array[String]:
     return ["WEJDŹ MIĘDZY ODBICIA", "ROZBIJ CUDZĄ MIARĘ", "ZOSTAW WŁASNĄ WARTOŚĆ"]
@@ -28,7 +29,7 @@ func hint_targets() -> Array[Dictionary]:
     for index in range(MIRRORS.size()):
         if shattered.has(index):
             continue
-        targets.append({"point": MIRRORS[index], "kind": "swipe" if cracked.has(index) else "tap", "radius": 0.09})
+        targets.append({"point": MIRRORS[index] + _mirror_offset(index), "kind": "swipe" if cracked.has(index) else "tap", "radius": 0.09})
         if targets.size() >= 3:
             break
     return targets
@@ -36,13 +37,14 @@ func hint_targets() -> Array[Dictionary]:
 func captures_pointer_at(point_norm: Vector2) -> bool:
     return _mirror_near(point_norm, 0.14) >= 0 or int(state.get("active_mirror", -1)) >= 0
 
-func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> void:
+func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#BDD9FF")), Color("bdd9ff"))
     var cracked: Array = state.get("cracked", [])
     var shattered: Array = state.get("shattered", [])
     var cinematic_t: float = cinematic_time()
     for index in range(MIRRORS.size()):
-        var center: Vector2 = Vector2(MIRRORS[index].x * viewport_size.x, MIRRORS[index].y * viewport_size.y)
+        var mirror_norm: Vector2 = MIRRORS[index] + _mirror_offset(index)
+        var center: Vector2 = Vector2(mirror_norm.x * viewport_size.x, mirror_norm.y * viewport_size.y)
         if cinematic_active() or shattered.has(index):
             var burst: float = minf(cinematic_t if cinematic_active() else 0.82, 1.6)
             for shard in range(10):
@@ -58,6 +60,9 @@ func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> v
         var rect: Rect2 = Rect2(center - Vector2(34.0, 58.0), Vector2(68.0, 116.0))
         var edge_alpha := 0.08 + progress * 0.08 + float(assist_level) * 0.035
         canvas.draw_rect(rect, Color(accent, edge_alpha), false, 1.4 + float(assist_level) * 0.12)
+        var sweep: float = fmod(phase * 0.16 + float(index) * 0.21, 1.0)
+        var sweep_x: float = lerpf(rect.position.x - 8.0, rect.end.x + 8.0, sweep)
+        canvas.draw_line(Vector2(sweep_x - 8.0, rect.position.y + 7.0), Vector2(sweep_x + 10.0, rect.end.y - 7.0), Color(Color.WHITE, 0.025 + progress * 0.045), 1.0)
         if assist_level > 0 and not cracked.has(index):
             var glint_x := rect.position.x + rect.size.x * (0.30 + 0.12 * sin(float(index) * 1.7))
             canvas.draw_line(Vector2(glint_x, rect.position.y + 12.0), Vector2(glint_x + 14.0, rect.end.y - 16.0), Color(Color.WHITE, 0.035 * float(assist_level)), 1.0)
@@ -80,15 +85,24 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             cracked.append(index)
             state["cracked"] = cracked
             return [_interaction_event("mirror", index, "Pierwsza rysa — teraz możesz zrzucić taflę", MIRRORS[index], 0.09, 0.88)]
+    if kind == "drag":
+        var active := int(state.get("active_mirror", -1))
+        if active >= 0 and active < MIRRORS.size() and cracked.has(active) and not shattered.has(active):
+            var delta_value: Variant = gesture.get("delta", Vector2.ZERO)
+            var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
+            _shift_mirror(active, delta * 0.44)
     if kind == "release":
         var active := int(state.get("active_mirror", -1))
         var start_value: Variant = state.get("mirror_drag_start", point)
         var start_point: Vector2 = start_value if start_value is Vector2 else point
         state["active_mirror"] = -1
-        if active >= 0 and active < MIRRORS.size() and cracked.has(active) and not shattered.has(active) and point.distance_to(start_point) >= 0.10:
+        var displaced: float = _mirror_offset(active).length() if active >= 0 else 0.0
+        if active >= 0 and active < MIRRORS.size() and cracked.has(active) and not shattered.has(active) and (point.distance_to(start_point) >= 0.10 or displaced >= 0.052):
             shattered.append(active)
             state["shattered"] = shattered
-            return [_interaction_event("mirror", active + 20, "Tafla zeszła ze ściany — miara została bez głosu", MIRRORS[active], 0.13, 0.98)]
+            return [_interaction_event("mirror", active + 20, "Tafla zeszła ze ściany — miara została bez głosu", MIRRORS[active] + _mirror_offset(active), 0.13, 0.98)]
+        if active >= 0 and active < MIRRORS.size():
+            _set_mirror_offset(active, _mirror_offset(active) * 0.22)
     if kind == "swipe":
         var start_point: Vector2 = _gesture_start(gesture)
         for candidate in range(MIRRORS.size()):
@@ -119,6 +133,36 @@ func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Arra
 
 func _mirror_near(point: Vector2, radius: float) -> int:
     for index in range(MIRRORS.size()):
-        if _near(point, MIRRORS[index], radius):
+        if _near(point, MIRRORS[index] + _mirror_offset(index), radius):
             return index
     return -1
+
+func _shift_mirror(index: int, delta: Vector2) -> void:
+    var current := _mirror_offset(index) + delta
+    current.x = clampf(current.x, -0.10, 0.10)
+    current.y = clampf(current.y, -0.075, 0.12)
+    _set_mirror_offset(index, current)
+
+func _set_mirror_offset(index: int, value: Vector2) -> void:
+    var offsets: Array = state.get("mirror_offsets", [])
+    if index < 0 or index >= offsets.size():
+        return
+    offsets[index] = [value.x, value.y]
+    state["mirror_offsets"] = offsets
+
+func _mirror_offset(index: int) -> Vector2:
+    var offsets: Array = state.get("mirror_offsets", [])
+    if index < 0 or index >= offsets.size():
+        return Vector2.ZERO
+    var raw: Variant = offsets[index]
+    return Vector2(float(raw[0]), float(raw[1])) if raw is Array and raw.size() >= 2 else Vector2.ZERO
+func restore_state(saved: Dictionary) -> void:
+    super.restore_state(saved)
+    var offsets: Array = state.get("mirror_offsets", [])
+    if offsets.size() != MIRRORS.size():
+        state["mirror_offsets"] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+    if not state.has("active_mirror"):
+        state["active_mirror"] = -1
+    if not state.has("mirror_drag_start"):
+        state["mirror_drag_start"] = Vector2.ZERO
+

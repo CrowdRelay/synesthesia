@@ -199,6 +199,28 @@ func _arm_burst(index: int) -> void:
     if index >= 0 and index < ages.size():
         ages[index] = 0.0
         state["burst_ages"] = ages
+        _push_neighbors_from_burst(index)
+
+func _push_neighbors_from_burst(source_index: int) -> void:
+    var velocities: Array = state.get("velocities", [])
+    var offsets: Array = state.get("offsets", [])
+    if source_index < 0 or source_index >= BALLOONS.size() or velocities.size() != BALLOONS.size() or offsets.size() != BALLOONS.size():
+        return
+    var source := BALLOONS[source_index] + _pair_vec(offsets[source_index])
+    var popped: Array = state.get("popped", [])
+    for index in range(BALLOONS.size()):
+        if index == source_index or popped.has(index):
+            continue
+        var target := BALLOONS[index] + _pair_vec(offsets[index])
+        var delta := target - source
+        var distance := maxf(0.08, delta.length())
+        if distance > 0.42:
+            continue
+        var impulse := delta.normalized() * lerpf(0.10, 0.025, clampf(distance / 0.42, 0.0, 1.0))
+        var velocity := _pair_vec(velocities[index]) + impulse
+        velocities[index] = [velocity.x, velocity.y]
+    state["velocities"] = velocities
+    state["motion_active"] = true
 
 func _push_near(point: Vector2, gesture: Dictionary) -> void:
     var offsets: Array = state.get("offsets", [])

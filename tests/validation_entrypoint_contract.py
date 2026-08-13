@@ -50,10 +50,12 @@ if 'res://tests/gdscript_parse_smoke.gd' not in validate or 'SYNESTHESIA_GDSCRIP
     failures.append('validate.sh: repository-wide GDScript parse sweep is missing')
 if 'tests/netlify_artifact_deploy_contract.py' not in canonical_gates:
     failures.append('validate-source.sh: zero-build Netlify artifact contract is missing')
-if 'preload("res://scripts/app/diagnostics_overlay.gd")' in (ROOT / 'scripts/main.gd').read_text():
-    failures.append('main.gd: optional diagnostics overlay is a hard parser dependency')
-if 'ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH)' not in (ROOT / 'scripts/main.gd').read_text():
-    failures.append('main.gd: optional diagnostics overlay lacks guarded dynamic load')
+main_source = (ROOT / 'scripts/main.gd').read_text()
+warmup_source = (ROOT / 'scripts/app/main_warmup_flow.gd').read_text()
+if 'preload("res://scripts/app/diagnostics_overlay.gd")' in main_source or 'preload("res://scripts/app/diagnostics_overlay.gd")' in warmup_source:
+    failures.append('startup path: optional diagnostics overlay is a hard parser dependency')
+if 'ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH)' not in warmup_source or 'call_deferred("install_diagnostics")' not in warmup_source:
+    failures.append('main warmup: optional diagnostics overlay lacks guarded post-menu dynamic load')
 diagnostics = (ROOT / 'scripts/app/diagnostics_overlay.gd').read_text()
 if 'var preload:' in diagnostics:
     failures.append('diagnostics_overlay.gd: reserved GDScript preload identifier reused as a variable')

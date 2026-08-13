@@ -1,9 +1,26 @@
 extends Node
 
+const REWARD_CLIENT_PATH := "res://scripts/reward_client.gd"
+const FINALE_BACKGROUND_PATH := "res://scripts/ui/echoes_finale_background.gd"
+const SIGNAL_FINALE_CARD_PATH := "res://scripts/ui/signal_finale_card.gd"
+
 var app: Node
+var _runtime_scripts: Dictionary = {}
 
 func bind(owner: Node) -> void:
     app = owner
+
+func _runtime_script(path: String) -> Script:
+    if _runtime_scripts.has(path):
+        return _runtime_scripts[path] as Script
+    if not ResourceLoader.exists(path):
+        push_error("Reward runtime script unavailable: %s" % path)
+        return null
+    var resource: Resource = load(path)
+    if resource is Script:
+        _runtime_scripts[path] = resource
+        return resource as Script
+    return null
 
 func _configure_reward_client() -> void:
     var config_value: Variant = app.index_document.get("reward", {})
@@ -12,7 +29,10 @@ func _configure_reward_client() -> void:
     var config: Dictionary = config_value
     if not bool(config.get("enabled", false)):
         return
-    app.reward_client = app.RewardClientScript.new()
+    var RewardClientScript: Script = _runtime_script(REWARD_CLIENT_PATH)
+    if RewardClientScript == null:
+        return
+    app.reward_client = RewardClientScript.new()
     app.reward_client.name = "SynesthesiaRewardClient"
     app.add_child(app.reward_client)
     app.reward_client.configure(
@@ -36,7 +56,10 @@ func _configure_reward_client() -> void:
 func _prepare_finale_background() -> void:
     if app.finale_background != null and is_instance_valid(app.finale_background):
         return
-    app.finale_background = app.EchoesFinaleBackgroundScript.new()
+    var EchoesFinaleBackgroundScript: Script = _runtime_script(FINALE_BACKGROUND_PATH)
+    if EchoesFinaleBackgroundScript == null:
+        return
+    app.finale_background = EchoesFinaleBackgroundScript.new()
     app.finale_background.name = "EchoesFinaleBackground"
     app.experience_surface.add_child(app.finale_background)
     app.finale_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -49,7 +72,10 @@ func _show_reward_panel() -> void:
     _prepare_finale_background()
     app.SoundscapeRuntime.enter_outro(app.menu_soundscape, app.music_level, app.noise_level, app.quiet_mode)
     app.hud.visible = false
-    app.reward_panel = app.SignalFinaleCardScript.new()
+    var SignalFinaleCardScript: Script = _runtime_script(SIGNAL_FINALE_CARD_PATH)
+    if SignalFinaleCardScript == null:
+        return
+    app.reward_panel = SignalFinaleCardScript.new()
     app.reward_panel.name = "SignalFinaleCard"
     app.ui_root.attach(app.reward_panel, 40)
     if app.gameplay_telemetry != null:

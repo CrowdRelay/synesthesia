@@ -9,6 +9,8 @@ func _show_settings() -> void:
     if app.settings_panel != null:
         return
     if app.room != null:
+        if app.room_flow != null:
+            app.room_flow.pause_room_timer()
         app.room.set_interaction_enabled(false)
     app.settings_panel = app.SettingsCardScript.new()
     app.settings_panel.name = "SettingsCard"
@@ -93,8 +95,12 @@ func _close_settings() -> void:
         app.settings_dirty = false
     if app.room != null and not app.completion_announced and app.experience_intro_panel == null:
         app.room.set_interaction_enabled(true)
+        if app.room_flow != null:
+            app.room_flow.resume_room_timer()
 
 func _reload_current_room() -> void:
+    if app.room_flow != null:
+        app.room_flow.pause_room_timer()
     _save_progress()
     Engine.max_fps = app.QualityManager.frame_cap(app.quality_profile)
     if app.adaptive_performance != null:
@@ -104,6 +110,8 @@ func _reload_current_room() -> void:
     app._load_room(index, false)
     await get_tree().process_frame
     await app.transition_director.fade_in(0.28)
+    if app.room_flow != null:
+        app.room_flow.resume_room_timer()
 
 func _confirm_reset_room() -> void:
     _show_confirmation("Zacząć pokój od nowa?", "Zniknie tylko lokalny postęp bieżącego pokoju. Pozostałe rozdziały albumu zostają bez zmian.", "Tak, wyczyść ten pokój", Callable(app, "_reset_room"))
@@ -124,13 +132,15 @@ func _reset_room() -> void:
     app.album_state["room_elapsed_ms"] = elapsed
     app.album_state["total_elapsed_ms"] = app.ProgressMetrics.sum_elapsed_ms(elapsed)
     app.room_elapsed_before_start_ms = 0
-    app.room_timer_running = true
+    app.room_timer_running = false
     app._remove_modal(app.completion_panel)
     app.completion_panel = null
     app.room.reset_room()
     app.room.set_interaction_enabled(true)
     app.current_coverage = 0.0
-    app.room_started_ms = Time.get_ticks_msec()
+    app.room_started_ms = 0
+    if app.room_flow != null:
+        app.room_flow.reset_room_timer(true)
     app.hud.update_reveal(0.0)
     app.hud.update_discovery("ECHA 0/%d · odkrywaj scenę spod szumu" % app._collectible_total())
     if app.audio_director != null:
@@ -140,15 +150,25 @@ func _reset_room() -> void:
     _save_album_state()
 
 func _confirm_reset_album() -> void:
-    _show_confirmation("Zagrać od nowa?", "Wyczyścimy lokalne malowanie, odkrycia i czasy wszystkich 11 pokojów. Ustawienia zostają. Nagroda i stan po stronie Sygnału nie są cofane.", "Tak, zacznij świeżą podróż", Callable(app, "_reset_album_local"))
+    var replay_unlocked: bool = bool(app.album_state.get("replay_unlocked", false)) or bool(app.album_state.get("album_completed", false))
+    var title: String = "Uruchomić Replay Mode?" if replay_unlocked else "Zagrać od nowa?"
+    var message: String = "Startujesz świeży, szybszy przebieg. Chapter cards i część przejść zostaną skrócone, a lokalne PB oraz splity zostają zachowane." if replay_unlocked else "Wyczyścimy lokalne malowanie, odkrycia i czasy wszystkich 11 pokojów. Ustawienia zostają. Nagroda i stan po stronie Sygnału nie są cofane."
+    var confirm: String = "Tak, uruchom Replay Mode" if replay_unlocked else "Tak, zacznij świeżą podróż"
+    _show_confirmation(title, message, confirm, Callable(app, "_reset_album_local"))
 
 func _show_confirmation(title: String, message: String, confirm_text: String, action: Callable) -> void:
+    if app.room_flow != null:
+        app.room_flow.pause_room_timer()
     var card = app.ConfirmCardScript.new()
     app.confirmation_panel = card
     app.ui_root.attach(card, 80)
     card.configure(title, message, confirm_text)
     card.confirmed.connect(action)
-    card.tree_exited.connect(func() -> void: app.confirmation_panel = null)
+    card.tree_exited.connect(func() -> void:
+        app.confirmation_panel = null
+        if app.room_flow != null:
+            app.room_flow.resume_room_timer()
+    )
 
 func _reset_album_local() -> void:
     if app.save_timer != null and not app.save_timer.is_stopped():

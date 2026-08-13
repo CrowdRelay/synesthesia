@@ -22,11 +22,20 @@ for token in (
 if "ReleaseReader.load_json(manifest_path)" not in preloader:
     failures.append("asset preloader reparses release manifests instead of using ReleaseReader cache")
 for token in (
+    'str(room.get("behavior_script", ""))',
     '_queue(str(audio.get("ambience", "")), false)',
     '_queue(str(audio.get("completion_excerpt", "")), false)',
+    'var _pending_critical: Array[String] = []',
+    'var _pending_deferred: Array[String] = []',
+    'func _pump_queue() -> void:',
+    'func prime_runtime_support() -> void:',
+    'while _queued.size() < MAX_QUEUED:',
 ):
     if token not in preloader:
-        failures.append(f"deferred audio prewarm missing: {token}")
+        failures.append(f"bounded look-ahead preload lifecycle missing: {token}")
+
+if 'if _queued.size() >= MAX_QUEUED:\n        return' in preloader:
+    failures.append("preloader silently drops look-ahead work when the active window is full")
 
 for token in (
     "_asset_runtime._resolve_pending_ambience()",
@@ -81,5 +90,5 @@ if failures:
 
 print(
     "SYNESTHESIA_ROOM_PRELOAD_CACHE=PASS "
-    f"manifests={manifest_count} json=process-cache audio=threaded+deferred transition=critical-only-wait"
+    f"manifests={manifest_count} json=process-cache queue=bounded+retained runtime=prewarmed audio=threaded+deferred transition=critical-only-wait"
 )

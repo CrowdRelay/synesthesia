@@ -122,10 +122,11 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
         if value is Dictionary:
             var item: Dictionary = value.duplicate(true)
             item["found"] = false
+            item["semantic_ready"] = str(item.get("semantic_kind", "")).is_empty()
             collectibles.append(item)
     _accent_color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
     var secondary_color: Color = Color.from_string(str(room_data.get("secondary_color", "#FF6680")), Color("ff6680"))
-    _configure_behavior(room_data)
+    _configure_behavior(room_data, asset_source)
     _configure_art(room_data, asset_source)
     atmosphere.configure(
         str(room_data.get("visual_style", "uncertainty")),
@@ -157,7 +158,7 @@ func configure(room_data: Dictionary, collectible_data: Array, sensory_data: Dic
     composite_material.set_shader_parameter("unlock_motion", 0.0)
     _set_progress_from_mask()
     queue_redraw()
-func _configure_behavior(room_data: Dictionary) -> void: _visual_setup._configure_behavior(room_data)
+func _configure_behavior(room_data: Dictionary, asset_source = null) -> void: _visual_setup._configure_behavior(room_data, asset_source)
 func _configure_art(room_data: Dictionary, asset_source = null) -> void: _visual_setup._configure_art(room_data, asset_source)
 func _take_texture(path: String, asset_source = null) -> Texture2D: return _visual_setup._take_texture(path, asset_source)
 func _process(delta: float) -> void:
@@ -252,7 +253,6 @@ func set_quiet_visuals(value: bool) -> void:
     quiet_visuals = value
     video_layer.set_quiet_visuals(value)
     composite_material.set_shader_parameter("quiet_visuals", value)
-
 func set_high_readability(value: bool) -> void:
     high_readability = value; _apply_readability_profile()
 func _apply_readability_profile() -> void:
@@ -297,6 +297,8 @@ func set_runtime_budget(scale: float) -> void:
     composite_material.set_shader_parameter("runtime_scale", _runtime_scale)
     _texture_upload_hz = maxf(12.0, _base_texture_upload_hz * _runtime_scale)
     atmosphere.set_runtime_scale(_runtime_scale)
+    if interaction_fx != null and interaction_fx.has_method("set_runtime_scale"): interaction_fx.set_runtime_scale(_runtime_scale)
+    if world_micro_fx != null and world_micro_fx.has_method("set_runtime_scale"): world_micro_fx.set_runtime_scale(_runtime_scale)
     if hint_layer != null:
         hint_layer.set_runtime_scale(_runtime_scale)
     if room_dressing != null:
@@ -351,7 +353,6 @@ func _check_collectibles(point_norm: Vector2, radius_norm: float) -> void: _inte
 func _check_behavior(point_norm: Vector2, radius_norm: float) -> void: _interaction_flow._check_behavior(point_norm, radius_norm)
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED: call_deferred("_apply_readability_profile")
-
 func _draw() -> void:
     if behavior != null:
         behavior.render(self, size, current_progress, _phase)

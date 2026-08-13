@@ -2,16 +2,31 @@ extends Node
 
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
 
-const MAX_QUEUED: int = 8
+# Keep background I/O bounded on phones. Requests beyond this window are retained
+# in priority queues instead of being silently dropped, then pumped as the room
+# consumes already-warmed resources.
+const MAX_QUEUED: int = 13
 const DEFAULT_TRANSITION_WAIT_MS: int = 320
+const RUNTIME_SUPPORT_PATHS: Array[String] = [
+    "res://scripts/audio_director.gd",
+    "res://scripts/haptics.gd",
+    "res://scripts/app/player_feedback_bridge.gd",
+    "res://scripts/ui/chapter_card.gd",
+    "res://scripts/ui/completion_card.gd",
+]
 
 var _queued: Dictionary = {}
 var _critical: Dictionary = {}
+var _pending_critical: Array[String] = []
+var _pending_deferred: Array[String] = []
+var _pending_flags: Dictionary = {}
 var _requests: int = 0
 var _hits: int = 0
 var _fallbacks: int = 0
 var _blocking_takes: int = 0
 var _max_block_ms: int = 0
+var _dropped_requests: int = 0
+var _runtime_support_primed: bool = false
 
 func prepare(manifest_path: String) -> void:
     _prune_finished_failures()
@@ -28,6 +43,7 @@ func prepare(manifest_path: String) -> void:
     var audio: Dictionary = audio_value if audio_value is Dictionary else {}
     var critical_paths: Array[String] = [
         str(room.get("scene_path", "")),
+        str(room.get("behavior_script", "")),
         str(art.get("scene_image", "")),
         str(art.get("background_image", "")),
         str(art.get("subject_image", "")),
@@ -40,34 +56,80 @@ func prepare(manifest_path: String) -> void:
     _queue(str(audio.get("ambience", "")), false)
     _queue(str(audio.get("completion_excerpt", "")), false)
 
-func _queue(path: String, critical: bool) -> void:
-    if _queued.size() >= MAX_QUEUED or path.is_empty() or _queued.has(path) or not ResourceLoader.exists(path):
+func prime_runtime_support() -> void:
+    if _runtime_support_primed:
         return
-    var error: Error = ResourceLoader.load_threaded_request(path, "", false, ResourceLoader.CACHE_MODE_IGNORE)
-    if error == OK:
+    _runtime_support_primed = true
+    for path in RUNTIME_SUPPORT_PATHS:
+        _queue(path, true)
+
+func queue_deferred(path: String) -> void:
+    _queue(path, false)
+
+func queue_critical(path: String) -> void:
+    _queue(path, true)
+
+func _queue(path: String, critical: bool) -> void:
+    if path.is_empty() or _queued.has(path) or _pending_flags.has(path) or not ResourceLoader.exists(path):
+        return
+    _pending_flags[path] = critical
+    if critical:
+        _pending_critical.append(path)
+    else:
+        _pending_deferred.append(path)
+    _pump_queue()
+
+func _pump_queue() -> void:
+    while _queued.size() < MAX_QUEUED:
+        var path: String = _pop_pending_path()
+        if path.is_empty():
+            return
+        var critical: bool = bool(_pending_flags.get(path, false))
+        _pending_flags.erase(path)
+        if not ResourceLoader.exists(path):
+            _dropped_requests += 1
+            continue
+        var error: Error = ResourceLoader.load_threaded_request(path, "", false, ResourceLoader.CACHE_MODE_IGNORE)
+        if error != OK:
+            _dropped_requests += 1
+            continue
         _queued[path] = Time.get_ticks_msec()
         if critical:
             _critical[path] = true
         _requests += 1
 
+func _pop_pending_path() -> String:
+    if not _pending_critical.is_empty():
+        return _pending_critical.pop_front()
+    if not _pending_deferred.is_empty():
+        return _pending_deferred.pop_front()
+    return ""
+
 # Give an already-scheduled next room a short, frame-yielding grace period while
 # the door warp covers the screen. This converts the common transition case from
 # a main-thread load_threaded_get stall into non-blocking wait frames.
 func wait_for_queued(max_wait_ms: int = DEFAULT_TRANSITION_WAIT_MS) -> void:
-    if _queued.is_empty():
+    if _queued.is_empty() and _pending_flags.is_empty():
         return
     var deadline_ms: int = Time.get_ticks_msec() + maxi(0, max_wait_ms)
     while Time.get_ticks_msec() < deadline_ms:
         _prune_finished_failures()
+        _pump_queue()
         if not _has_in_progress(true):
             return
         await get_tree().process_frame
 
 func is_queued(path: String) -> bool:
-    return not path.is_empty() and _queued.has(path)
+    return not path.is_empty() and (_queued.has(path) or _pending_flags.has(path))
 
 func take_if_ready(path: String) -> Resource:
-    if path.is_empty() or not _queued.has(path):
+    if path.is_empty():
+        return null
+    if _pending_flags.has(path):
+        # It is scheduled, but a higher-priority/bounded request window is still
+        # ahead of it. Callers that can tolerate deferred attachment should wait.
+        return null
+    if not _queued.has(path):
         return null
     var status: int = int(ResourceLoader.load_threaded_get_status(path))
     if status == ResourceLoader.THREAD_LOAD_LOADED:
@@ -103,27 +165,38 @@ func take(path: String) -> Resource:
                 return resource
         else:
             _forget(path)
+    elif _pending_flags.has(path):
+        # A user can outrun a background queue on a very fast tap. Remove only
+        # this pending request before the correctness fallback so it cannot race
+        # with a later threaded start for the same resource.
+        _remove_pending(path)
     if ResourceLoader.exists(path):
         _fallbacks += 1
         return load(path)
     return null
 
 func queued_count() -> int:
-    return _queued.size()
+    return _queued.size() + _pending_flags.size()
 
 func snapshot() -> Dictionary:
     return {
         "queued": _queued.size(),
-        "critical_queued": _critical.size(),
-        "deferred_queued": maxi(0, _queued.size() - _critical.size()),
+        "pending": _pending_flags.size(),
+        "critical_queued": _critical.size() + _pending_critical.size(),
+        "deferred_queued": maxi(0, _queued.size() - _critical.size()) + _pending_deferred.size(),
         "requests": _requests,
         "hits": _hits,
         "fallbacks": _fallbacks,
         "blocking_takes": _blocking_takes,
         "max_block_ms": _max_block_ms,
+        "dropped_requests": _dropped_requests,
     }
 
 func _has_in_progress(critical_only: bool = false) -> bool:
+    if critical_only and not _pending_critical.is_empty():
+        return true
+    if not critical_only and not _pending_flags.is_empty():
+        return true
     for raw_path in _queued.keys():
         var path: String = str(raw_path)
         if critical_only and not _critical.has(path):
@@ -135,6 +208,16 @@ func _has_in_progress(critical_only: bool = false) -> bool:
 func _forget(path: String) -> void:
     _queued.erase(path)
     _critical.erase(path)
+    _pump_queue()
+
+func _remove_pending(path: String) -> void:
+    _pending_flags.erase(path)
+    var critical_index: int = _pending_critical.find(path)
+    if critical_index >= 0:
+        _pending_critical.remove_at(critical_index)
+    var deferred_index: int = _pending_deferred.find(path)
+    if deferred_index >= 0:
+        _pending_deferred.remove_at(deferred_index)
 
 func _prune_finished_failures() -> void:
     var stale: Array[String] = []
@@ -147,6 +230,9 @@ func _prune_finished_failures() -> void:
         _forget(path)
 
 func drain() -> void:
+    _pending_critical.clear()
+    _pending_deferred.clear()
+    _pending_flags.clear()
     var paths: Array = _queued.keys()
     for raw_path in paths:
         var path: String = str(raw_path)

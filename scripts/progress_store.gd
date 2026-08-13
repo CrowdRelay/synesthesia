@@ -130,10 +130,13 @@ static func reset_local_journey() -> bool:
         fresh["reward"] = previous_reward_value.duplicate(true)
     var fresh_album_value: Variant = fresh.get("album", {})
     var fresh_album: Dictionary = fresh_album_value if fresh_album_value is Dictionary else {}
-    for key in ["calm_mode", "quiet_mode", "quiet_visuals", "reduced_motion", "high_readability", "haptics_enabled", "quality_profile", "music_level", "noise_level", "personal_best_room_ms", "personal_best_total_ms", "completed_runs_local"]:
+    for key in ["calm_mode", "quiet_mode", "quiet_visuals", "reduced_motion", "high_readability", "haptics_enabled", "quality_profile", "music_level", "noise_level", "personal_best_room_ms", "personal_best_total_ms", "completed_runs_local", "personal_best_act_splits_ms", "replay_unlocked"]:
         if previous_album.has(key):
             var value: Variant = previous_album[key]
             fresh_album[key] = value.duplicate(true) if value is Dictionary or value is Array else value
+    var replay_unlocked: bool = bool(previous_album.get("replay_unlocked", false)) or bool(previous_album.get("album_completed", false))
+    fresh_album["replay_unlocked"] = replay_unlocked
+    fresh_album["replay_mode"] = replay_unlocked
     fresh_album["journey_id"] = new_journey_id()
     fresh_album["started_at_unix"] = int(Time.get_unix_time_from_system())
     fresh_album["total_elapsed_ms"] = 0
@@ -175,7 +178,10 @@ static func _blank_document() -> Dictionary:
             "pending_room_completions": [],
             "room_elapsed_ms": {},
             "personal_best_room_ms": {},
+            "personal_best_act_splits_ms": {},
             "personal_best_total_ms": 0,
+            "replay_unlocked": false,
+            "replay_mode": false,
             "completed_runs_local": 0,
             "album_completed": false,
             "echo_archive": {},

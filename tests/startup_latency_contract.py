@@ -7,6 +7,7 @@ main = (ROOT / "scripts/main.gd").read_text()
 room_flow = (ROOT / "scripts/app/main_room_flow.gd").read_text()
 reward_flow = (ROOT / "scripts/app/main_reward_flow.gd").read_text()
 boot = (ROOT / "scripts/ui/boot_sequence.gd").read_text()
+warmup = (ROOT / "scripts/app/main_warmup_flow.gd").read_text()
 eye = (ROOT / "scripts/ui/door_eye_motif.gd").read_text()
 failures: list[str] = []
 
@@ -18,8 +19,13 @@ if "_load_room(" in ready:
     failures.append("_ready still constructs a room before the first usable frame")
 if "reward_client.start_run()" in reward_config:
     failures.append("reward networking still starts during boot configuration")
-if "asset_preloader.prepare" not in intro:
-    failures.append("menu does not thread-warm the current room")
+if 'warmup_flow.call_deferred("warm_under_main_menu")' not in intro:
+    failures.append("menu does not schedule its post-presentation warmup")
+for token in ("await RenderingServer.frame_post_draw", "asset_preloader.prepare", "asset_preloader.prime_runtime_support", "begin_menu_soundscape"):
+    if token not in warmup:
+        failures.append(f"post-menu warmup contract missing: {token}")
+if "asset_preloader.prepare" in intro:
+    failures.append("room warmup starts before the main menu is presented")
 if "_load_room(current_room_index, false)" not in begin:
     failures.append("first room is not instantiated behind the begin transition")
 if "await asset_preloader.wait_for_queued()" not in begin:
@@ -48,4 +54,4 @@ if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_STARTUP_LATENCY=FAIL count={len(failures)}")
-print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=poster-only room=thread-warm+door-wait+load network=interaction-gated splash-video=post-frame-authored branded-boot=0.98s")
+print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=poster-only menu=present-then-warm room=thread-warm+runtime-support+door-wait network=interaction-gated audio=post-menu-threaded branded-boot=0.98s")

@@ -126,13 +126,21 @@
         "settle": "living-loop",
         "hud": "art-first-auto-dim",
         "reduced_motion": "static-readable-low-energy"
-      }
+      },
+      "layers": [
+        "ambient",
+        "reactive",
+        "semantic_burst"
+      ],
+      "anti_static_seconds": 2.6,
+      "performance_budget": "adaptive-event-driven-v2"
     },
     "mobile_readability": {
-      "shadow_lift": 0.4,
-      "subject_lift": 0.76,
-      "noise_scale": 0.82,
-      "vignette_floor": 0.82
+      "shadow_lift": 0.44,
+      "subject_lift": 0.8,
+      "highlight_lift": 0.82,
+      "noise_scale": 0.78,
+      "vignette_floor": 0.84
     }
   },
   "sensory": {
@@ -208,7 +216,8 @@
       "source": "Koobosky",
       "source_role": "perkusja · mad doctor",
       "echo_type": "memory_shard",
-      "reward_hint": "Odsłuchaj ślad ponownie w Korytarzu."
+      "reward_hint": "To echo budzi charakterystyczny gest pokoju; po odsłonięciu dotknij jego śladu.",
+      "semantic_kind": "signal_lock"
     }
   ],
   "intro": "Nie naprawiaj wszystkiego, co miga. Znajdź źródła przeciążenia, odłącz je i odzyskaj własny sygnał.",
