@@ -10,7 +10,7 @@ setup = (ROOT / "scripts/render/room_visual_setup.gd").read_text()
 
 assert "FIRST_IDLE_SECONDS := 2.8" in guide
 assert "visual_hint_changed.emit(0.62)" in guide
-assert "portrait_gain" in hint and "1.16" in hint
+assert "portrait_gain" in hint and "1.28" in hint
 assert 'add_theme_font_size_override("font_size", 15)' in hud
 assert "108.0 * app._ui_scale" in hud
 assert 'replace(" · ", "\\n")' in app_hud

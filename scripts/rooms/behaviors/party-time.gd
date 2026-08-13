@@ -23,7 +23,7 @@ func interaction_hint() -> String:
     if popped.is_empty():
         return "POWŁOKI DRŻĄ W PÓŁMROKU · DOTKNIJ JEDNEJ"
     if popped.size() < BALLOONS.size():
-        return "SZUKAJ NASTĘPNYCH POWŁOK · TAPNIJ LUB PRZETNIJ SWIPE'EM"
+        return "SZUKAJ NASTĘPNYCH POWŁOK · STUKNIJ LUB PRZETNIJ SZYBKIM RUCHEM"
     return "BODŹCE PUŚCIŁY · POSZUKAJ ECH W OPADAJĄCYM PYLE"
 
 func hint_targets() -> Array[Dictionary]:

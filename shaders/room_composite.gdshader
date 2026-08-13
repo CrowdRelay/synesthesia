@@ -33,6 +33,7 @@ uniform float display_clarity : hint_range(0.0, 1.0) = 0.0;
 uniform float readability_shadow_lift : hint_range(0.0, 1.0) = 0.0;
 uniform float readability_subject_lift : hint_range(0.0, 1.0) = 0.0;
 uniform float readability_highlight_lift : hint_range(0.0, 1.0) = 0.0;
+uniform float readability_local_contrast : hint_range(0.0, 1.0) = 0.0;
 uniform float readability_noise_scale : hint_range(0.0, 1.0) = 1.0;
 uniform float readability_vignette_floor : hint_range(0.0, 1.0) = 0.8;
 uniform float runtime_scale : hint_range(0.5, 1.0) = 1.0;
@@ -240,6 +241,12 @@ void fragment() {
     // points instead of adding a flat brightness wash across the room.
     photographed += photographed * readability_shadow_lift * readable_mids * 0.105;
     photographed += photographed * readability_highlight_lift * readable_highlights * 0.115;
+    // Single-pass midtone color separation. The luminance-weighted curve leaves
+    // near-black pixels alone, improving subject salience without flattening the
+    // art direction or adding a render pass.
+    float local_mid = smoothstep(0.045, 0.24, readability_luma) * (1.0 - smoothstep(0.66, 0.94, readability_luma));
+    vec3 chroma_delta = photographed - vec3(readability_luma);
+    photographed += chroma_delta * readability_local_contrast * local_mid * 0.20;
 
     float mask = texture(reveal_mask, UV).r;
     float reveal_radius = completion_reveal * 1.45;

@@ -24,6 +24,7 @@ python3 tests/ui_scale_flow_contract.py
 python3 tests/mobile_feedback_contract.py
 python3 tests/mobile_clarity_contract.py
 python3 tests/mobile_product_readability_contract.py
+python3 tests/interaction_assist_readability_contract.py
 python3 tests/gameplay_telemetry_contract.py
 python3 tests/v1_game_loop_contract.py
 python3 tests/mobile_speedrun_feedback_contract.py

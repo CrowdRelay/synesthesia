@@ -16,7 +16,7 @@ func interaction_hint() -> String:
     if bool(state.get("duel", false)):
         return "WYBÓR PADŁ · POSZUKAJ ŚLADÓW NA ULICY"
     if bool(state.get("aim_locked", false)):
-        return "CEL JEST SPOKOJNY · PUŚĆ PALec, GDY DECYZJA JEST TWOJA"
+        return "CEL JEST SPOKOJNY · PUŚĆ PALEC, GDY DECYZJA JEST TWOJA"
     return "TO NIE CELOWNIK HUD · PRZYTRZYMAJ POSTAĆ W CENTRUM"
 
 func hint_targets() -> Array[Dictionary]:

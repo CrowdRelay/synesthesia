@@ -74,6 +74,7 @@ python3 tests/ui_quality_polish_contract.py
 python3 tests/mobile_feedback_contract.py
 python3 tests/mobile_clarity_contract.py
 python3 tests/mobile_product_readability_contract.py
+python3 tests/interaction_assist_readability_contract.py
 python3 tests/signal_design_system_contract.py
 python3 tests/game_feel_v3_contract.py
 python3 tests/gameplay_telemetry_contract.py

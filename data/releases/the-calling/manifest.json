@@ -104,7 +104,8 @@
       "subject_lift": 0.9,
       "highlight_lift": 0.88,
       "noise_scale": 0.66,
-      "vignette_floor": 0.88
+      "vignette_floor": 0.88,
+      "local_contrast": 0.76
     }
   },
   "sensory": {

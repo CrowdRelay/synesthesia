@@ -11,6 +11,7 @@ var _target_strength: float = 0.0
 var _phase: float = 0.0
 var _reduced_motion: bool = false
 var _runtime_scale: float = 1.0
+var _assist_level: int = 0
 var _targets: Array[Dictionary] = []
 
 func _ready() -> void:
@@ -45,6 +46,14 @@ func set_reduced_motion(value: bool) -> void:
 func set_runtime_scale(value: float) -> void:
     _runtime_scale = clampf(value, 0.55, 1.0)
 
+func set_assist_level(value: int) -> void:
+    _assist_level = clampi(value, 0, 3)
+    if _strength > 0.001:
+        queue_redraw()
+
+func is_active() -> bool:
+    return _target_strength > 0.001 or _strength > 0.001
+
 func _process(delta: float) -> void:
     _strength = move_toward(_strength, _target_strength, delta * 2.8)
     if not _reduced_motion:
@@ -59,7 +68,7 @@ func _draw() -> void:
     var targets := _targets
     if targets.is_empty():
         targets = [{"point": _fallback_center(), "kind": _interaction, "radius": 0.075}]
-    var limit := mini(targets.size(), 4)
+    var limit := mini(targets.size(), 2 + _assist_level)
     for index in range(limit):
         _draw_target(targets[index], index)
 
@@ -71,15 +80,19 @@ func _draw_target(target: Dictionary, index: int) -> void:
     var radius_norm := clampf(float(target.get("radius", 0.075)), 0.035, 0.20)
     var base_radius := minf(size.x, size.y) * radius_norm
     var pulse: float = 0.5 if _reduced_motion else 0.5 + sin(_phase * 2.0 + float(index) * 1.47) * 0.5
-    var portrait_gain: float = 1.16 if size.y > size.x else 1.0
-    if size.y > size.x: portrait_gain = 1.28
-    var alpha: float = clampf(_strength * (0.36 + pulse * 0.24) * portrait_gain, 0.0, 0.90)
-    var radius := base_radius * (0.92 + pulse * 0.14) * portrait_gain
+    var portrait_gain: float = 1.28 if size.y > size.x else 1.0
+    var assist_gain := 1.0 + float(_assist_level) * 0.08
+    var alpha: float = clampf(_strength * (0.36 + pulse * 0.24) * portrait_gain * assist_gain, 0.0, 0.94)
+    var radius := base_radius * (0.92 + pulse * 0.14) * portrait_gain * (1.0 + float(_assist_level) * 0.035)
 
     # Thin concentric rings match the approved Signal mockup and never resemble
     # a mobile-game glowing hotspot.
     draw_arc(center, radius, -PI * 0.84, PI * 0.84, 36, Color(_accent, alpha), 1.55)
     draw_arc(center, radius * 0.68, PI * 0.18, PI * 1.82, 28, Color(Color.WHITE, alpha * 0.34), 1.1)
+    if _assist_level >= 2:
+        # Tiny locator notch improves reacquisition on dirty/sunlit screens
+        # without turning the room into a conventional glowing-hotspot UI.
+        draw_line(center - Vector2(0.0, radius * 1.08), center - Vector2(0.0, radius * 0.88), Color(_accent, alpha * 0.72), 1.35)
     _draw_gesture_glyph(center, radius, kind, alpha)
 
 func _draw_gesture_glyph(center: Vector2, radius: float, kind: String, alpha: float) -> void:
