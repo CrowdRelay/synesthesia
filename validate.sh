@@ -66,7 +66,9 @@ run_godot_checked() {
     gate_args+=(--expected-marker "$expected_marker")
   fi
   if [[ "$allow_shutdown_noise" == "1" ]]; then
-    gate_args+=(--allow-471-shutdown-noise --max-objectdb 16 --max-resources 8)
+    # Godot 4.7.1 still leaves three zero-ref threaded-loader bookkeeping
+    # objects, but product-owned audio/resources must be fully released.
+    gate_args+=(--allow-471-shutdown-noise --max-objectdb 3 --max-resources 0)
   fi
 
   if ! "${gate_args[@]}"; then
@@ -86,7 +88,7 @@ run_godot_checked gdscript-parse "SYNESTHESIA_GDSCRIPT_PARSE=PASS" 0 --headless 
 run_godot_checked validation "SYNESTHESIA_VALIDATION=PASS" 0 --headless --path "$ROOT" --script res://tests/validate_project.gd
 # Godot 4.7.1 can emit bounded shutdown-only ObjectDB/Resource diagnostics
 # after a successful --script smoke run. The log gate allows only that exact
-# post-PASS signature, only on 4.7.1, and only under a small numeric budget.
+# post-PASS signature, only on 4.7.1, and only for its three zero-ref objects.
 run_godot_checked lifecycle "SYNESTHESIA_LIFECYCLE_SMOKE=PASS" 1 --headless --path "$ROOT" --script res://tests/lifecycle_smoke.gd
 
 echo "SYNESTHESIA_GODOT_RUNTIME=PASS"

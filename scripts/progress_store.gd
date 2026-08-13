@@ -60,6 +60,34 @@ static func load_album() -> Dictionary:
     var album_value: Variant = _load_document().get("album", {})
     return album_value.duplicate(true) if album_value is Dictionary else {}
 
+static func reconcile_album_timings(release_entries: Array, album_state: Dictionary) -> Dictionary:
+    # Older generations could persist each room checkpoint correctly while the
+    # album-level elapsed map stayed incomplete. Recover only matching completed
+    # room checkpoints; reset_local_journey clears releases, so timings can never
+    # leak across attempts.
+    var result: Dictionary = album_state.duplicate(true)
+    var completed_value: Variant = result.get("completed_room_ids", [])
+    var completed: Array = completed_value if completed_value is Array else []
+    var elapsed_value: Variant = result.get("room_elapsed_ms", {})
+    var elapsed: Dictionary = elapsed_value.duplicate(true) if elapsed_value is Dictionary else {}
+    var changed: bool = false
+    for entry_value in release_entries:
+        if not entry_value is Dictionary: continue
+        var release_id: String = str((entry_value as Dictionary).get("id", ""))
+        if release_id.is_empty() or not completed.has(release_id) or int(elapsed.get(release_id, 0)) > 0: continue
+        var saved: Dictionary = load_release(release_id)
+        var saved_ms: int = maxi(0, int(saved.get("elapsed_ms", 0)))
+        if bool(saved.get("completed", false)) and saved_ms > 0:
+            elapsed[release_id] = saved_ms
+            changed = true
+    if not changed: return result
+    var total: int = 0
+    for value in elapsed.values(): total += maxi(0, int(value))
+    result["room_elapsed_ms"] = elapsed
+    result["total_elapsed_ms"] = total
+    save_album(result)
+    return result
+
 static func save_album(state: Dictionary) -> bool:
     var document: Dictionary = _document_for_write()
     document["album"] = state.duplicate(true)

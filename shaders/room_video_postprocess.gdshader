@@ -15,6 +15,20 @@ float hash21(vec2 p) {
 
 void fragment() {
     vec2 uv = UV;
+    // The finale source is authored at 720x1280. VideoStreamPlayer expands its
+    // canvas item to the screen, so compensate in UV space and crop like an
+    // aspect-cover image instead of horizontally stretching the skull on desktop.
+    if (profile == 11) {
+        float source_aspect = 720.0 / 1280.0;
+        float target_aspect = SCREEN_PIXEL_SIZE.y / max(SCREEN_PIXEL_SIZE.x, 0.000001);
+        if (target_aspect > source_aspect) {
+            float visible_y = clamp(source_aspect / target_aspect, 0.05, 1.0);
+            uv.y = 0.5 + (uv.y - 0.5) * visible_y;
+        } else {
+            float visible_x = clamp(target_aspect / source_aspect, 0.05, 1.0);
+            uv.x = 0.5 + (uv.x - 0.5) * visible_x;
+        }
+    }
     vec2 px = TEXTURE_PIXEL_SIZE;
     float calm = quiet_visuals ? 0.52 : 1.0;
     float motion = reduced_motion ? 0.28 : 1.0;

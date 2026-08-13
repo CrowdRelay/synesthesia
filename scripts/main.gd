@@ -96,6 +96,7 @@ func _ready() -> void:
         _show_fatal_error("Nie znaleziono żadnego dostępnego pokoju.")
         return
     album_state = ProgressStoreScript.load_album()
+    album_state = ProgressStoreScript.reconcile_album_timings(release_entries, album_state)
     current_room_index = clampi(int(album_state.get("current_room_index", 0)), 0, release_entries.size() - 1)
     calm_mode = bool(album_state.get("calm_mode", true))
     quiet_mode = bool(album_state.get("quiet_mode", false))

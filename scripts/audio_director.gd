@@ -109,6 +109,7 @@ var _pending_excerpt_path: String = ""
 var _pending_ambience_path: String = ""
 var _pending_asset_source
 var _asset_runtime: Node
+var _shutdown_started: bool = false
 func _ready() -> void:
     _asset_runtime = AudioAssetRuntimeScript.new(); _asset_runtime.bind(self); add_child(_asset_runtime)
     _noise_player = AudioStreamPlayer.new()
@@ -368,7 +369,10 @@ func _apply_filter(reveal_mix: float) -> void:
             _last_reverb_wet = target_wet
             _music_reverb.wet = target_wet
             _music_reverb.room_size = lerpf(0.62, 0.34, clamped_mix)
-func _exit_tree() -> void:
+func shutdown() -> void:
+    if _shutdown_started:
+        return
+    _shutdown_started = true
     set_process(false)
     if _noise_player != null:
         _noise_player.stop()
@@ -386,5 +390,11 @@ func _exit_tree() -> void:
     _sfx_players.clear()
     _sfx_streams.clear()
     _balloon_pop_stream = null
+    _pending_excerpt_path = ""
+    _pending_ambience_path = ""
+    _pending_asset_source = null
     _music_lowpass = null
     _music_reverb = null
+
+func _exit_tree() -> void:
+    shutdown()

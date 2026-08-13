@@ -13,6 +13,13 @@ reward_flow = read("scripts/app/main_reward_flow.gd")
 finale = read("scripts/ui/signal_finale_card.gd")
 leaderboard = read("scripts/ui/signal_leaderboard_panel.gd")
 summary = read("scripts/ui/signal_journey_summary.gd")
+store = read("scripts/progress_store.gd")
+main = read("scripts/main.gd")
+signup = read("scripts/app/signal_signup_client.gd")
+menu = read("scripts/ui/experience_intro_card.gd")
+finale_bg = read("scripts/ui/echoes_finale_background.gd")
+video_shader = read("shaders/room_video_postprocess.gdshader")
+readme = read("README.md")
 
 # Competitive time is only valid when every release has a positive active-play
 # measurement; migrated/partial saves must never masquerade as a whole-album PB.
@@ -28,6 +35,10 @@ for token in (
 assert "journey_timed_complete" in room_flow
 assert "app.room_elapsed_before_start_ms = elapsed_at_completion" in room_flow
 assert room_flow.index("app.room_elapsed_before_start_ms = elapsed_at_completion") < room_flow.index("app._save_progress()")
+assert "resume_room_timer(); app.hud.set_painting(true)" in room_flow
+assert "if not app.restoring_progress and not app.completion_announced: resume_room_timer()" in room_flow
+assert "func reconcile_album_timings" in store
+assert "ProgressStoreScript.reconcile_album_timings(release_entries, album_state)" in main
 
 # Context refresh must not reuse the original completion idempotency response;
 # otherwise returning from My Signal can keep replaying linked_to_fan=false.
@@ -37,6 +48,9 @@ assert '"complete_album", "completion_context_refresh"' in reward
 assert "refresh_completion_context" in reward_flow
 assert "signal_context_refresh_requested" in finale
 assert "PO POWROCIE: SPRAWDŹ POŁĄCZENIE" in finale
+assert "if app.reward_client == null:" in reward_flow and "app.reward_client.start_run()" in reward_flow
+assert "func _ensure_http" in signup and "not _ensure_http()" in signup
+assert "OTWÓRZ MÓJ SYGNAŁ" in menu
 
 # Finale explains the exact opt-in path and blocks publication for incomplete timing.
 assert "RANKING · 1) połącz ten przebieg" in finale
@@ -46,4 +60,10 @@ assert "is_publish_eligible" in leaderboard
 assert "is_leaderboard_publish_eligible" in reward_flow
 assert "CZAS RANKINGOWY · NIEPEŁNY POMIAR" in summary
 
-print("SYNESTHESIA_FINALE_TIMING_SIGNAL_FLOW=PASS timing=11of11 signal=fresh-context leaderboard=explicit-opt-in")
+# Finale art/video preserve the authored portrait aspect instead of stretching it across desktop.
+assert "STRETCH_KEEP_ASPECT_COVERED" in finale_bg
+assert "source_aspect = 720.0 / 1280.0" in video_shader
+assert "target_aspect = SCREEN_PIXEL_SIZE.y" in video_shader
+assert readme.startswith("# Synesthesia\n")
+
+print("SYNESTHESIA_FINALE_TIMING_SIGNAL_FLOW=PASS timing=11of11+checkpoint-recovery signal=finale-bootstrap+menu fallback leaderboard=explicit-opt-in finale=aspect-covered readme=clean-title")

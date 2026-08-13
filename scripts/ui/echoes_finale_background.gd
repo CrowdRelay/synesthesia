@@ -28,7 +28,7 @@ func _ready() -> void:
     else:
         push_error("Echoes finale texture failed to load")
     _texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    _texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+    _texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
     _texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(_texture_rect)
     _texture_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

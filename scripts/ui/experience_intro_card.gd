@@ -268,6 +268,13 @@ func _build_signal_form() -> void:
     _signal_submit.pressed.connect(_submit_signal)
     _signal_form.add_child(_signal_submit)
 
+    var my_signal_button := UIFactory.product_button("OTWÓRZ MÓJ SYGNAŁ", Color("73869d"))
+    my_signal_button.tooltip_text = "Otwórz panel Virya Signal bezpośrednio"
+    my_signal_button.pressed.connect(func() -> void:
+        OS.shell_open("https://virya.music/pl/my-signal/?source=synesthesia-menu")
+    )
+    _signal_form.add_child(my_signal_button)
+
     _signal_client = SignalSignupClient.new()
     _signal_client.name = "SignalSignupClient"
     add_child(_signal_client)
@@ -326,7 +333,7 @@ func _on_signal_signup_finished(message: String) -> void:
     _signal_submit.disabled = true
 
 func _on_signal_request_failed(message: String) -> void:
-    _signal_status.text = message
+    _signal_status.text = "%s Możesz też otworzyć My Signal bezpośrednio poniżej." % message
     _signal_submit.disabled = false
 
 func _show_creators() -> void:

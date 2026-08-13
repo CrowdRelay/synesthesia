@@ -69,6 +69,14 @@ func _prepare_finale_background() -> void:
 func _show_reward_panel() -> void:
     if app.reward_panel != null:
         return
+    # The finale can be opened directly from a persisted 11/11 journey. In that
+    # path _begin_experience() intentionally skips gameplay startup, so the
+    # reward client may not exist yet. Bring it online here as well and let the
+    # normal run-start callback reconcile all locally completed rooms.
+    if app.reward_client == null:
+        _configure_reward_client()
+    if app.reward_client != null:
+        app.reward_client.start_run()
     _prepare_finale_background()
     app.SoundscapeRuntime.enter_outro(app.menu_soundscape, app.music_level, app.noise_level, app.quiet_mode)
     app.hud.visible = false

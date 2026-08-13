@@ -9,18 +9,24 @@ var _http: HTTPRequest
 var _operation: String = ""
 
 func _ready() -> void:
+    _ensure_http()
+
+func _ensure_http() -> bool:
+    if _http != null and is_instance_valid(_http):
+        return true
     _http = HTTPRequest.new()
     _http.name = "SignalSignupHttp"
     _http.timeout = 12.0
     _http.request_completed.connect(_on_request_completed)
     add_child(_http)
+    return true
 
 func configure(api_url: String) -> void:
     _api_url = api_url.trim_suffix("/")
 
 func load_cities() -> void:
-    if _api_url.is_empty() or _http == null:
-        request_failed.emit("Sygnał jest chwilowo niedostępny.")
+    if _api_url.is_empty() or not _ensure_http():
+        request_failed.emit("Nie udało się uruchomić formularza Sygnału.")
         return
     if not _operation.is_empty():
         return
@@ -31,8 +37,8 @@ func load_cities() -> void:
         request_failed.emit("Nie udało się pobrać listy miast.")
 
 func signup(email: String, city_slug: String, policy_version: String) -> void:
-    if _api_url.is_empty() or _http == null:
-        request_failed.emit("Sygnał jest chwilowo niedostępny.")
+    if _api_url.is_empty() or not _ensure_http():
+        request_failed.emit("Nie udało się uruchomić formularza Sygnału.")
         return
     if not _operation.is_empty():
         return
@@ -67,7 +73,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
         if decoded is Dictionary:
             parsed = decoded
     if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
-        request_failed.emit(str(parsed.get("message", "Sygnał jest chwilowo niedostępny.")))
+        request_failed.emit(str(parsed.get("message", "Nie udało się połączyć z Sygnałem. Spróbuj ponownie.")))
         return
     if operation == "cities":
         var raw: Variant = parsed.get("items", [])

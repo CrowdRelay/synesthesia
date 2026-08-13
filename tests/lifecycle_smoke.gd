@@ -267,6 +267,9 @@ func _run() -> void:
     await _dispose_node(reward)
 
     await _dispose_node(audio)
+    # Headless frames can run faster than the dummy audio mix thread. Allow one
+    # real mix interval for stopped playback references to leave AudioServer.
+    await create_timer(0.10).timeout
     preloader.drain()
     await _dispose_node(preloader)
     UIFactory.release_runtime_caches()
@@ -437,6 +440,11 @@ func _dispose_node(node: Node) -> void:
         return
     if node.has_method("shutdown"):
         node.call("shutdown")
+        # AudioServer releases playback objects on its own mix tick. Keep the
+        # stopped, stream-less players alive for one frame before freeing their
+        # owner so the backend cannot retain the old Ogg/MP3 playback handles
+        # through SceneTree shutdown.
+        await process_frame
     # Smoke tests should tear objects down synchronously. queue_free() is ideal
     # in gameplay, but at process shutdown it can leave ObjectDB entries alive
     # until the final frame and trigger Godot's leak diagnostics.

@@ -46,7 +46,7 @@ func _load_room(index: int, show_intro: bool) -> void:
     app.room.paint_pulse.connect(_on_paint_pulse)
     app.room.special_interaction.connect(_on_special_interaction)
     app.room.interaction_feedback.connect(func(message: String) -> void: app.hud.update_discovery(message))
-    app.room.interaction_started.connect(func() -> void: app.hud.set_painting(true))
+    app.room.interaction_started.connect(func() -> void: resume_room_timer(); app.hud.set_painting(true))
     app.room.interaction_ended.connect(func() -> void: app.hud.set_painting(false))
     app.room.act_changed.connect(_on_act_changed)
     app.audio_director = RuntimeFactory.audio_director(app.asset_preloader)
@@ -218,8 +218,8 @@ func _dismiss_intro() -> void:
     resume_room_timer()
     app._schedule_save()
 func _on_coverage_changed(value: float) -> void:
-    if app.room == null:
-        return
+    if app.room == null: return
+    if not app.restoring_progress and not app.completion_announced: resume_room_timer()
     app.current_coverage = value
     var normalized: float = float(app.room.get_normalized_progress())
     if app.audio_director != null:

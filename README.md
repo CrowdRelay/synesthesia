@@ -1,4 +1,4 @@
-# VIRYA: Synesthesia V2
+# Synesthesia
 
 Godot 4.7.1 portrait interactive-album adventure for **Echoes Of The Modern Mind**. Eleven explorable rooms combine micro-puzzles, hidden echoes, reactive audio, haptics and a moodboard-locked VIRYA Signal visual system while local progress remains resumable.
 
