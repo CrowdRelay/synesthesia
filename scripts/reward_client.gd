@@ -117,6 +117,25 @@ func complete_album(total_elapsed_ms: int) -> void:
         },
     })
 
+func refresh_completion_context(total_elapsed_ms: int) -> void:
+    if not has_run():
+        request_failed.emit("completion_context_refresh", "Brak aktywnego przebiegu Sygnału.")
+        return
+    # Completion is durable, but linked_to_fan/handoff context can change after
+    # the player visits My Signal. Reusing the original idempotency key can replay
+    # the first completion response forever, so context refreshes get a fresh key
+    # while retries of this exact request still reuse it.
+    var refresh_nonce: String = "%d-%d" % [int(Time.get_unix_time_from_system()), Time.get_ticks_msec()]
+    _enqueue({
+        "operation": "completion_context_refresh",
+        "path": "/v1/public/synesthesia/runs/%s/complete" % _run_id,
+        "authorized": true,
+        "idempotency_key": "synesthesia-completion-context-%s-%s" % [_run_id, refresh_nonce],
+        "payload": {
+            "client_total_elapsed_ms": maxi(0, total_elapsed_ms),
+        },
+    })
+
 func fetch_leaderboard(limit: int = 10) -> void:
     if _api_url.is_empty():
         request_failed.emit("leaderboard_load", "Top lista jest chwilowo niedostępna.")
@@ -236,7 +255,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
         "record_room":
             _server_next_room_index = maxi(0, int(parsed.get("next_room_index", _server_next_room_index)))
             room_recorded.emit(str(active_copy.get("room_id", "")), _server_next_room_index)
-        "complete_album":
+        "complete_album", "completion_context_refresh":
             album_recorded.emit(parsed.duplicate(true))
         "enter_draw":
             draw_entered.emit(

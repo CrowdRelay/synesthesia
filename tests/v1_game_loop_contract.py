@@ -37,10 +37,10 @@ for token in (
     assert token in reward, token
 assert "leaderboard_publish_requested" in finale
 assert "SignalLeaderboardPanel" in finale
-assert "TOP 10" in leaderboard and "TWÓJ CZAS" in leaderboard
+assert "TOP 10" in leaderboard and "TWÓJ CZAS CAŁEGO ALBUMU" in leaderboard
 assert "format_time" in leaderboard and "%03d" in leaderboard
 assert "best_elapsed_ms" in leaderboard
-assert "DODAJ ANONIMOWO DO TOP" in leaderboard
+assert "OPUBLIKUJ MÓJ PB W TOP 10" in leaderboard
 assert "woj••••" in leaderboard
 assert "publish_leaderboard()" in reward_flow
 assert "refresh_link_context_after_resume" in reward_flow

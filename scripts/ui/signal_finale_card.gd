@@ -3,6 +3,7 @@ extends Control
 signal draw_entry_requested(email: String)
 signal leaderboard_publish_requested
 signal leaderboard_refresh_requested
+signal signal_context_refresh_requested
 signal reset_requested
 signal album_mode_requested
 
@@ -33,6 +34,8 @@ var _motif
 var _ui_scale: float = 1.0
 var _ritual
 var _ritual_complete: bool = false
+var _server_completed: bool = false
+var _awaiting_signal_return: bool = false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -42,6 +45,7 @@ func _ready() -> void:
 
 func configure(server_completed: bool, saved_reward: Dictionary, journey_summary: Dictionary = {}, signal_context: Dictionary = {}) -> void:
     _signal_context = signal_context.duplicate(true)
+    _server_completed = server_completed
     var dim := ColorRect.new()
     dim.color = Color(0.003, 0.004, 0.010, 0.58)
     dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -136,6 +140,16 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     form_title.add_theme_color_override("font_color", _accent)
     _form.add_child(form_title)
 
+    var ranking_help := UIFactory.body("RANKING · 1) połącz ten przebieg z My Signal albo e-mailem, 2) opublikuj swój PB. Samo połączenie niczego nie publikuje.")
+    ranking_help.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+    ranking_help.add_theme_font_size_override("font_size", 11)
+    ranking_help.add_theme_color_override("font_color", Color("9eafc3"))
+    _form.add_child(ranking_help)
+
+    _signal_button = UIFactory.product_button("POŁĄCZ WYNIK Z SYGNAŁEM", Color("71dcff"))
+    _signal_button.pressed.connect(_handle_signal_action)
+    _form.add_child(_signal_button)
+
     _build_leaderboard(journey_summary)
 
     _email = UIFactory.line_edit("E-mail do losowania", Color("7fd7ef"))
@@ -158,10 +172,6 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _claim.disabled = not server_completed
     _claim.pressed.connect(_emit_claim)
     _form.add_child(_claim)
-
-    _signal_button = UIFactory.product_button("WZMOCNIJ SYGNAŁ VIRYA", Color("71dcff"))
-    _signal_button.pressed.connect(_open_signal)
-    _form.add_child(_signal_button)
 
     _next_event = UIFactory.body("")
     _next_event.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -246,11 +256,18 @@ func apply_signal_context(context: Dictionary) -> void:
     var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
     set_leaderboard_publish_enabled(linked)
     if linked:
+        _awaiting_signal_return = false
+        _signal_button.disabled = false
         _signal_button.text = "OTWÓRZ MÓJ SYGNAŁ"
+    elif not _server_completed:
+        _signal_button.disabled = true
+        _signal_button.text = "ŁĄCZĘ WYNIK Z SYGNAŁEM…"
     elif handoff.length() == 64:
-        _signal_button.text = "POŁĄCZ PODRÓŻ Z SYGNAŁEM"
+        _signal_button.disabled = false
+        _signal_button.text = "PO POWROCIE: SPRAWDŹ POŁĄCZENIE" if _awaiting_signal_return else "POŁĄCZ WYNIK Z SYGNAŁEM"
     else:
-        _signal_button.text = "WZMOCNIJ SYGNAŁ VIRYA"
+        _signal_button.disabled = false
+        _signal_button.text = "ODŚWIEŻ POŁĄCZENIE Z SYGNAŁEM"
 
     var event_value: Variant = _signal_context.get("next_event", {})
     var event: Dictionary = event_value if event_value is Dictionary else {}
@@ -270,6 +287,31 @@ func apply_signal_context(context: Dictionary) -> void:
     _next_event_button.text = "NASTĘPNY SYGNAŁ · %s" % str(event.get("title", slug)).to_upper()
     _next_event.visible = true
     _next_event_button.visible = true
+
+func set_server_completed(value: bool) -> void:
+    _server_completed = value
+    apply_signal_context(_signal_context)
+
+func is_leaderboard_publish_eligible() -> bool:
+    return _leaderboard_panel != null and _leaderboard_panel.is_publish_eligible()
+
+func _handle_signal_action() -> void:
+    var linked: bool = bool(_signal_context.get("linked_to_fan", false))
+    var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
+    if linked:
+        _open_signal()
+        return
+    if not _server_completed:
+        set_status("Najpierw kończę synchronizację ukończenia z CrowdRelay.")
+        return
+    if _awaiting_signal_return or handoff.length() != 64:
+        set_status("Sprawdzam, czy wynik jest już połączony z Twoim Sygnałem…")
+        signal_context_refresh_requested.emit()
+        return
+    _awaiting_signal_return = true
+    _signal_button.text = "PO POWROCIE: SPRAWDŹ POŁĄCZENIE"
+    set_status("Otwieram My Signal. Po zalogowaniu wróć tutaj i kliknij „SPRAWDŹ POŁĄCZENIE”.")
+    _open_signal()
 
 func _open_signal() -> void:
     var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()

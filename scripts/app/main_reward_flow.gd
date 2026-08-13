@@ -92,11 +92,12 @@ func _show_reward_panel() -> void:
         app.completion_context,
     )
     if bool(app.album_state.get("server_album_completed", false)) and app.reward_client != null and app.completion_context.is_empty():
-        # Refresh the short-lived handoff/event context without changing completion state.
-        app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
+        # Refresh mutable handoff/link context with a fresh idempotency key.
+        app.reward_client.refresh_completion_context(int(app.album_state.get("total_elapsed_ms", 0)))
     app.reward_panel.draw_entry_requested.connect(_submit_reward_claim_values)
     app.reward_panel.leaderboard_publish_requested.connect(_publish_leaderboard)
     app.reward_panel.leaderboard_refresh_requested.connect(_refresh_leaderboard)
+    app.reward_panel.signal_context_refresh_requested.connect(_refresh_signal_context)
     app.reward_panel.reset_requested.connect(app._confirm_reset_album)
     app.reward_panel.album_mode_requested.connect(app._show_album_archive)
     _refresh_leaderboard()
@@ -116,13 +117,24 @@ func refresh_link_context_after_resume() -> void:
         return
     # Returning from My Signal is the natural non-polling moment to discover
     # that a short-lived handoff has been consumed by another surface.
-    app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
+    app.reward_client.refresh_completion_context(int(app.album_state.get("total_elapsed_ms", 0)))
+
+func _refresh_signal_context() -> void:
+    if app.reward_panel == null or not is_instance_valid(app.reward_panel):
+        return
+    if app.reward_client == null or not bool(app.album_state.get("server_album_completed", false)):
+        app.reward_panel.set_status("Ukończenie nie jest jeszcze zsynchronizowane z CrowdRelay.")
+        return
+    app.reward_client.refresh_completion_context(int(app.album_state.get("total_elapsed_ms", 0)))
 
 func _publish_leaderboard() -> void:
     if app.reward_panel == null or not is_instance_valid(app.reward_panel):
         return
     if app.reward_client == null or not bool(app.album_state.get("server_album_completed", false)):
         app.reward_panel.set_leaderboard_status("Najpierw kończę synchronizację wyniku z CrowdRelay.")
+        return
+    if not app.reward_panel.is_leaderboard_publish_eligible():
+        app.reward_panel.set_leaderboard_status("Ten zapis nie ma pełnego pomiaru 11/11. Ranking odblokuje świeży pełny przebieg.")
         return
     app.reward_panel.set_leaderboard_publish_enabled(false)
     app.reward_panel.set_leaderboard_status("Zapisuję najlepszy czas…")
@@ -200,8 +212,10 @@ func _on_album_recorded(context: Dictionary = {}) -> void:
     app._save_album_state()
     app.ProgressStoreScript.save_run(app.reward_client.get_run_state())
     if app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app.reward_panel.set_server_completed(true)
         app.reward_panel.apply_signal_context(app.completion_context)
-        app.reward_panel.set_status("Ukończenie potwierdzone. Możesz połączyć podróż z Sygnałem lub dołączyć do losowania 5 płyt.")
+        var linked: bool = bool(app.completion_context.get("linked_to_fan", false))
+        app.reward_panel.set_status("Wynik połączony z Sygnałem. Możesz teraz opublikować PB w rankingu." if linked else "Ukończenie potwierdzone. Aby wejść do rankingu, połącz wynik z Sygnałem lub e-mailem, a potem opublikuj PB.")
         app.reward_panel.set_claim_enabled(true)
         app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
 
@@ -213,7 +227,7 @@ func _on_draw_entered(status: String, message: String) -> void:
     # Reward entry durably links the run to the fan. Refresh completion context
     # so a now-consumed handoff never remains as a stale CTA in the finale.
     if app.reward_client != null and bool(app.album_state.get("server_album_completed", false)):
-        app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
+        app.reward_client.refresh_completion_context(int(app.album_state.get("total_elapsed_ms", 0)))
 
 func _on_reward_request_failed(operation: String, message: String) -> void:
     if operation == "enter_draw" and app.reward_panel != null and is_instance_valid(app.reward_panel):
@@ -222,6 +236,8 @@ func _on_reward_request_failed(operation: String, message: String) -> void:
     elif operation.begins_with("leaderboard_") and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_leaderboard_status(message)
         app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
+    elif operation == "completion_context_refresh" and app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app.reward_panel.set_status(message)
     else:
         app.hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")
 
@@ -231,6 +247,8 @@ func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
         app.reward_panel.set_status(text_value)
     elif operation.begins_with("leaderboard_") and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_leaderboard_status(text_value)
+    elif operation == "completion_context_refresh" and app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app.reward_panel.set_status(text_value)
     else:
         app.hud.update_discovery(text_value)
 

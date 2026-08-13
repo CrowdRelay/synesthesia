@@ -24,11 +24,13 @@ func configure(summary: Dictionary, accent: Color) -> void:
     var echoes_found: int = maxi(0, int(summary.get("echoes_found", 0)))
     var echoes_total: int = maxi(echoes_found, int(summary.get("echoes_total", echoes_found)))
     var elapsed_ms: int = maxi(0, int(summary.get("elapsed_ms", 0)))
+    var timed_run_complete: bool = bool(summary.get("timed_run_complete", false))
+    var timed_rooms: int = maxi(0, int(summary.get("timed_rooms", 0)))
     var time_line := Label.new()
-    time_line.text = "CZAS · %s" % SignalLeaderboardPanel.format_time(elapsed_ms)
+    time_line.text = "CZAS CAŁEGO ALBUMU · %s" % SignalLeaderboardPanel.format_time(elapsed_ms) if timed_run_complete else "CZAS RANKINGOWY · NIEPEŁNY POMIAR %d/%d" % [timed_rooms, rooms_total]
     UIFactory.apply_display_font(time_line)
     time_line.add_theme_font_size_override("font_size", 19)
-    time_line.add_theme_color_override("font_color", Color("f2f8ff"))
+    time_line.add_theme_color_override("font_color", Color("f2f8ff") if timed_run_complete else Color("f0cf88"))
     content.add_child(time_line)
 
     var personal_best_ms: int = maxi(0, int(summary.get("personal_best_total_ms", 0)))

@@ -310,14 +310,14 @@ func _complete_current_room() -> void:
     if app.current_room_index == app.release_entries.size() - 1:
         app.album_state["album_completed"] = true
         app.album_state["replay_unlocked"] = true
+    var journey_completed: bool = app.current_room_index == app.release_entries.size() - 1
+    var journey_timed_complete: bool = app.ProgressMetrics.has_complete_journey_timing(app.release_entries, app.album_state)
     _completion_performance = app.ProgressMetrics.record_personal_best(
-        app.album_state, release_id, elapsed_at_completion,
-        app.current_room_index == app.release_entries.size() - 1,
-    )
+        app.album_state, app.release_entries, release_id, elapsed_at_completion, journey_completed, journey_timed_complete)
     timing_runtime.record_pb_splits(release_id, bool(_completion_performance.get("room_personal_best", false)))
-    app._save_progress()
     app.room_elapsed_before_start_ms = elapsed_at_completion
     app.room_started_ms = 0
+    app._save_progress()
     if app.current_room_index == 5 and not bool(app.album_state.get("signal_breach_seen", false)):
         app.album_state["signal_breach_seen"] = true
         app._save_album_state()
