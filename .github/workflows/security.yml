@@ -1,6 +1,18 @@
 name: Dependency security
 
 on:
+  push:
+    paths:
+      - "native/Cargo.toml"
+      - "native/Cargo.lock"
+      - "native/**/Cargo.toml"
+      - ".github/workflows/security.yml"
+  pull_request:
+    paths:
+      - "native/Cargo.toml"
+      - "native/Cargo.lock"
+      - "native/**/Cargo.toml"
+      - ".github/workflows/security.yml"
   schedule:
     - cron: "31 4 * * 1"
   workflow_dispatch:
@@ -9,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: dependency-security
+  group: dependency-security-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -21,6 +33,16 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.97.1 --profile minimal
+      - name: Generate deterministic lock SBOM
+        run: python3 tools/generate_lock_sbom.py native/Cargo.lock artifacts/synesthesia-sbom.cdx.json
+      - name: Upload dependency SBOM
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: synesthesia-sbom-${{ github.sha }}
+          path: artifacts/synesthesia-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Install pinned cargo-audit
         run: cargo +1.97.1 install cargo-audit --locked --version 0.22.2
       - name: Audit native Rust dependency lock

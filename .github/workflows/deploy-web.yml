@@ -77,6 +77,7 @@ jobs:
           test -s promoted/build/web/manifest.webmanifest
           test -s promoted/build/web/service-worker.js
           test -s promoted/build/web-artifact-manifest.json
+          test -s promoted/build/web-release-provenance.json
           test -s promoted/tools/artifact_manifest.py
           test -n "$(find promoted/build/web -maxdepth 1 -type f -name '*.wasm' -print -quit)"
           test -n "$(find promoted/build/web -maxdepth 1 -type f -name '*.pck' -print -quit)"
@@ -85,7 +86,15 @@ jobs:
             promoted/build/web \
             promoted/build/web-artifact-manifest.json \
             --source-sha "${SOURCE_SHA}"
-          echo "SYNESTHESIA_NETLIFY_ARTIFACT=PASS source=${SOURCE_SHA} rebuild=false"
+          python3 - promoted/build/web-release-provenance.json "${SOURCE_SHA}" <<'PY'
+          import json, re, sys
+          data = json.load(open(sys.argv[1]))
+          if data.get("sourceSha") != sys.argv[2]: raise SystemExit("release provenance source mismatch")
+          for key in ("dependencyLockSha256", "artifactManifestSha256"):
+              if not re.fullmatch(r"[0-9a-f]{64}", str(data.get(key, ""))):
+                  raise SystemExit(f"invalid {key}")
+          print("SYNESTHESIA_NETLIFY_ARTIFACT=PASS source=" + data["sourceSha"] + " rebuild=false")
+          PY
 
       - name: Verify Netlify source builds are stopped
         env:
@@ -171,7 +180,11 @@ jobs:
             echo "SYNESTHESIA_RELEASE_LEDGER=SKIP reason=not-configured"
             exit 0
           fi
-          jq -n --arg sha "${SOURCE_SHA}" --arg ref "${GITHUB_RUN_ID}" '{component_key:"synesthesia",environment:"production",source_sha:$sha,artifact_digest:null,deploy_ref:$ref,version:null,manifest_sha:null,metadata:{reporter:"github-actions"},observed_at:(now|todateiso8601)}' | \
+          lock_sha="$(jq -r '.dependencyLockSha256' promoted/build/web-release-provenance.json)"
+          manifest_sha="$(jq -r '.artifactManifestSha256' promoted/build/web-release-provenance.json)"
+          [[ "${lock_sha}" =~ ^[0-9a-f]{64}$ ]]
+          [[ "${manifest_sha}" =~ ^[0-9a-f]{64}$ ]]
+          jq -n --arg sha "${SOURCE_SHA}" --arg ref "${GITHUB_RUN_ID}" --arg lock "${lock_sha}" --arg artifact_manifest "${manifest_sha}" '{component_key:"synesthesia",environment:"production",source_sha:$sha,artifact_digest:("sha256:"+$artifact_manifest),deploy_ref:$ref,version:null,manifest_sha:null,metadata:{reporter:"github-actions",dependency_lock_sha256:$lock,artifact_manifest_sha256:$artifact_manifest},observed_at:(now|todateiso8601)}' | \
             curl --fail-with-body --silent --show-error --max-time 15 \
               -H 'content-type: application/json' \
               -H "Authorization: Bearer ${CROWDRELAY_COMMERCE_API_KEY}" \
