@@ -1,0 +1,27 @@
+name: Dependency security
+
+on:
+  schedule:
+    - cron: "31 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-security
+  cancel-in-progress: true
+
+jobs:
+  rustsec:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+      - name: Install pinned cargo-audit
+        run: cargo +1.97.1 install cargo-audit --locked --version 0.22.2
+      - name: Audit native Rust dependency lock
+        run: cargo +1.97.1 audit --file native/Cargo.lock

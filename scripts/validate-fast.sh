@@ -17,6 +17,7 @@ python3 tests/technophobia_vertical_slice_contract.py
 python3 tests/full_room_gameplay_contract.py
 python3 tests/gesture_semantics_contract.py
 python3 tests/runtime_hot_path_contract.py
+python3 tests/runtime_loader_deadline_contract.py
 python3 tests/player_experience_evolution_contract.py
 python3 tests/ui_input_contract.py
 python3 tests/finale_settings_startup_regression_contract.py

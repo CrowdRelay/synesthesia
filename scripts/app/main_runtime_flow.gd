@@ -11,6 +11,8 @@ const ADAPTIVE_PERFORMANCE_PATH := "res://scripts/app/adaptive_performance.gd"
 const GAMEPLAY_TELEMETRY_PATH := "res://scripts/app/gameplay_telemetry.gd"
 const ALBUM_MODE_PATH := "res://scripts/app/album_mode_controller.gd"
 const MAIN_ROOM_FLOW_PATH := "res://scripts/app/main_room_flow.gd"
+const RUNTIME_SCRIPT_LOAD_TIMEOUT_MS := 1_500
+const RUNTIME_INSTALL_WAIT_TIMEOUT_MS := 10_000
 const RUNTIME_PATHS: Array[String] = [
     ASSET_PRELOADER_PATH,
     HUD_PATH,
@@ -41,8 +43,12 @@ func ensure_ready() -> bool:
     if _failed:
         return false
     if _installing:
-        while _installing:
+        var install_deadline_ms: int = Time.get_ticks_msec() + RUNTIME_INSTALL_WAIT_TIMEOUT_MS
+        while _installing and Time.get_ticks_msec() < install_deadline_ms:
             await get_tree().process_frame
+        if _installing:
+            push_error("Runtime installation timed out while waiting for the active installer")
+            return false
         return _ready
     _installing = true
     _request_runtime_graphs()
@@ -117,10 +123,14 @@ func _script(path: String) -> Script:
             _scripts[path] = fallback
             return fallback as Script
         return null
+    var deadline_ms: int = Time.get_ticks_msec() + RUNTIME_SCRIPT_LOAD_TIMEOUT_MS
     var status: int = int(ResourceLoader.load_threaded_get_status(path))
-    while status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+    while status == ResourceLoader.THREAD_LOAD_IN_PROGRESS and Time.get_ticks_msec() < deadline_ms:
         await get_tree().process_frame
         status = int(ResourceLoader.load_threaded_get_status(path))
+    if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+        push_error("Runtime script load timed out: %s" % path)
+        return null
     if status == ResourceLoader.THREAD_LOAD_LOADED:
         var resource: Resource = ResourceLoader.load_threaded_get(path)
         if resource is Script:
