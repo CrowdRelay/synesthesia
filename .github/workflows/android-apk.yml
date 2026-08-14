@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: synesthesia-android-apk-${{ github.ref }}
+  group: synesthesia-android-apk-${{ github.event.workflow_run.actor.login || github.actor }}-${{ github.event.workflow_run.head_sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
