@@ -48,6 +48,22 @@ static func completion_summary(release_entries: Array, album_state: Dictionary) 
     var raw_elapsed_ms: int = sum_elapsed_ms(elapsed)
     var timed_rooms: int = timed_room_count(release_entries, album_state)
     var timed_run_complete: bool = has_complete_journey_timing(release_entries, album_state)
+    var mastery_value: Variant = album_state.get("best_room_mastery", {})
+    var mastery: Dictionary = mastery_value if mastery_value is Dictionary else {}
+    var mastery_rooms: int = 0
+    var mastery_score_total: int = 0
+    var mastery_s_rooms: int = 0
+    for value in mastery.values():
+        if not value is Dictionary:
+            continue
+        var score: int = clampi(int((value as Dictionary).get("score", 0)), 0, 100)
+        if score <= 0:
+            continue
+        mastery_rooms += 1
+        mastery_score_total += score
+        if score >= 95:
+            mastery_s_rooms += 1
+    var mastery_average: int = int(round(float(mastery_score_total) / float(mastery_rooms))) if mastery_rooms > 0 else 0
     var marks: Array[String] = []
     if rooms_completed >= release_entries.size() and not release_entries.is_empty():
         marks.append("PEŁNA ŚCIEŻKA")
@@ -55,6 +71,8 @@ static func completion_summary(release_entries: Array, album_state: Dictionary) 
         marks.append("PEŁNY REZONANS")
     elif echoes_found > 0:
         marks.append("WŁASNY ŚLAD")
+    if mastery_rooms >= release_entries.size() and mastery_average >= 85 and not release_entries.is_empty():
+        marks.append("MISTRZOSTWO REZONANSU")
     if bool(album_state.get("calm_mode", true)) or bool(album_state.get("quiet_visuals", false)):
         marks.append("WŁASNE TEMPO")
     return {
@@ -70,8 +88,50 @@ static func completion_summary(release_entries: Array, album_state: Dictionary) 
         "timed_run_complete": timed_run_complete,
         "personal_best_total_ms": validated_personal_best_total_ms(release_entries, album_state),
         "completed_runs_local": maxi(0, int(album_state.get("completed_runs_local", 0))),
+        "mastery_rooms": mastery_rooms,
+        "mastery_s_rooms": mastery_s_rooms,
+        "mastery_average": mastery_average,
         "journey_marks": marks.slice(0, 3),
     }
+
+static func room_mastery(found_echoes: int, total_echoes: int, guidance: Dictionary, performance: Dictionary) -> Dictionary:
+    # Pure local score: optional exploration + interaction fluency. Accessibility
+    # settings are intentionally not penalized and mastery never affects rewards.
+    var echo_ratio: float = 1.0 if total_echoes <= 0 else clampf(float(found_echoes) / float(total_echoes), 0.0, 1.0)
+    var misses: int = maxi(0, int(guidance.get("miss_count", 0)))
+    var hints: int = maxi(0, int(guidance.get("hint_count", 0)))
+    var score: int = 70 + int(round(20.0 * echo_ratio))
+    score += 5 if misses == 0 else -mini(15, misses * 3)
+    score += 5 if hints == 0 else -mini(10, hints * 2)
+    var previous_best_ms: int = maxi(0, int(performance.get("previous_room_best_ms", 0)))
+    if previous_best_ms > 0 and bool(performance.get("room_personal_best", false)):
+        score += 5
+    score = clampi(score, 0, 100)
+    var grade: String = "S" if score >= 95 else ("A" if score >= 85 else ("B" if score >= 72 else "C"))
+    return {
+        "score": score,
+        "grade": grade,
+        "echo_ratio": echo_ratio,
+        "miss_count": misses,
+        "hint_count": hints,
+    }
+
+static func record_room_mastery(album_state: Dictionary, release_id: String, mastery: Dictionary) -> Dictionary:
+    var best_value: Variant = album_state.get("best_room_mastery", {})
+    var best: Dictionary = best_value if best_value is Dictionary else {}
+    var previous_value: Variant = best.get(release_id, {})
+    var previous: Dictionary = previous_value if previous_value is Dictionary else {}
+    var previous_score: int = maxi(0, int(previous.get("score", 0)))
+    var score: int = clampi(int(mastery.get("score", 0)), 0, 100)
+    var improved: bool = previous_score <= 0 or score > previous_score
+    if improved:
+        best[release_id] = {"score": score, "grade": str(mastery.get("grade", "C"))}
+    album_state["best_room_mastery"] = best
+    var result: Dictionary = mastery.duplicate(true)
+    result["previous_best_mastery"] = previous_score
+    result["mastery_personal_best"] = improved
+    result["best_mastery"] = maxi(previous_score, score)
+    return result
 
 static func record_personal_best(album_state: Dictionary, release_entries: Array, release_id: String, room_elapsed_ms: int, journey_completed: bool, journey_timed_complete: bool) -> Dictionary:
     # Local-only performance feedback: no network, no reward or eligibility input.
@@ -101,6 +161,19 @@ static func record_personal_best(album_state: Dictionary, release_entries: Array
             performance["previous_total_best_ms"] = previous_total_best
             performance["journey_personal_best"] = journey_personal_best
     return performance
+
+static func record_completion_performance(album_state: Dictionary, release_entries: Array, release_id: String, room_elapsed_ms: int, journey_completed: bool, journey_timed_complete: bool, found_echoes: int, total_echoes: int, guidance: Dictionary) -> Dictionary:
+    var performance := record_personal_best(album_state, release_entries, release_id, room_elapsed_ms, journey_completed, journey_timed_complete)
+    var mastery := record_room_mastery(album_state, release_id, room_mastery(found_echoes, total_echoes, guidance, performance))
+    for key in mastery.keys():
+        performance[key] = mastery[key]
+    return performance
+
+static func mastery_completion_message(message: String, performance: Dictionary) -> String:
+    var grade: String = str(performance.get("grade", ""))
+    if grade.is_empty():
+        return message
+    return message + "\n\nREZONANS %s · %d/100%s" % [grade, int(performance.get("score", 0)), " · NOWE PB" if bool(performance.get("mastery_personal_best", false)) else ""]
 
 static func current_room_elapsed_ms(room_started_ms: int, room_elapsed_before_start_ms: int, room_timer_running: bool) -> int:
     if room_started_ms <= 0 or not room_timer_running:

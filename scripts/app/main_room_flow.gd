@@ -35,6 +35,7 @@ func _load_room(index: int, show_intro: bool) -> void:
     app.room_layer.add_child(app.room)
     app.room.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     app.room.configure(room_data, collectible_entries, app.manifest.get("sensory", {}), app.quality, app.asset_preloader)
+    app.room.set_resonance_memory(EchoArchive.latest_echo(app.album_state, str(app.manifest.get("release_id", ""))))
     app.room.set_interaction_enabled(false)
     if app.adaptive_performance != null:
         app.room.set_runtime_budget(float(app.adaptive_performance.get_scale()))
@@ -86,8 +87,7 @@ func _load_room(index: int, show_intro: bool) -> void:
     if app.room.has_method("get_interaction_hint"):
         app.hud.update_instruction(app.room.get_interaction_hint())
     app._apply_sensory_mode()
-    _preload_next_room()
-    app.call_deferred("_restore_room_after_layout", show_intro)
+    app.call_deferred("_restore_room_after_layout", show_intro) # first paint before next-room I/O
 func _instantiate_room(room_data: Dictionary):
     var scene_path: String = str(room_data.get("scene_path", ""))
     var resource: Resource = null
@@ -177,6 +177,7 @@ func _restore_room_after_layout(show_intro: bool) -> void:
         if app.experience_intro_panel == null:
             resume_room_timer()
     app.restoring_progress = false
+    app.call_deferred("_preload_next_room")
 func _collectible_total() -> int:
     var value: Variant = app.manifest.get("collectibles", [])
     if value is Array:
@@ -272,8 +273,8 @@ func _complete_current_room() -> void:
     var elapsed_at_completion: int = app.ProgressMetrics.current_room_elapsed_ms(app.room_started_ms, app.room_elapsed_before_start_ms, app.room_timer_running)
     app.completion_announced = true
     app.room_timer_running = false
+    var guidance: Dictionary = app.hud.guidance_stats() if app.hud != null and app.hud.has_method("guidance_stats") else {}
     if app.gameplay_telemetry != null:
-        var guidance: Dictionary = app.hud.guidance_stats() if app.hud != null and app.hud.has_method("guidance_stats") else {}
         app.gameplay_telemetry.complete_room(elapsed_at_completion, guidance)
     app.room.set_post_reveal_interaction(true)
     app.room.set_cinematic_reveal(true)
@@ -310,10 +311,8 @@ func _complete_current_room() -> void:
     if app.current_room_index == app.release_entries.size() - 1:
         app.album_state["album_completed"] = true
         app.album_state["replay_unlocked"] = true
-    var journey_completed: bool = app.current_room_index == app.release_entries.size() - 1
-    var journey_timed_complete: bool = app.ProgressMetrics.has_complete_journey_timing(app.release_entries, app.album_state)
-    _completion_performance = app.ProgressMetrics.record_personal_best(
-        app.album_state, app.release_entries, release_id, elapsed_at_completion, journey_completed, journey_timed_complete)
+    var journey_completed: bool = app.current_room_index == app.release_entries.size() - 1; var journey_timed_complete: bool = app.ProgressMetrics.has_complete_journey_timing(app.release_entries, app.album_state)
+    _completion_performance = app.ProgressMetrics.record_completion_performance(app.album_state, app.release_entries, release_id, elapsed_at_completion, journey_completed, journey_timed_complete, int(app.room.get_found_count()), _collectible_total(), guidance)
     timing_runtime.record_pb_splits(release_id, bool(_completion_performance.get("room_personal_best", false)))
     app.room_elapsed_before_start_ms = elapsed_at_completion
     app.room_started_ms = 0
@@ -358,6 +357,7 @@ func _show_completion_panel() -> void:
     var completion_message := str(app.manifest.get("completion_message", "Obraz i muzyka zostały odsłonięte."))
     var found_echoes := int(app.room.get_found_count()) if app.room != null else 0
     var total_echoes := _collectible_total()
+    completion_message = app.ProgressMetrics.mastery_completion_message(completion_message, _completion_performance)
     if found_echoes < total_echoes:
         completion_message += "\n\nEcha %d/%d · %d nadal %s w pokoju. Możesz zostać i poszukać albo wrócić tu później w Album Mode." % [
             found_echoes, total_echoes, total_echoes - found_echoes, "czekają" if total_echoes - found_echoes > 1 else "czeka",

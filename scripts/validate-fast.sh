@@ -33,5 +33,6 @@ python3 tests/mobile_speedrun_feedback_contract.py
 python3 tests/leaderboard_player_feedback_contract.py
 python3 tests/finale_timing_signal_flow_contract.py
 python3 tests/v2_gameplay_polish_contract.py
+python3 tests/mastery_memory_contract.py
 
 printf '%s\n' 'SYNESTHESIA_FAST_VALIDATION=PASS scope=gameplay+mobile+hot-path+source'

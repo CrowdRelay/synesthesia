@@ -303,11 +303,11 @@ func set_runtime_budget(scale: float) -> void:
         hint_layer.set_runtime_scale(_runtime_scale)
     if room_dressing != null:
         room_dressing.set_runtime_scale(_runtime_scale)
+func set_resonance_memory(memory: Dictionary) -> void:
+    if behavior != null and behavior.has_method("set_resonance_memory"): behavior.set_resonance_memory(memory)
 func set_assist_level(level: int) -> void:
-    if behavior != null and behavior.has_method("set_assist_level"):
-        behavior.set_assist_level(level)
-    if hint_layer != null and hint_layer.has_method("set_assist_level"):
-        hint_layer.set_assist_level(level)
+    if behavior != null and behavior.has_method("set_assist_level"): behavior.set_assist_level(level)
+    if hint_layer != null and hint_layer.has_method("set_assist_level"): hint_layer.set_assist_level(level)
 func set_hint_strength(value: float) -> void:
     if hint_layer != null:
         _refresh_hint_targets()

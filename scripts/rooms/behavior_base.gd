@@ -4,12 +4,14 @@ var room_data: Dictionary = {}
 var state: Dictionary = {}
 var interaction_forgiveness: float = 1.12
 var assist_level: int = 0
+var resonance_memory_strength: float = 0.0
 
 func configure(data: Dictionary) -> void:
     room_data = data.duplicate(true)
     state = {}
     interaction_forgiveness = 1.12
     assist_level = 0
+    resonance_memory_strength = 0.0
 
 func acts() -> Array[String]:
     return ["ROZPOZNANIE", "PRZEŁAMANIE", "TRANSFORMACJA"]
@@ -79,6 +81,16 @@ func export_state() -> Dictionary:
 func restore_state(saved: Dictionary) -> void:
     state = saved.duplicate(true)
 
+func set_resonance_memory(memory: Dictionary) -> void:
+    # An Echo found in another room leaves a tiny, positive mechanical afterimage:
+    # slightly more forgiving touch geometry and a little more reveal energy.
+    # It never unlocks content or changes completion requirements.
+    if memory.is_empty():
+        resonance_memory_strength = 0.0
+        return
+    var echo_type: String = str(memory.get("echo_type", "signal_trace"))
+    resonance_memory_strength = 0.08 if echo_type in ["gesture_trace", "interaction_trace", "mechanic_trace"] else 0.06
+
 func set_assist_level(level: int) -> void:
     # Assist primarily changes invisible touch tolerance. Rooms may also use the
     # level for a tiny authored affordance lift, never to change mechanic state.
@@ -88,7 +100,7 @@ func set_assist_level(level: int) -> void:
 func _near(point: Vector2, target: Vector2, radius: float) -> bool:
     # Touch targets are intentionally a little more forgiving than their visual
     # geometry. This keeps precision from becoming difficulty on small phones.
-    var forgiving_radius: float = radius * interaction_forgiveness
+    var forgiving_radius: float = radius * (interaction_forgiveness + resonance_memory_strength)
     return point.distance_squared_to(target) <= forgiving_radius * forgiving_radius
 
 func _gesture_point(gesture: Dictionary) -> Vector2:
@@ -113,6 +125,6 @@ func _interaction_event(kind: String, index: int, message: String, point: Vector
         "index": index,
         "message": message,
         "point": point,
-        "reveal_radius": reveal_radius,
-        "reveal_strength": reveal_strength,
+        "reveal_radius": reveal_radius * (1.0 + resonance_memory_strength),
+        "reveal_strength": clampf(reveal_strength + resonance_memory_strength * 0.50, 0.0, 1.0),
     }

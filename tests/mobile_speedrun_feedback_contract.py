@@ -15,7 +15,7 @@ for token in ('personal_best_room_ms', 'personal_best_total_ms', 'completed_runs
     assert token in progress, token
 assert 'personal_best_room_ms", "personal_best_total_ms", "completed_runs_local' in progress
 assert '_completion_performance' in room
-assert 'record_personal_best' in room
+assert 'record_completion_performance' in room and 'record_personal_best' in metrics
 for token in ('previous_room_best', 'room_personal_best', 'journey_personal_best'):
     assert token in metrics, token
 for token in ('CZAS POKOJU', 'NOWY PB', 'PRZEBIEG', '_signed_delta'):
