@@ -3,21 +3,16 @@ const StartupScriptCache := preload("res://scripts/app/startup_script_cache.gd")
 const MainSettingsFlowScript := preload("res://scripts/app/main_settings_flow.gd")
 const MainRewardFlowScript := preload("res://scripts/app/main_reward_flow.gd")
 const MainWarmupFlowScript := preload("res://scripts/app/main_warmup_flow.gd")
+const MainRuntimeFlowScript := preload("res://scripts/app/main_runtime_flow.gd")
 const FatalErrorPresenter := preload("res://scripts/app/fatal_error_presenter.gd")
 const ProgressStoreScript := preload("res://scripts/progress_store.gd")
 const QualityManager := preload("res://scripts/app/quality_manager.gd")
-const AppHudScript := preload("res://scripts/ui/app_hud.gd")
-const TransitionDirectorScript := preload("res://scripts/app/transition_director.gd")
-const AssetPreloaderScript := preload("res://scripts/app/asset_preloader.gd")
-const AdaptivePerformanceScript := preload("res://scripts/app/adaptive_performance.gd")
 const NativeExperienceSurfaceScript := preload("res://scripts/app/native_experience_surface.gd")
 const InteractiveUiRootScript := preload("res://scripts/app/interactive_ui_root.gd")
 const SoundscapeRuntime := preload("res://scripts/app/soundscape_runtime.gd")
 const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
-const GameplayTelemetryScript := preload("res://scripts/app/gameplay_telemetry.gd")
 const AppLifecycle := preload("res://scripts/app/app_lifecycle.gd")
-const AlbumModeControllerScript := preload("res://scripts/app/album_mode_controller.gd")
 const BootSequenceScript := preload("res://scripts/ui/boot_sequence.gd")
 const RELEASE_INDEX_PATH: String = "res://data/release_index.json"
 const VERSION_PATH: String = "res://VERSION"
@@ -76,6 +71,7 @@ var settings_flow: Node
 var reward_flow: Node
 var warmup_flow: Node
 var startup_scripts: Node
+var runtime_flow: Node
 func _ready() -> void:
     DebugProfile.fit_macos_window_to_screen()
     index_document = ReleaseReader.load_json(RELEASE_INDEX_PATH)
@@ -115,6 +111,7 @@ func _ready() -> void:
     reward_flow = MainRewardFlowScript.new(); reward_flow.bind(self); add_child(reward_flow)
     warmup_flow = MainWarmupFlowScript.new(); warmup_flow.bind(self); add_child(warmup_flow)
     startup_scripts = StartupScriptCache.new(); startup_scripts.bind(self); add_child(startup_scripts)
+    runtime_flow = MainRuntimeFlowScript.new(); runtime_flow.bind(self); add_child(runtime_flow)
     _build_application_shell()
     room_layer.visible = false
     _enter_main_menu_mode()
@@ -130,31 +127,6 @@ func _build_application_shell() -> void:
     room_layer.set_anchors_preset(Control.PRESET_TOP_LEFT)
     experience_surface.content_geometry_changed.connect(_apply_native_geometry)
     _apply_native_geometry()
-    hud = AppHudScript.new()
-    hud.name = "AppHud"
-    game_surface.add_child(hud)
-    hud.settings_requested.connect(_show_settings)
-    transition_director = TransitionDirectorScript.new()
-    transition_director.name = "TransitionDirector"
-    experience_surface.add_child(transition_director)
-    transition_director.install(experience_surface)
-    transition_director.set_replay_mode(bool(album_state.get("replay_mode", false)))
-    transition_director.set_memory_count(_array_value(album_state.get("completed_room_ids", [])).size())
-    album_mode_controller = AlbumModeControllerScript.new()
-    add_child(album_mode_controller)
-    album_mode_controller.configure(ui_root, room_layer, hud, transition_director, release_entries)
-    album_mode_controller.room_requested.connect(_enter_album_mode_room)
-    album_mode_controller.corridor_requested.connect(_show_album_archive)
-    album_mode_controller.finale_requested.connect(_show_reward_panel)
-    album_mode_controller.menu_requested.connect(_show_experience_intro)
-    asset_preloader = AssetPreloaderScript.new(); asset_preloader.name = "AssetPreloader"
-    add_child(asset_preloader)
-    adaptive_performance = AdaptivePerformanceScript.new(); adaptive_performance.name = "AdaptivePerformance"
-    add_child(adaptive_performance)
-    adaptive_performance.budget_changed.connect(_on_runtime_budget_changed)
-    adaptive_performance.configure(quality_profile)
-    gameplay_telemetry = GameplayTelemetryScript.new(); gameplay_telemetry.name = "GameplayTelemetry"
-    add_child(gameplay_telemetry)
     menu_soundscape = SoundscapeRuntime.install(self, music_level, noise_level, quiet_mode)
     save_timer = Timer.new()
     save_timer.name = "ProgressSaveTimer"
@@ -202,9 +174,13 @@ func _show_experience_intro() -> void:
     experience_intro_panel.new_journey_requested.connect(_confirm_reset_album)
     experience_intro_panel.settings_requested.connect(_show_settings)
     experience_intro_panel.album_mode_requested.connect(_show_album_archive)
+    runtime_flow.call_deferred("prime_under_menu")
     warmup_flow.call_deferred("warm_under_main_menu")
 func _show_album_archive() -> void:
     if not bool(album_state.get("album_completed", false)):
+        return
+    if runtime_flow != null and not await runtime_flow.ensure_ready():
+        _show_fatal_error("Nie udało się przygotować Album Mode.")
         return
     _remove_modal(experience_intro_panel)
     experience_intro_panel = null
@@ -222,23 +198,27 @@ func _enter_album_mode_room(index: int) -> void:
 func _begin_experience() -> void:
     if transition_running:
         return
-    if gameplay_telemetry != null:
-        gameplay_telemetry.begin_journey(
-            _array_value(album_state.get("completed_room_ids", [])).size(),
-            int(album_state.get("total_elapsed_ms", 0)),
-        )
     if bool(album_state.get("album_completed", false)):
         _remove_modal(experience_intro_panel)
         experience_intro_panel = null
         _show_reward_panel()
         return
+    transition_running = true
+    if runtime_flow != null and not await runtime_flow.ensure_ready():
+        transition_running = false
+        _show_fatal_error("Nie udało się przygotować runtime Synesthesii.")
+        return
+    if gameplay_telemetry != null:
+        gameplay_telemetry.begin_journey(
+            _array_value(album_state.get("completed_room_ids", [])).size(),
+            int(album_state.get("total_elapsed_ms", 0)),
+        )
     if reward_client == null:
         _configure_reward_client()
     if reward_client != null: reward_client.start_run()
     if room == null and asset_preloader != null:
         asset_preloader.prepare(str((release_entries[current_room_index] as Dictionary).get("manifest", "")))
         asset_preloader.prime_runtime_support()
-    transition_running = true
     if transition_director != null:
         transition_director.set_next_accent(_accent_for_release(current_room_index))
         await transition_director.travel_out()

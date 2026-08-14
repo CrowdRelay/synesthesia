@@ -68,6 +68,7 @@ python3 tests/gamefeel_v5_contract.py
 python3 tests/rum_contract.py
 python3 tests/comic_skin_contract.py
 python3 tests/ui_input_contract.py
+python3 tests/finale_settings_startup_regression_contract.py
 python3 tests/ui_performance_contract.py
 python3 tests/ui_scale_flow_contract.py
 python3 tests/ui_quality_polish_contract.py

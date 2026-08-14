@@ -89,10 +89,11 @@ main = "\n".join(
         "scripts/app/main_room_flow.gd",
         "scripts/app/main_settings_flow.gd",
         "scripts/app/main_reward_flow.gd",
+        "scripts/app/main_runtime_flow.gd",
     )
 )
 for token in (
-    "AlbumModeControllerScript", "EchoArchive.remember", "album_mode_controller.is_listening()",
+    "ALBUM_MODE_PATH", "EchoArchive.remember", "album_mode_controller.is_listening()",
     "album_mode_controller.show_archive", "album_mode_controller.enter_room",
     "transition_director.set_memory_count", "album_mode_controller.is_listening():\n        return",
 ):

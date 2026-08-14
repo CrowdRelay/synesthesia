@@ -17,7 +17,7 @@ req('scripts/render/room_visual_setup.gd','WorldMicroFxLayerScript','WorldMicroF
 req('scripts/render/room_stage.gd','world_micro_fx.set_progress','world_micro_fx.set_pointer','world_micro_fx.set_cinematic')
 req('scripts/audio_director.gd','_semantic_clearance','cable_unplug','signal_lock','echo_complete','music_ratio','noise_ratio')
 req('scripts/ui/signal_resonance_ritual.gd','REZONANS · 4 SYGNAŁY · 1 TOŻSAMOŚĆ','SIGNAL COMPLETE','completed.emit()')
-req('scripts/ui/signal_finale_card.gd','SignalResonanceRitual','_on_ritual_completed','_form.visible = _ritual_complete')
+req('scripts/ui/signal_finale_card.gd','SignalResonanceRitual','_on_ritual_completed','_form.visible = true','_claim.disabled = not server_completed or not _ritual_complete','_claim.disabled = not value or not _ritual_complete')
 req('scripts/app/echo_archive.gd','source_role','echo_type','reward_hint')
 req('scripts/app/main_room_flow.gd','ECHA 3/3 · pełna pamięć pokoju','echo_complete')
 req('scripts/ui/album_archive_card.gd','EchoCodexMemory')

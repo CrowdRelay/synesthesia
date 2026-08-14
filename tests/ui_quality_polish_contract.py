@@ -71,7 +71,10 @@ require(
     "chrome.add_child(close_x)",
     'close_x.name = "CloseSettingsX"',
     'close_x.tooltip_text = "Wróć do malowania"',
-    "close_x.custom_minimum_size = Vector2(42.0, 42.0) * _ui_scale",
+    "close_x.custom_minimum_size = Vector2(48.0, 48.0) * _ui_scale",
+    "chrome.z_index = 40",
+    "close_x.mouse_filter = Control.MOUSE_FILTER_STOP",
+    "close_x.focus_mode = Control.FOCUS_ALL",
     "close_x.size_flags_horizontal = Control.SIZE_SHRINK_END",
     "close_x.pressed.connect",
 )

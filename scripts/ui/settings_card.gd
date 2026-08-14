@@ -103,20 +103,26 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     var chrome := Control.new()
     chrome.name = "SettingsChrome"
     chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    chrome.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
+    chrome.z_index = 40
     panel.add_child(chrome)
     chrome.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     var close_x := UIFactory.button("X", true)
     close_x.name = "CloseSettingsX"
     close_x.tooltip_text = "Wróć do malowania"
     close_x.alignment = HORIZONTAL_ALIGNMENT_CENTER
-    close_x.custom_minimum_size = Vector2(42.0, 42.0) * _ui_scale
+    close_x.custom_minimum_size = Vector2(48.0, 48.0) * _ui_scale
     close_x.size_flags_horizontal = Control.SIZE_SHRINK_END
+    close_x.mouse_filter = Control.MOUSE_FILTER_STOP
+    close_x.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
+    close_x.focus_mode = Control.FOCUS_ALL
+    close_x.z_index = 1
     chrome.add_child(close_x)
     close_x.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-    close_x.offset_left = -52.0 * _ui_scale
+    close_x.offset_left = -58.0 * _ui_scale
     close_x.offset_right = -10.0 * _ui_scale
     close_x.offset_top = 10.0 * _ui_scale
-    close_x.offset_bottom = 52.0 * _ui_scale
+    close_x.offset_bottom = 58.0 * _ui_scale
     close_x.pressed.connect(func() -> void: close_requested.emit())
 
     var eyebrow: Label = Label.new()

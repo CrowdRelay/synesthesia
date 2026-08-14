@@ -10,6 +10,7 @@ boot = (ROOT / "scripts/ui/boot_sequence.gd").read_text()
 warmup = (ROOT / "scripts/app/main_warmup_flow.gd").read_text()
 eye = (ROOT / "scripts/ui/door_eye_motif.gd").read_text()
 startup_cache = (ROOT / "scripts/app/startup_script_cache.gd").read_text()
+runtime_flow = (ROOT / "scripts/app/main_runtime_flow.gd").read_text()
 failures: list[str] = []
 
 ready = main[main.index("func _ready()"):main.index("func _build_application_shell()")]
@@ -31,6 +32,29 @@ for token in (
 ):
     if token not in startup_cache:
         failures.append(f"post-first-frame script streaming missing: {token}")
+
+for path in (
+    "res://scripts/ui/app_hud.gd",
+    "res://scripts/app/transition_director.gd",
+    "res://scripts/app/asset_preloader.gd",
+    "res://scripts/app/adaptive_performance.gd",
+    "res://scripts/app/gameplay_telemetry.gd",
+    "res://scripts/app/album_mode_controller.gd",
+):
+    if f'preload("{path}")' in main:
+        failures.append(f"gameplay-only script still blocks menu startup: {path}")
+for token in (
+    "ResourceLoader.load_threaded_request",
+    "ASSET_PRELOADER_PATH",
+    "_prime_first_room()",
+    "app.asset_preloader.queue_critical(MAIN_ROOM_FLOW_PATH)",
+    "await _script(ASSET_PRELOADER_PATH)",
+):
+    if token not in runtime_flow:
+        failures.append(f"post-menu gameplay streaming contract missing: {token}")
+if 'runtime_flow.call_deferred("prime_under_menu")' not in intro:
+    failures.append("main menu does not immediately start post-menu gameplay streaming")
+
 if "reward_client.start_run()" in reward_config:
     failures.append("reward networking still starts during boot configuration")
 if 'warmup_flow.call_deferred("warm_under_main_menu")' not in intro:

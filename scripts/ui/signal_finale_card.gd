@@ -171,7 +171,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _form.add_child(_status)
 
     _claim = UIFactory.product_button("DOŁĄCZ DO LOSOWANIA 5 PŁYT", _accent, true)
-    _claim.disabled = not server_completed
+    _claim.disabled = not server_completed or not _ritual_complete
     _claim.pressed.connect(_emit_claim)
     _form.add_child(_claim)
 
@@ -195,12 +195,14 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     reset_journey.pressed.connect(func() -> void: reset_requested.emit())
     _form.add_child(reset_journey)
 
-    if _claim.disabled:
+    if not _ritual_complete:
+        _status.text = "Domknij 4 sygnały rezonansu — formularz i ranking możesz już przejrzeć."
+    elif _claim.disabled:
         _status.text = "Synchronizuję ukończenie z Sygnałem. Postęp jest bezpieczny lokalnie."
     if str(saved_reward.get("status", "")) == "entered_draw":
         _status.text = str(saved_reward.get("message", "Jesteś już w losowaniu 5 płyt."))
         _claim.disabled = true
-    _form.visible = _ritual_complete
+    _form.visible = true
 
     _layout_columns()
     _apply_ui_scale()
@@ -211,11 +213,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
 
 func _on_ritual_completed() -> void:
     _ritual_complete = true
-    if _form != null:
-        _form.visible = true
-        _form.modulate.a = 0.0
-        var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-        tween.tween_property(_form, "modulate:a", 1.0, 0.28)
+    set_claim_enabled(_server_completed)
     call_deferred("_layout_columns")
     call_deferred("_apply_ui_scale")
 
@@ -296,6 +294,7 @@ func apply_signal_context(context: Dictionary) -> void:
 
 func set_server_completed(value: bool) -> void:
     _server_completed = value
+    set_claim_enabled(value)
     apply_signal_context(_signal_context)
 
 func is_leaderboard_publish_eligible() -> bool:
@@ -370,7 +369,7 @@ func set_status(text_value: String) -> void:
 
 func set_claim_enabled(value: bool) -> void:
     if _claim != null:
-        _claim.disabled = not value
+        _claim.disabled = not value or not _ritual_complete
 
 func is_claim_enabled() -> bool:
     return _claim != null and not _claim.disabled
