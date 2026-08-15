@@ -5,12 +5,32 @@ ROOT = Path(__file__).resolve().parents[1]
 source_gate = (ROOT / 'scripts/validate-source.sh').read_text()
 fast_gate = (ROOT / 'scripts/validate-fast.sh').read_text()
 canonical_gates = source_gate + '\n' + fast_gate
+
+# The canonical gate intentionally delegates the fast suite once. Any exact
+# fast command copied into validate-source.sh would restore duplicate work and
+# slowly make the two entrypoints diverge again.
+def gate_commands(text: str) -> set[str]:
+    commands: set[str] = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith('#'):
+            continue
+        if line.startswith(('python3 ', './scripts/')):
+            commands.add(line)
+    return commands
+
+fast_commands = gate_commands(fast_gate)
+source_commands = gate_commands(source_gate) - {'./scripts/validate-fast.sh'}
+duplicated_fast_commands = sorted(fast_commands & source_commands)
 validate = (ROOT / 'validate.sh').read_text()
 web = (ROOT / 'scripts/build-web-preview.sh').read_text()
 linux = (ROOT / 'scripts/build-linux-release.sh').read_text()
 ci = (ROOT / '.github/workflows/ci.yml').read_text()
 build = (ROOT / '.github/workflows/build.yml').read_text()
 failures: list[str] = []
+
+for command in duplicated_fast_commands:
+    failures.append(f'validate-source.sh duplicates fast-gate command: {command}')
 
 critical = (
     'tests/static_validate.py',
