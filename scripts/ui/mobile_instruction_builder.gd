@@ -29,7 +29,9 @@ static func build(app: Control, host: Node) -> void:
     stack.add_theme_constant_override("separation", 2)
     row.add_child(stack)
 
-    app.mobile_instruction_label = _label("MobileInstructionLabel", "ODSŁANIAJ SCENĘ", 17, Color("f3f8ff"), VERTICAL_ALIGNMENT_BOTTOM)
+    app.mobile_meta_label = _label("MobileMetaLabel", "AKT I · ECHA 0/3", 9, Color("82a5c8"), VERTICAL_ALIGNMENT_BOTTOM)
+    stack.add_child(app.mobile_meta_label)
+    app.mobile_instruction_label = _label("MobileInstructionLabel", "ODSŁANIAJ SCENĘ", 17, Color("f3f8ff"), VERTICAL_ALIGNMENT_CENTER)
     stack.add_child(app.mobile_instruction_label)
     app.mobile_instruction_detail_label = _label("MobileInstructionDetailLabel", "SZUM USTĘPUJE MUZYCE", 11, Color("9fb2c9"), VERTICAL_ALIGNMENT_TOP)
     stack.add_child(app.mobile_instruction_detail_label)
@@ -55,3 +57,16 @@ static func set_text(app: Control, text_value: String) -> void:
     if app.mobile_instruction_detail_label != null:
         app.mobile_instruction_detail_label.text = str(parts[1]) if parts.size() > 1 else ""
         app.mobile_instruction_detail_label.visible = not app.mobile_instruction_detail_label.text.is_empty()
+static func set_mobile_meta(app: Control, act_index: int, act_title: String, echo_found: int, echo_total: int, resonance_chain: int) -> void:
+    if app.mobile_meta_label == null:
+        return
+    var act_roman: String = ["I", "II", "III"][clampi(act_index, 0, 2)]
+    var parts := PackedStringArray(["AKT %s" % act_roman, "KROK %d/3" % (clampi(act_index, 0, 2) + 1)])
+    if not act_title.strip_edges().is_empty():
+        parts.append(act_title.strip_edges().to_upper())
+    parts.append("ECHA %d/%d" % [maxi(0, echo_found), maxi(0, echo_total)])
+    if resonance_chain >= 2:
+        parts.append("REZONANS ×%d" % resonance_chain)
+    app.mobile_meta_label.text = " · ".join(parts)
+    app.mobile_meta_label.add_theme_color_override("font_color", Color("f0cf88") if resonance_chain >= 4 else Color("82a5c8"))
+

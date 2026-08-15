@@ -6,6 +6,7 @@ const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const InteractionGuide := preload("res://scripts/app/interaction_guide.gd")
 const HudLayoutFlowScript := preload("res://scripts/ui/hud_layout_flow.gd")
+const MobileInstructionBuilder := preload("res://scripts/ui/mobile_instruction_builder.gd")
 var header_row: HBoxContainer
 var top_margin: MarginContainer
 var top_panel: PanelContainer
@@ -28,6 +29,8 @@ var settings_button: Button
 var instruction_label: Label
 var mobile_instruction_panel: PanelContainer
 var mobile_instruction_label: Label
+var mobile_instruction_detail_label: Label
+var mobile_meta_label: Label
 var mobile_instruction_accent_bar: ColorRect
 var top_accent_bar: ColorRect
 var bottom_accent_bar: ColorRect
@@ -45,6 +48,11 @@ var _act_timer: Timer
 var _interaction_guide: Node
 var _room_index: int = 0
 var _room_total: int = 11
+var _echo_found: int = 0
+var _echo_total: int = 0
+var _resonance_chain: int = 0
+var _current_act_index: int = 0
+var _current_act_title: String = "ROZPOZNANIE"
 var _accent: Color = Color("72afff")
 var _ui_scale: float = 1.0
 var _layout_flow: Node
@@ -104,8 +112,7 @@ func clear_transient_overlays() -> void:
     if act_banner != null:
         act_banner.visible = false
         act_banner.modulate.a = 0.0
-func _apply_ui_scale() -> void:
-    _layout_flow._apply_ui_scale()
+func _apply_ui_scale() -> void: _layout_flow._apply_ui_scale()
 func _timer(wait: float, callback: Callable) -> Timer:
     var timer: Timer = Timer.new()
     timer.one_shot = true
@@ -113,22 +120,14 @@ func _timer(wait: float, callback: Callable) -> Timer:
     timer.timeout.connect(callback)
     add_child(timer)
     return timer
-func _build_header_row() -> void:
-    _layout_flow._build_header_row()
-func _build_top() -> void:
-    _layout_flow._build_top()
-func _build_bottom() -> void:
-    _layout_flow._build_bottom()
-func _build_mobile_instruction() -> void:
-    _layout_flow._build_mobile_instruction()
-func _build_toast() -> void:
-    _layout_flow._build_toast()
-func _build_act_banner() -> void:
-    _layout_flow._build_act_banner()
-func _layout_story_overlays() -> void:
-    _layout_flow._layout_story_overlays()
-func _repair_runtime_refs() -> void:
-    _layout_flow._repair_runtime_refs()
+func _build_header_row() -> void: _layout_flow._build_header_row()
+func _build_top() -> void: _layout_flow._build_top()
+func _build_bottom() -> void: _layout_flow._build_bottom()
+func _build_mobile_instruction() -> void: _layout_flow._build_mobile_instruction()
+func _build_toast() -> void: _layout_flow._build_toast()
+func _build_act_banner() -> void: _layout_flow._build_act_banner()
+func _layout_story_overlays() -> void: _layout_flow._layout_story_overlays()
+func _repair_runtime_refs() -> void: _layout_flow._repair_runtime_refs()
 func _set_reveal_ui(normalized: float) -> void:
     _repair_runtime_refs()
     if is_instance_valid(progress_bar):
@@ -143,12 +142,17 @@ func _set_reveal_ui(normalized: float) -> void:
         progress_label.text = "SYGNAŁ"
     else:
         progress_label.text = "SZUM"
-func configure_room(title: String, subtitle: String, room_index: int, room_total: int, _album_progress: float, room_data: Dictionary) -> void:
+func configure_room(title: String, subtitle: String, room_index: int, room_total: int, _album_progress: float, room_data: Dictionary, echo_total: int = 0) -> void:
     _repair_runtime_refs()
     clear_transient_overlays()
     _apply_ui_scale()
     _room_index = room_index
     _room_total = room_total
+    _echo_found = 0
+    _echo_total = maxi(0, echo_total)
+    _resonance_chain = 0
+    _current_act_index = 0
+    _current_act_title = "ROZPOZNANIE"
     _context_seen = false
     top_panel.modulate.a = 1.0
     bottom_panel.modulate.a = 1.0
@@ -161,6 +165,7 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
         split_label.visible = false
     _set_reveal_ui(0.0)
     act_label.text = "AKT I · ROZPOZNANIE"
+    _refresh_mobile_meta()
     _accent = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
     top_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent, 0.22))
     bottom_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent.lerp(Color("f0cf88"), 0.42), 0.18))
@@ -230,8 +235,7 @@ func enter_completion_beat() -> void:
     set_painting(false)
     if instruction_label != null:
         instruction_label.text = "Komnata odpowiedziała. Przejście już czeka."
-    if mobile_instruction_label != null:
-        mobile_instruction_label.text = "KOMNATA ODPOWIEDZIAŁA · PRZEJŚCIE CZEKA"
+    MobileInstructionBuilder.set_text(self, "KOMNATA ODPOWIEDZIAŁA · PRZEJŚCIE CZEKA")
     # After full reveal the artwork, not the instrument panel, owns the screen.
     # Keep the navigation affordance readable while secondary HUD chrome recedes.
     subtitle_label.visible = false
@@ -250,8 +254,18 @@ func update_instruction(text_value: String) -> void:
     if instruction_label == null or text_value.strip_edges().is_empty():
         return
     instruction_label.text = text_value.strip_edges().to_upper()
-    if mobile_instruction_label != null:
-        mobile_instruction_label.text = instruction_label.text
+    MobileInstructionBuilder.set_text(self, instruction_label.text)
+func update_echo_count(found: int, total: int = -1) -> void:
+    _echo_found = maxi(0, found)
+    if total >= 0: _echo_total = maxi(0, total)
+    _refresh_mobile_meta()
+func update_resonance_chain(chain: int) -> void:
+    var next_chain := clampi(chain, 0, 6)
+    if next_chain != _resonance_chain:
+        _resonance_chain = next_chain
+        _refresh_mobile_meta()
+func _refresh_mobile_meta() -> void:
+    MobileInstructionBuilder.set_mobile_meta(self, _current_act_index, _current_act_title, _echo_found, _echo_total, _resonance_chain)
 func update_discovery(text_value: String) -> void:
     if text_value.is_empty() or not visible:
         return
@@ -264,7 +278,10 @@ func update_discovery(text_value: String) -> void:
     tween.tween_property(toast_panel, "modulate:a", 1.0, 0.16)
     _toast_timer.start()
 func update_act(index: int, title: String) -> void:
+    _current_act_index = clampi(index, 0, 2)
+    _current_act_title = title
     act_label.text = "AKT %s · %s" % [_roman(index + 1), title]
+    _refresh_mobile_meta()
     if index <= 0:
         return
     act_banner_label.text = "AKT %s  ·  %s" % [_roman(index + 1), title]
@@ -377,13 +394,11 @@ func _hide_act_banner() -> void:
     tween.set_trans(Tween.TRANS_SINE)
     tween.tween_property(act_banner, "modulate:a", 0.0, 0.24)
     tween.finished.connect(func() -> void: act_banner.visible = false)
-func _apply_mobile_safe_area() -> void:
-    _layout_flow._apply_mobile_safe_area()
+func _apply_mobile_safe_area() -> void: _layout_flow._apply_mobile_safe_area()
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         call_deferred("_apply_ui_scale")
-func _bar_style(color: Color) -> StyleBoxFlat:
-    return _layout_flow._bar_style(color)
+func _bar_style(color: Color) -> StyleBoxFlat: return _layout_flow._bar_style(color)
 func _brush_name(profile: String) -> String:
     match profile:
         "water": return "PĘDZEL WODNY"
