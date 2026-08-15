@@ -104,6 +104,33 @@
       "noise_scale": 0.72,
       "vignette_floor": 0.86,
       "local_contrast": 0.58
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Rozbij cudze odbicia i strąć lustra, które mierzą twoją wartość.",
+      "steps": [
+        {
+          "id": "mirror",
+          "verb": "tap",
+          "payoff": "Pęknij pierwszą taflę, która próbuje cię wycenić."
+        },
+        {
+          "id": "shatter",
+          "verb": "swipe",
+          "payoff": "Zrzuć pęknięte lustra ruchem zamiast poprawiać odbicie."
+        },
+        {
+          "id": "value",
+          "verb": "release",
+          "payoff": "Zostaw własną wartość bez kolejnej miary."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

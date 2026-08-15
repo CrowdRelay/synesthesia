@@ -104,6 +104,11 @@ func _run() -> void:
     await process_frame
     await process_frame
     _require_label_width(settings, "Dopasuj intensywność", 220.0, "settings")
+    var close_state := {"fired": false}
+    settings.close_requested.connect(func() -> void: close_state["fired"] = true)
+    await _click_button(settings, "X", "settings-close-x")
+    if not bool(close_state["fired"]):
+        _fail("settings root-level X real pointer click did not emit close_requested")
     await _dispose_node(settings)
 
     var confirmation = ConfirmCardScript.new()

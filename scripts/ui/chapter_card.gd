@@ -19,11 +19,11 @@ func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, accent: Color, identity: Dictionary = {}) -> void:
+func configure(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, accent: Color, identity: Dictionary = {}, objective: String = "", objective_steps: Array = []) -> void:
     _accent = accent
-    _build(room_index, room_total, room_name, intro_text, caption, identity)
+    _build(room_index, room_total, room_name, intro_text, caption, identity, objective, objective_steps)
 
-func _build(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, identity: Dictionary) -> void:
+func _build(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, identity: Dictionary, objective: String, objective_steps: Array) -> void:
     _sheet = PanelContainer.new()
     _sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _sheet.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent, 0.28))
@@ -75,12 +75,21 @@ func _build(room_index: int, room_total: int, room_name: String, intro_text: Str
         _content.add_child(guide)
 
     var hint := Label.new()
-    hint.text = "ROZEJRZYJ SIĘ · ODCZYTAJ ZNAKI · POZWÓL SZUMOWI OPAŚĆ"
+    hint.text = "CEL · %s" % objective.strip_edges().to_upper() if not objective.strip_edges().is_empty() else "ROZEJRZYJ SIĘ · ODCZYTAJ ZNAKI · POZWÓL SZUMOWI OPAŚĆ"
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     UIFactory.apply_display_font(hint)
     hint.add_theme_font_size_override("font_size", 10)
     hint.add_theme_color_override("font_color", Color("8fa4bc"))
     _content.add_child(hint)
+    var step_line := _objective_step_line(objective_steps)
+    if not step_line.is_empty():
+        var steps_label := Label.new()
+        steps_label.text = step_line
+        steps_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        UIFactory.apply_display_font(steps_label)
+        steps_label.add_theme_font_size_override("font_size", 9)
+        steps_label.add_theme_color_override("font_color", Color(_accent, 0.82))
+        _content.add_child(steps_label)
 
     # Re-run layout after all minimum-size participants exist. Calling this
     # only before _content/_motif are constructed makes Container sizing a no-op.
@@ -105,12 +114,13 @@ func _layout_sheet() -> void:
         return
     var viewport := get_viewport_rect().size
     _ui_scale = UiMetrics.scale_for_viewport(viewport)
+    var safe := UiMetrics.safe_insets(viewport)
     var wide: bool = viewport.x >= 720.0 * _ui_scale and viewport.x / maxf(1.0, viewport.y) > 1.05
     if wide:
         _sheet.set_anchors_preset(Control.PRESET_CENTER_LEFT)
         var available := maxf(320.0 * _ui_scale, viewport.x - 56.0 * _ui_scale)
         var width := minf(available, clampf(viewport.x * 0.44, 520.0 * _ui_scale, 620.0 * _ui_scale))
-        _sheet.offset_left = 28.0 * _ui_scale
+        _sheet.offset_left = maxf(28.0 * _ui_scale, safe.x + 12.0 * _ui_scale)
         _sheet.offset_right = _sheet.offset_left + width
         _sheet.offset_top = -118.0 * _ui_scale
         _sheet.offset_bottom = 118.0 * _ui_scale
@@ -120,10 +130,10 @@ func _layout_sheet() -> void:
             _motif.custom_minimum_size = Vector2(82.0, 116.0) * _ui_scale
     else:
         _sheet.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-        _sheet.offset_left = 12.0 * _ui_scale
-        _sheet.offset_right = -12.0 * _ui_scale
-        _sheet.offset_top = 12.0 * _ui_scale
-        _sheet.offset_bottom = 286.0 * _ui_scale
+        _sheet.offset_left = maxf(12.0 * _ui_scale, safe.x + 8.0 * _ui_scale)
+        _sheet.offset_right = -maxf(12.0 * _ui_scale, safe.z + 8.0 * _ui_scale)
+        _sheet.offset_top = maxf(12.0 * _ui_scale, safe.y + 8.0 * _ui_scale)
+        _sheet.offset_bottom = _sheet.offset_top + 274.0 * _ui_scale
         _set_copy_minimum(0.0)
         if _motif != null:
             _motif.custom_minimum_size = Vector2(84.0, 122.0) * _ui_scale
@@ -161,6 +171,19 @@ func _shorten(value: String, limit: int) -> String:
     if last_space > limit / 2:
         cropped = cropped.substr(0, last_space)
     return "%s…" % cropped
+
+func _objective_step_line(steps: Array) -> String:
+    var labels := PackedStringArray()
+    for value in steps:
+        if not value is Dictionary: continue
+        var verb := str((value as Dictionary).get("verb", "")).strip_edges()
+        if not verb.is_empty(): labels.append(_verb_label(verb))
+        if labels.size() >= 3: break
+    return "GESTY · %s" % "  →  ".join(labels) if not labels.is_empty() else ""
+
+func _verb_label(verb: String) -> String:
+    var labels := {"tap":"DOTKNIJ", "hold":"PRZYTRZYMAJ", "drag":"PRZESUŃ", "drag_up":"UNIEŚ", "drag_horizontal":"PROWADŹ W BOK", "release":"PUŚĆ", "swirl":"ZAKRĘĆ", "swipe":"ZRZUĆ", "tap_or_swipe":"DOTKNIJ / PRZETNIJ"}
+    return str(labels.get(verb, verb.replace("_", " ").to_upper()))
 
 func _identity_line(identity: Dictionary) -> String:
     if identity.is_empty():

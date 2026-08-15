@@ -24,6 +24,26 @@ static func experience_summary(release_entries: Array, current_room_index: int, 
         "elapsed_ms": sum_elapsed_ms(elapsed),
     }
 
+static func menu_summary(release_entries: Array, album_state: Dictionary) -> Dictionary:
+    # Startup/menu path must stay storage-light: album_state already contains the
+    # echo archive and mastery memory, so never scan 11 room saves/manifests here.
+    var archive_value: Variant = album_state.get("echo_archive", {})
+    var archive: Dictionary = archive_value if archive_value is Dictionary else {}
+    var echoes_found: int = 0
+    for room_value in archive.values():
+        if room_value is Dictionary: echoes_found += (room_value as Dictionary).size()
+    var mastery := _mastery_summary(album_state)
+    return {
+        "rooms_completed": _array_value(album_state.get("completed_room_ids", [])).size(),
+        "rooms_total": release_entries.size(),
+        "echoes_found": echoes_found,
+        "echoes_total": release_entries.size() * 3, # schema invariant: three authored echoes per room
+        "personal_best_total_ms": validated_personal_best_total_ms(release_entries, album_state),
+        "mastery_rooms": int(mastery.get("rooms", 0)),
+        "mastery_s_rooms": int(mastery.get("s_rooms", 0)),
+        "mastery_average": int(mastery.get("average", 0)),
+    }
+
 static func completion_summary(release_entries: Array, album_state: Dictionary) -> Dictionary:
     var echoes_found: int = 0
     var echoes_total: int = 0
@@ -48,22 +68,10 @@ static func completion_summary(release_entries: Array, album_state: Dictionary) 
     var raw_elapsed_ms: int = sum_elapsed_ms(elapsed)
     var timed_rooms: int = timed_room_count(release_entries, album_state)
     var timed_run_complete: bool = has_complete_journey_timing(release_entries, album_state)
-    var mastery_value: Variant = album_state.get("best_room_mastery", {})
-    var mastery: Dictionary = mastery_value if mastery_value is Dictionary else {}
-    var mastery_rooms: int = 0
-    var mastery_score_total: int = 0
-    var mastery_s_rooms: int = 0
-    for value in mastery.values():
-        if not value is Dictionary:
-            continue
-        var score: int = clampi(int((value as Dictionary).get("score", 0)), 0, 100)
-        if score <= 0:
-            continue
-        mastery_rooms += 1
-        mastery_score_total += score
-        if score >= 95:
-            mastery_s_rooms += 1
-    var mastery_average: int = int(round(float(mastery_score_total) / float(mastery_rooms))) if mastery_rooms > 0 else 0
+    var mastery := _mastery_summary(album_state)
+    var mastery_rooms: int = int(mastery.get("rooms", 0))
+    var mastery_s_rooms: int = int(mastery.get("s_rooms", 0))
+    var mastery_average: int = int(mastery.get("average", 0))
     var marks: Array[String] = []
     if rooms_completed >= release_entries.size() and not release_entries.is_empty():
         marks.append("PEŁNA ŚCIEŻKA")
@@ -94,15 +102,29 @@ static func completion_summary(release_entries: Array, album_state: Dictionary) 
         "journey_marks": marks.slice(0, 3),
     }
 
+static func _mastery_summary(album_state: Dictionary) -> Dictionary:
+    var value: Variant = album_state.get("best_room_mastery", {})
+    var mastery: Dictionary = value if value is Dictionary else {}
+    var rooms := 0; var total := 0; var s_rooms := 0
+    for room_value in mastery.values():
+        if not room_value is Dictionary: continue
+        var score: int = clampi(int((room_value as Dictionary).get("score", 0)), 0, 100)
+        if score <= 0: continue
+        rooms += 1; total += score
+        if score >= 95: s_rooms += 1
+    return {"rooms": rooms, "s_rooms": s_rooms, "average": int(round(float(total) / float(rooms))) if rooms > 0 else 0}
+
 static func room_mastery(found_echoes: int, total_echoes: int, guidance: Dictionary, performance: Dictionary) -> Dictionary:
     # Pure local score: optional exploration + interaction fluency. Accessibility
     # settings are intentionally not penalized and mastery never affects rewards.
     var echo_ratio: float = 1.0 if total_echoes <= 0 else clampf(float(found_echoes) / float(total_echoes), 0.0, 1.0)
     var misses: int = maxi(0, int(guidance.get("miss_count", 0)))
     var hints: int = maxi(0, int(guidance.get("hint_count", 0)))
+    var max_chain: int = clampi(int(guidance.get("max_resonance_chain", 0)), 0, 6)
     var score: int = 70 + int(round(20.0 * echo_ratio))
     score += 5 if misses == 0 else -mini(15, misses * 3)
     score += 5 if hints == 0 else -mini(10, hints * 2)
+    score += 5 if max_chain >= 6 else (3 if max_chain >= 4 else (1 if max_chain >= 2 else 0))
     var previous_best_ms: int = maxi(0, int(performance.get("previous_room_best_ms", 0)))
     if previous_best_ms > 0 and bool(performance.get("room_personal_best", false)):
         score += 5
@@ -114,6 +136,7 @@ static func room_mastery(found_echoes: int, total_echoes: int, guidance: Diction
         "echo_ratio": echo_ratio,
         "miss_count": misses,
         "hint_count": hints,
+        "max_resonance_chain": max_chain,
     }
 
 static func record_room_mastery(album_state: Dictionary, release_id: String, mastery: Dictionary) -> Dictionary:
@@ -168,12 +191,6 @@ static func record_completion_performance(album_state: Dictionary, release_entri
     for key in mastery.keys():
         performance[key] = mastery[key]
     return performance
-
-static func mastery_completion_message(message: String, performance: Dictionary) -> String:
-    var grade: String = str(performance.get("grade", ""))
-    if grade.is_empty():
-        return message
-    return message + "\n\nREZONANS %s · %d/100%s" % [grade, int(performance.get("score", 0)), " · NOWE PB" if bool(performance.get("mastery_personal_best", false)) else ""]
 
 static func current_room_elapsed_ms(room_started_ms: int, room_elapsed_before_start_ms: int, room_timer_running: bool) -> int:
     if room_started_ms <= 0 or not room_timer_running:

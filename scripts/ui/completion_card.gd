@@ -25,7 +25,7 @@ func _ready() -> void:
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(title: String, message: String, next_label: String, accent: Color, identity: Dictionary = {}, performance: Dictionary = {}) -> void:
+func configure(title: String, message: String, next_label: String, accent: Color, identity: Dictionary = {}, performance: Dictionary = {}, objective: String = "") -> void:
     _sheet = PanelContainer.new()
     _sheet.mouse_filter = Control.MOUSE_FILTER_PASS
     _sheet.add_theme_stylebox_override("panel", UIFactory.product_surface_style(accent, true))
@@ -67,6 +67,15 @@ func configure(title: String, message: String, next_label: String, accent: Color
         _content.add_child(afterglow)
 
     _add_performance_line(performance, accent)
+    if not objective.strip_edges().is_empty():
+        var objective_done := Label.new()
+        objective_done.text = "CEL WYKONANY · %s" % objective.strip_edges().to_upper()
+        objective_done.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        objective_done.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        UIFactory.apply_display_font(objective_done)
+        objective_done.add_theme_font_size_override("font_size", 8)
+        objective_done.add_theme_color_override("font_color", Color("9fb3ca"))
+        _content.add_child(objective_done)
 
     _actions = VBoxContainer.new()
     _actions.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -99,6 +108,17 @@ func configure(title: String, message: String, next_label: String, accent: Color
 func _add_performance_line(performance: Dictionary, accent: Color) -> void:
     if performance.is_empty():
         return
+    var grade := str(performance.get("grade", "")).strip_edges()
+    if not grade.is_empty():
+        var mastery := Label.new()
+        var max_chain: int = clampi(int(performance.get("max_resonance_chain", 0)), 0, 6)
+        var chain_suffix := " · ŁAŃCUCH ×%d" % max_chain if max_chain >= 2 else ""
+        mastery.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        mastery.text = "REZONANS %s · %d/100%s%s" % [grade, clampi(int(performance.get("score", 0)), 0, 100), chain_suffix, " · NOWY PB" if bool(performance.get("mastery_personal_best", false)) else ""]
+        UIFactory.apply_display_font(mastery)
+        mastery.add_theme_font_size_override("font_size", 11)
+        mastery.add_theme_color_override("font_color", Color("f0cf88") if grade == "S" or max_chain >= 6 else accent)
+        _content.add_child(mastery)
     var elapsed_ms: int = maxi(0, int(performance.get("room_elapsed_ms", 0)))
     if elapsed_ms <= 0:
         return
@@ -168,7 +188,8 @@ func _refresh_layout() -> void:
 func _layout_sheet(viewport: Vector2 = get_viewport_rect().size) -> void:
     if _sheet == null:
         return
-    var margin: float = clampf(viewport.y * 0.016, 12.0, 26.0)
+    var safe := UiMetrics.safe_insets(viewport)
+    var margin: float = maxf(clampf(viewport.y * 0.016, 12.0, 26.0), safe.w + 8.0)
     var width: float = clampf(viewport.x * 0.88, 320.0, 760.0)
     var base_height: float = 150.0 if _listening else 220.0
     var height: float = minf(base_height * _ui_scale, viewport.y * 0.34)

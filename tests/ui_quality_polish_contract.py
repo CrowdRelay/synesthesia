@@ -61,23 +61,25 @@ require(
 require(
     "scripts/ui/hud_layout_flow.gd",
     "app.settings_button.custom_minimum_size = Vector2(48.0, 48.0)",
-    "var max_safe_inset: int = maxi(48, roundi(64.0 * app._ui_scale))",
+    "UiMetrics.safe_insets(viewport_size)",
 )
 
 require(
     "scripts/ui/settings_card.gd",
-    'chrome.name = "SettingsChrome"',
-    "chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE",
-    "chrome.add_child(close_x)",
-    'close_x.name = "CloseSettingsX"',
-    'close_x.tooltip_text = "Wróć do malowania"',
-    "close_x.custom_minimum_size = Vector2(48.0, 48.0) * _ui_scale",
-    "chrome.z_index = 40",
-    "close_x.mouse_filter = Control.MOUSE_FILTER_STOP",
-    "close_x.focus_mode = Control.FOCUS_ALL",
-    "close_x.size_flags_horizontal = Control.SIZE_SHRINK_END",
-    "close_x.pressed.connect",
+    '_close_x.name = "CloseSettingsX"',
+    '_close_x.tooltip_text = "Wróć do malowania"',
+    "_close_x.custom_minimum_size = Vector2(56.0, 56.0) * _ui_scale",
+    "_close_x.mouse_filter = Control.MOUSE_FILTER_STOP",
+    "_close_x.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED",
+    "_close_x.focus_mode = Control.FOCUS_ALL",
+    "_close_x.z_index = 100",
+    "add_child(_close_x)",
+    "UiMetrics.safe_insets(viewport)",
+    "_close_x.pressed.connect",
 )
+settings = read("scripts/ui/settings_card.gd")
+if "panel.add_child(_close_x)" in settings or "scroll.add_child(_close_x)" in settings:
+    failures.append("settings_card.gd: close X must remain a root-level sibling outside scroll/panel input")
 
 require(
     "scripts/ui/door_eye_motif.gd",

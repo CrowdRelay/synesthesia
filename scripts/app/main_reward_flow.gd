@@ -75,11 +75,13 @@ func _show_reward_panel() -> void:
     # normal run-start callback reconcile all locally completed rooms.
     if app.reward_client == null:
         _configure_reward_client()
-    if app.reward_client != null:
-        app.reward_client.start_run()
     _prepare_finale_background()
     app.SoundscapeRuntime.enter_outro(app.menu_soundscape, app.music_level, app.noise_level, app.quiet_mode)
-    app.hud.visible = false
+    # Persisted 11/11 journeys intentionally skip gameplay runtime. The finale
+    # must therefore never assume HUD exists: otherwise the animated background
+    # survives while the actual final menu aborts before it is constructed.
+    if app.hud != null and is_instance_valid(app.hud):
+        app.hud.visible = false
     var SignalFinaleCardScript: Script = _runtime_script(SIGNAL_FINALE_CARD_PATH)
     if SignalFinaleCardScript == null:
         return
@@ -109,6 +111,12 @@ func _show_reward_panel() -> void:
     app.reward_panel.signal_handoff_requested.connect(_issue_signal_handoff)
     app.reward_panel.reset_requested.connect(app._confirm_reset_album)
     app.reward_panel.album_mode_requested.connect(app._show_album_archive)
+    # UI first, network second. start_run() is idempotent for a restored run and
+    # _on_run_started() reconciles every locally completed room before complete.
+    # This makes replay/persisted completion registration independent of HUD/menu
+    # runtime and keeps a visible finale even when CrowdRelay is temporarily down.
+    if app.reward_client != null:
+        app.reward_client.start_run()
     _refresh_leaderboard()
 
 func _refresh_leaderboard() -> void:
@@ -265,7 +273,7 @@ func _on_reward_request_failed(operation: String, message: String) -> void:
     elif operation in ["recover_album", "completion_context_refresh", "handoff_issue"] and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_status(message)
         app.reward_panel.apply_signal_context(app.completion_context)
-    else:
+    elif app.hud != null and is_instance_valid(app.hud):
         app.hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")
 
 func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
@@ -276,7 +284,7 @@ func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
         app.reward_panel.set_leaderboard_status(text_value)
     elif operation in ["recover_album", "completion_context_refresh", "handoff_issue"] and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_status(text_value)
-    else:
+    elif app.hud != null and is_instance_valid(app.hud):
         app.hud.update_discovery(text_value)
 
 func _on_reward_run_invalidated() -> void:

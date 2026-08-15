@@ -6,6 +6,7 @@ finale = (ROOT / "scripts/ui/signal_finale_card.gd").read_text()
 settings = (ROOT / "scripts/ui/settings_card.gd").read_text()
 main = (ROOT / "scripts/main.gd").read_text()
 runtime = (ROOT / "scripts/app/main_runtime_flow.gd").read_text()
+reward_flow = (ROOT / "scripts/app/main_reward_flow.gd").read_text()
 failures: list[str] = []
 
 def need(source: str, token: str, label: str) -> None:
@@ -17,15 +18,27 @@ need(finale, "_claim.disabled = not server_completed or not _ritual_complete", "
 need(finale, "_claim.disabled = not value or not _ritual_complete", "finale")
 if "_form.visible = _ritual_complete" in finale:
     failures.append("finale: form is still hidden behind resonance ritual")
+
+# Persisted/replay completion can enter finale without gameplay runtime/HUD.
+need(reward_flow, "if app.hud != null and is_instance_valid(app.hud):", "finale-runtime")
+need(reward_flow, "app.hud.visible = false", "finale-runtime")
+show_reward = reward_flow.split("func _show_reward_panel", 1)[1].split("func _refresh_leaderboard", 1)[0]
+if show_reward.index("app.reward_panel.configure(") > show_reward.index("app.reward_client.start_run()"):
+    failures.append("finale-runtime: network reconciliation runs before the final menu is visible")
+need(show_reward, "_on_run_started() reconciles every locally completed room before complete", "finale-runtime")
+
 for token in (
-    'close_x.name = "CloseSettingsX"',
-    "chrome.z_index = 40",
-    "close_x.mouse_filter = Control.MOUSE_FILTER_STOP",
-    "close_x.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED",
-    "close_x.focus_mode = Control.FOCUS_ALL",
-    "close_x.custom_minimum_size = Vector2(48.0, 48.0) * _ui_scale",
+    '_close_x.name = "CloseSettingsX"',
+    "_close_x.z_index = 100",
+    "_close_x.mouse_filter = Control.MOUSE_FILTER_STOP",
+    "_close_x.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED",
+    "_close_x.focus_mode = Control.FOCUS_ALL",
+    "_close_x.custom_minimum_size = Vector2(56.0, 56.0) * _ui_scale",
+    "UiMetrics.safe_insets(viewport)",
 ):
     need(settings, token, "settings")
+if "panel.add_child(_close_x)" in settings or "scroll.add_child(_close_x)" in settings:
+    failures.append("settings: close X regressed inside a scroll/panel input boundary")
 for forbidden in (
     'preload("res://scripts/ui/app_hud.gd")',
     'preload("res://scripts/app/transition_director.gd")',
@@ -47,4 +60,4 @@ for token in (
 if failures:
     print("\n".join("FAIL: " + item for item in failures))
     raise SystemExit(f"SYNESTHESIA_REPORTED_REGRESSIONS=FAIL count={len(failures)}")
-print("SYNESTHESIA_REPORTED_REGRESSIONS=PASS finale=form-visible settings=x-clickable startup=menu-first+first-room-priority")
+print("SYNESTHESIA_REPORTED_REGRESSIONS=PASS finale=form-visible+hudless-safe+ui-first-sync settings=x-clickable startup=menu-first+first-room-priority")

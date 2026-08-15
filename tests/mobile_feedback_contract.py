@@ -57,14 +57,14 @@ for token in ("app.get_global_rect().position", "* (1.0 - app.current_progress) 
     if token not in interaction:
         failures.append(f"room_interaction_flow.gd: missing mobile interaction/readability guard {token}")
 
-for token in ("PORTRAIT_HEADER_HEIGHT: float = 172.0", "PORTRAIT_PANEL_HEIGHT: float = 152.0", "34.0 if portrait else 22.0", "MobileInstructionPanel", "app.bottom_margin.visible = not portrait", "safe_bottom_px", "app.toast_panel.offset_bottom = app.mobile_instruction_panel.offset_top"):
+for token in ("PORTRAIT_HEADER_HEIGHT: float = 172.0", "PORTRAIT_PANEL_HEIGHT: float = 152.0", "34.0 if portrait else 22.0", "MobileInstructionPanel", "app.bottom_margin.visible = not portrait", "UiMetrics.safe_insets(viewport_size)", "app.toast_panel.offset_bottom = app.mobile_instruction_panel.offset_top"):
     if token not in hud:
         failures.append(f"hud_layout_flow.gd: missing portrait hint sizing {token}")
 scale_flow = hud[hud.index("func _apply_ui_scale"):hud.index("func _build_header_row")]
 if scale_flow.index("_layout_story_overlays()") > scale_flow.index("_apply_mobile_safe_area()"):
     failures.append("hud_layout_flow.gd: safe area must be applied after overlay layout")
 
-for token in ("mobile_instruction_panel.modulate.a = 1.0", "mobile_alpha: float = 0.38 if value", "UIFactory.product_surface_style(_accent, true)"):
+for token in ("mobile_instruction_panel.modulate.a = 1.0", "mobile_alpha: float = 0.38 if value", "UIFactory.product_surface_style(_accent, true)", "update_resonance_chain", "update_echo_count"):
     if token not in app_hud:
         failures.append(f"app_hud.gd: missing mobile instruction lifecycle {token}")
 

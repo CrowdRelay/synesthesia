@@ -52,6 +52,10 @@ assert "refresh_completion_context" in reward_flow
 assert "signal_context_refresh_requested" in finale
 assert "PO POWROCIE: SPRAWDŹ POŁĄCZENIE" in finale
 assert "if app.reward_client == null:" in reward_flow and "app.reward_client.start_run()" in reward_flow
+show_reward = reward_flow.split("func _show_reward_panel", 1)[1].split("func _refresh_leaderboard", 1)[0]
+assert "if app.hud != null and is_instance_valid(app.hud):" in show_reward
+assert show_reward.index("app.reward_panel.configure(") < show_reward.index("app.reward_client.start_run()")
+assert "_sync_completed_rooms_to_server(next_room_index)" in reward_flow
 assert "func _ensure_http" in signup and "not _ensure_http()" in signup
 assert "OTWÓRZ MÓJ SYGNAŁ" in menu
 

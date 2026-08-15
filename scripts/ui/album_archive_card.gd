@@ -205,7 +205,7 @@ func _layout_panel() -> void:
         return
     var viewport := get_viewport_rect().size
     _ui_scale = UiMetrics.scale_for_viewport(viewport)
-    var margin := clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 44.0 * _ui_scale)
+    var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 44.0 * _ui_scale))
     var width := minf(860.0 * _ui_scale, maxf(320.0 * _ui_scale, viewport.x - margin * 2.0))
     var height := minf(900.0 * _ui_scale, maxf(500.0 * _ui_scale, viewport.y - margin * 2.0))
     _panel.set_anchors_preset(Control.PRESET_CENTER)

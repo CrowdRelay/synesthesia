@@ -367,7 +367,7 @@ def main() -> int:
     progress_source = (ROOT / "scripts/progress_store.gd").read_text()
     if "ScrollContainer.SCROLL_MODE_DISABLED" not in ui_factory_source or "horizontal_scroll_mode = 0" not in settings_source:
         fail("responsive scroll layout contract missing: horizontal scroll must be disabled", failures)
-    if "content.custom_minimum_size" not in ui_factory_source or "content.custom_minimum_size" not in settings_source:
+    if "content.custom_minimum_size" not in ui_factory_source or "_content.custom_minimum_size" not in settings_source:
         fail("responsive scroll layout contract missing: content minimum width", failures)
     for token in ("--headless --editor", "--reset", "pink-noise-asmr-loop.ogg"):
         if token not in run_source:

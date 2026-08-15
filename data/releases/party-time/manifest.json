@@ -105,6 +105,33 @@
       "noise_scale": 0.66,
       "vignette_floor": 0.87,
       "local_contrast": 0.78
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Przebij powłoki przeciążenia, aż w pokoju zostanie cisza.",
+      "steps": [
+        {
+          "id": "first-shell",
+          "verb": "tap",
+          "payoff": "Pierwszy dotyk pokazuje, że dekoracja jest przeszkodą."
+        },
+        {
+          "id": "overload",
+          "verb": "tap_or_swipe",
+          "payoff": "Rozrywaj kolejne powłoki krótkimi, zdecydowanymi gestami."
+        },
+        {
+          "id": "silence",
+          "verb": "release",
+          "payoff": "Gdy bodźce opadną, zostaw miejsce na ciszę i echa."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

@@ -104,6 +104,33 @@
       "noise_scale": 0.86,
       "vignette_floor": 0.82,
       "local_contrast": 0.38
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Obudź ziarno i poprowadź wzrost ponad cień wątpliwości.",
+      "steps": [
+        {
+          "id": "seed",
+          "verb": "hold",
+          "payoff": "Znajdź ziarno przy podłodze i daj mu pierwszy impuls."
+        },
+        {
+          "id": "roots",
+          "verb": "drag_up",
+          "payoff": "Prowadź wzrost do góry zamiast szukać gotowej ścieżki."
+        },
+        {
+          "id": "crown",
+          "verb": "release",
+          "payoff": "Pozwól koronie wyjść ponad cień i utrzymać własny kierunek."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

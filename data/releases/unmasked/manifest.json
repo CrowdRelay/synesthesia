@@ -106,6 +106,33 @@
       "noise_scale": 0.8,
       "vignette_floor": 0.84,
       "local_contrast": 0.46
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Rozbij i zsuń maski, żeby odsłonić twarz pod ceremonią.",
+      "steps": [
+        {
+          "id": "crack",
+          "verb": "tap",
+          "payoff": "Dotknij maski, aż jej powierzchnia przestanie być nienaruszona."
+        },
+        {
+          "id": "remove",
+          "verb": "drag",
+          "payoff": "Chwyć pękniętą maskę i zsuń ją ze ściany."
+        },
+        {
+          "id": "presence",
+          "verb": "release",
+          "payoff": "Zostaw odsłoniętą obecność bez kolejnej warstwy."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

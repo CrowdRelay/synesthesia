@@ -106,6 +106,33 @@
       "noise_scale": 0.8,
       "vignette_floor": 0.84,
       "local_contrast": 0.48
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Zbliż dwa rezonanse, aż zaczną oddychać jednym rytmem.",
+      "steps": [
+        {
+          "id": "presence",
+          "verb": "hold",
+          "payoff": "Przytrzymaj drugi rezonans, żeby dopuścić jego obecność."
+        },
+        {
+          "id": "closeness",
+          "verb": "drag",
+          "payoff": "Zbliż oba punkty bez gwałtownego wymuszania ruchu."
+        },
+        {
+          "id": "rhythm",
+          "verb": "release",
+          "payoff": "Zostaw je w jednym oddechu, gdy fale wejdą w fazę."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

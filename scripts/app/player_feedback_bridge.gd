@@ -19,6 +19,8 @@ func _on_interaction_missed(_point: Vector2) -> void:
     _resonance_chain = 0
     if _hud != null and is_instance_valid(_hud):
         _hud.note_miss()
+        if _hud.has_method("update_resonance_chain"):
+            _hud.update_resonance_chain(0)
 
 func _on_interaction_confirmed(_point: Vector2, strength: float) -> void:
     _resonance_chain = mini(6, _resonance_chain + 1)
@@ -26,10 +28,17 @@ func _on_interaction_confirmed(_point: Vector2, strength: float) -> void:
     var felt_strength: float = clampf(strength + chain_gain * 0.16, 0.0, 1.0)
     if _hud != null and is_instance_valid(_hud):
         _hud.note_success()
+        if _hud.has_method("update_resonance_chain"):
+            _hud.update_resonance_chain(_resonance_chain)
     if _haptics != null and is_instance_valid(_haptics):
-        _haptics.confirmation(felt_strength)
+        if _resonance_chain in [4, 6] and _haptics.has_method("special"):
+            _haptics.special("resonance_chain", _resonance_chain)
+        else:
+            _haptics.confirmation(felt_strength)
     if _audio != null and is_instance_valid(_audio):
         _audio.play_confirmation_tick(felt_strength)
+    if _resonance_chain in [4, 6] and _hud != null and is_instance_valid(_hud) and _hud.has_method("update_discovery"):
+        _hud.update_discovery("REZONANS ×%d · %s" % [_resonance_chain, "PEŁNA FAZA" if _resonance_chain >= 6 else "UTRZYMAJ RYTM"])
     if _room != null and is_instance_valid(_room):
         _room.set("_interaction_energy", maxf(float(_room.get("_interaction_energy")), 0.24 + chain_gain * 0.34))
 

@@ -1,5 +1,5 @@
 extends Node
-const EchoArchive := preload("res://scripts/app/echo_archive.gd"); const RoomCinematicRuntime := preload("res://scripts/app/room_cinematic_runtime.gd")
+const EchoArchive := preload("res://scripts/app/echo_archive.gd"); const RoomCinematicRuntime := preload("res://scripts/app/room_cinematic_runtime.gd"); const RoomObjective := preload("res://scripts/app/room_objective.gd")
 const ViryaWorld := preload("res://scripts/app/virya_world.gd"); const RoomTimingRuntime := preload("res://scripts/app/room_timing_runtime.gd"); const RuntimeFactory := preload("res://scripts/app/room_runtime_factory.gd") # ChapterCardScript + CompletionCardScript are lazy factory products
 var app: Node; var cinematic_runtime: Node; var _completion_performance: Dictionary = {}; var timing_runtime: Node
 func bind(owner: Node) -> void:
@@ -80,6 +80,7 @@ func _load_room(index: int, show_intro: bool) -> void:
         app.release_entries.size(),
         float(app.current_room_index) / float(maxi(1, app.release_entries.size() - 1)),
         room_data,
+        collectible_entries.size(),
     )
     # configure_room establishes generic interaction chrome. Apply the room-owned
     # semantic verb afterwards so the first thing a player reads is actually
@@ -161,6 +162,7 @@ func _restore_room_after_layout(show_intro: bool) -> void:
         app.audio_director.set_progress(normalized, found)
         if app.hud != null and is_instance_valid(app.hud):
             app.hud.update_reveal(normalized)
+            app.hud.update_echo_count(found, _collectible_total())
             app.hud.update_discovery("ECHA %d/%d · pokój pamięta poprzedni dotyk" % [found, _collectible_total()])
             app.hud.prime_hint_after_resume()
     app.room_timer_running = false
@@ -184,8 +186,7 @@ func _collectible_total() -> int:
         return maxi(1, value.size())
     return 1
 func _show_intro() -> void:
-    if app.room == null:
-        return
+    if app.room == null: return
     app.intro_panel = RuntimeFactory.chapter_card(app.asset_preloader)
     app.intro_panel.name = "ChapterCard"
     app.ui_root.attach(app.intro_panel, 20)
@@ -208,7 +209,8 @@ func _show_intro() -> void:
         str(art.get("caption", "VIRYA · SYNESTEZJA")),
         accent,
         ViryaWorld.manifest_identity(app.manifest),
-        _completion_performance,
+        RoomObjective.goal(room_data),
+        RoomObjective.steps(room_data),
     )
     app.intro_panel.dismissed.connect(_dismiss_intro)
 func _dismiss_intro() -> void:
@@ -234,10 +236,10 @@ func _on_coverage_changed(value: float) -> void:
         _complete_current_room()
     app._schedule_save()
 func _on_collectible_found(item: Dictionary) -> void:
-    if app.room == null:
-        return
+    if app.room == null: return
     var count: int = int(app.room.get_found_count())
     EchoArchive.remember(app.album_state, str(app.manifest.get("release_id", "")), item, count)
+    app.hud.update_echo_count(count, _collectible_total())
     app.hud.update_discovery("ECHO %d/%d · %s — %s" % [count, _collectible_total(), str(item.get("title", "Echo")), str(item.get("message", ""))])
     if app.haptics != null:
         app.haptics.discovery()
@@ -251,18 +253,15 @@ func _on_collectible_found(item: Dictionary) -> void:
             app.audio_director.play_interaction_sfx("echo_complete", count)
     app._schedule_save()
 func _on_act_changed(index: int, title: String) -> void:
-    app.hud.update_act(index, title)
-    timing_runtime.capture_split(index)
+    app.hud.update_act(index, title); timing_runtime.capture_split(index)
     if app.room != null and app.room.has_method("get_interaction_hint"):
         app.hud.update_instruction(app.room.get_interaction_hint())
     if app.haptics != null and index > 0:
         app.haptics.discovery()
 func _on_paint_pulse(speed_normalized: float) -> void:
-    if app.haptics != null:
-        app.haptics.paint_tick(speed_normalized)
+    if app.haptics != null: app.haptics.paint_tick(speed_normalized)
 func _on_special_interaction(kind: String, index: int) -> void:
-    if app.haptics != null:
-        app.haptics.special(kind, index)
+    if app.haptics != null: app.haptics.special(kind, index)
     if app.audio_director != null and app.audio_director.has_method("play_interaction_sfx"):
         app.audio_director.play_interaction_sfx(kind, index)
     if app.room != null and app.room.has_method("get_interaction_hint"):
@@ -357,7 +356,6 @@ func _show_completion_panel() -> void:
     var completion_message := str(app.manifest.get("completion_message", "Obraz i muzyka zostały odsłonięte."))
     var found_echoes := int(app.room.get_found_count()) if app.room != null else 0
     var total_echoes := _collectible_total()
-    completion_message = app.ProgressMetrics.mastery_completion_message(completion_message, _completion_performance)
     if found_echoes < total_echoes:
         completion_message += "\n\nEcha %d/%d · %d nadal %s w pokoju. Możesz zostać i poszukać albo wrócić tu później w Album Mode." % [
             found_echoes, total_echoes, total_echoes - found_echoes, "czekają" if total_echoes - found_echoes > 1 else "czeka",
@@ -369,6 +367,7 @@ func _show_completion_panel() -> void:
         accent,
         ViryaWorld.manifest_identity(app.manifest),
         _completion_performance,
+        RoomObjective.goal(room_data),
     )
     if app.current_room_index < app.release_entries.size() - 1:
         app.completion_panel.continue_requested.connect(func() -> void: _transition_to_room(next_index))
@@ -380,8 +379,7 @@ func _show_completion_panel() -> void:
             app.room.set_interaction_enabled(false)
     )
 func _transition_to_room(next_index: int) -> void:
-    if app.transition_running:
-        return
+    if app.transition_running: return
     app.transition_running = true
     if app.haptics != null:
         app.haptics.door_open()
@@ -401,8 +399,7 @@ func _transition_to_room(next_index: int) -> void:
     app.transition_running = false
     resume_room_timer()
 func _transition_to_reward() -> void:
-    if app.transition_running:
-        return
+    if app.transition_running: return
     app.transition_running = true
     if app.haptics != null:
         app.haptics.door_open()

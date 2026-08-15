@@ -116,7 +116,7 @@ settings = require(
     "horizontal_scroll_mode = 0",
 )
 hud = require_group(
-    ("scripts/ui/app_hud.gd", "scripts/ui/hud_layout_flow.gd"),
+    ("scripts/ui/app_hud.gd", "scripts/ui/hud_layout_flow.gd", "scripts/ui/ui_metrics.gd"),
     "set_painting",
     "update_discovery",
     "update_act",

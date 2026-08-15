@@ -104,6 +104,33 @@
       "noise_scale": 0.68,
       "vignette_floor": 0.87,
       "local_contrast": 0.7
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Ustabilizuj własny cel i puść gest dopiero, gdy decyzja jest twoja.",
+      "steps": [
+        {
+          "id": "aim",
+          "verb": "hold",
+          "payoff": "Przytrzymaj postać w centrum, nie goniąc za drganiem celownika."
+        },
+        {
+          "id": "lock",
+          "verb": "hold",
+          "payoff": "Utrzymaj spokój, aż cel przestanie należeć do otoczenia."
+        },
+        {
+          "id": "choice",
+          "verb": "release",
+          "payoff": "Puść dopiero wtedy, gdy decyzja jest twoja."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

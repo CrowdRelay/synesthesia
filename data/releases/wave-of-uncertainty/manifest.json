@@ -104,6 +104,33 @@
       "noise_scale": 0.84,
       "vignette_floor": 0.83,
       "local_contrast": 0.44
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Uspokój przypływ poziomym ruchem i odzyskaj horyzont.",
+      "steps": [
+        {
+          "id": "tide",
+          "verb": "drag_horizontal",
+          "payoff": "Wejdź w rytm fali zamiast z nią walczyć."
+        },
+        {
+          "id": "flow",
+          "verb": "drag_horizontal",
+          "payoff": "Prowadź ruch w bok, aż chaos zacznie łapać oddech."
+        },
+        {
+          "id": "horizon",
+          "verb": "release",
+          "payoff": "Pozwól horyzontowi wrócić i odsłonić pełny sygnał."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

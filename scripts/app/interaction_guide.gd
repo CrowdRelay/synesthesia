@@ -19,6 +19,8 @@ var _miss_count := 0
 var _last_miss_ms := 0
 var _resume_boost_pending := false
 var _assist_level := 0
+var _success_chain := 0
+var _max_success_chain := 0
 
 func _ready() -> void:
     _timer = Timer.new()
@@ -33,6 +35,8 @@ func configure(interaction: String) -> void:
     _enabled = true
     _miss_count = 0
     _resume_boost_pending = false
+    _success_chain = 0
+    _max_success_chain = 0
     _set_assist_level(0)
     visual_hint_changed.emit(0.62)
     _restart(FIRST_IDLE_SECONDS)
@@ -68,6 +72,7 @@ func prime_after_resume() -> void:
 func note_miss() -> void:
     if not _enabled:
         return
+    _success_chain = 0
     var now_ms: int = Time.get_ticks_msec()
     if now_ms - _last_miss_ms < MISS_COOLDOWN_MS:
         return
@@ -82,6 +87,8 @@ func note_miss() -> void:
 func note_interaction() -> void:
     if not _enabled:
         return
+    _success_chain = mini(6, _success_chain + 1)
+    _max_success_chain = maxi(_max_success_chain, _success_chain)
     visual_hint_changed.emit(0.06)
     _restart(FOLLOWUP_IDLE_SECONDS)
 
@@ -128,6 +135,7 @@ func get_stats() -> Dictionary:
         "miss_count": _miss_count,
         "hint_count": _hint_level,
         "max_assist_level": _assist_level,
+        "max_resonance_chain": _max_success_chain,
     }
 
 func _on_timeout() -> void:

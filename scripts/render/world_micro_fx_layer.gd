@@ -23,7 +23,8 @@ const WorldMicroFXDrawHelpers := preload("res://scripts/render/world_micro_fx_dr
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
-    set_process(true)
+    visibility_changed.connect(_sync_processing)
+    _sync_processing()
 
 func configure(room_style: String, accent_color: Color, secondary_color: Color, behavior) -> void:
     style = room_style
@@ -36,18 +37,33 @@ func configure(room_style: String, accent_color: Color, secondary_color: Color, 
 
 func set_progress(value: float) -> void: progress = clampf(value, 0.0, 1.0)
 func set_pointer(value: Vector2) -> void: pointer = value
-func set_reduced_motion(value: bool) -> void: reduced_motion = value
-func set_cinematic(value: float) -> void: cinematic = clampf(value, 0.0, 1.0)
-func set_interaction_energy(value: float) -> void: interaction_energy = maxf(interaction_energy, clampf(value, 0.0, 1.0))
+func set_reduced_motion(value: bool) -> void:
+    reduced_motion = value
+    _sync_processing()
+    queue_redraw()
+
+func set_cinematic(value: float) -> void:
+    cinematic = clampf(value, 0.0, 1.0)
+    _sync_processing()
+
+func set_interaction_energy(value: float) -> void:
+    interaction_energy = maxf(interaction_energy, clampf(value, 0.0, 1.0))
+    _sync_processing()
 func set_living_strength(value: float) -> void: living_strength = clampf(value, 0.0, 1.0)
 func set_target_fps(value: float) -> void: target_fps = clampf(value, 12.0, 30.0)
 func set_runtime_scale(value: float) -> void: runtime_scale = clampf(value, 0.55, 1.0)
+
+func _sync_processing() -> void:
+    var active: bool = is_visible_in_tree() and (not reduced_motion or interaction_energy > 0.01 or cinematic > 0.01)
+    set_process(active)
 
 func _process(delta: float) -> void:
     interaction_energy = move_toward(interaction_energy, 0.0, delta * 1.7)
     if reduced_motion:
         if interaction_energy > 0.01 or cinematic > 0.01:
             queue_redraw()
+        if interaction_energy <= 0.01 and cinematic <= 0.01:
+            set_process(false)
         return
     _time = fmod(_time + delta, 10000.0)
     _accum += delta

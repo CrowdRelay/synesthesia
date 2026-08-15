@@ -105,6 +105,33 @@
       "noise_scale": 0.82,
       "vignette_floor": 0.84,
       "local_contrast": 0.62
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Połącz poznane gesty i wyprowadź ostatni ruch ku światłu.",
+      "steps": [
+        {
+          "id": "light",
+          "verb": "tap",
+          "payoff": "Dotknij światła wysoko w atrium."
+        },
+        {
+          "id": "center",
+          "verb": "hold",
+          "payoff": "Przytrzymaj środek, żeby zebrać ciężar poprzednich pokoi."
+        },
+        {
+          "id": "rise",
+          "verb": "drag_up",
+          "payoff": "Wyprowadź wspólny gest ku górze i otwórz ostatni próg."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

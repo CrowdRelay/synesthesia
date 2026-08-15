@@ -24,6 +24,9 @@ var _reduced_motion: bool = false
 var _high_readability: bool = false
 var _haptics: bool = true
 var _quality_button: Button
+var _panel: PanelContainer
+var _content: VBoxContainer
+var _close_x: Button
 var _has_room: bool = true
 var _album_completed: bool = false
 var _ui_scale: float = 1.0
@@ -67,21 +70,15 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     add_child(dim)
     dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-    var panel: PanelContainer = PanelContainer.new()
-    panel.mouse_filter = Control.MOUSE_FILTER_PASS
+    _panel = PanelContainer.new()
+    _panel.mouse_filter = Control.MOUSE_FILTER_PASS
     var settings_style := UIFactory.product_surface_style(Color("43d6df"), true)
     settings_style.bg_color = Color(0.012, 0.020, 0.030, 0.94)
-    panel.add_theme_stylebox_override("panel", settings_style)
-    add_child(panel)
-    panel.set_anchors_preset(Control.PRESET_CENTER)
+    _panel.add_theme_stylebox_override("panel", settings_style)
+    add_child(_panel)
+    _panel.set_anchors_preset(Control.PRESET_CENTER)
     var viewport_size: Vector2 = get_viewport_rect().size
     _ui_scale = UiMetrics.scale_for_viewport(viewport_size)
-    var width: float = minf(510.0 * _ui_scale, maxf(300.0 * _ui_scale, viewport_size.x - 20.0 * _ui_scale))
-    var height: float = minf(820.0 * _ui_scale, maxf(420.0 * _ui_scale, viewport_size.y - 20.0 * _ui_scale))
-    panel.offset_left = -width * 0.5
-    panel.offset_right = width * 0.5
-    panel.offset_top = -height * 0.5
-    panel.offset_bottom = height * 0.5
 
     var scroll: ScrollContainer = ScrollContainer.new()
     scroll.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -89,64 +86,53 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = 0
     scroll.vertical_scroll_mode = 1
-    panel.add_child(scroll)
-    var content: VBoxContainer = VBoxContainer.new()
-    content.mouse_filter = Control.MOUSE_FILTER_PASS
-    content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    content.custom_minimum_size = Vector2(maxf(250.0 * _ui_scale, width - 48.0 * _ui_scale), 0.0)
-    content.add_theme_constant_override("separation", 8)
-    scroll.add_child(content)
+    _panel.add_child(scroll)
+    _content = VBoxContainer.new()
+    _content.mouse_filter = Control.MOUSE_FILTER_PASS
+    _content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _content.add_theme_constant_override("separation", 8)
+    scroll.add_child(_content)
+    _layout_panel()
 
-    # PanelContainer stretches each direct Control child to its content rect.
-    # Keep the close button inside a full-panel overlay so only its small corner
-    # rectangle receives input instead of becoming a right-side rail.
-    var chrome := Control.new()
-    chrome.name = "SettingsChrome"
-    chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    chrome.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
-    chrome.z_index = 40
-    panel.add_child(chrome)
-    chrome.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    var close_x := UIFactory.button("X", true)
-    close_x.name = "CloseSettingsX"
-    close_x.tooltip_text = "Wróć do malowania"
-    close_x.alignment = HORIZONTAL_ALIGNMENT_CENTER
-    close_x.custom_minimum_size = Vector2(48.0, 48.0) * _ui_scale
-    close_x.size_flags_horizontal = Control.SIZE_SHRINK_END
-    close_x.mouse_filter = Control.MOUSE_FILTER_STOP
-    close_x.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
-    close_x.focus_mode = Control.FOCUS_ALL
-    close_x.z_index = 1
-    chrome.add_child(close_x)
-    close_x.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-    close_x.offset_left = -58.0 * _ui_scale
-    close_x.offset_right = -10.0 * _ui_scale
-    close_x.offset_top = 10.0 * _ui_scale
-    close_x.offset_bottom = 58.0 * _ui_scale
-    close_x.pressed.connect(func() -> void: close_requested.emit())
+    # Keep the close affordance OUTSIDE PanelContainer/ScrollContainer. On touch
+    # devices a direct root sibling has an unambiguous z-order and hit target, so
+    # the scroll viewport can never intercept the X before Button._gui_input().
+    _close_x = UIFactory.button("X", true)
+    _close_x.name = "CloseSettingsX"
+    _close_x.tooltip_text = "Wróć do malowania"
+    _close_x.alignment = HORIZONTAL_ALIGNMENT_CENTER
+    UIFactory.apply_display_font(_close_x)
+    _close_x.custom_minimum_size = Vector2(56.0, 56.0) * _ui_scale
+    _close_x.mouse_filter = Control.MOUSE_FILTER_STOP
+    _close_x.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
+    _close_x.focus_mode = Control.FOCUS_ALL
+    _close_x.z_index = 100
+    add_child(_close_x)
+    _close_x.pressed.connect(func() -> void: close_requested.emit())
+    _layout_close_button()
 
     var eyebrow: Label = Label.new()
     eyebrow.text = "VIRYA · SYNESTEZJA"
     UIFactory.apply_display_font(eyebrow)
     eyebrow.add_theme_font_size_override("font_size", 9)
     eyebrow.add_theme_color_override("font_color", Color("79b7ff"))
-    content.add_child(eyebrow)
+    _content.add_child(eyebrow)
     var heading: Label = UIFactory.heading("Doświadczenie")
     heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    content.add_child(heading)
+    _content.add_child(heading)
     var intro: Label = UIFactory.body("Dopasuj intensywność bez przerywania podróży. Zmiany sensoryczne działają od razu.")
     intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     intro.add_theme_font_size_override("font_size", 11)
-    content.add_child(intro)
+    _content.add_child(intro)
 
-    content.add_child(_section("OBRAZ I RUCH"))
+    _content.add_child(_section("OBRAZ I RUCH"))
     var calm_button: Button = UIFactory.button(_calm_text())
     calm_button.pressed.connect(func() -> void:
         _calm = not _calm
         calm_button.text = _calm_text()
         calm_changed.emit(_calm)
     )
-    content.add_child(calm_button)
+    _content.add_child(calm_button)
 
     var visual_button: Button = UIFactory.button(_visual_text())
     visual_button.pressed.connect(func() -> void:
@@ -154,7 +140,7 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
         visual_button.text = _visual_text()
         visuals_changed.emit(_quiet_visuals)
     )
-    content.add_child(visual_button)
+    _content.add_child(visual_button)
 
     var readability_button: Button = UIFactory.button(_readability_text())
     readability_button.pressed.connect(func() -> void:
@@ -162,7 +148,7 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
         readability_button.text = _readability_text()
         readability_changed.emit(_high_readability)
     )
-    content.add_child(readability_button)
+    _content.add_child(readability_button)
 
     var motion_button: Button = UIFactory.button(_motion_text())
     motion_button.pressed.connect(func() -> void:
@@ -170,20 +156,20 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
         motion_button.text = _motion_text()
         motion_changed.emit(_reduced_motion)
     )
-    content.add_child(motion_button)
+    _content.add_child(motion_button)
 
     _quality_button = UIFactory.button("Jakość: %s" % quality_label)
     _quality_button.pressed.connect(func() -> void: quality_cycle_requested.emit())
-    content.add_child(_quality_button)
+    _content.add_child(_quality_button)
 
-    content.add_child(_section("DŹWIĘK I DOTYK"))
+    _content.add_child(_section("DŹWIĘK I DOTYK"))
     var quiet_button: Button = UIFactory.button(_quiet_text())
     quiet_button.pressed.connect(func() -> void:
         _quiet = not _quiet
         quiet_button.text = _quiet_text()
         quiet_changed.emit(_quiet)
     )
-    content.add_child(quiet_button)
+    _content.add_child(quiet_button)
 
     var haptic_button: Button = UIFactory.button(_haptic_text())
     haptic_button.pressed.connect(func() -> void:
@@ -191,45 +177,80 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
         haptic_button.text = _haptic_text()
         haptics_changed.emit(_haptics)
     )
-    content.add_child(haptic_button)
+    _content.add_child(haptic_button)
 
-    content.add_child(_slider_row("Muzyka", music, music_changed))
-    content.add_child(_slider_row("Różowy szum", noise, noise_changed))
+    _content.add_child(_slider_row("Muzyka", music, music_changed))
+    _content.add_child(_slider_row("Różowy szum", noise, noise_changed))
 
     if _has_room:
-        content.add_child(_section("POKÓJ"))
+        _content.add_child(_section("POKÓJ"))
         var reload_button: Button = UIFactory.button("Zastosuj jakość i przeładuj pokój")
         reload_button.pressed.connect(func() -> void: reload_requested.emit())
-        content.add_child(reload_button)
+        _content.add_child(reload_button)
         var reset_button: Button = UIFactory.button("Od nowa ten pokój…")
         reset_button.pressed.connect(func() -> void: reset_requested.emit())
-        content.add_child(reset_button)
+        _content.add_child(reset_button)
 
-    content.add_child(_section("POSTĘP LOKALNY"))
+    _content.add_child(_section("POSTĘP LOKALNY"))
     var reset_album_label: String = "Zagraj od nowa · wyczyść lokalną podróż…" if _album_completed else "Wyczyść całą lokalną podróż…"
     var reset_album_button: Button = UIFactory.button(reset_album_label)
     reset_album_button.pressed.connect(func() -> void: reset_album_requested.emit())
-    content.add_child(reset_album_button)
+    _content.add_child(reset_album_button)
     var reset_note: Label = UIFactory.body("Reset czyści malowanie i czasy 11 pokojów. Nie cofa istniejącego wpisu do losowania ani stanu po stronie Sygnału.")
     reset_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     reset_note.add_theme_font_size_override("font_size", 10)
     reset_note.add_theme_color_override("font_color", Color("718398"))
-    content.add_child(reset_note)
+    _content.add_child(reset_note)
 
     var note: Label = UIFactory.body("v%s · postęp zapisuje się lokalnie · brak stroboskopu" % version)
     note.add_theme_font_size_override("font_size", 9)
     note.add_theme_color_override("font_color", Color("718398"))
-    content.add_child(note)
+    _content.add_child(note)
     var close_button: Button = UIFactory.button("Wróć do malowania")
     close_button.pressed.connect(func() -> void: close_requested.emit())
-    content.add_child(close_button)
+    _content.add_child(close_button)
 
-    UiMetrics.apply_tree(panel, _ui_scale)
     modulate.a = 0.0
     var tween: Tween = create_tween()
     tween.set_trans(Tween.TRANS_SINE)
     tween.set_ease(Tween.EASE_OUT)
     tween.tween_property(self, "modulate:a", 1.0, 0.18)
+
+func _layout_panel() -> void:
+    if _panel == null:
+        return
+    var viewport := get_viewport_rect().size
+    _ui_scale = UiMetrics.scale_for_viewport(viewport)
+    var margin := UiMetrics.safe_margin(viewport, 10.0 * _ui_scale)
+    var width := minf(510.0 * _ui_scale, maxf(300.0 * _ui_scale, viewport.x - margin * 2.0))
+    var height := minf(820.0 * _ui_scale, maxf(420.0 * _ui_scale, viewport.y - margin * 2.0))
+    _panel.offset_left = -width * 0.5
+    _panel.offset_right = width * 0.5
+    _panel.offset_top = -height * 0.5
+    _panel.offset_bottom = height * 0.5
+    if _content != null:
+        _content.custom_minimum_size = Vector2(maxf(250.0 * _ui_scale, width - 48.0 * _ui_scale), 0.0)
+    UiMetrics.apply_tree(_panel, _ui_scale)
+
+func _layout_close_button() -> void:
+    if _close_x == null:
+        return
+    var viewport: Vector2 = get_viewport_rect().size
+    var insets: Vector4 = UiMetrics.safe_insets(viewport)
+    var touch_size: float = 56.0 * _ui_scale
+    var edge: float = 10.0 * _ui_scale
+    _close_x.custom_minimum_size = Vector2(touch_size, touch_size)
+    _close_x.add_theme_font_size_override("font_size", maxi(18, roundi(20.0 * _ui_scale)))
+    _close_x.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+    _close_x.offset_left = -(insets.z + edge + touch_size)
+    _close_x.offset_right = -(insets.z + edge)
+    _close_x.offset_top = insets.y + edge
+    _close_x.offset_bottom = insets.y + edge + touch_size
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_RESIZED:
+        call_deferred("_layout_panel")
+        call_deferred("_layout_close_button")
 
 func _section(text_value: String) -> Label:
     var label: Label = Label.new()

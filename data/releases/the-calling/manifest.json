@@ -106,6 +106,33 @@
       "noise_scale": 0.66,
       "vignette_floor": 0.88,
       "local_contrast": 0.76
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Obudź rdzeń stołu i przesuń rezonans do centrum sigilu.",
+      "steps": [
+        {
+          "id": "core",
+          "verb": "hold",
+          "payoff": "Przytrzymaj czerwony puls, aż rdzeń odpowie."
+        },
+        {
+          "id": "node",
+          "verb": "drag",
+          "payoff": "Przenieś obudzony węzeł w stronę środka sigilu."
+        },
+        {
+          "id": "ritual",
+          "verb": "release",
+          "payoff": "Domknij wspólny rezonans i pozwól stołowi wybrzmieć."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

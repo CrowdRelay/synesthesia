@@ -38,13 +38,14 @@ checks={
     'rust duplicate pointer regression': 'repeated_pointer_down_replaces_slot_without_growing_active_set' in rust,
     'transition sfx preloaded': all(token in transition for token in ('DOOR_CLOSE_STREAM: AudioStream = preload', 'DOOR_OPEN_STREAM: AudioStream = preload', 'TELEPORT_STREAM: AudioStream = preload')),
     'reduced atmosphere sleeps': 'set_process(not reduced_motion)' in atmosphere,
-    'reduced dressing sleeps': 'set_process(not _reduced_motion)' in dressing,
+    'reduced dressing sleeps': '_sync_processing()' in dressing and 'set_process(is_visible_in_tree() and not _reduced_motion)' in dressing,
     'mask grain profile hoisted': 'var grain_mode: int = _grain_mode(profile)' in reveal and 'func _grain(x: int, y: int, seed: int, mode: int)' in reveal,
     'mask grain dead hash removed': reveal.find('match mode:') < reveal.find('var base: float = _hash01(x, y, seed)'),
     'hint refresh sleeps while inactive': 'hint_layer.is_active()' in stage,
     'hint targets avoid deep-copy churn': 'duplicate(true)' not in hints,
     'waves bridge buffer reused': 'var _bridge_points: PackedVector2Array' in waves and '_bridge_points[i] = p' in waves,
     'waves render literals hoisted': 'const RESONANCE_HEIGHTS' in waves,
+    'ambient fx hidden and reduced idle sleeps': 'visibility_changed.connect(_sync_processing)' in text('scripts/render/world_micro_fx_layer.gd') and 'interaction_energy <= 0.01 and cinematic <= 0.01' in text('scripts/render/world_micro_fx_layer.gd'),
 }
 for name,ok in checks.items():
     if not ok: failures.append(name)

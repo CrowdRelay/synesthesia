@@ -104,6 +104,33 @@
       "noise_scale": 0.78,
       "vignette_floor": 0.85,
       "local_contrast": 0.54
+    },
+    "micro_interactions": {
+      "version": 1,
+      "goal": "Zakreśl popiół w ruch i wyprowadź odradzający się kształt ku górze.",
+      "steps": [
+        {
+          "id": "ash",
+          "verb": "swirl",
+          "payoff": "Zakreśl spokojny okrąg w centrum popiołu."
+        },
+        {
+          "id": "ember",
+          "verb": "swirl",
+          "payoff": "Podtrzymuj ruch, aż żar zacznie pamiętać kształt."
+        },
+        {
+          "id": "phoenix",
+          "verb": "drag_up",
+          "payoff": "Wyprowadź gotowy kształt ku górze i wypuść skrzydła."
+        }
+      ],
+      "feedback": [
+        "room-state",
+        "audio-mix",
+        "haptics",
+        "dynamic-hud"
+      ]
     }
   },
   "sensory": {

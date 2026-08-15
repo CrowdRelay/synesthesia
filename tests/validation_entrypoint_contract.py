@@ -21,6 +21,9 @@ def gate_commands(text: str) -> set[str]:
 
 fast_commands = gate_commands(fast_gate)
 source_commands = gate_commands(source_gate) - {'./scripts/validate-fast.sh'}
+if 'export PYTHONDONTWRITEBYTECODE=1' not in fast_gate or 'PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m compileall' not in fast_gate:
+    raise SystemExit('SYNESTHESIA_VALIDATION_ENTRYPOINT=FAIL fast gate writes Python cache into source tree')
+
 duplicated_fast_commands = sorted(fast_commands & source_commands)
 validate = (ROOT / 'validate.sh').read_text()
 web = (ROOT / 'scripts/build-web-preview.sh').read_text()

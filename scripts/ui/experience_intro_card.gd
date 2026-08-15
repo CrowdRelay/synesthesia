@@ -11,6 +11,7 @@ const SignalSignupClient := preload("res://scripts/app/signal_signup_client.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const ViryaWorld := preload("res://scripts/app/virya_world.gd")
 const ViryaRosterStrip := preload("res://scripts/ui/virya_roster_strip.gd")
+const JourneyPulse := preload("res://scripts/ui/journey_pulse.gd")
 const MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"
 
 var _accent: Color = Color("8c62ff")
@@ -34,23 +35,24 @@ var _policy_version: String = "virya-signal-2026-08"
 var _has_progress: bool = false
 var _album_completed: bool = false
 var _render_label: String = ""
+var _journey_summary: Dictionary = {}
 var _ui_scale: float = 1.0
 
 func _ready() -> void:
-    # This root is the modal input boundary. Children receive input first;
-    # unclaimed clicks stop here instead of leaking into the room underneath.
+    # Root is the modal input boundary; unclaimed clicks never reach the room.
     mouse_filter = Control.MOUSE_FILTER_STOP
     mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(accent: Color, has_progress: bool = false, album_completed: bool = false, api_url: String = "", policy_version: String = "virya-signal-2026-08", render_label: String = "") -> void:
+func configure(accent: Color, has_progress: bool = false, album_completed: bool = false, api_url: String = "", policy_version: String = "virya-signal-2026-08", render_label: String = "", journey_summary: Dictionary = {}) -> void:
     _accent = accent
     _has_progress = has_progress
     _album_completed = album_completed
     _api_url = api_url
     _policy_version = policy_version
     _render_label = render_label
+    _journey_summary = journey_summary.duplicate(true)
     _build()
 
 func _build() -> void:
@@ -109,6 +111,12 @@ func _build() -> void:
     header_line.custom_minimum_size = Vector2(0.0, 2.0)
     header_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _content_root.add_child(header_line)
+
+    if not _journey_summary.is_empty():
+        var journey_pulse := JourneyPulse.new()
+        journey_pulse.name = "JourneyPulse"
+        _content_root.add_child(journey_pulse)
+        journey_pulse.configure(_journey_summary, _accent)
 
     _layout = BoxContainer.new()
     _layout.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -361,7 +369,7 @@ func _layout_panel() -> void:
     _ui_scale = UiMetrics.scale_for_viewport(viewport)
     var wide := viewport.x >= 760.0 * _ui_scale and viewport.x / maxf(1.0, viewport.y) >= 0.82
     if wide:
-        var margin := clampf(viewport.x * 0.028, 18.0 * _ui_scale, 54.0 * _ui_scale)
+        var margin := UiMetrics.safe_margin(viewport, clampf(viewport.x * 0.028, 18.0 * _ui_scale, 54.0 * _ui_scale))
         var width := minf(520.0 * _ui_scale, viewport.x * 0.46)
         var height := minf(980.0 * _ui_scale, viewport.y - margin * 2.0)
         _panel.anchor_left = 0.0
@@ -374,7 +382,7 @@ func _layout_panel() -> void:
         _panel.offset_bottom = height * 0.5
         _panel.custom_minimum_size = Vector2(width, height)
     else:
-        var margin := clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 38.0 * _ui_scale)
+        var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 38.0 * _ui_scale))
         var width := maxf(320.0 * _ui_scale, viewport.x - margin * 2.0)
         var height := minf(1050.0 * _ui_scale, maxf(560.0 * _ui_scale, viewport.y - margin * 2.0))
         _panel.set_anchors_preset(Control.PRESET_CENTER)
@@ -399,9 +407,7 @@ func _layout_columns() -> void:
         _motif.custom_minimum_size = Vector2(0.0, 120.0 * _ui_scale)
 
 func _apply_ui_scale() -> void:
-    if _panel == null:
-        return
-    UiMetrics.apply_tree(_panel, _ui_scale)
+    if _panel != null: UiMetrics.apply_tree(_panel, _ui_scale)
 
 func _looks_like_email(value: String) -> bool:
     var at: int = value.find("@")

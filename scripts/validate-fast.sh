@@ -4,9 +4,18 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
 
+# The fast gate is also used while assembling source-only release bundles. Keep
+# syntax validation side-effect free: normal Python runs never write bytecode
+# into the repository, while compileall writes its explicit artifacts to a
+# disposable cache prefix outside the source tree.
+export PYTHONDONTWRITEBYTECODE=1
+PYCACHE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/synesthesia-pycache.XXXXXX")"
+cleanup_pycache() { rm -rf "$PYCACHE_DIR"; }
+trap cleanup_pycache EXIT
+
 ./scripts/prepare-bundled-fonts.sh
 python3 tools/source_hygiene.py
-python3 -m compileall -q tests tools
+PYTHONPYCACHEPREFIX="$PYCACHE_DIR" python3 -m compileall -q tests tools
 python3 tests/static_validate.py
 python3 tests/adaptive_viewport_contract.py
 python3 tools/perf_budget.py
@@ -26,6 +35,7 @@ python3 tests/ui_scale_flow_contract.py
 python3 tests/mobile_feedback_contract.py
 python3 tests/mobile_clarity_contract.py
 python3 tests/mobile_product_readability_contract.py
+python3 tests/mobile_game_next_level_contract.py
 python3 tests/interaction_assist_readability_contract.py
 python3 tests/gameplay_telemetry_contract.py
 python3 tests/v1_game_loop_contract.py

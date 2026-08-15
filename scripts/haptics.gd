@@ -145,6 +145,10 @@ func special(kind: String, index: int = 0) -> void:
             _pulse_after_delay(54, 11, clampf(base * 0.62, 0.06, 0.32))
             _pulse_after_delay(122, 6, clampf(base * 0.42, 0.04, 0.22))
             _pulse_after_delay(188, 28 if calm_mode else 38, clampf(base * 1.02, 0.08, 0.52))
+        "resonance_chain":
+            var peak := index >= 6
+            Input.vibrate_handheld(9 if calm_mode else 14, clampf(base * (0.54 if peak else 0.38), 0.04, 0.32))
+            _pulse_after_delay(52, 18 if peak else 11, clampf(base * (0.96 if peak else 0.62), 0.06, 0.48))
         "seed":
             Input.vibrate_handheld(24 if calm_mode else 34, clampf(base * 0.88, 0.07, 0.42))
             _pulse_after_delay(84, 18, clampf(base * 0.70, 0.06, 0.34))

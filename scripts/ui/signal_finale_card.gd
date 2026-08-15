@@ -14,7 +14,7 @@ const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const ViryaRosterStrip := preload("res://scripts/ui/virya_roster_strip.gd")
 const SignalResonanceRitual := preload("res://scripts/ui/signal_resonance_ritual.gd")
 const SignalLeaderboardPanel := preload("res://scripts/ui/signal_leaderboard_panel.gd")
-const SignalJourneySummary := preload("res://scripts/ui/signal_journey_summary.gd")
+const SignalJourneySummary := preload("res://scripts/ui/signal_journey_summary.gd"); const SignalRelayShare := preload("res://scripts/app/signal_relay_share.gd")
 
 var _panel: PanelContainer
 var _scroll: ScrollContainer
@@ -194,6 +194,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     var reset_journey := UIFactory.product_button("PRZEJDŹ ALBUM JESZCZE RAZ", Color("73869d"))
     reset_journey.pressed.connect(func() -> void: reset_requested.emit())
     _form.add_child(reset_journey)
+    SignalRelayShare.add_to(_form, Color("71dcff"), _status)
 
     if not _ritual_complete:
         _status.text = "Domknij 4 sygnały rezonansu — formularz i ranking możesz już przejrzeć."
@@ -379,7 +380,7 @@ func _layout_panel() -> void:
         return
     var viewport := get_viewport_rect().size
     _ui_scale = UiMetrics.scale_for_viewport(viewport)
-    var margin := clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 46.0 * _ui_scale)
+    var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 46.0 * _ui_scale))
     var width := minf(1120.0 * _ui_scale, maxf(320.0 * _ui_scale, viewport.x - margin * 2.0))
     var height := minf(820.0 * _ui_scale, maxf(500.0 * _ui_scale, viewport.y - margin * 2.0))
     _panel.set_anchors_preset(Control.PRESET_CENTER)
@@ -396,7 +397,7 @@ func _layout_columns() -> void:
     var portrait_layout: bool = viewport.x < 900.0 * _ui_scale or viewport.x / maxf(1.0, viewport.y) < 0.95
     _layout.vertical = portrait_layout
 
-    var margin := clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 46.0 * _ui_scale)
+    var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 46.0 * _ui_scale))
     var panel_width := minf(1120.0 * _ui_scale, maxf(320.0 * _ui_scale, viewport.x - margin * 2.0))
     var usable_width := maxf(272.0 * _ui_scale, panel_width - 48.0 * _ui_scale)
     _layout.custom_minimum_size.x = usable_width

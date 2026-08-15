@@ -169,6 +169,7 @@ func _show_experience_intro() -> void:
         str(reward.get("api_url", "")),
         str(reward.get("policy_version", "virya-signal-2026-08")),
         experience_surface.get_render_label() if DebugProfile.is_local_desktop_debug() else "",
+        ProgressMetrics.menu_summary(release_entries, album_state),
     )
     experience_intro_panel.begin_requested.connect(_begin_experience)
     experience_intro_panel.new_journey_requested.connect(_confirm_reset_album)

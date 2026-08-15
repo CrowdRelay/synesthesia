@@ -2,6 +2,7 @@ extends Node
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
+const MobileInstructionBuilder := preload("res://scripts/ui/mobile_instruction_builder.gd")
 const PORTRAIT_ASPECT_THRESHOLD: float = 0.82
 const PORTRAIT_HEADER_HEIGHT: float = 172.0
 const PORTRAIT_PANEL_HEIGHT: float = 152.0
@@ -217,31 +218,7 @@ func _build_bottom() -> void:
     app.brush_label.add_theme_color_override("font_color", Color("8d9fb5"))
     content.add_child(app.brush_label)
 func _build_mobile_instruction() -> void:
-    app.mobile_instruction_panel = PanelContainer.new()
-    app.mobile_instruction_panel.name = "MobileInstructionPanel"
-    app.mobile_instruction_panel.visible = false
-    app.mobile_instruction_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    app.mobile_instruction_panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(app._accent, true))
-    add_child(app.mobile_instruction_panel)
-    var row := HBoxContainer.new()
-    row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    row.add_theme_constant_override("separation", 10)
-    app.mobile_instruction_panel.add_child(row)
-    app.mobile_instruction_accent_bar = ColorRect.new()
-    app.mobile_instruction_accent_bar.color = app._accent
-    app.mobile_instruction_accent_bar.custom_minimum_size = Vector2(6.0, 54.0)
-    app.mobile_instruction_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    row.add_child(app.mobile_instruction_accent_bar)
-    app.mobile_instruction_label = Label.new()
-    app.mobile_instruction_label.name = "MobileInstructionLabel"
-    app.mobile_instruction_label.text = "ODSŁANIAJ SCENĘ · SZUM USTĘPUJE MUZYCE"
-    app.mobile_instruction_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    app.mobile_instruction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    app.mobile_instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    UIFactory.apply_display_font(app.mobile_instruction_label)
-    app.mobile_instruction_label.add_theme_font_size_override("font_size", 16)
-    app.mobile_instruction_label.add_theme_color_override("font_color", Color("edf5ff"))
-    row.add_child(app.mobile_instruction_label)
+    MobileInstructionBuilder.build(app, self)
 func _build_toast() -> void:
     app.toast_panel = PanelContainer.new()
     app.toast_panel.visible = false
@@ -375,27 +352,23 @@ func _repair_runtime_refs() -> void:
 func _apply_mobile_safe_area() -> void:
     if not OS.has_feature("mobile"):
         return
-    var safe: Rect2i = DisplayServer.get_display_safe_area()
-    var screen_size: Vector2i = DisplayServer.screen_get_size()
     var viewport_size: Vector2 = app.get_viewport_rect().size
-    if screen_size.x <= 0 or screen_size.y <= 0 or viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+    if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
         return
-    var scale_y: float = viewport_size.y / float(screen_size.y)
-    var max_safe_inset: int = maxi(48, roundi(64.0 * app._ui_scale))
-    var top_extra: int = clampi(int(round(float(safe.position.y) * scale_y)), 0, max_safe_inset)
-    var safe_bottom_px: int = maxi(0, screen_size.y - (safe.position.y + safe.size.y))
-    var bottom_extra: int = clampi(int(round(float(safe_bottom_px) * scale_y)), 0, max_safe_inset)
+    var insets: Vector4 = UiMetrics.safe_insets(viewport_size)
+    var top_extra: float = insets.y
+    var bottom_extra: float = insets.w
     if app.mobile_instruction_panel != null and app.mobile_instruction_panel.visible:
-        app.mobile_instruction_panel.offset_bottom = -(24.0 * app._ui_scale + float(bottom_extra))
+        app.mobile_instruction_panel.offset_bottom = -(24.0 * app._ui_scale + bottom_extra)
         app.mobile_instruction_panel.offset_top = app.mobile_instruction_panel.offset_bottom - 116.0 * app._ui_scale
         if app.toast_panel != null:
             app.toast_panel.offset_bottom = app.mobile_instruction_panel.offset_top - 6.0 * app._ui_scale
             app.toast_panel.offset_top = app.toast_panel.offset_bottom - 72.0 * app._ui_scale
     if app.header_row != null:
-        app.header_row.offset_top = 12.0 * app._ui_scale + float(top_extra)
+        app.header_row.offset_top = 12.0 * app._ui_scale + top_extra
         var portrait: bool = viewport_size.x / maxf(1.0, viewport_size.y) <= PORTRAIT_ASPECT_THRESHOLD
         var header_height: float = PORTRAIT_HEADER_HEIGHT if portrait else 166.0
-        app.header_row.offset_bottom = header_height * app._ui_scale + float(top_extra)
+        app.header_row.offset_bottom = header_height * app._ui_scale + top_extra
 func _bar_style(color: Color) -> StyleBoxFlat:
     var style := StyleBoxFlat.new()
     style.bg_color = color

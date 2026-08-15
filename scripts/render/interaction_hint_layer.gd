@@ -112,6 +112,18 @@ func _draw_gesture_glyph(center: Vector2, radius: float, kind: String, alpha: fl
             draw_arc(center, radius * 0.31, -PI * 0.5, PI * 1.18, 22, Color(_accent, alpha * 0.78), 1.4)
         "swirl":
             draw_arc(center, radius * 0.34, -PI * 0.25, PI * 1.45, 26, Color(_accent, alpha * 0.88), 1.5)
+        "tap":
+            draw_circle(center, maxf(2.0, radius * 0.11), Color(Color.WHITE, alpha * 0.76))
+            draw_arc(center, radius * 0.28, 0.0, TAU, 22, Color(_accent, alpha * 0.58), 1.2)
+        "swipe":
+            var end := center + Vector2(radius * 0.38, -radius * 0.30)
+            draw_line(center - Vector2(radius * 0.28, -radius * 0.22), end, Color(_accent, alpha * 0.88), 1.6)
+            draw_line(end, end + Vector2(-radius * 0.20, 0.0), Color(_accent, alpha * 0.88), 1.3)
+            draw_line(end, end + Vector2(-radius * 0.04, radius * 0.19), Color(_accent, alpha * 0.88), 1.3)
+        "release":
+            draw_circle(center, maxf(2.0, radius * 0.10), Color(Color.WHITE, alpha * 0.66))
+            draw_arc(center, radius * 0.32, -PI * 0.88, -PI * 0.12, 14, Color(_accent, alpha * 0.82), 1.4)
+            draw_arc(center, radius * 0.32, PI * 0.12, PI * 0.88, 14, Color(_accent, alpha * 0.82), 1.4)
         "target":
             draw_line(center - Vector2(radius * 0.28, 0.0), center + Vector2(radius * 0.28, 0.0), Color(_accent, alpha * 0.55), 1.0)
             draw_line(center - Vector2(0.0, radius * 0.28), center + Vector2(0.0, radius * 0.28), Color(_accent, alpha * 0.55), 1.0)

@@ -27,26 +27,56 @@ static func scale_for_viewport(viewport_size: Vector2) -> float:
         scale = maxf(scale, LOCAL_DEBUG_MIN_SCALE)
     return scale
 
+
+static func safe_insets(viewport_size: Vector2) -> Vector4:
+    # Return viewport-space left/top/right/bottom insets for mobile cutouts and
+    # gesture areas. Keep this centralized so every interactive overlay uses the
+    # same physical->viewport conversion instead of hand-rolling subtly different
+    # notch math.
+    if not OS.has_feature("mobile") or viewport_size.x <= 1.0 or viewport_size.y <= 1.0:
+        return Vector4.ZERO
+    var screen_size: Vector2i = DisplayServer.screen_get_size()
+    if screen_size.x <= 0 or screen_size.y <= 0:
+        return Vector4.ZERO
+    var safe: Rect2i = DisplayServer.get_display_safe_area()
+    if safe.size.x <= 0 or safe.size.y <= 0:
+        return Vector4.ZERO
+    var scale_x: float = viewport_size.x / float(screen_size.x)
+    var scale_y: float = viewport_size.y / float(screen_size.y)
+    var left: float = maxf(0.0, float(safe.position.x) * scale_x)
+    var top: float = maxf(0.0, float(safe.position.y) * scale_y)
+    var right_px: int = maxi(0, screen_size.x - (safe.position.x + safe.size.x))
+    var bottom_px: int = maxi(0, screen_size.y - (safe.position.y + safe.size.y))
+    var right: float = maxf(0.0, float(right_px) * scale_x)
+    var bottom: float = maxf(0.0, float(bottom_px) * scale_y)
+    var cap: float = maxf(48.0, 72.0 * scale_for_viewport(viewport_size))
+    return Vector4(minf(left, cap), minf(top, cap), minf(right, cap), minf(bottom, cap))
+
+static func safe_margin(viewport_size: Vector2, base_margin: float) -> float:
+    var safe := safe_insets(viewport_size)
+    return maxf(base_margin, maxf(maxf(safe.x, safe.z), maxf(safe.y, safe.w)))
+
 static func apply_tree(root: Node, scale: float) -> void:
     var safe_scale: float = clampf(scale, MIN_SCALE, MAX_SCALE)
-    _apply_node(root, safe_scale)
-    for child in root.get_children():
-        apply_tree(child, safe_scale)
+    var content_scale: float = safe_scale
+    if root is Control:
+        var viewport_size: Vector2 = (root as Control).get_viewport().get_visible_rect().size
+        var aspect: float = viewport_size.x / maxf(1.0, viewport_size.y)
+        if aspect <= PORTRAIT_ASPECT_THRESHOLD:
+            content_scale *= PORTRAIT_CONTENT_BOOST
+    _apply_tree(root, safe_scale, content_scale)
 
-static func _apply_node(node: Node, scale: float) -> void:
+static func _apply_tree(node: Node, scale: float, content_scale: float) -> void:
+    _apply_node(node, scale, content_scale)
+    for child in node.get_children():
+        _apply_tree(child, scale, content_scale)
+
+static func _apply_node(node: Node, scale: float, content_scale: float) -> void:
     if not node is Control:
         return
     var control := node as Control
     if bool(control.get_meta(&"syn_skip_ui_scale", false)):
         return
-
-    var content_scale: float = scale
-    var viewport_size: Vector2 = control.get_viewport().get_visible_rect().size
-    var aspect: float = viewport_size.x / maxf(1.0, viewport_size.y)
-    if aspect <= PORTRAIT_ASPECT_THRESHOLD:
-        # Boost only readable UI content on portrait devices. Panel geometry
-        # keeps the proven native scale so larger type never creates overflow.
-        content_scale *= PORTRAIT_CONTENT_BOOST
 
     if control is Label or control is BaseButton or control is LineEdit:
         if not control.has_meta(META_FONT_SIZE):

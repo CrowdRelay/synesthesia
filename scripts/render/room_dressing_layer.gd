@@ -16,7 +16,8 @@ var _redraw_accumulator: float = 0.0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
-    set_process(true)
+    visibility_changed.connect(_sync_processing)
+    _sync_processing()
 
 func configure(style: String, accent: Color, secondary: Color) -> void:
     _style = style
@@ -41,8 +42,11 @@ func set_door_open_amount(value: float) -> void:
 
 func set_reduced_motion(value: bool) -> void:
     _reduced_motion = value
-    set_process(not _reduced_motion)
+    _sync_processing()
     queue_redraw()
+
+func _sync_processing() -> void:
+    set_process(is_visible_in_tree() and not _reduced_motion)
 
 func set_runtime_scale(value: float) -> void:
     _runtime_scale = clampf(value, 0.55, 1.0)
