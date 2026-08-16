@@ -13,6 +13,7 @@ var _accent: Color = Color("72afff")
 var _next_accent: Color = Color("72afff")
 var _reduced_motion: bool = false
 var _replay_mode: bool = false
+const TWEEN_WATCHDOG_MARGIN_SECONDS: float = 0.45
 
 func install(host: Control) -> void:
     overlay = ColorRect.new()
@@ -111,7 +112,7 @@ func fade_out(duration: float = 0.34) -> void:
     tween.tween_property(overlay, "color:a", 1.0, duration)
     tween.tween_property(accent_line, "color:a", 0.72, duration * 0.56)
     tween.tween_property(accent_line, "scale:x", 1.0, duration * 0.72)
-    await tween.finished
+    await _await_tween_bounded(tween, duration)
 
 func fade_in(duration: float = 0.34) -> void:
     overlay.visible = true
@@ -125,7 +126,7 @@ func fade_in(duration: float = 0.34) -> void:
     tween.tween_property(overlay, "color:a", 0.0, duration)
     tween.tween_property(accent_line, "color:a", 0.0, duration * 0.68)
     tween.tween_property(accent_line, "scale:x", 0.12, duration * 0.72)
-    await tween.finished
+    await _await_tween_bounded(tween, duration)
     overlay.visible = false
     overlay.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
 
@@ -153,7 +154,7 @@ func travel_out() -> void:
     threshold_tween.set_ease(Tween.EASE_OUT)
     threshold_tween.tween_method(Callable(door_layer, "set_door_open_mix"), 0.0, 1.0, door_duration)
     threshold_tween.tween_method(Callable(door_layer, "set_approach_mix"), 0.0, 0.18, door_duration)
-    await threshold_tween.finished
+    await _await_tween_bounded(threshold_tween, door_duration)
 
     _play_transition_sfx(TELEPORT_STREAM, -10.5)
     var boost_duration: float = _pace(0.11 if _reduced_motion else 0.27)
@@ -163,14 +164,14 @@ func travel_out() -> void:
     boost_tween.set_ease(Tween.EASE_IN)
     boost_tween.tween_method(Callable(door_layer, "set_approach_mix"), 0.18, 1.0, boost_duration)
     boost_tween.tween_method(Callable(door_layer, "set_warp_mix"), 0.0, 1.0, boost_duration)
-    await boost_tween.finished
+    await _await_tween_bounded(boost_tween, boost_duration)
 
     var snap_duration: float = _pace(0.035 if _reduced_motion else 0.065)
     var snap_tween: Tween = create_tween()
     snap_tween.set_trans(Tween.TRANS_EXPO)
     snap_tween.set_ease(Tween.EASE_IN)
     snap_tween.tween_method(Callable(door_layer, "set_flash_mix"), 0.0, 1.0, snap_duration)
-    await snap_tween.finished
+    await _await_tween_bounded(snap_tween, snap_duration)
 
 func travel_in() -> void:
     if door_layer == null:
@@ -190,7 +191,7 @@ func travel_in() -> void:
     flash_tween.set_trans(Tween.TRANS_EXPO)
     flash_tween.set_ease(Tween.EASE_OUT)
     flash_tween.tween_method(Callable(door_layer, "set_flash_mix"), 1.0, 0.0, snap_release)
-    await flash_tween.finished
+    await _await_tween_bounded(flash_tween, snap_release)
 
     var brake_duration: float = _pace(0.12 if _reduced_motion else 0.25)
     var brake_tween: Tween = create_tween()
@@ -199,7 +200,7 @@ func travel_in() -> void:
     brake_tween.set_ease(Tween.EASE_OUT)
     brake_tween.tween_method(Callable(door_layer, "set_warp_mix"), 1.0, 0.18, brake_duration)
     brake_tween.tween_method(Callable(door_layer, "set_approach_mix"), 1.0, 0.32, brake_duration)
-    await brake_tween.finished
+    await _await_tween_bounded(brake_tween, brake_duration)
 
     var settle_duration: float = _pace(0.10 if _reduced_motion else 0.24)
     var settle_tween: Tween = create_tween()
@@ -208,9 +209,22 @@ func travel_in() -> void:
     settle_tween.set_ease(Tween.EASE_OUT)
     settle_tween.tween_method(Callable(door_layer, "set_warp_mix"), 0.18, 0.0, settle_duration)
     settle_tween.tween_method(Callable(door_layer, "set_approach_mix"), 0.32, 0.0, settle_duration)
-    await settle_tween.finished
+    await _await_tween_bounded(settle_tween, settle_duration)
 
     # A quiet close behind the listener sells the physical doorway while the
     # visible door is already out of the camera's path.
     _play_transition_sfx(DOOR_CLOSE_STREAM, -19.0)
     door_layer.reset()
+    if overlay != null:
+        overlay.visible = false
+        overlay.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
+
+func _await_tween_bounded(tween: Tween, nominal_seconds: float) -> void:
+    if tween == null:
+        return
+    var deadline_ms: int = Time.get_ticks_msec() + int(ceil((maxf(0.05, nominal_seconds) + TWEEN_WATCHDOG_MARGIN_SECONDS) * 1000.0))
+    while tween.is_valid() and tween.is_running() and Time.get_ticks_msec() < deadline_ms:
+        await get_tree().process_frame
+    if tween.is_valid() and tween.is_running():
+        push_warning("Transition tween exceeded its bounded watchdog; forcing the UI path open")
+        tween.kill()

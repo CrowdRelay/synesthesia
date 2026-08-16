@@ -22,6 +22,13 @@
     }
   }
 
+  // Read the marker before migration writes the new deploy id. This distinguishes
+  // a genuine warm revisit from a first launch/new deployment. Warm launches
+  // already have the current engine PCK/WASM in the generation-scoped SW cache.
+  const initialCacheMarker = readCacheMarker();
+  const warmBoot = initialCacheMarker === CACHE_ID && Boolean(navigator.serviceWorker?.controller);
+  window.synesthesiaWarmBoot = warmBoot;
+
   async function clearSynesthesiaCaches() {
     if (!("caches" in window)) return;
     const keys = await caches.keys();
@@ -70,7 +77,7 @@
   }
 
   function shouldAnimateBootVideo() {
-    if (removed || migrationActive) return false;
+    if (removed || migrationActive || warmBoot) return false;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (connection?.saveData) return false;
@@ -107,7 +114,7 @@
     if (!shouldAnimateBootVideo() || bootVideoTimer) return;
     // Fast boots never fetch/decode the extra loop. Slow boots become animated
     // after the instant poster has already painted.
-    bootVideoTimer = window.setTimeout(armBootVideo, 350);
+    bootVideoTimer = window.setTimeout(armBootVideo, 420);
   }
 
   function statusElement() {

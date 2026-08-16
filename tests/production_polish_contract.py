@@ -67,7 +67,7 @@ preloader = require(
     "scripts/app/asset_preloader.gd",
     "MAX_QUEUED",
     "load_threaded_request",
-    "CACHE_MODE_IGNORE",
+    "CACHE_MODE_REUSE",
     "load_threaded_get",
     "_prune_finished_failures",
     "func drain()",
@@ -142,7 +142,7 @@ require("scripts/audio_director.gd", "ResourceLoader.exists", "func _exit_tree()
 require("tests/lifecycle_smoke.gd", "SYNESTHESIA_LIFECYCLE_SMOKE=PASS", "preloader.drain()")
 require("tests/sensory_room_contract.py", "SYNESTHESIA_SENSORY_ROOMS=PASS", "ambience=11", "doors=hinge+supersonic")
 require("tests/door_transition_contract.py", "SYNESTHESIA_DOOR_TRANSITION=PASS", "door=hinged", "no-room-stretch")
-require("tests/cinematic_video_contract.py", "SYNESTHESIA_CINEMATIC_VIDEO=PASS", "clips=6", "lazy=load+unload")
+require("tests/cinematic_video_contract.py", "SYNESTHESIA_CINEMATIC_VIDEO=PASS", "clips=1", "decoder=finale-lazy")
 require("tests/presentation_contract.py", "SYNESTHESIA_PRESENTATION=PASS", "menu=door-eye+signal", "chapter=nonblocking", "hud=receding-signal-instrument")
 require("scripts/render/room_video_layer.gd", "VideoStreamPlayer.new()", "VideoStreamTheora.new()", "theora.file = _video_path", "_player.stream = null", "entry_strength")
 

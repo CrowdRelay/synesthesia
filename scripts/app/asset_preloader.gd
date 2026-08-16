@@ -89,7 +89,7 @@ func _pump_queue() -> void:
         if not ResourceLoader.exists(path):
             _dropped_requests += 1
             continue
-        var error: Error = ResourceLoader.load_threaded_request(path, "", false, ResourceLoader.CACHE_MODE_IGNORE)
+        var error: Error = ResourceLoader.load_threaded_request(path, "", false, ResourceLoader.CACHE_MODE_REUSE)
         if error != OK:
             _dropped_requests += 1
             continue

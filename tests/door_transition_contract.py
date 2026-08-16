@@ -27,6 +27,9 @@ required_director = [
     'Callable(door_layer, "set_warp_mix")',
     'Callable(door_layer, "set_flash_mix")',
     "TRANS_EXPO",
+    "TWEEN_WATCHDOG_MARGIN_SECONDS",
+    "_await_tween_bounded",
+    "tween.kill()",
 ]
 
 for token in required_layer:

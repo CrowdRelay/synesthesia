@@ -81,12 +81,16 @@ if 'func arm_authored_animation(restart: bool = true)' not in eye:
 if 'await RenderingServer.frame_post_draw' not in boot or '_motif.arm_authored_animation(true)' not in boot:
     failures.append("splash eye is not armed strictly after the first rendered Godot frame")
 for token in (
-    "const BOOT_HOLD: float = 0.22",
-    "const EYE_REVEAL_DURATION: float = 0.42",
-    "const FADE_DURATION: float = 0.16",
+    "const COLD_BOOT_HOLD: float = 0.16",
+    "const COLD_EYE_REVEAL_DURATION: float = 0.34",
+    "const COLD_FADE_DURATION: float = 0.14",
+    "const WARM_BOOT_HOLD: float = 0.025",
+    "const WARM_EYE_REVEAL_DURATION: float = 0.16",
+    "const WARM_FADE_DURATION: float = 0.09",
+    "_detect_warm_boot()",
 ):
     if token not in boot:
-        failures.append(f"bounded branded boot timing missing: {token}")
+        failures.append(f"bounded cold/warm boot timing missing: {token}")
 if "while status == ResourceLoader.THREAD_LOAD_IN_PROGRESS" not in startup_cache:
     failures.append("menu script stream does not yield while parsing is still in progress")
 if "if status == ResourceLoader.THREAD_LOAD_LOADED:" not in startup_cache:
@@ -98,4 +102,4 @@ if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_STARTUP_LATENCY=FAIL count={len(failures)}")
-print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=poster-only script-graphs=post-first-frame-threaded menu=present-then-warm room=thread-warm+runtime-support+door-wait network=interaction-gated audio=post-menu-threaded branded-boot=0.80s")
+print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=poster-only script-graphs=post-first-frame-threaded menu=present-then-warm room=thread-warm+runtime-support+door-wait network=interaction-gated audio=post-menu-threaded branded-boot=cold-0.64s+warm-0.275s")

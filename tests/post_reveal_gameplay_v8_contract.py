@@ -41,7 +41,7 @@ for token in [
     if token not in shader:
         failures.append(f'missing Invaluable glass behavior: {token}')
 
-for token in ['Start the living loop before the hero beat fully settles', 'overlap_target', 'delta * 0.88']:
+for token in ['Start the living loop before the hero beat fully settles', 'overlap_target', 'delta * 0.88', 'func set_revealed(value: bool', 'set_process(false)']:
     if token not in runtime:
         failures.append(f'missing reveal-to-living transition: {token}')
 

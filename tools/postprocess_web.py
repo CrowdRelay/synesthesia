@@ -103,12 +103,20 @@ for path in fingerprint_files:
             deploy_hash.update(chunk)
 cache_id = f"{VERSION}-{deploy_hash.hexdigest()[:12]}"
 
+runtime_paths = ["/" + path.relative_to(BUILD).as_posix() for path in runtime_files]
+
 for relative_path in ("service-worker.js", "boot-shell.js"):
     target = BUILD / relative_path
     source = target.read_text()
     if "__SYNESTHESIA_CACHE_ID__" not in source:
         raise SystemExit(f"missing cache id placeholder in {relative_path}")
-    target.write_text(source.replace("__SYNESTHESIA_CACHE_ID__", cache_id))
+    source = source.replace("__SYNESTHESIA_CACHE_ID__", cache_id)
+    if relative_path == "service-worker.js":
+        runtime_placeholder = "__SYNESTHESIA_RUNTIME_PATHS__"
+        if runtime_placeholder not in source:
+            raise SystemExit("missing runtime paths placeholder in service-worker.js")
+        source = source.replace(runtime_placeholder, json.dumps(runtime_paths, separators=(",", ":")))
+    target.write_text(source)
 
 sizes = []
 for path in sorted(BUILD.rglob("*")):

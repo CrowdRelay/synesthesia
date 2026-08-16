@@ -13,7 +13,8 @@ checks = {
     "atomic offline shell install": "cache.addAll(CORE)" in worker and "Promise.allSettled(CORE" not in worker and '  "/",' not in worker,
     "scoped cache eviction": "key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME" in worker,
     "range bypass": 'request.headers.has("range")' in worker,
-    "strict runtime network first": "CORE_PATHS.has(url.pathname)" in worker and "networkFirst(request, event)" in worker,
+    "generation runtime cache first": "currentGenerationCacheFirst(request, event)" in worker and "const RUNTIME = __SYNESTHESIA_RUNTIME_PATHS__;" in worker,
+    "shell remains network first": "CORE_PATHS.has(url.pathname)" in worker and "networkFirst(request, event)" in worker,
     "no timer-selected stale runtime": "NETWORK_HEADER_TIMEOUT_MS" not in worker and "Promise.race([networkPromise" not in worker,
     "offline css+manifest": '(?:css|webmanifest|mp3|ogg|wav|ogv|svg|png|webp|woff2?|ttf)' in worker,
     "early response clone": "function fetchForDeliveryAndCache(request)" in worker and "cacheCopy: response.ok && response.status === 200 ? response.clone() : null" in worker,
@@ -28,4 +29,4 @@ for name, ok in checks.items():
         failures.append(name)
 if failures:
     raise SystemExit("SYNESTHESIA_RELEASE_HARDENING_V3=FAIL missing=" + ",".join(failures))
-print("SYNESTHESIA_RELEASE_HARDENING_V3=PASS pwa=atomic+scoped+strict-runtime-network save=bounded+self-healing draw=packed+static")
+print("SYNESTHESIA_RELEASE_HARDENING_V3=PASS pwa=atomic+scoped+generation-runtime-cache save=bounded+self-healing draw=packed+static")

@@ -14,7 +14,10 @@ for token in (
     'const CACHE_NAME = `${CACHE_PREFIX}__SYNESTHESIA_CACHE_ID__`',
     'const CORE_PATHS = new Set(CORE)',
     'function networkFirst(request, event, navigationFallback = false)',
-    '/\\.(?:wasm|pck|js)$/.test(url.pathname)',
+    'const RUNTIME = __SYNESTHESIA_RUNTIME_PATHS__;',
+    'Promise.allSettled(RUNTIME.map(async (path) => {',
+    'function currentGenerationCacheFirst(request, event)',
+    '/\\.(?:wasm|pck)$/.test(url.pathname)',
     'CORE_PATHS.has(url.pathname)',
     'event.respondWith(networkFirst(request, event, true))',
     'event.respondWith(networkFirst(request, event))',
@@ -78,4 +81,4 @@ if failures:
         print(f'FAIL: {failure}')
     raise SystemExit(f'SYNESTHESIA_SW_CONSISTENCY=FAIL count={len(failures)}')
 
-print('SYNESTHESIA_SW_CONSISTENCY=PASS runtime=strict-network-first offline=typed-cache-fallback deploy=mixed-version-guard boot=recoverable isolation=coep')
+print('SYNESTHESIA_SW_CONSISTENCY=PASS runtime=generation-cache-first+install-warm shell=network-first deploy=mixed-version-guard boot=recoverable isolation=coep')

@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 cd "$ROOT"
+# shellcheck disable=SC1091
+source "$ROOT/config/toolchains.env"
 
 # Keep source-level gates identical across local, CI and Android builders.
 if [[ "${SYNESTHESIA_SKIP_SOURCE_VALIDATION:-0}" != "1" ]]; then
@@ -70,11 +72,16 @@ verify_font_import_artifacts() {
   echo "SYNESTHESIA_FONT_IMPORT_ARTIFACTS=PASS files=2"
 }
 
-# A source-only checkout may inherit .godot/extension_list.cfg from an earlier
-# native build even after the generated descriptor was removed. Purge only that
-# stale registration; a present generated descriptor remains untouched so native
-# Rust runtime validation still works after ./scripts/build-rust-native.sh host.
-if [[ ! -f "$ROOT/synesthesia_rust.gdextension" ]]; then
+# Generated native artifacts are intentionally ignored by Git and therefore can
+# survive a rollback. If a descriptor is present, rebuild the host extension from
+# the current source with the pinned native Rust toolchain before Godot imports it.
+# This also re-applies and verifies the local macOS ad-hoc signature. A checkout
+# without a descriptor remains a valid source-only/GDScript validation path.
+if [[ -f "$ROOT/synesthesia_rust.gdextension" ]]; then
+  RUSTUP_TOOLCHAIN="$RUST_NATIVE_TOOLCHAIN" \
+    SYNESTHESIA_RUST_PROFILE="${SYNESTHESIA_RUST_VALIDATE_PROFILE:-debug}" \
+    ./scripts/build-rust-native.sh host
+else
   ./scripts/build-rust-native.sh disable >/dev/null
 fi
 

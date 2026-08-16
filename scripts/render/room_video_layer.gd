@@ -1,17 +1,16 @@
 extends Control
 
-const PostProcessShader := preload("res://shaders/room_video_postprocess.gdshader")
+const POST_PROCESS_SHADER_PATH: String = "res://shaders/room_video_postprocess.gdshader"
 const VIDEO_PATHS: Dictionary = {
-    # Only authored clips still used by runtime. V4 living rooms own their motion
-    # procedurally and deliberately carry no legacy video payload.
-    "uncertainty": "res://assets/video/uncertainty.ogv",
-    "unmasked": "res://assets/video/unmasked.ogv",
-    "seed": "res://assets/video/seed.ogv",
-    "technophobia": "res://assets/video/technophobia.ogv",
-    "invaluable": "res://assets/video/invaluable.ogv",
+    # Room motion is fully procedural. Keep only the authored finale clip;
+    # dropping low-alpha room Theora layers removes decoder hitches and ~11.7 MiB
+    # from the Web PCK without reducing interactive/living-world feedback.
     "finale": "res://assets/video/finale.ogv",
 }
-const PROCEDURAL_LIVING_STYLES: Array[String] = ["party", "calling", "waves", "rise", "hybrid", "ashes"]
+const PROCEDURAL_LIVING_STYLES: Array[String] = [
+    "uncertainty", "party", "unmasked", "calling", "seed", "hybrid",
+    "technophobia", "invaluable", "ashes", "waves", "rise",
+]
 # Procedural-living rooms must not repaint old props over the V5 authored scene.
 const PROFILE_INDEX: Dictionary = {
     "uncertainty": 0, "party": 1, "unmasked": 2, "calling": 3,
@@ -36,6 +35,17 @@ func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     clip_contents = true
     visible = false
+    set_process(false)
+
+func _ensure_player() -> bool:
+    if _player != null:
+        return true
+    if _style != "finale" or not ResourceLoader.exists(POST_PROCESS_SHADER_PATH):
+        return false
+    var shader_resource: Resource = load(POST_PROCESS_SHADER_PATH)
+    if not (shader_resource is Shader):
+        push_warning("Finale video shader unavailable")
+        return false
     _player = VideoStreamPlayer.new()
     _player.name = "CinematicVideo"
     _player.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -47,9 +57,9 @@ func _ready() -> void:
     add_child(_player)
     _player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _material = ShaderMaterial.new()
-    _material.shader = PostProcessShader
+    _material.shader = shader_resource as Shader
     _player.material = _material
-    set_process(false)
+    return true
 
 func configure(style: String, reduced_motion: bool, quiet_visuals: bool, calm_mode: bool) -> void:
     _style = style
@@ -57,8 +67,9 @@ func configure(style: String, reduced_motion: bool, quiet_visuals: bool, calm_mo
     _reduced_motion = reduced_motion
     _quiet_visuals = quiet_visuals
     _calm_mode = calm_mode
-    _material.set_shader_parameter("profile", int(PROFILE_INDEX.get(_style, 0)))
-    _sync_effect_strength()
+    if _style == "finale" and _ensure_player():
+        _material.set_shader_parameter("profile", int(PROFILE_INDEX.get(_style, 0)))
+        _sync_effect_strength()
 
 func set_cinematic(value: bool, instant: bool = false) -> void:
     _cinematic = value
@@ -87,9 +98,9 @@ func set_runtime_scale(value: float) -> void:
     var previous := _runtime_scale
     _runtime_scale = clampf(value, 0.55, 1.0)
     _sync_effect_strength()
-    # V2 still art remains fully authored without a video decoder. On a device
-    # under pressure, dropping secondary motion is a quality win, not a blank room.
-    if _style != "finale" and _runtime_scale < 0.72:
+    # Room motion is procedural and does not allocate a decoder. The finale is
+    # the only authored video, and may stay enabled at every quality tier.
+    if _style != "finale":
         _stop_video(true)
     elif _cinematic and previous < 0.72 and _runtime_scale >= 0.72 and not _reduced_motion:
         _start_video(false)
@@ -108,22 +119,13 @@ func has_stream_loaded() -> bool:
 
 
 func _v2_target_alpha() -> float:
-    # Legacy clips are retained as low-amplitude motion texture only. The new
-    # moodboard-locked still art + room mechanics own the image in V2.
-    if _style == "finale":
-        return minf(_max_alpha, 0.78 if not _quiet_visuals else 0.42)
-    var room_cap := 0.16 if _calm_mode else 0.22
-    if _style in ["technophobia", "invaluable", "unmasked"]:
-        room_cap += 0.035
-    return minf(_max_alpha, room_cap * _runtime_scale)
+    return minf(_max_alpha, 0.78 if not _quiet_visuals else 0.42)
 
 func _start_video(instant: bool) -> void:
-    # V4 living rooms own motion procedurally and ship no legacy clips.
+    # Every gameplay room owns motion procedurally and ships no legacy clip.
     if _style in PROCEDURAL_LIVING_STYLES:
         return
-    if _video_path.is_empty() or _player == null:
-        return
-    if _style != "finale" and _runtime_scale < 0.72:
+    if _video_path.is_empty() or not _ensure_player():
         return
     if _player.stream == null:
         # Ogg Theora is a runtime file-backed VideoStream in Godot 4.x.

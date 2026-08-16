@@ -26,21 +26,32 @@ func configure(style: String, accent: Color, secondary: Color) -> void:
     queue_redraw()
 
 func set_progress(value: float) -> void:
-    _progress = clampf(value, 0.0, 1.0)
+    var next: float = clampf(value, 0.0, 1.0)
+    if is_equal_approx(next, _progress):
+        return
+    _progress = next
     if _reduced_motion:
         queue_redraw()
 
 func set_cinematic(value: float) -> void:
-    _cinematic = clampf(value, 0.0, 1.0)
+    var next: float = clampf(value, 0.0, 1.0)
+    if is_equal_approx(next, _cinematic):
+        return
+    _cinematic = next
     if _reduced_motion:
         queue_redraw()
 
 func set_door_open_amount(value: float) -> void:
-    _door_open = clampf(value, 0.0, 1.0)
+    var next: float = clampf(value, 0.0, 1.0)
+    if is_equal_approx(next, _door_open):
+        return
+    _door_open = next
     if _reduced_motion:
         queue_redraw()
 
 func set_reduced_motion(value: bool) -> void:
+    if _reduced_motion == value:
+        return
     _reduced_motion = value
     _sync_processing()
     queue_redraw()

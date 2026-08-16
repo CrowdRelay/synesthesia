@@ -67,8 +67,15 @@ for name, text in (
     if './scripts/validate-source.sh' not in text:
         failures.append(f'{name}: bypasses canonical source validation entrypoint')
 
-if 'if [[ ! -f "$ROOT/synesthesia_rust.gdextension" ]]' not in validate or './scripts/build-rust-native.sh disable >/dev/null' not in validate:
+if 'if [[ -f "$ROOT/synesthesia_rust.gdextension" ]]' not in validate or './scripts/build-rust-native.sh disable >/dev/null' not in validate:
     failures.append('validate.sh: stale generated GDExtension registration is not purged for source-only validation')
+if 'source "$ROOT/config/toolchains.env"' not in validate:
+    failures.append('validate.sh: native runtime refresh does not load pinned toolchain configuration')
+refresh = 'RUSTUP_TOOLCHAIN="$RUST_NATIVE_TOOLCHAIN"'
+if refresh not in validate or './scripts/build-rust-native.sh host' not in validate:
+    failures.append('validate.sh: existing native runtime is not rebuilt from current source with the pinned toolchain')
+if refresh in validate and validate.find(refresh) > validate.find('run_godot_checked import'):
+    failures.append('validate.sh: native runtime refresh happens after Godot import')
 if 'res://tests/gdscript_parse_smoke.gd' not in validate or 'SYNESTHESIA_GDSCRIPT_PARSE=PASS' not in validate:
     failures.append('validate.sh: repository-wide GDScript parse sweep is missing')
 if 'tests/netlify_artifact_deploy_contract.py' not in canonical_gates:

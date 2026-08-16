@@ -200,20 +200,32 @@ func _run() -> void:
         _fail("completion listen mode lost its DALEJ action")
     await _dispose_node(completion)
 
-    var cinematic = RoomVideoLayerScript.new()
-    _test_host.add_child(cinematic)
-    cinematic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    cinematic.configure("uncertainty", false, false, true)
-    if cinematic.has_stream_loaded():
-        _fail("cinematic stream loaded before reveal")
-    cinematic.set_cinematic(true, true)
+    var gameplay_video = RoomVideoLayerScript.new()
+    _test_host.add_child(gameplay_video)
+    gameplay_video.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    gameplay_video.configure("uncertainty", false, false, true)
+    if gameplay_video.has_stream_loaded():
+        _fail("gameplay room allocated a cinematic stream before reveal")
+    gameplay_video.set_cinematic(true, true)
     await process_frame
-    if not cinematic.has_stream_loaded():
-        _fail("cinematic stream did not lazy-load on reveal")
-    cinematic.set_cinematic(false, true)
-    if cinematic.has_stream_loaded():
-        _fail("cinematic stream did not unload after reveal ended")
-    await _dispose_node(cinematic)
+    if gameplay_video.has_stream_loaded():
+        _fail("procedural gameplay room allocated a legacy video stream on reveal")
+    await _dispose_node(gameplay_video)
+
+    var finale_video = RoomVideoLayerScript.new()
+    _test_host.add_child(finale_video)
+    finale_video.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    finale_video.configure("finale", false, false, true)
+    if finale_video.has_stream_loaded():
+        _fail("finale cinematic stream loaded before reveal")
+    finale_video.set_cinematic(true, true)
+    await process_frame
+    if not finale_video.has_stream_loaded():
+        _fail("finale cinematic stream did not lazy-load on reveal")
+    finale_video.set_cinematic(false, true)
+    if finale_video.has_stream_loaded():
+        _fail("finale cinematic stream did not unload after reveal ended")
+    await _dispose_node(finale_video)
 
     var finale_bg = EchoesFinaleBackgroundScript.new()
     _test_host.add_child(finale_bg)
@@ -499,5 +511,5 @@ func _finish() -> void:
         print("SYNESTHESIA_LIFECYCLE_SMOKE=FAIL")
         quit(1)
     else:
-        print("SYNESTHESIA_LIFECYCLE_SMOKE=PASS audio=music+pink+pop layout=chapter+act+toast+finale input=real-pointer-click video=lazy+unloaded doors=instanced preloader=drained http=cancelled")
+        print("SYNESTHESIA_LIFECYCLE_SMOKE=PASS audio=music+pink+pop layout=chapter+act+toast+finale input=real-pointer-click video=gameplay-procedural+finale-lazy-unloaded doors=instanced preloader=drained http=cancelled")
         quit(0)

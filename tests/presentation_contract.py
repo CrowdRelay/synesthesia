@@ -98,4 +98,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_PRESENTATION=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_PRESENTATION=PASS menu=door-eye+signal chapter=nonblocking hud=receding-signal-instrument unmasked=source-video")
+print("SYNESTHESIA_PRESENTATION=PASS menu=door-eye+signal chapter=nonblocking hud=receding-signal-instrument rooms=procedural-motion")

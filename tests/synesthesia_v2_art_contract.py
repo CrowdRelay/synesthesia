@@ -68,8 +68,8 @@ for token, text, source in [
     ("add_signal_backdrop", factory, "factory"),
     ("signal-glitch.png", dressing, "dressing"),
     ("V2 hidden state", shader, "shader"),
-    ("_runtime_scale < 0.72", video, "video-adaptive"),
-    ("Legacy clips are retained as low-amplitude motion texture only", video, "video-role"),
+    ("func _ensure_player() -> bool:", video, "video-adaptive"),
+    ("PROCEDURAL_LIVING_STYLES", video, "video-role"),
 ]:
     if token not in text:
         failures.append(f"{source}: missing {token!r}")

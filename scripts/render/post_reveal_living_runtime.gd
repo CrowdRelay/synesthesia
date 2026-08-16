@@ -18,7 +18,9 @@ var _instant_restore: bool = false
 
 func bind(owner: Control) -> void:
     app = owner
-    set_process(true)
+    # Gameplay spends most of its time before the cinematic reveal. Stay fully
+    # asleep until RoomStage explicitly opens the post-reveal phase.
+    set_process(false)
 
 func configure(room_data: Dictionary) -> void:
     var value: Variant = room_data.get("living_state", {})
@@ -31,29 +33,32 @@ func configure(room_data: Dictionary) -> void:
     if app != null and app.world_micro_fx != null and app.world_micro_fx.has_method("set_target_fps"):
         app.world_micro_fx.set_target_fps(_target_fps)
     _reset_runtime()
+    set_process(false)
 
-func _process(delta: float) -> void:
-    if app == null or app.composite_material == null:
-        return
-    var revealed: bool = bool(app.cinematic_revealed)
-    if not revealed or not _enabled:
+func set_revealed(value: bool, instant_restore: bool = false) -> void:
+    if not value or not _enabled:
         if _was_revealed or _living_strength > 0.001:
-            _reset_runtime()
             _apply(0.0, 0.0, 0.0)
         _was_revealed = false
+        _reset_runtime()
+        set_process(false)
         return
-
     if not _was_revealed:
         _was_revealed = true
         _elapsed = 0.0
         _living_time = 0.0
         _living_strength = 0.0
-        # Restored completed rooms are set to full reveal before the next frame.
-        # Do not replay their completion beat every time Album Mode opens them.
-        _instant_restore = float(app._cinematic_mix) >= 0.995 and float(app._cinematic_elapsed) <= 0.05
-        if _instant_restore:
-            _elapsed = _settle_delay + 0.6
-            _living_strength = _effective_target()
+    _instant_restore = instant_restore
+    if _instant_restore:
+        _elapsed = _settle_delay + 0.6
+        _living_strength = _effective_target()
+        _apply(0.0, _living_strength, _living_time)
+    set_process(true)
+
+func _process(delta: float) -> void:
+    if app == null or app.composite_material == null or not _was_revealed or not _enabled:
+        set_process(false)
+        return
 
     _elapsed += minf(delta, 0.10)
     var hero: float = 0.0

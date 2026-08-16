@@ -65,6 +65,13 @@ def main() -> None:
     require(build, "GDRUST_GODOT_BIN", "web-api-custom-godot")
     require(build, "cargo ndk", "android-native-build")
     require(build, "disable_native", "native-disable-path")
+    require(build, "sign_macos_dylib_for_local_godot", "macos-local-sign-helper")
+    require(build, "codesign --force --sign - --timestamp=none", "macos-adhoc-codesign")
+    require(build, "codesign --verify --strict --verbose=2", "macos-codesign-verify")
+    sign_pos = build.find('sign_macos_dylib_for_local_godot "$destination"')
+    descriptor_pos = build.find("install_descriptor", sign_pos)
+    if sign_pos < 0 or descriptor_pos < 0 or sign_pos > descriptor_pos:
+        raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL macos-signing-must-precede-descriptor")
     require(web_build, 'RUST_WEB_REQUIRED="${SYNESTHESIA_RUST_WEB_REQUIRED:-1}"', "web-rust-default-required")
     require(web_build, "web_dlink_nothreads_release.zip", "web-dlink-template")
     require(web_build, "SYNESTHESIA_RUST_WEB_EXPORT=PASS", "web-export-verification")

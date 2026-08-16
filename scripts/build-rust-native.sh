@@ -26,6 +26,19 @@ install_descriptor() {
   fi
 }
 
+sign_macos_dylib_for_local_godot() {
+  local dylib="$1"
+  [[ "$(uname -s)" == "Darwin" ]] || return 0
+  require codesign
+
+  # Rust/ld may leave a linker/ad-hoc signature that macOS refuses to map into
+  # the signed Godot process. Re-seal the final copied dylib explicitly for
+  # local execution, then verify it before Godot ever sees the descriptor.
+  codesign --force --sign - --timestamp=none "$dylib"
+  codesign --verify --strict --verbose=2 "$dylib"
+  printf 'SYNESTHESIA_RUST_NATIVE_CODESIGN=PASS identity=adhoc library=%s\n' "${dylib#$ROOT/}"
+}
+
 cargo_profile_args() {
   if [[ "$PROFILE" == "release" ]]; then
     printf '%s\n' '--release'
@@ -80,6 +93,7 @@ build_host() {
   esac
   mkdir -p "$(dirname "$destination")"
   cp "$source" "$destination"
+  sign_macos_dylib_for_local_godot "$destination"
   install_descriptor
   echo "SYNESTHESIA_RUST_NATIVE=PASS target=host profile=$PROFILE library=${destination#$ROOT/}"
 }

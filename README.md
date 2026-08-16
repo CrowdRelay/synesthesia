@@ -9,7 +9,7 @@ Godot 4.7.1 portrait interactive-album adventure for **Echoes Of The Modern Mind
 - desktop keeps the portrait room undistorted and uses side space for menu/finale UI; portrait phones use the full native viewport so the room never becomes a tiny centered postcard;
 - HiDPI is enabled on Web/Android/iOS/desktop; UI and procedural eye/door graphics render at the target display resolution;
 - current + next room assets are preloaded within explicit memory budgets;
-- V2 room stills own the image; six Living Rooms V4 scenes use procedural ambient motion exclusively, while the remaining legacy `720×1280 @ 24 fps` loops stay only as low-amplitude motion texture;
+- V2 room stills own the image; all eleven gameplay rooms use procedural living-world motion, so no room-level video decoder sits on the interaction path; only the authored finale keeps a lazy `720×1280 @ 24 fps` cinematic;
 - adaptive performance lowers mask upload cadence, particles and motion before dropping functionality;
 - room progress persists locally as bounded PNG reveal masks;
 - the Web boot shell owns browser startup and suppresses the stock Godot image with a Web feature override; native targets can retain their branded splash;
@@ -17,7 +17,7 @@ Godot 4.7.1 portrait interactive-album adventure for **Echoes Of The Modern Mind
 
 The source art stays asymmetrical by intent: background 405×720, scene/subject 675×1200, foreground 540×960. Those are texture-source sizes, not the runtime viewport. The runtime never stretches a fixed 540×960 application canvas; it fits/crops the portrait art inside a native-resolution shell while UI remains pixel-sharp.
 
-Video provenance for the six runtime cinematics is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). V4 living rooms use procedural motion and no longer ship their legacy clips, cutting the runtime video payload substantially. Web runtime files (`.pck/.wasm/.js`) use strict network-first + HTTP revalidation with CacheStorage fallback only after a real network/transient-origin failure. The cache namespace fingerprints the whole deploy surface, and returning clients perform a one-time clean worker/cache handoff when the deploy generation changes, preventing mixed-version PCK/WASM after a release while retaining offline recovery.
+Video provenance for the finale cinematic is retained in `assets/video/manifest.json` (`source_resolution=720x1280`). Removing the five remaining legacy room loops cuts about 11.7 MiB from the source/Web pack and eliminates their decoder/shader startup cost. Web runtime files (`.pck/.wasm` and engine JS) are cache-first only inside the current fingerprinted deploy generation; the offline shell remains network-first, and a new deploy receives a new cache namespace plus one-time worker/cache handoff. The worker also opportunistically warms the current runtime after installation, so repeat launches do not pay a CDN round-trip before engine startup.
 
 ## V2 experience
 

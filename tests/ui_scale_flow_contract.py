@@ -67,7 +67,10 @@ main = source("scripts/main.gd")
 room_flow = source("scripts/app/main_room_flow.gd")
 if "app.reward_panel != null or app.experience_intro_panel != null or not app.room_layer.visible" not in room_flow:
     failures.append("main_room_flow.gd: delayed completion card can resurrect above the main menu")
-if "panel.hide(); panel.queue_free()" not in main:
+modal_start = main.find("func _remove_modal(panel: Control) -> void:")
+modal_end = main.find("func _unhandled_input", modal_start)
+modal_block = main[modal_start:modal_end]
+if "panel.hide()" not in modal_block or "panel.queue_free()" not in modal_block or modal_block.find("panel.hide()") > modal_block.find("panel.queue_free()"):
     failures.append("main.gd: modal removal is not visually immediate before deferred queue_free")
 stay_start = main.find("completion_panel.stay_requested.connect")
 stay_end = main.find("func _transition_to_room", stay_start)

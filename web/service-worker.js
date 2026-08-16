@@ -14,11 +14,21 @@ const CORE = [
   "/register-sw.js",
 ];
 const CORE_PATHS = new Set(CORE);
+const RUNTIME = __SYNESTHESIA_RUNTIME_PATHS__;
 
 self.addEventListener("install", (event) => {
-  // The offline shell is a unit: do not activate a worker with a silently
-  // partial CORE cache. A later install retry is safer than a broken PWA.
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)));
+  // The offline shell is a unit. Runtime warming is opportunistic: if a CDN
+  // request is interrupted, install the worker anyway and let the normal
+  // cache-first runtime path fill the missing entry on demand.
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(CORE);
+    await Promise.allSettled(RUNTIME.map(async (path) => {
+      if (await cache.match(path)) return;
+      const response = await fetch(path, { cache: "no-cache" });
+      if (response.ok && response.status === 200) await cache.put(path, response);
+    }));
+  })());
   self.skipWaiting();
 });
 
@@ -107,6 +117,24 @@ function networkFirst(request, event, navigationFallback = false) {
   })();
 }
 
+
+// Runtime blobs are immutable inside a deploy generation because CACHE_NAME
+// embeds the full build fingerprint. Once the current generation has fetched
+// them successfully, return CacheStorage immediately on the next launch instead
+// of blocking engine startup on another CDN round-trip. A new deploy gets a new
+// CACHE_NAME and the activation/migration guard removes the old generation.
+async function currentGenerationCacheFirst(request, event) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+
+  const network = await fetchForDeliveryAndCache(request);
+  if (network.cacheCopy) {
+    event.waitUntil(cache.put(request, network.cacheCopy).catch(() => undefined));
+  }
+  return network.response;
+}
+
 function staleWhileRevalidate(request, event) {
   const cachePromise = caches.open(CACHE_NAME);
   const cachedPromise = cachePromise.then((cache) => cache.match(request));
@@ -138,7 +166,11 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(networkFirst(request, event, true));
     return;
   }
-  if (CORE_PATHS.has(url.pathname) || /\.(?:wasm|pck|js)$/.test(url.pathname)) {
+  if (/\.(?:wasm|pck)$/.test(url.pathname) || (url.pathname.endsWith(".js") && !CORE_PATHS.has(url.pathname))) {
+    event.respondWith(currentGenerationCacheFirst(request, event));
+    return;
+  }
+  if (CORE_PATHS.has(url.pathname)) {
     event.respondWith(networkFirst(request, event));
     return;
   }

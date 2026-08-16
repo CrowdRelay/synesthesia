@@ -353,8 +353,16 @@ func _on_reward_run_invalidated() -> void:
 func _array_value(value: Variant) -> Array:
     return value.duplicate(true) if value is Array else []
 func _remove_modal(panel: Control) -> void:
-    if panel != null and is_instance_valid(panel):
-        panel.hide(); panel.queue_free()
+    if panel == null or not is_instance_valid(panel):
+        return
+    # Release keyboard/gamepad/Web focus before the focused node leaves the tree.
+    # This prevents stale focus ownership from eating the next pointer/touch event
+    # after Settings, completion cards or confirmation modals are dismissed.
+    var focus_owner: Control = get_viewport().gui_get_focus_owner()
+    if focus_owner != null and is_instance_valid(focus_owner) and (focus_owner == panel or panel.is_ancestor_of(focus_owner)):
+        focus_owner.release_focus()
+    panel.hide()
+    panel.queue_free()
 func _unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed(&"ui_cancel") and _handle_back_request():
         get_viewport().set_input_as_handled()

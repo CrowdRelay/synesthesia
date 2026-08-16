@@ -10,9 +10,12 @@ const MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"
 # Keep startup branded but bounded. The authored Theora loop is armed only after
 # the first real Godot frame, so these timings do not move decoder work back onto
 # the critical first-frame path.
-const BOOT_HOLD: float = 0.22
-const EYE_REVEAL_DURATION: float = 0.42
-const FADE_DURATION: float = 0.16
+const COLD_BOOT_HOLD: float = 0.16
+const COLD_EYE_REVEAL_DURATION: float = 0.34
+const COLD_FADE_DURATION: float = 0.14
+const WARM_BOOT_HOLD: float = 0.025
+const WARM_EYE_REVEAL_DURATION: float = 0.16
+const WARM_FADE_DURATION: float = 0.09
 
 var _motif
 var _title: Label
@@ -22,12 +25,14 @@ var _load_label: Label
 var _progress_fill: ColorRect
 var _ui_scale: float = 1.0
 var _reduced_motion: bool = false
+var _warm_boot: bool = false
 
 func configure(reduced_motion: bool = false) -> void:
     _reduced_motion = reduced_motion
 
 func _ready() -> void:
     name = "SynesthesiaBootSequence"
+    _warm_boot = _detect_warm_boot()
     mouse_filter = Control.MOUSE_FILTER_STOP
     mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
@@ -111,7 +116,7 @@ func _build() -> void:
     add_child(_tagline)
 
     _load_label = Label.new()
-    _load_label.text = "URUCHAMIAM DOŚWIADCZENIE"
+    _load_label.text = "WZNAWIAM SYGNAŁ" if _warm_boot else "URUCHAMIAM DOŚWIADCZENIE"
     _load_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _load_label.add_theme_font_size_override("font_size", 7)
     _load_label.add_theme_color_override("font_color", Color("66778d"))
@@ -142,14 +147,17 @@ func _build() -> void:
     UiMetrics.apply_tree(self, _ui_scale)
 
 func _play() -> void:
-    await get_tree().create_timer(BOOT_HOLD).timeout
-    if not _reduced_motion:
+    var hold: float = WARM_BOOT_HOLD if _warm_boot else COLD_BOOT_HOLD
+    var reveal_duration: float = WARM_EYE_REVEAL_DURATION if _warm_boot else COLD_EYE_REVEAL_DURATION
+    var fade_duration: float = WARM_FADE_DURATION if _warm_boot else COLD_FADE_DURATION
+    await get_tree().create_timer(hold).timeout
+    if not _reduced_motion and not _warm_boot:
         _motif.trigger_glitch(0.36)
     var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-    tween.tween_method(Callable(_motif, "set_open_mix"), 0.12, 1.0, EYE_REVEAL_DURATION)
-    tween.tween_property(_progress_fill, "scale:x", 1.0, EYE_REVEAL_DURATION)
-    tween.tween_property(_title, "modulate:a", 0.84, EYE_REVEAL_DURATION)
-    tween.tween_property(_load_label, "modulate:a", 0.58, EYE_REVEAL_DURATION)
+    tween.tween_method(Callable(_motif, "set_open_mix"), 0.42 if _warm_boot else 0.12, 1.0, reveal_duration)
+    tween.tween_property(_progress_fill, "scale:x", 1.0, reveal_duration)
+    tween.tween_property(_title, "modulate:a", 0.84, reveal_duration)
+    tween.tween_property(_load_label, "modulate:a", 0.58, reveal_duration)
     await tween.finished
 
     # The boot layer is decorative from here. Release the modal input boundary
@@ -163,6 +171,12 @@ func _play() -> void:
     _motif.suspend_authored_animation(true)
     released.emit()
     var fade := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-    fade.tween_property(self, "modulate:a", 0.0, FADE_DURATION if not _reduced_motion else 0.08)
+    fade.tween_property(self, "modulate:a", 0.0, fade_duration if not _reduced_motion else minf(fade_duration, 0.07))
     await fade.finished
     queue_free()
+
+func _detect_warm_boot() -> bool:
+    if not OS.has_feature("web"):
+        return false
+    var value: Variant = JavaScriptBridge.eval("Boolean(window.synesthesiaWarmBoot)", true)
+    return bool(value)

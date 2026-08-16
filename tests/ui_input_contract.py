@@ -71,6 +71,9 @@ for token in (
     "InteractiveUiRootScript.new()",
     "ui_root.attach(experience_intro_panel, 20)",
     "boot.released.connect(_show_experience_intro)",
+    "gui_get_focus_owner()",
+    "panel.is_ancestor_of(focus_owner)",
+    "focus_owner.release_focus()",
 ):
     if token not in main:
         failures.append(f"main.gd: missing dedicated interactive UI attachment {token}")

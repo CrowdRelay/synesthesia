@@ -18,13 +18,7 @@ const RoomStateFlowScript := preload("res://scripts/render/room_state_flow.gd")
 const MechanicProgress := preload("res://scripts/rooms/mechanic_progress.gd")
 const DebugProfile := preload("res://scripts/app/debug_profile.gd")
 const RevealMaskScript := preload("res://scripts/render/reveal_mask.gd")
-const AtmosphereLayerScript := preload("res://scripts/render/atmosphere_layer.gd")
-const InteractionFxLayerScript := preload("res://scripts/render/interaction_fx_layer.gd")
-const RoomDressingLayerScript := preload("res://scripts/render/room_dressing_layer.gd")
-const RoomVideoLayerScript := preload("res://scripts/render/room_video_layer.gd")
-const InteractionHintLayerScript := preload("res://scripts/render/interaction_hint_layer.gd")
 const InteractionAttemptFeedbackScript := preload("res://scripts/input/interaction_attempt_feedback.gd")
-const CompositeShader := preload("res://shaders/room_composite.gdshader")
 const RoomVisualSetupScript := preload("res://scripts/render/room_visual_setup.gd")
 const RoomRenderProfile := preload("res://scripts/render/room_render_profile.gd")
 @export var room_id: String = ""
@@ -270,6 +264,8 @@ func set_post_reveal_interaction(value: bool) -> void:
 func set_cinematic_reveal(value: bool, instant: bool = false) -> void:
     var was_revealed: bool = cinematic_revealed
     cinematic_revealed = value
+    if post_reveal_runtime != null and post_reveal_runtime.has_method("set_revealed"):
+        post_reveal_runtime.set_revealed(value, instant)
     if behavior != null and behavior.has_method("set_cinematic"):
         behavior.set_cinematic(value)
     video_layer.set_cinematic(value, instant)

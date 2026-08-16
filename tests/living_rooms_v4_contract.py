@@ -62,4 +62,4 @@ if len(signatures)!=11: fail.append(f'room signatures must be unique for 11 room
 if fail:
     print('\n'.join('FAIL: '+x for x in fail))
     raise SystemExit(f'SYNESTHESIA_LIVING_ROOMS_V4=FAIL count={len(fail)}')
-print('SYNESTHESIA_LIVING_ROOMS_V4=PASS rooms=11 signatures=unique rebuilt=6 ambient=per-room legacy-video=isolated')
+print('SYNESTHESIA_LIVING_ROOMS_V4=PASS rooms=11 signatures=unique rebuilt=6 ambient=per-room legacy-video=removed')

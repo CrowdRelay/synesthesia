@@ -10,6 +10,8 @@ quality = (ROOT / "scripts/app/quality_manager.gd").read_text()
 mask = (ROOT / "scripts/render/reveal_mask.gd").read_text()
 brush = (ROOT / "scripts/brush/brush_engine.gd").read_text()
 stage = (ROOT / "scripts/render/room_stage.gd").read_text()
+visual_setup = (ROOT / "scripts/render/room_visual_setup.gd").read_text()
+renderer = stage + "\n" + visual_setup
 shader = (ROOT / "shaders/room_composite.gdshader").read_text()
 project = (ROOT / "project.godot").read_text()
 native_surface = (ROOT / "scripts/app/native_experience_surface.gd").read_text()
@@ -50,7 +52,7 @@ checks = {
     "upload-throttle": "texture_upload_hz" in quality and "upload_if_dirty" in stage,
     "adaptive-runtime": "set_runtime_budget" in stage and "runtime_scale" in shader,
     "no-history-redraw": "for segment in" not in stage and "draw_history" not in stage,
-    "single-composite": "room_composite.gdshader" in stage and "visual_snow.gdshader" not in stage,
+    "single-composite": "room_composite.gdshader" in renderer and "visual_snow.gdshader" not in renderer,
     "cinematic-gpu-reveal": "completion_reveal" in shader and "completion_origin" in shader,
 }
 failed = [name for name, ok in checks.items() if not ok]

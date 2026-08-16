@@ -21,7 +21,7 @@ world_text = world.read_text(errors="replace") if world.is_file() else ""
 shader_text = shader.read_text(errors="replace") if shader.is_file() else ""
 setup_text = setup.read_text(errors="replace") if setup.is_file() else ""
 
-for token in ("settle_delay", "living_strength", "_instant_restore", "reduced_motion", "target_fps", "set_target_fps"):
+for token in ("settle_delay", "living_strength", "_instant_restore", "reduced_motion", "target_fps", "set_target_fps", "func set_revealed", "set_process(false)"):
     if token not in runtime_text:
         failures.append(f"post reveal runtime missing {token}")
 for token in ("set_living_strength", "set_target_fps", '"calling"', '"party"', '"unmasked"', '"waves"', '"uncertainty"'):
