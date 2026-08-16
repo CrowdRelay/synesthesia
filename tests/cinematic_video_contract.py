@@ -100,10 +100,11 @@ if "UnmaskedEyeGlow" in layer or "unmasked_eye_glow_layer" in layer:
 
 finale = (ROOT / "scripts/ui/echoes_finale_background.gd").read_text()
 finale_card = (ROOT / "scripts/ui/signal_finale_card.gd").read_text()
+finale_layout = (ROOT / "scripts/ui/signal_finale_layout.gd").read_text()
 ui = (ROOT / "scripts/ui/ui_factory.gd").read_text()
 if 'configure("finale"' not in finale or "set_max_alpha(0.94)" not in finale:
     failures.append("finale video is not blended over the original skull")
-if "UIFactory.menu_style(_accent)" not in finale_card or "820.0" not in finale_card or "0.975" not in ui:
+if "UIFactory.menu_style(_accent)" not in finale_card or "820.0" not in finale_layout or "0.975" not in ui:
     failures.append("final Signal form must strongly cover the lower skull/teeth with the adaptive menu panel")
 
 if failures:

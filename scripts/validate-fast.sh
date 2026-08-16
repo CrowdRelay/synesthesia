@@ -30,6 +30,7 @@ python3 tests/runtime_loader_deadline_contract.py
 python3 tests/player_experience_evolution_contract.py
 python3 tests/ui_input_contract.py
 python3 tests/finale_settings_startup_regression_contract.py
+python3 tests/finale_hint_overlay_regression_contract.py
 python3 tests/ui_performance_contract.py
 python3 tests/ui_scale_flow_contract.py
 python3 tests/mobile_feedback_contract.py

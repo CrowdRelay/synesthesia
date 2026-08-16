@@ -1,0 +1,48 @@
+extends RefCounted
+
+const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
+
+static func layout_panel(app: Control) -> void:
+    if app._panel == null:
+        return
+    var viewport := app.get_viewport_rect().size
+    app._ui_scale = UiMetrics.scale_for_viewport(viewport)
+    var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * app._ui_scale, 46.0 * app._ui_scale))
+    var width := minf(1120.0 * app._ui_scale, maxf(320.0 * app._ui_scale, viewport.x - margin * 2.0))
+    var height := minf(820.0 * app._ui_scale, maxf(500.0 * app._ui_scale, viewport.y - margin * 2.0))
+    app._panel.set_anchors_preset(Control.PRESET_CENTER)
+    app._panel.offset_left = -width * 0.5
+    app._panel.offset_right = width * 0.5
+    app._panel.offset_top = -height * 0.5
+    app._panel.offset_bottom = height * 0.5
+
+static func layout_columns(app: Control) -> void:
+    if app._layout == null:
+        return
+    var viewport := app.get_viewport_rect().size
+    app._ui_scale = UiMetrics.scale_for_viewport(viewport)
+    var portrait_layout: bool = viewport.x < 900.0 * app._ui_scale or viewport.x / maxf(1.0, viewport.y) < 0.95
+    app._layout.vertical = portrait_layout
+    # On phones the actionable result/form owns the first scroll viewport.
+    if app._visual != null and app._form != null:
+        app._layout.move_child(app._form, 0 if portrait_layout else 1)
+        app._layout.move_child(app._visual, 1 if portrait_layout else 0)
+        if portrait_layout:
+            app.call_deferred("_scroll_to_start")
+    var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * app._ui_scale, 46.0 * app._ui_scale))
+    var panel_width := minf(1120.0 * app._ui_scale, maxf(320.0 * app._ui_scale, viewport.x - margin * 2.0))
+    var usable_width := maxf(272.0 * app._ui_scale, panel_width - 48.0 * app._ui_scale)
+    app._layout.custom_minimum_size.x = usable_width
+    if app._visual != null:
+        app._visual.custom_minimum_size.x = 0.0 if portrait_layout else 380.0 * app._ui_scale
+        app._visual.size_flags_stretch_ratio = 1.25
+    if app._form != null:
+        app._form.custom_minimum_size.x = 0.0 if portrait_layout else 340.0 * app._ui_scale
+    if app._body != null:
+        app._body.custom_minimum_size.x = 0.0 if portrait_layout else 360.0 * app._ui_scale
+    if app._motif != null:
+        app._motif.custom_minimum_size = Vector2(0.0, 190.0 * app._ui_scale) if portrait_layout else Vector2(260.0, 330.0) * app._ui_scale
+
+static func apply_ui_scale(app: Control) -> void:
+    if app._panel != null:
+        UiMetrics.apply_tree(app._panel, app._ui_scale)

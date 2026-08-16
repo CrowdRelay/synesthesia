@@ -7,6 +7,10 @@ static func build(app: Control, host: Node) -> void:
     app.mobile_instruction_panel.name = "MobileInstructionPanel"
     app.mobile_instruction_panel.visible = false
     app.mobile_instruction_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    # The instruction is visual guidance, never an input surface. Disabling
+    # recursive mouse handling lets room interactions pass through labels and
+    # containers as well as the panel itself.
+    app.mobile_instruction_panel.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
     app.mobile_instruction_panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(app._accent, true))
     host.add_child(app.mobile_instruction_panel)
 
@@ -52,11 +56,24 @@ static func set_text(app: Control, text_value: String) -> void:
     if app.mobile_instruction_label == null:
         return
     var normalized := text_value.strip_edges().to_upper()
-    var parts := normalized.split(" · ", false, 2)
-    app.mobile_instruction_label.text = str(parts[0]) if not parts.is_empty() else normalized
+    var parts := normalized.split(" · ", false)
+    var headline: String = str(parts[0]) if not parts.is_empty() else normalized
+    var detail_parts := PackedStringArray()
+    for index in range(1, parts.size()):
+        detail_parts.append(str(parts[index]))
+    var detail := " · ".join(detail_parts)
+
+    # Replace both labels as one logical state. The old implementation had an
+    # initialization path that only changed the headline and could leave stale
+    # detail glyphs behind while a gesture changed (e.g. HOLD -> RELEASE).
+    app.mobile_instruction_label.text = headline
     if app.mobile_instruction_detail_label != null:
-        app.mobile_instruction_detail_label.text = str(parts[1]) if parts.size() > 1 else ""
-        app.mobile_instruction_detail_label.visible = not app.mobile_instruction_detail_label.text.is_empty()
+        app.mobile_instruction_detail_label.text = detail
+        app.mobile_instruction_detail_label.visible = not detail.is_empty()
+        app.mobile_instruction_detail_label.queue_redraw()
+    app.mobile_instruction_label.queue_redraw()
+    if app.mobile_instruction_panel != null:
+        app.mobile_instruction_panel.queue_redraw()
 static func set_mobile_meta(app: Control, act_index: int, act_title: String, echo_found: int, echo_total: int, resonance_chain: int) -> void:
     if app.mobile_meta_label == null:
         return

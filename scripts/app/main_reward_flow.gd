@@ -3,6 +3,7 @@ extends Node
 const REWARD_CLIENT_PATH := "res://scripts/reward_client.gd"
 const FINALE_BACKGROUND_PATH := "res://scripts/ui/echoes_finale_background.gd"
 const SIGNAL_FINALE_CARD_PATH := "res://scripts/ui/signal_finale_card.gd"
+const SIGNAL_FINALE_FALLBACK_PATH := "res://scripts/ui/signal_finale_fallback_card.gd"
 
 var app: Node
 var _runtime_scripts: Dictionary = {}
@@ -84,10 +85,14 @@ func _show_reward_panel() -> void:
         app.hud.visible = false
     var SignalFinaleCardScript: Script = _runtime_script(SIGNAL_FINALE_CARD_PATH)
     if SignalFinaleCardScript == null:
+        _install_reward_fallback("Pełny finał nie załadował się poprawnie. Wynik pozostaje zapisany.")
         return
     app.reward_panel = SignalFinaleCardScript.new()
     app.reward_panel.name = "SignalFinaleCard"
     app.ui_root.attach(app.reward_panel, 40)
+    # Schedule before configure(): a runtime error in a decorative dependency
+    # must never strand the player on the finale background without a form.
+    call_deferred("_verify_reward_panel_ready")
     if app.gameplay_telemetry != null:
         var summary: Dictionary = app.ProgressMetrics.completion_summary(app.release_entries, app.album_state)
         app.gameplay_telemetry.complete_journey(
@@ -118,6 +123,35 @@ func _show_reward_panel() -> void:
     if app.reward_client != null:
         app.reward_client.start_run()
     _refresh_leaderboard()
+
+func _verify_reward_panel_ready() -> void:
+    if app.reward_panel != null and is_instance_valid(app.reward_panel) and app.reward_panel.has_method("is_ready_for_input") and app.reward_panel.is_ready_for_input():
+        return
+    _install_reward_fallback("Finał przełączył się w tryb bezpieczny. Wynik jest zachowany lokalnie i może zostać zsynchronizowany.")
+
+func _install_reward_fallback(message: String) -> void:
+    if app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app._remove_modal(app.reward_panel)
+        app.reward_panel = null
+    var FallbackScript: Script = _runtime_script(SIGNAL_FINALE_FALLBACK_PATH)
+    if FallbackScript == null:
+        app._show_fatal_error(message)
+        return
+    app.reward_panel = FallbackScript.new()
+    app.reward_panel.name = "SignalFinaleFallbackCard"
+    app.ui_root.attach(app.reward_panel, 40)
+    app.reward_panel.configure(
+        bool(app.album_state.get("server_album_completed", false)),
+        app.ProgressStoreScript.load_reward(),
+        app.ProgressMetrics.completion_summary(app.release_entries, app.album_state),
+        app.completion_context,
+        message,
+    )
+    app.reward_panel.draw_entry_requested.connect(_submit_reward_claim_values)
+    app.reward_panel.signal_context_refresh_requested.connect(_refresh_signal_context)
+    app.reward_panel.signal_handoff_requested.connect(_issue_signal_handoff)
+    app.reward_panel.reset_requested.connect(app._confirm_reset_album)
+    app.reward_panel.album_mode_requested.connect(app._show_album_archive)
 
 func _refresh_leaderboard() -> void:
     if app.reward_panel != null and is_instance_valid(app.reward_panel):

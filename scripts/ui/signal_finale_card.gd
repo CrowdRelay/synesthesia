@@ -10,7 +10,7 @@ signal album_mode_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
-const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
+const SignalFinaleLayout := preload("res://scripts/ui/signal_finale_layout.gd")
 const ViryaRosterStrip := preload("res://scripts/ui/virya_roster_strip.gd")
 const SignalResonanceRitual := preload("res://scripts/ui/signal_resonance_ritual.gd")
 const SignalLeaderboardPanel := preload("res://scripts/ui/signal_leaderboard_panel.gd")
@@ -38,6 +38,7 @@ var _ritual_complete: bool = false
 var _server_completed: bool = false
 var _awaiting_signal_return: bool = false
 var _awaiting_handoff_issue: bool = false
+var _configured_for_input: bool = false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -136,7 +137,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _layout.add_child(_form)
 
     var form_title := Label.new()
-    form_title.text = "PROOF OF FAIR · 5 PŁYT"
+    form_title.text = "FINAŁ · SYGNAŁ DOTARŁ · 5 PŁYT"
     UIFactory.apply_display_font(form_title)
     form_title.add_theme_font_size_override("font_size", 12)
     form_title.add_theme_color_override("font_color", _accent)
@@ -204,6 +205,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
         _status.text = str(saved_reward.get("message", "Jesteś już w losowaniu 5 płyt."))
         _claim.disabled = true
     _form.visible = true
+    _configured_for_input = _email != null and _claim != null and _form != null
 
     _layout_columns()
     _apply_ui_scale()
@@ -211,6 +213,13 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     tween.tween_property(self, "modulate:a", 1.0, 0.30)
 
+
+func is_ready_for_input() -> bool:
+    return _configured_for_input and _form != null and _form.visible and _email != null and _claim != null
+
+func _scroll_to_start() -> void:
+    if _scroll != null:
+        _scroll.scroll_vertical = 0
 
 func _on_ritual_completed() -> void:
     _ritual_complete = true
@@ -376,43 +385,11 @@ func is_claim_enabled() -> bool:
     return _claim != null and not _claim.disabled
 
 func _layout_panel() -> void:
-    if _panel == null:
-        return
-    var viewport := get_viewport_rect().size
-    _ui_scale = UiMetrics.scale_for_viewport(viewport)
-    var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 46.0 * _ui_scale))
-    var width := minf(1120.0 * _ui_scale, maxf(320.0 * _ui_scale, viewport.x - margin * 2.0))
-    var height := minf(820.0 * _ui_scale, maxf(500.0 * _ui_scale, viewport.y - margin * 2.0))
-    _panel.set_anchors_preset(Control.PRESET_CENTER)
-    _panel.offset_left = -width * 0.5
-    _panel.offset_right = width * 0.5
-    _panel.offset_top = -height * 0.5
-    _panel.offset_bottom = height * 0.5
-
+    SignalFinaleLayout.layout_panel(self)
 func _layout_columns() -> void:
-    if _layout == null:
-        return
-    var viewport := get_viewport_rect().size
-    _ui_scale = UiMetrics.scale_for_viewport(viewport)
-    var portrait_layout: bool = viewport.x < 900.0 * _ui_scale or viewport.x / maxf(1.0, viewport.y) < 0.95
-    _layout.vertical = portrait_layout
-
-    var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * _ui_scale, 46.0 * _ui_scale))
-    var panel_width := minf(1120.0 * _ui_scale, maxf(320.0 * _ui_scale, viewport.x - margin * 2.0))
-    var usable_width := maxf(272.0 * _ui_scale, panel_width - 48.0 * _ui_scale)
-    _layout.custom_minimum_size.x = usable_width
-    if _visual != null:
-        _visual.custom_minimum_size.x = 0.0 if portrait_layout else 380.0 * _ui_scale
-        _visual.size_flags_stretch_ratio = 1.25
-    if _form != null:
-        _form.custom_minimum_size.x = 0.0 if portrait_layout else 340.0 * _ui_scale
-    if _body != null:
-        _body.custom_minimum_size.x = 0.0 if portrait_layout else 360.0 * _ui_scale
-    if _motif != null:
-        _motif.custom_minimum_size = Vector2(0.0, 190.0 * _ui_scale) if portrait_layout else Vector2(260.0, 330.0) * _ui_scale
+    SignalFinaleLayout.layout_columns(self)
 func _apply_ui_scale() -> void:
-    if _panel != null:
-        UiMetrics.apply_tree(_panel, _ui_scale)
+    SignalFinaleLayout.apply_ui_scale(self)
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         call_deferred("_layout_panel")

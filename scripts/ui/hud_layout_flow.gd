@@ -224,6 +224,7 @@ func _build_toast() -> void:
     app.toast_panel.visible = false
     app.toast_panel.modulate.a = 0.0
     app.toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    app.toast_panel.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
     app.toast_panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(app._accent, true))
     add_child(app.toast_panel)
     var row: HBoxContainer = HBoxContainer.new()

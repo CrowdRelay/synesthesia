@@ -80,8 +80,13 @@ require(
     "func suspend_for_menu() -> void:",
     "func resume_for_room() -> void:",
     "func clear_transient_overlays() -> void:",
-    "if text_value.is_empty() or not visible:",
+    "_toast_runtime.show(text_value)",
     "_layout_flow._apply_ui_scale()",
+)
+require(
+    "scripts/ui/hud_toast_controller.gd",
+    "normalized.is_empty() or app == null or not app.visible",
+    "get_global_rect().has_point",
 )
 require(
     "scripts/ui/hud_layout_flow.gd",
@@ -144,10 +149,11 @@ for rel in (
     "scripts/ui/completion_card.gd",
     "scripts/ui/chapter_card.gd",
     "scripts/ui/settings_card.gd",
-    "scripts/ui/signal_finale_card.gd",
 ):
     if "UiMetrics" not in source(rel):
         failures.append(f"{rel}: native FHD UI density helper not applied")
+if "SignalFinaleLayout" not in source("scripts/ui/signal_finale_card.gd") or "UiMetrics" not in source("scripts/ui/signal_finale_layout.gd"):
+    failures.append("signal finale: native FHD UI density helper not delegated through layout module")
 
 if failures:
     for failure in failures:

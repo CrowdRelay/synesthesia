@@ -7,6 +7,7 @@ const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const InteractionGuide := preload("res://scripts/app/interaction_guide.gd")
 const HudLayoutFlowScript := preload("res://scripts/ui/hud_layout_flow.gd")
 const MobileInstructionBuilder := preload("res://scripts/ui/mobile_instruction_builder.gd")
+const HudToastControllerScript := preload("res://scripts/ui/hud_toast_controller.gd")
 var header_row: HBoxContainer
 var top_margin: MarginContainer
 var top_panel: PanelContainer
@@ -43,8 +44,8 @@ var act_accent_bar: ColorRect
 var _painting: bool = false
 var _context_seen: bool = false
 var _restore_timer: Timer
-var _toast_timer: Timer
 var _act_timer: Timer
+var _toast_runtime: Node
 var _interaction_guide: Node
 var _room_index: int = 0
 var _room_total: int = 11
@@ -69,8 +70,10 @@ func _ready() -> void:
     _build_toast()
     _build_act_banner()
     _restore_timer = _timer(0.72, func() -> void: set_painting(false))
-    _toast_timer = _timer(2.7, _hide_toast)
     _act_timer = _timer(1.65, _hide_act_banner)
+    _toast_runtime = HudToastControllerScript.new()
+    _toast_runtime.bind(self)
+    add_child(_toast_runtime)
     _interaction_guide = InteractionGuide.new()
     _interaction_guide.hint_ready.connect(update_discovery)
     _interaction_guide.visual_hint_changed.connect(_forward_visual_hint)
@@ -102,13 +105,10 @@ func resume_for_room() -> void:
 func clear_transient_overlays() -> void:
     if _restore_timer != null:
         _restore_timer.stop()
-    if _toast_timer != null:
-        _toast_timer.stop()
     if _act_timer != null:
         _act_timer.stop()
-    if toast_panel != null:
-        toast_panel.visible = false
-        toast_panel.modulate.a = 0.0
+    if _toast_runtime != null:
+        _toast_runtime.clear()
     if act_banner != null:
         act_banner.visible = false
         act_banner.modulate.a = 0.0
@@ -184,8 +184,7 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     _set_palette(room_data)
     var interaction := str(room_data.get("interaction", "paint"))
     instruction_label.text = _interaction_prompt(interaction)
-    if mobile_instruction_label != null:
-        mobile_instruction_label.text = instruction_label.text.replace(" · ", "\n")
+    MobileInstructionBuilder.set_text(self, instruction_label.text)
     _interaction_guide.configure(interaction)
     var viewport_size: Vector2 = get_viewport_rect().size
     if viewport_size.y > viewport_size.x and viewport_size.x <= 900.0 * _ui_scale:
@@ -267,16 +266,8 @@ func update_resonance_chain(chain: int) -> void:
 func _refresh_mobile_meta() -> void:
     MobileInstructionBuilder.set_mobile_meta(self, _current_act_index, _current_act_title, _echo_found, _echo_total, _resonance_chain)
 func update_discovery(text_value: String) -> void:
-    if text_value.is_empty() or not visible:
-        return
-    toast_label.text = text_value
-    toast_panel.visible = true
-    toast_panel.modulate.a = 0.0
-    var tween: Tween = create_tween()
-    tween.set_trans(Tween.TRANS_SINE)
-    tween.set_ease(Tween.EASE_OUT)
-    tween.tween_property(toast_panel, "modulate:a", 1.0, 0.16)
-    _toast_timer.start()
+    if _toast_runtime != null:
+        _toast_runtime.show(text_value)
 func update_act(index: int, title: String) -> void:
     _current_act_index = clampi(index, 0, 2)
     _current_act_title = title
@@ -381,12 +372,8 @@ func _interaction_prompt(interaction: String) -> String:
     }
     return str(prompts.get(interaction, "DOTKNIJ ŚWIATA · ZOSTAW ŚLAD · ODSŁOŃ PRZEJŚCIE"))
 func _hide_toast() -> void:
-    if toast_panel == null or not toast_panel.visible:
-        return
-    var tween: Tween = create_tween()
-    tween.set_trans(Tween.TRANS_SINE)
-    tween.tween_property(toast_panel, "modulate:a", 0.0, 0.22)
-    tween.finished.connect(func() -> void: toast_panel.visible = false)
+    if _toast_runtime != null:
+        _toast_runtime.hide()
 func _hide_act_banner() -> void:
     if act_banner == null or not act_banner.visible:
         return
