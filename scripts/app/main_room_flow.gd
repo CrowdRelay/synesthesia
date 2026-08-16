@@ -417,4 +417,4 @@ func _transition_to_reward() -> void:
     app._show_reward_panel()
     if app.transition_director != null:
         await app.transition_director.travel_in()
-    app.transition_running = false
+    app.transition_running = false; app.call_deferred("_show_reward_panel")

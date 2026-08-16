@@ -23,12 +23,13 @@ static func layout_columns(app: Control) -> void:
     app._ui_scale = UiMetrics.scale_for_viewport(viewport)
     var portrait_layout: bool = viewport.x < 900.0 * app._ui_scale or viewport.x / maxf(1.0, viewport.y) < 0.95
     app._layout.vertical = portrait_layout
-    # On phones the actionable result/form owns the first scroll viewport.
+    # The actionable result/form is always first, including desktop replay.
+    # Decorative art must never push the e-mail/Signal actions outside the first
+    # viewport or leave keyboard focus at the visual column after reconstruction.
     if app._visual != null and app._form != null:
-        app._layout.move_child(app._form, 0 if portrait_layout else 1)
-        app._layout.move_child(app._visual, 1 if portrait_layout else 0)
-        if portrait_layout:
-            app.call_deferred("_scroll_to_start")
+        app._layout.move_child(app._form, 0)
+        app._layout.move_child(app._visual, 1)
+        app.call_deferred("_scroll_to_start")
     var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * app._ui_scale, 46.0 * app._ui_scale))
     var panel_width := minf(1120.0 * app._ui_scale, maxf(320.0 * app._ui_scale, viewport.x - margin * 2.0))
     var usable_width := maxf(272.0 * app._ui_scale, panel_width - 48.0 * app._ui_scale)

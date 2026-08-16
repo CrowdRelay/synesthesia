@@ -59,6 +59,26 @@ assert "_sync_completed_rooms_to_server(next_room_index)" in reward_flow
 assert "func _ensure_http" in signup and "not _ensure_http()" in signup
 assert "OTWÓRZ MÓJ SYGNAŁ" in menu
 
+
+# Replay completion is a lifecycle invariant, not just a source-presence check.
+# The final door must show the actionable card before animation and reassert it
+# after animation; stale-but-valid panels are reusable only when input-ready.
+transition = room_flow.split("func _transition_to_reward", 1)[1]
+assert transition.count('app._show_reward_panel()') >= 1
+assert 'app.call_deferred("_show_reward_panel")' in transition
+assert transition.index('app._show_reward_panel()') < transition.index('await app.transition_director.travel_in()')
+assert transition.index('await app.transition_director.travel_in()') < transition.index('app.call_deferred("_show_reward_panel")')
+assert "func _reward_panel_ready()" in reward_flow
+assert "if _reward_panel_ready():" in show_reward
+assert "app._remove_modal(app.reward_panel)" in show_reward
+assert "for _attempt in range(6):" in reward_flow
+assert "await get_tree().process_frame" in reward_flow
+layout = read("scripts/ui/signal_finale_layout.gd")
+assert 'app._layout.move_child(app._form, 0)' in layout
+assert 'app.call_deferred("_scroll_to_start")' in layout
+fallback = read("scripts/ui/signal_finale_fallback_card.gd")
+assert 'UIFactory.line_edit("E-mail do losowania"' in fallback
+
 # Finale explains the exact opt-in path and blocks publication for incomplete timing.
 assert "RANKING · 1) połącz ten przebieg" in finale
 assert "OPUBLIKUJ MÓJ PB W TOP 10" in leaderboard

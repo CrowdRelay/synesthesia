@@ -67,10 +67,23 @@ func _prepare_finale_background() -> void:
     app.finale_background.configure(app.reduced_motion, app.quiet_visuals)
     app.experience_surface.move_child(app.finale_background, app.game_surface.get_index() + 1)
 
+func _reward_panel_ready() -> bool:
+    return (
+        app.reward_panel != null
+        and is_instance_valid(app.reward_panel)
+        and app.reward_panel.has_method("is_ready_for_input")
+        and bool(app.reward_panel.is_ready_for_input())
+    )
+
 func _show_reward_panel() -> void:
-    if app.reward_panel != null and is_instance_valid(app.reward_panel):
+    # Finale is an invariant, not a one-shot side effect. Replay/restore can keep
+    # a valid Node reference whose form was never configured (or was detached by
+    # a transition). Reuse only an input-ready panel; otherwise rebuild it.
+    if _reward_panel_ready():
+        app.reward_panel.show()
         return
-    # A stale freed reference must not suppress reconstruction of the finale UI.
+    if app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app._remove_modal(app.reward_panel)
     app.reward_panel = null
     # The finale can be opened directly from a persisted 11/11 journey. In that
     # path _begin_experience() intentionally skips gameplay startup, so the
@@ -92,8 +105,9 @@ func _show_reward_panel() -> void:
     app.reward_panel = SignalFinaleCardScript.new()
     app.reward_panel.name = "SignalFinaleCard"
     app.ui_root.attach(app.reward_panel, 40)
-    # Schedule before configure(): a runtime error in a decorative dependency
-    # must never strand the player on the finale background without a form.
+    # Verify across several rendered frames. A single deferred check can race
+    # desktop layout/focus construction; the fallback itself also contains the
+    # e-mail form, so every completed/replay path remains actionable.
     call_deferred("_verify_reward_panel_ready")
     if app.gameplay_telemetry != null:
         var summary: Dictionary = app.ProgressMetrics.completion_summary(app.release_entries, app.album_state)
@@ -127,8 +141,13 @@ func _show_reward_panel() -> void:
     _refresh_leaderboard()
 
 func _verify_reward_panel_ready() -> void:
-    if app.reward_panel != null and is_instance_valid(app.reward_panel) and app.reward_panel.has_method("is_ready_for_input") and app.reward_panel.is_ready_for_input():
-        return
+    # Allow the Control tree, layout and focus chain to settle. This is especially
+    # important on desktop replay, where a final transition and two-column layout
+    # complete on adjacent frames.
+    for _attempt in range(6):
+        await get_tree().process_frame
+        if _reward_panel_ready():
+            return
     _install_reward_fallback("Finał przełączył się w tryb bezpieczny. Wynik jest zachowany lokalnie i może zostać zsynchronizowany.")
 
 func _install_reward_fallback(message: String) -> void:

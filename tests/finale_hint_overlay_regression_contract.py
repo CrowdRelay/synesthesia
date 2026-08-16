@@ -17,7 +17,8 @@ layout = read("scripts/ui/hud_layout_flow.gd")
 finale_layout = read("scripts/ui/signal_finale_layout.gd")
 
 # Mobile finale must open with the actionable form in the first scroll viewport.
-assert 'move_child(app._form, 0 if portrait_layout else 1)' in finale_layout
+assert 'app._layout.move_child(app._form, 0)' in finale_layout
+assert 'app._layout.move_child(app._visual, 1)' in finale_layout
 assert 'call_deferred("_scroll_to_start")' in finale_layout
 assert 'func is_ready_for_input() -> bool:' in finale
 assert 'FINAŁ · SYGNAŁ DOTARŁ · 5 PŁYT' in finale
