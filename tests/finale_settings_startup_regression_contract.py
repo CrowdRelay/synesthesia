@@ -7,6 +7,9 @@ settings = (ROOT / "scripts/ui/settings_card.gd").read_text()
 main = (ROOT / "scripts/main.gd").read_text()
 runtime = (ROOT / "scripts/app/main_runtime_flow.gd").read_text()
 reward_flow = (ROOT / "scripts/app/main_reward_flow.gd").read_text()
+room_flow = (ROOT / "scripts/app/main_room_flow.gd").read_text()
+chapter = (ROOT / "scripts/ui/chapter_card.gd").read_text()
+completion = (ROOT / "scripts/ui/completion_card.gd").read_text()
 failures: list[str] = []
 
 def need(source: str, token: str, label: str) -> None:
@@ -18,6 +21,25 @@ need(finale, "_claim.disabled = not server_completed or not _ritual_complete", "
 need(finale, "_claim.disabled = not value or not _ritual_complete", "finale")
 if "_form.visible = _ritual_complete" in finale:
     failures.append("finale: form is still hidden behind resonance ritual")
+
+
+# Aug-16 reported UI regressions: no missing arrow glyphs, chapter overlay must be
+# fully click-through, finale has a transition-independent watchdog, and the
+# completion action stack stays above verbose copy with content-driven height.
+need(chapter, "mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED", "chapter-input")
+need(chapter, '"  >  ".join(labels)', "chapter-glyphs")
+if "→" in chapter:
+    failures.append("chapter-glyphs: unsupported Unicode arrow returned")
+need(room_flow, "app.reward_flow.arm_finale_guard()", "finale-watchdog")
+need(reward_flow, "app.hud.suspend_for_menu()", "finale-watchdog")
+need(reward_flow, "var guard := get_tree().create_timer(0.80)", "finale-watchdog")
+need(reward_flow, "_show_reward_panel()", "finale-watchdog")
+actions_pos = completion.find("_actions = VBoxContainer.new()")
+body_pos = completion.find("_body = UIFactory.body(message)")
+if actions_pos < 0 or body_pos < 0 or actions_pos > body_pos:
+    failures.append("completion-layout: actions are no longer placed before variable-length copy")
+need(completion, "natural_height: float = _sheet.get_combined_minimum_size().y", "completion-layout")
+need(completion, "viewport.y * (0.40 if _listening else 0.48)", "completion-layout")
 
 # Persisted/replay completion can enter finale without gameplay runtime/HUD.
 need(reward_flow, "if app.hud != null and is_instance_valid(app.hud):", "finale-runtime")

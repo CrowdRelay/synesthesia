@@ -16,7 +16,11 @@ var _timer: Timer
 var _ui_scale: float = 1.0
 
 func _ready() -> void:
+    # Chapter copy is presentation only. Disable recursive hit-testing so every
+    # child label/container stays transparent to room gestures under the card.
     mouse_filter = Control.MOUSE_FILTER_IGNORE
+    mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
+    focus_behavior_recursive = Control.FOCUS_BEHAVIOR_DISABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func configure(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, accent: Color, identity: Dictionary = {}, objective: String = "", objective_steps: Array = []) -> void:
@@ -26,6 +30,7 @@ func configure(room_index: int, room_total: int, room_name: String, intro_text: 
 func _build(room_index: int, room_total: int, room_name: String, intro_text: String, caption: String, identity: Dictionary, objective: String, objective_steps: Array) -> void:
     _sheet = PanelContainer.new()
     _sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _sheet.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
     _sheet.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent, 0.28))
     add_child(_sheet)
     _layout_sheet()
@@ -179,7 +184,9 @@ func _objective_step_line(steps: Array) -> String:
         var verb := str((value as Dictionary).get("verb", "")).strip_edges()
         if not verb.is_empty(): labels.append(_verb_label(verb))
         if labels.size() >= 3: break
-    return "GESTY · %s" % "  →  ".join(labels) if not labels.is_empty() else ""
+    # Keep separators in the guaranteed ASCII range. The authored display font
+    # does not ship every Unicode arrow glyph on all web/mobile renderers.
+    return "GESTY · %s" % "  >  ".join(labels) if not labels.is_empty() else ""
 
 func _verb_label(verb: String) -> String:
     var labels := {"tap":"DOTKNIJ", "hold":"PRZYTRZYMAJ", "drag":"PRZESUŃ", "drag_up":"UNIEŚ", "drag_horizontal":"PROWADŹ W BOK", "release":"PUŚĆ", "swirl":"ZAKRĘĆ", "swipe":"ZRZUĆ", "tap_or_swipe":"DOTKNIJ / PRZETNIJ"}

@@ -67,6 +67,19 @@ func _prepare_finale_background() -> void:
     app.finale_background.configure(app.reduced_motion, app.quiet_visuals)
     app.experience_surface.move_child(app.finale_background, app.game_surface.get_index() + 1)
 
+func arm_finale_guard() -> void:
+    # The final menu is an invariant. Hide the room HUD immediately and schedule
+    # an independent fallback so a stalled door/render coroutine cannot strand
+    # the player on a dimmed last-room frame.
+    if app.hud != null and is_instance_valid(app.hud):
+        app.hud.suspend_for_menu()
+    _prepare_finale_background()
+    var guard := get_tree().create_timer(0.80)
+    guard.timeout.connect(func() -> void:
+        if app.reward_panel == null or not is_instance_valid(app.reward_panel):
+            _show_reward_panel()
+    )
+
 func _reward_panel_ready() -> bool:
     return (
         app.reward_panel != null

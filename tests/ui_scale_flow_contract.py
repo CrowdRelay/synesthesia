@@ -102,6 +102,7 @@ require(
     '_heading.text = "Zostań w echu — gdy poczujesz przejście, rusz dalej"',
     "_stay_button.visible = false",
     "_next_button.pressed.connect",
+    "natural_height: float = _sheet.get_combined_minimum_size().y",
 )
 
 require(

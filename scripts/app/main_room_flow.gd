@@ -405,16 +405,16 @@ func _transition_to_reward() -> void:
         app.haptics.door_open()
     app._remove_modal(app.completion_panel)
     app.completion_panel = null
+    # Hide stale HUD and arm a transition-independent fallback before door travel can stall.
+    app.reward_flow.arm_finale_guard()
     if app.transition_director != null:
         app.transition_director.set_next_accent(Color("e35f83"))
         await app.transition_director.travel_out()
     _clear_room_runtime()
     app.room_layer.visible = false
-    app._prepare_finale_background()
-    # Build the actionable finale before waiting for the decorative transition.
-    # On web a stalled/interrupted transition must never strand the player on
-    # the animated finale background without the Signal/reward form.
+    # Idempotent: if the guard already constructed the finale this only re-shows it.
     app._show_reward_panel()
     if app.transition_director != null:
         await app.transition_director.travel_in()
-    app.transition_running = false; app.call_deferred("_show_reward_panel")
+    app.transition_running = false
+    app.call_deferred("_show_reward_panel")

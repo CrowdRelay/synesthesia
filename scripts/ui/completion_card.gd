@@ -50,6 +50,29 @@ func configure(title: String, message: String, next_label: String, accent: Color
     _heading.add_theme_font_size_override("font_size", 20)
     _content.add_child(_heading)
 
+    # Navigation/listen actions are the primary completion affordance. Put them
+    # before optional identity/performance copy so text wrapping can never push
+    # the buttons below the visible bottom edge on short/tall mobile viewports.
+    _actions = VBoxContainer.new()
+    _actions.mouse_filter = Control.MOUSE_FILTER_PASS
+    _actions.alignment = BoxContainer.ALIGNMENT_CENTER
+    _actions.add_theme_constant_override("separation", 7)
+    _content.add_child(_actions)
+
+    _next_button = UIFactory.product_button(next_label, accent, true)
+    _next_button.name = "ContinueButton"
+    _next_button.custom_minimum_size = Vector2(280.0, 54.0)
+    _next_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    _next_button.pressed.connect(func() -> void: continue_requested.emit())
+    _actions.add_child(_next_button)
+
+    _stay_button = UIFactory.product_button("Zostań i słuchaj", Color("73869d"), false)
+    _stay_button.name = "ListenButton"
+    _stay_button.custom_minimum_size = Vector2(220.0, 40.0)
+    _stay_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    _stay_button.pressed.connect(_enter_listen_mode)
+    _actions.add_child(_stay_button)
+
     _body = UIFactory.body(message)
     _body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _body.add_theme_font_size_override("font_size", 10)
@@ -76,26 +99,6 @@ func configure(title: String, message: String, next_label: String, accent: Color
         objective_done.add_theme_font_size_override("font_size", 8)
         objective_done.add_theme_color_override("font_color", Color("9fb3ca"))
         _content.add_child(objective_done)
-
-    _actions = VBoxContainer.new()
-    _actions.mouse_filter = Control.MOUSE_FILTER_PASS
-    _actions.alignment = BoxContainer.ALIGNMENT_CENTER
-    _actions.add_theme_constant_override("separation", 7)
-    _content.add_child(_actions)
-
-    _next_button = UIFactory.product_button(next_label, accent, true)
-    _next_button.name = "ContinueButton"
-    _next_button.custom_minimum_size = Vector2(280.0, 54.0)
-    _next_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-    _next_button.pressed.connect(func() -> void: continue_requested.emit())
-    _actions.add_child(_next_button)
-
-    _stay_button = UIFactory.product_button("Zostań i słuchaj", Color("73869d"), false)
-    _stay_button.name = "ListenButton"
-    _stay_button.custom_minimum_size = Vector2(220.0, 40.0)
-    _stay_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-    _stay_button.pressed.connect(_enter_listen_mode)
-    _actions.add_child(_stay_button)
 
     _refresh_layout()
 
@@ -192,7 +195,12 @@ func _layout_sheet(viewport: Vector2 = get_viewport_rect().size) -> void:
     var margin: float = maxf(clampf(viewport.y * 0.016, 12.0, 26.0), safe.w + 8.0)
     var width: float = clampf(viewport.x * 0.88, 320.0, 760.0)
     var base_height: float = 150.0 if _listening else 220.0
-    var height: float = minf(base_height * _ui_scale, viewport.y * 0.34)
+    var natural_height: float = _sheet.get_combined_minimum_size().y
+    var desired_height: float = maxf(base_height * _ui_scale, natural_height + 10.0 * _ui_scale)
+    # Let wrapped copy grow the sheet instead of clipping the action stack. Keep
+    # enough room above for the scene/HUD so completion still reads as a sheet.
+    var max_height: float = maxf(190.0, viewport.y * (0.40 if _listening else 0.48))
+    var height: float = minf(desired_height, max_height)
     height = maxf(height, 150.0 if _listening else 245.0)
 
     _sheet.anchor_left = 0.5
