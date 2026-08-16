@@ -43,7 +43,10 @@ assert '.replace(" · ", "\\n")' not in hud
 assert 'const HOLD_SECONDS: float = 1.55' in toast
 assert 'if _tween != null and _tween.is_valid()' in toast
 assert 'if app.toast_panel.visible and normalized == _last_text' in toast
-assert 'get_global_rect().has_point(app.get_viewport().get_mouse_position())' in toast
+assert 'var panel: Control = app.toast_panel as Control' in toast
+assert 'var mouse_position: Vector2 = app.get_viewport().get_mouse_position()' in toast
+assert 'var hovered: bool = panel.get_global_rect().has_point(mouse_position)' in toast
+assert 'var target: float = HOVER_ALPHA if hovered else 1.0' in toast
 assert 'const HOVER_ALPHA: float = 0.18' in toast
 assert 'mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED' in builder
 assert 'app.toast_panel.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED' in layout

@@ -89,7 +89,12 @@ func _process(delta: float) -> void:
         return
     # Hover is observed manually so the overlay can remain recursively input
     # disabled: gameplay underneath still receives every click/touch.
-    var hovered := app.toast_panel.get_global_rect().has_point(app.get_viewport().get_mouse_position())
-    var target := HOVER_ALPHA if hovered else 1.0
+    var panel: Control = app.toast_panel as Control
+    if panel == null:
+        set_process(false)
+        return
+    var mouse_position: Vector2 = app.get_viewport().get_mouse_position()
+    var hovered: bool = panel.get_global_rect().has_point(mouse_position)
+    var target: float = HOVER_ALPHA if hovered else 1.0
     _hover_alpha = move_toward(_hover_alpha, target, delta * 7.5)
     _apply_alpha()
