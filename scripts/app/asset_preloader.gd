@@ -237,7 +237,10 @@ func drain() -> void:
     for raw_path in paths:
         var path: String = str(raw_path)
         var status: int = int(ResourceLoader.load_threaded_get_status(path))
-        if status == ResourceLoader.THREAD_LOAD_LOADED or status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+        # Never turn shutdown into a synchronous wait for an in-flight threaded load.
+        # Loaded resources are consumed so Godot can release their bookkeeping; in-flight
+        # requests are simply detached from this preloader and finish on the loader thread.
+        if status == ResourceLoader.THREAD_LOAD_LOADED:
             ResourceLoader.load_threaded_get(path)
     _queued.clear()
     _critical.clear()

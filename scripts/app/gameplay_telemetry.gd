@@ -3,6 +3,7 @@ extends Node
 const ENDPOINT := "https://signal-api.virya.music/v1/public/telemetry/rum"
 const SAMPLE_RATE := 0.05
 const MAX_QUEUE := 4
+const MAX_RESPONSE_BYTES := 65_536
 
 var _room_id: String = ""
 var _quality_min_scale: float = 1.0
@@ -21,6 +22,7 @@ func _ready() -> void:
         return
     _http = HTTPRequest.new()
     _http.timeout = 4.0
+    _http.body_size_limit = MAX_RESPONSE_BYTES
     _http.request_completed.connect(_on_request_completed)
     add_child(_http)
 

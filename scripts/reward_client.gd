@@ -13,6 +13,7 @@ signal run_invalidated()
 const MAX_QUEUE_SIZE: int = 32
 const MAX_RETRY_ATTEMPTS: int = 3
 const RETRY_BASE_SECONDS: float = 1.2
+const MAX_RESPONSE_BYTES: int = 1_048_576
 
 var _api_url: String = ""
 var _campaign_slug: String = ""
@@ -33,6 +34,7 @@ func _ready() -> void:
     _http = HTTPRequest.new()
     _http.name = "SynesthesiaRewardHttp"
     _http.timeout = 15.0
+    _http.body_size_limit = MAX_RESPONSE_BYTES
     _http.request_completed.connect(_on_request_completed)
     add_child(_http)
 

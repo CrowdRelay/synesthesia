@@ -59,6 +59,19 @@ if "UIFactory.release_runtime_caches()" not in main:
     failures.append("application shutdown does not release UIFactory static resources")
 
 
+# Network clients must cap response buffers, and shutdown must never synchronously
+# join an in-flight threaded resource load on the main thread.
+reward_client = (ROOT / "scripts/reward_client.gd").read_text()
+signup_client = (ROOT / "scripts/app/signal_signup_client.gd").read_text()
+for label, source in (("reward", reward_client), ("signup", signup_client)):
+    if "const MAX_RESPONSE_BYTES: int =" not in source or "body_size_limit = MAX_RESPONSE_BYTES" not in source:
+        failures.append(f"{label} HTTP response body is not bounded")
+drain_body = preloader.split("func drain() -> void:", 1)[1].split("func _exit_tree()", 1)[0]
+if "THREAD_LOAD_IN_PROGRESS" in drain_body:
+    failures.append("preloader drain synchronously joins in-flight threaded loads")
+if "THREAD_LOAD_LOADED" not in drain_body:
+    failures.append("preloader drain no longer consumes already-loaded resources")
+
 for token in ("func take_if_ready(path: String) -> Resource:", "func is_queued(path: String) -> bool:"):
     if token not in preloader:
         failures.append(f"deferred preload API missing: {token}")

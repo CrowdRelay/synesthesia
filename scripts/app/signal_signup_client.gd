@@ -4,6 +4,8 @@ signal cities_loaded(items: Array)
 signal signup_finished(message: String)
 signal request_failed(message: String)
 
+const MAX_RESPONSE_BYTES: int = 524_288
+
 var _api_url: String = ""
 var _http: HTTPRequest
 var _operation: String = ""
@@ -17,6 +19,7 @@ func _ensure_http() -> bool:
     _http = HTTPRequest.new()
     _http.name = "SignalSignupHttp"
     _http.timeout = 12.0
+    _http.body_size_limit = MAX_RESPONSE_BYTES
     _http.request_completed.connect(_on_request_completed)
     add_child(_http)
     return true
