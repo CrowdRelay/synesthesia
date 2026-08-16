@@ -68,8 +68,10 @@ func _prepare_finale_background() -> void:
     app.experience_surface.move_child(app.finale_background, app.game_surface.get_index() + 1)
 
 func _show_reward_panel() -> void:
-    if app.reward_panel != null:
+    if app.reward_panel != null and is_instance_valid(app.reward_panel):
         return
+    # A stale freed reference must not suppress reconstruction of the finale UI.
+    app.reward_panel = null
     # The finale can be opened directly from a persisted 11/11 journey. In that
     # path _begin_experience() intentionally skips gameplay startup, so the
     # reward client may not exist yet. Bring it online here as well and let the

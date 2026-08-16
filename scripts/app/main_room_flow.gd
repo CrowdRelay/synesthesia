@@ -411,7 +411,10 @@ func _transition_to_reward() -> void:
     _clear_room_runtime()
     app.room_layer.visible = false
     app._prepare_finale_background()
+    # Build the actionable finale before waiting for the decorative transition.
+    # On web a stalled/interrupted transition must never strand the player on
+    # the animated finale background without the Signal/reward form.
+    app._show_reward_panel()
     if app.transition_director != null:
         await app.transition_director.travel_in()
     app.transition_running = false
-    app._show_reward_panel()

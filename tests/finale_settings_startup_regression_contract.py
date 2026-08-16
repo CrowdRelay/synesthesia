@@ -28,6 +28,10 @@ if show_reward.index("app.reward_panel.configure(") > show_reward.index("app.rew
 need(show_reward, "_on_run_started() reconciles every locally completed room before complete", "finale-runtime")
 
 for token in (
+    'set_process_input(true)',
+    'func _input(event: InputEvent) -> void:',
+    '_close_x.get_global_rect().has_point(position)',
+    'get_viewport().set_input_as_handled()',
     '_close_x.name = "CloseSettingsX"',
     "_close_x.z_index = 100",
     "_close_x.mouse_filter = Control.MOUSE_FILTER_STOP",

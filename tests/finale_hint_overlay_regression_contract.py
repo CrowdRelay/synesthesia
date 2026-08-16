@@ -9,6 +9,7 @@ def read(path: str) -> str:
 finale = read("scripts/ui/signal_finale_card.gd")
 fallback = read("scripts/ui/signal_finale_fallback_card.gd")
 reward = read("scripts/app/main_reward_flow.gd")
+room_flow = read("scripts/app/main_room_flow.gd")
 hud = read("scripts/ui/app_hud.gd")
 toast = read("scripts/ui/hud_toast_controller.gd")
 builder = read("scripts/ui/mobile_instruction_builder.gd")
@@ -22,6 +23,9 @@ assert 'func is_ready_for_input() -> bool:' in finale
 assert 'FINAŁ · SYGNAŁ DOTARŁ · 5 PŁYT' in finale
 
 # A decorative/runtime failure can never leave only the finale animation.
+transition_to_reward = room_flow.split("func _transition_to_reward", 1)[1]
+assert transition_to_reward.index("app._show_reward_panel()") < transition_to_reward.index("await app.transition_director.travel_in()")
+assert "if app.reward_panel != null and is_instance_valid(app.reward_panel):" in reward
 assert 'SIGNAL_FINALE_FALLBACK_PATH' in reward
 assert 'call_deferred("_verify_reward_panel_ready")' in reward
 assert 'func _install_reward_fallback' in reward

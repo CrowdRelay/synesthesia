@@ -35,7 +35,29 @@ func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
     mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
+    set_process_input(true)
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+func _input(event: InputEvent) -> void:
+    # Web/touch fallback for the close affordance. ScrollContainer and browser
+    # focus transitions can occasionally consume the Button GUI path; the
+    # modal itself still receives viewport input, so a pointer inside the fixed
+    # close rect must always close settings regardless of focus ownership.
+    if _close_x == null or not is_instance_valid(_close_x) or not _close_x.is_visible_in_tree():
+        return
+    var pressed: bool = false
+    var position := Vector2.ZERO
+    if event is InputEventMouseButton:
+        var mouse_event := event as InputEventMouseButton
+        pressed = mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
+        position = mouse_event.position
+    elif event is InputEventScreenTouch:
+        var touch_event := event as InputEventScreenTouch
+        pressed = touch_event.pressed
+        position = touch_event.position
+    if pressed and _close_x.get_global_rect().has_point(position):
+        get_viewport().set_input_as_handled()
+        close_requested.emit()
 
 func _unhandled_key_input(event: InputEvent) -> void:
     if event.is_action_pressed("ui_cancel"):
