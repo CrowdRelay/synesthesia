@@ -72,6 +72,18 @@ assert guard.index("app.room_layer.visible = false") < guard.index("_show_reward
 assert guard.index("_show_reward_panel()") < guard.index("get_tree().create_timer(0.80)")
 assert guard.index("_force_reward_panel_visible()") < guard.index("get_tree().create_timer(0.80)")
 
+# The final room queues its local-first finale directly from room completion,
+# before performance bookkeeping, persistence/network reconciliation, or the
+# ordinary CompletionCard path can strand the player on the live 11/11 HUD.
+completion = room_flow.split("func _complete_current_room()", 1)[1].split("func pause_room_timer", 1)[0]
+direct_queue = 'if journey_completed: WebE2EProbe.emit("finale", {"stage":"queued_from_completion"}); app.reward_flow.call_deferred("arm_finale_guard")'
+assert direct_queue in completion
+assert 'if not journey_completed: app.call_deferred("_show_completion_panel")' in completion
+assert completion.index('call_deferred("arm_finale_guard")') < completion.index("record_completion_performance")
+assert completion.index('call_deferred("arm_finale_guard")') < completion.index("app._save_progress()")
+assert completion.index('call_deferred("arm_finale_guard")') < completion.index("app.reward_client.record_room")
+assert '    app.call_deferred("_show_completion_panel")\n' not in completion
+
 # The final room has a terminal path before the ordinary CompletionCard guard.
 # This prevents 11/11 from remaining in a live HUD/post-reveal room.
 completion_gate = room_flow.split("func _show_completion_panel()", 1)[1].split("func _transition_to_room", 1)[0]

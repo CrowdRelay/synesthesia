@@ -277,8 +277,7 @@ func _complete_current_room() -> void:
         app.gameplay_telemetry.complete_room(elapsed_at_completion, guidance)
     app.room.set_post_reveal_interaction(true)
     app.room.set_cinematic_reveal(true)
-    # Echoes remain optional discoveries. Opening the door never grants them for
-    # free; players can stay, search, or revisit the room later in Album Mode.
+    # Echoes stay optional; players can stay, search, or revisit the room later in Album Mode.
     app.room.set_door_open(true)
     app.current_coverage = float(app.room.get_coverage())
     if app.audio_director != null:
@@ -311,6 +310,7 @@ func _complete_current_room() -> void:
         app.album_state["album_completed"] = true
         app.album_state["replay_unlocked"] = true
     var journey_completed: bool = app.current_room_index == app.release_entries.size() - 1; var journey_timed_complete: bool = app.ProgressMetrics.has_complete_journey_timing(app.release_entries, app.album_state)
+    if journey_completed: WebE2EProbe.emit("finale", {"stage":"queued_from_completion"}); app.reward_flow.call_deferred("arm_finale_guard")
     _completion_performance = app.ProgressMetrics.record_completion_performance(app.album_state, app.release_entries, release_id, elapsed_at_completion, journey_completed, journey_timed_complete, int(app.room.get_found_count()), _collectible_total(), guidance)
     timing_runtime.record_pb_splits(release_id, bool(_completion_performance.get("room_personal_best", false)))
     app.room_elapsed_before_start_ms = elapsed_at_completion
@@ -324,7 +324,7 @@ func _complete_current_room() -> void:
         app.reward_client.record_room(release_id, app.current_room_index, elapsed_at_completion)
         if app.current_room_index == app.release_entries.size() - 1:
             app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
-    app.call_deferred("_show_completion_panel")
+    if not journey_completed: app.call_deferred("_show_completion_panel")
 func pause_room_timer() -> void: timing_runtime.pause()
 func resume_room_timer() -> void: timing_runtime.resume()
 func reset_room_timer(start_now: bool = true) -> void: timing_runtime.reset(start_now)
