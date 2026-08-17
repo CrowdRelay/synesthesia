@@ -4,14 +4,23 @@ extends RefCounted
 const QUERY_FLAG := "virya_e2e"
 const EVENT_NAME := "synesthesia:e2e-state"
 
+static var _enabled_cache: int = -1
+
 static func enabled() -> bool:
+    # The query flag cannot change without a document reload, so resolve it once.
+    # This used to run a JavaScriptBridge.eval on every probe call, which on the
+    # per-frame semantic publish path is a synchronous JS round trip per frame.
+    if _enabled_cache >= 0:
+        return _enabled_cache == 1
     if not OS.has_feature("web"):
+        _enabled_cache = 0
         return false
     var value: Variant = JavaScriptBridge.eval(
         "new URLSearchParams(location.search).get('%s') === '1'" % QUERY_FLAG,
         true,
     )
-    return bool(value)
+    _enabled_cache = 1 if bool(value) else 0
+    return _enabled_cache == 1
 
 static func emit(kind: String, payload: Dictionary = {}) -> void:
     if not enabled():

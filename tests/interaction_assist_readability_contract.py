@@ -7,10 +7,13 @@ hint = (ROOT / "scripts/render/interaction_hint_layer.gd").read_text()
 stage = (ROOT / "scripts/render/room_stage.gd").read_text()
 profile = (ROOT / "scripts/render/room_render_profile.gd").read_text()
 shader = (ROOT / "shaders/room_composite.gdshader").read_text()
+# The stage delegates parts of its per-frame work to the interaction flow, so the
+# hint layer must stay defensively duck-typed across both render-layer callers.
+render_layer = stage + (ROOT / "scripts/render/room_interaction_flow.gd").read_text()
 
 assert "func is_active()" in hint
 assert "func set_assist_level(value: int)" in hint
-assert 'has_method("is_active")' in stage and 'has_method("set_assist_level")' in stage
+assert 'has_method("is_active")' in render_layer and 'has_method("set_assist_level")' in render_layer
 assert "readability_local_contrast" in profile and "readability_local_contrast" in shader
 assert "chroma_delta" in shader
 for manifest in sorted((ROOT / "data/releases").glob("*/manifest.json")):

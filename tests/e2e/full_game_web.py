@@ -164,10 +164,23 @@ def complete_room(page: Page, expected_room: str | None, artifact_dir: pathlib.P
         room = state(page, "room")
         if room and room.get("interactionEnabled"):
             seen_room = room.get("roomId") or seen_room
-            targets = room.get("targets") or []
-            target_peer = next((t for t in targets if t.get("kind") == "target"), None)
-            for target in targets[:4]:
-                perform_target(page, room, target, target_peer if target is not target_peer else None)
+            # Dynamic rooms mutate their remaining hint targets as soon as one is
+            # confirmed, and keep moving them under physics afterwards. Re-read
+            # the freshest published state before every gesture instead of
+            # replaying one pre-gesture snapshot at coordinates that have since
+            # drifted away. This is state synchronisation, not a delay: the
+            # producer republishes on its own cadence and we always act on the
+            # newest snapshot it has emitted.
+            for slot in range(4):
+                current = state(page, "room")
+                if not current or not current.get("interactionEnabled"):
+                    break
+                targets = current.get("targets") or []
+                if not targets:
+                    break
+                target_peer = next((t for t in targets if t.get("kind") == "target"), None)
+                target = targets[slot % len(targets)]
+                perform_target(page, current, target, target_peer if target is not target_peer else None)
             reveal_sweep(page)
             iterations += 1
             page.wait_for_timeout(160)

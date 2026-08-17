@@ -111,6 +111,23 @@ func _motion_kind(style: String, gesture_kind: String) -> String:
         "rise": return "lift"
         _: return "wave_pressure"
 
+func tick_target_republish(delta: float) -> void:
+    # The semantic target feed must not be coupled to whether the visual assist
+    # overlay happens to be on. Dynamic rooms (Party Time membranes) keep moving
+    # their remaining targets under physics after a confirmed hit, so a consumer
+    # that only ever saw the configure-time and special-event snapshots ends up
+    # acting on coordinates that have already drifted away.
+    var hint_active: bool = app.hint_layer != null \
+        and app.hint_layer.has_method("is_active") \
+        and app.hint_layer.is_active()
+    if not (hint_active or WebE2EProbe.enabled()):
+        app._hint_refresh_accumulator = 0.0
+        return
+    app._hint_refresh_accumulator += delta
+    if app._hint_refresh_accumulator >= 0.20:
+        app._hint_refresh_accumulator = 0.0
+        app._refresh_hint_targets()
+
 func _on_runtime_special(kind: String, index: int) -> void:
     _unlock_semantic_collectibles(kind)
     app.attempt_feedback.success(app.pointer_norm, 0.78)

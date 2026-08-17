@@ -159,13 +159,7 @@ func _take_texture(path: String, asset_source = null) -> Texture2D: return _visu
 func _process(delta: float) -> void:
     if behavior != null and (not _behavior_tick_gated or behavior.needs_tick()):
         behavior.advance(delta)
-    if hint_layer != null and hint_layer.has_method("is_active") and hint_layer.is_active():
-        _hint_refresh_accumulator += delta
-        if _hint_refresh_accumulator >= 0.20:
-            _hint_refresh_accumulator = 0.0
-            _refresh_hint_targets()
-    else:
-        _hint_refresh_accumulator = 0.0
+    _interaction_flow.tick_target_republish(delta)
     _idle_motion_time = fmod(_idle_motion_time + delta, 10000.0)
     _interaction_energy = move_toward(_interaction_energy, 0.0, delta * 1.9)
     if world_micro_fx != null:
