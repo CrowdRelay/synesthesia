@@ -1,10 +1,8 @@
 extends Control
-
 signal begin_requested
 signal new_journey_requested
 signal settings_requested
 signal album_mode_requested
-
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const SignalSignupClient := preload("res://scripts/app/signal_signup_client.gd")
@@ -12,6 +10,7 @@ const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const ViryaWorld := preload("res://scripts/app/virya_world.gd")
 const ViryaRosterStrip := preload("res://scripts/ui/virya_roster_strip.gd")
 const JourneyPulse := preload("res://scripts/ui/journey_pulse.gd")
+const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd")
 const MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"
 
 var _accent: Color = Color("8c62ff")
@@ -29,6 +28,7 @@ var _signal_city: OptionButton
 var _signal_consent: CheckBox
 var _signal_status: Label
 var _signal_submit: Button
+var _continue_button: Button
 var _signal_client
 var _api_url: String = ""
 var _policy_version: String = "virya-signal-2026-08"
@@ -173,10 +173,10 @@ func _build() -> void:
     _action_column.add_child(menu_label)
 
     var continue_label: String = "ZOBACZ FINAŁ" if _album_completed else ("WRÓĆ DO WĘDRÓWKI" if _has_progress else "PRZEKROCZ PRÓG")
-    var continue_button := UIFactory.product_button(continue_label, _accent, true)
-    continue_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-    continue_button.pressed.connect(func() -> void: begin_requested.emit())
-    _action_column.add_child(continue_button)
+    _continue_button = UIFactory.product_button(continue_label, _accent, true)
+    _continue_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+    _continue_button.pressed.connect(func() -> void: begin_requested.emit())
+    _action_column.add_child(_continue_button)
 
     var album_mode_button := UIFactory.product_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
     album_mode_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -228,6 +228,7 @@ func _build() -> void:
     _build_signal_form()
     _layout_columns()
     _apply_ui_scale()
+    WebE2EProbe.control_action_deferred("menu", "continueRect", _continue_button, get_viewport_rect().size)
 
     modulate.a = 0.0
     var tween := create_tween()

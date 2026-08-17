@@ -79,6 +79,7 @@ jobs:
           test -s promoted/build/web-artifact-manifest.json
           test -s promoted/build/web-release-provenance.json
           test -s promoted/tools/artifact_manifest.py
+          test -s promoted/tests/e2e/full_game_web.py
           test -n "$(find promoted/build/web -maxdepth 1 -type f -name '*.wasm' -print -quit)"
           test -n "$(find promoted/build/web -maxdepth 1 -type f -name '*.pck' -print -quit)"
           test -z "$(find promoted/build/web -type f -name 'synesthesia_gdext.wasm' -print -quit)"
@@ -150,7 +151,56 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Deploy exact prebuilt artifact to Netlify
+      - name: Install production E2E runner
+        if: steps.freshness.outputs.current == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-cache-dir 'playwright==1.57.0'
+          browser="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "${browser}"
+          echo "SYNESTHESIA_E2E_BROWSER=${browser}" >> "${GITHUB_ENV}"
+
+      - name: Deploy exact artifact to isolated Netlify preview
+        if: steps.freshness.outputs.current == 'true'
+        id: preview
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes netlify-cli@26.2.0 deploy \
+            --no-build \
+            --json \
+            --dir=promoted/build/web \
+            --site="${NETLIFY_SITE_ID}" \
+            --auth="${NETLIFY_AUTH_TOKEN}" \
+            --message="GitHub Actions E2E preview ${SOURCE_SHA}" \
+            > "${RUNNER_TEMP}/netlify-preview.json"
+          preview_url="$(jq -r '.deploy_url // .deployUrl // .url // empty' "${RUNNER_TEMP}/netlify-preview.json")"
+          [[ "${preview_url}" =~ ^https:// ]]
+          echo "url=${preview_url}" >> "${GITHUB_OUTPUT}"
+          echo "SYNESTHESIA_PREVIEW_DEPLOY=PASS url=${preview_url}"
+
+      - name: Full-game preview E2E before production promotion
+        if: steps.freshness.outputs.current == 'true'
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for viewport in 390x844 810x1440 1080x1920; do
+            SYNESTHESIA_E2E_BROWSER="${SYNESTHESIA_E2E_BROWSER}" \
+            SYNESTHESIA_E2E_ARTIFACTS="${RUNNER_TEMP}/synesthesia-preview-e2e" \
+              python3 promoted/tests/e2e/full_game_web.py \
+                --url "${PREVIEW_URL}" \
+                --viewport "${viewport}"
+          done
+          echo "SYNESTHESIA_PREPROD_E2E=PASS source=${{ steps.source.outputs.sha }}"
+
+      - name: Promote exact prebuilt artifact to Netlify production
         if: steps.freshness.outputs.current == 'true'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
@@ -165,6 +215,32 @@ jobs:
             --site="${NETLIFY_SITE_ID}" \
             --auth="${NETLIFY_AUTH_TOKEN}" \
             --message="GitHub Actions artifact ${SOURCE_SHA}"
+
+      - name: Full-game production E2E
+        if: steps.freshness.outputs.current == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for viewport in 390x844 810x1440; do
+            SYNESTHESIA_E2E_BROWSER="${SYNESTHESIA_E2E_BROWSER}" \
+            SYNESTHESIA_E2E_ARTIFACTS="${RUNNER_TEMP}/synesthesia-prod-e2e" \
+              python3 promoted/tests/e2e/full_game_web.py \
+                --url 'https://synesthesia.virya.music/' \
+                --viewport "${viewport}"
+          done
+          echo "SYNESTHESIA_PROD_E2E=PASS source=${{ steps.source.outputs.sha }}"
+
+      - name: Upload production E2E diagnostics
+        if: always() && steps.freshness.outputs.current == 'true'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: synesthesia-production-e2e-${{ steps.source.outputs.sha }}
+          path: |
+            ${{ runner.temp }}/synesthesia-preview-e2e
+            ${{ runner.temp }}/synesthesia-prod-e2e
+            ${{ runner.temp }}/netlify-preview.json
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Report Synesthesia release to CrowdRelay ledger
         if: steps.freshness.outputs.current == 'true'

@@ -369,6 +369,16 @@ func _apply_filter(reveal_mix: float) -> void:
             _last_reverb_wet = target_wet
             _music_reverb.wet = target_wet
             _music_reverb.room_size = lerpf(0.62, 0.34, clamped_mix)
+func e2e_state() -> Dictionary:
+    return {
+        "musicAvailable": _music_available,
+        "musicPlaying": _music_player != null and _music_player.playing,
+        "noiseReady": _noise_player != null and _noise_player.stream != null,
+        "noisePlaying": _noise_player != null and _noise_player.playing,
+        "musicDb": _music_player.volume_db if _music_player != null else SILENCE_DB,
+        "noiseDb": _noise_player.volume_db if _noise_player != null else SILENCE_DB,
+        "suspended": _suspended,
+    }
 func shutdown() -> void:
     if _shutdown_started:
         return

@@ -9,6 +9,7 @@ signal reset_requested
 signal album_mode_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd")
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const SignalFinaleLayout := preload("res://scripts/ui/signal_finale_layout.gd")
 const ViryaRosterStrip := preload("res://scripts/ui/virya_roster_strip.gd")
@@ -209,10 +210,28 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
 
     _layout_columns()
     _apply_ui_scale()
+    call_deferred("_publish_e2e_actions")
     modulate.a = 0.0
     var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     tween.tween_property(self, "modulate:a", 1.0, 0.30)
 
+
+
+func _publish_e2e_actions() -> void:
+    if not WebE2EProbe.enabled() or _signal_button == null or _claim == null:
+        return
+    await get_tree().process_frame
+    var viewport := get_viewport_rect().size
+    var signal_rect := _signal_button.get_global_rect()
+    var claim_rect := _claim.get_global_rect()
+    WebE2EProbe.emit("finale_actions", {
+        "signalRect": {"x":signal_rect.position.x,"y":signal_rect.position.y,"w":signal_rect.size.x,"h":signal_rect.size.y},
+        "claimRect": {"x":claim_rect.position.x,"y":claim_rect.position.y,"w":claim_rect.size.x,"h":claim_rect.size.y},
+        "signalDisabled": _signal_button.disabled,
+        "claimDisabled": _claim.disabled,
+        "viewportWidth": viewport.x,
+        "viewportHeight": viewport.y,
+    })
 
 func is_ready_for_input() -> bool:
     return _configured_for_input and _form != null and _form.visible and _email != null and _claim != null

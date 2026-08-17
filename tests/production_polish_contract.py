@@ -149,7 +149,7 @@ require("scripts/render/room_video_layer.gd", "VideoStreamPlayer.new()", "VideoS
 memory = require("tools/memory_budget.py", "stdlib-webp", "MAX_CURRENT_PLUS_NEXT")
 if "PIL" in memory or "pillow" in memory.lower():
     failures.append("memory budget must remain stdlib-only")
-require("scripts/validate-source.sh", "python3 tools/memory_budget.py", "python3 tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py")
+require("scripts/validate-source.sh", "tools/memory_budget.py", "tests/production_polish_contract.py", "tests/cinematic_video_contract.py", "tests/presentation_contract.py", "scripts/run-contracts.py")
 require("validate.sh", "./scripts/validate-source.sh", "lifecycle_smoke.gd")
 require(".github/workflows/ci.yml", "./scripts/validate-source.sh")
 

@@ -177,6 +177,34 @@ jobs:
           python3 tools/web_artifact_metrics.py build/web build/web-metrics.json
           echo "SYNESTHESIA_WEB_PROMOTION_ARTIFACT=PASS files=$(find build/web -type f | wc -l | tr -d ' ')"
 
+      - name: Run full-game Web E2E against exact build artifact
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-cache-dir 'playwright==1.57.0'
+          browser="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "${browser}"
+          python3 -m http.server 8765 --directory build/web >build/e2e-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "${server_pid}" 2>/dev/null || true' EXIT
+          for viewport in 390x844 810x1440 1080x1920; do
+            SYNESTHESIA_E2E_BROWSER="${browser}" \
+            SYNESTHESIA_E2E_ALLOW_API_ERRORS=1 \
+              python3 tests/e2e/full_game_web.py --url 'http://127.0.0.1:8765/' --viewport "${viewport}"
+          done
+
+      - name: Upload full-game E2E diagnostics
+        if: always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: synesthesia-web-e2e-${{ github.sha }}
+          path: |
+            build/e2e-web
+            build/e2e-http.log
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Compare Web artifact with previous successful main build
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         env:
@@ -215,5 +243,6 @@ jobs:
             build/web-release-provenance.json
             tools/artifact_manifest.py
             tools/write_release_provenance.py
+            tests/e2e/full_game_web.py
           if-no-files-found: error
           retention-days: 14

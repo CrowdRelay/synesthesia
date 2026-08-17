@@ -20,6 +20,7 @@ var _campaign_slug: String = ""
 var _app_version: String = ""
 var _install_id: String = ""
 var _attempt_id: String = ""
+var _synthetic_run: bool = false
 var _run_id: String = ""
 var _run_token: String = ""
 var _server_next_room_index: int = 0
@@ -50,6 +51,10 @@ func configure(api_url: String, campaign_slug: String, app_version: String, inst
     _app_version = app_version
     _install_id = install_id
     _attempt_id = attempt_id if not attempt_id.is_empty() else "legacy"
+    _synthetic_run = false
+    if OS.has_feature("web"):
+        var synthetic_value: Variant = JavaScriptBridge.eval("new URLSearchParams(location.search).get('virya_e2e') === '1'", true)
+        _synthetic_run = bool(synthetic_value)
 
 func restore_run(run_state: Dictionary) -> void:
     _run_id = str(run_state.get("run_id", ""))
@@ -80,14 +85,22 @@ func start_run() -> void:
         "path": "/v1/public/synesthesia/runs",
         "authorized": false,
         "idempotency_key": "synesthesia-start-%s-%s" % [_install_id, _attempt_id],
-        "payload": {
-            "campaign_slug": _campaign_slug,
-            "install_id": _install_id,
-            "app_version": _app_version,
-            "attempt_id": _attempt_id,
-            "locale": TranslationServer.get_locale(),
-        },
+        "payload": _start_run_payload(),
     })
+
+func _start_run_payload() -> Dictionary:
+    var payload := {
+        "campaign_slug": _campaign_slug,
+        "install_id": _install_id,
+        "app_version": _app_version,
+        "attempt_id": _attempt_id,
+        "locale": TranslationServer.get_locale(),
+    }
+    # Do not send the additive field for normal players so an independently
+    # rolled back API remains compatible. Production E2E explicitly opts in.
+    if _synthetic_run:
+        payload["synthetic"] = true
+    return payload
 
 func record_room(room_id: String, room_index: int, elapsed_ms: int) -> void:
     if not has_run():

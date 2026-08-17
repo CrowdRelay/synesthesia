@@ -21,6 +21,7 @@ const RevealMaskScript := preload("res://scripts/render/reveal_mask.gd")
 const InteractionAttemptFeedbackScript := preload("res://scripts/input/interaction_attempt_feedback.gd")
 const RoomVisualSetupScript := preload("res://scripts/render/room_visual_setup.gd")
 const RoomRenderProfile := preload("res://scripts/render/room_render_profile.gd")
+const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd")
 @export var room_id: String = ""
 var manifest_room: Dictionary = {}
 var sensory: Dictionary = {}
@@ -315,6 +316,8 @@ func _refresh_hint_targets() -> void:
     if behavior != null and behavior.has_method("hint_targets"):
         targets = behavior.hint_targets()
     hint_layer.set_targets(targets)
+    WebE2EProbe.room_state(room_id, targets, get_normalized_progress(), get_coverage(), interaction_enabled, get_viewport_rect().size)
+
 func get_interaction_hint() -> String:
     if behavior != null and behavior.has_method("interaction_hint"):
         return str(behavior.interaction_hint())

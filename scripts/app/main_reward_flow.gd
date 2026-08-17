@@ -4,6 +4,7 @@ const REWARD_CLIENT_PATH := "res://scripts/reward_client.gd"
 const FINALE_BACKGROUND_PATH := "res://scripts/ui/echoes_finale_background.gd"
 const SIGNAL_FINALE_CARD_PATH := "res://scripts/ui/signal_finale_card.gd"
 const SIGNAL_FINALE_FALLBACK_PATH := "res://scripts/ui/signal_finale_fallback_card.gd"
+const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd")
 
 var app: Node
 var _runtime_scripts: Dictionary = {}
@@ -160,6 +161,7 @@ func _verify_reward_panel_ready() -> void:
     for _attempt in range(6):
         await get_tree().process_frame
         if _reward_panel_ready():
+            WebE2EProbe.emit("finale", {"ready":true,"fallback":false})
             return
     _install_reward_fallback("Finał przełączył się w tryb bezpieczny. Wynik jest zachowany lokalnie i może zostać zsynchronizowany.")
 
@@ -186,6 +188,7 @@ func _install_reward_fallback(message: String) -> void:
     app.reward_panel.signal_handoff_requested.connect(_issue_signal_handoff)
     app.reward_panel.reset_requested.connect(app._confirm_reset_album)
     app.reward_panel.album_mode_requested.connect(app._show_album_archive)
+    WebE2EProbe.emit("finale", {"ready":true,"fallback":true})
 
 func _refresh_leaderboard() -> void:
     if app.reward_panel != null and is_instance_valid(app.reward_panel):

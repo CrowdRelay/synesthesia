@@ -5,6 +5,7 @@ signal stay_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
+const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd")
 
 var _sheet: PanelContainer
 var _content: VBoxContainer
@@ -101,6 +102,7 @@ func configure(title: String, message: String, next_label: String, accent: Color
         _content.add_child(objective_done)
 
     _refresh_layout()
+    call_deferred("_publish_e2e_actions")
 
     modulate.a = 0.0
     position.y = 10.0
@@ -230,3 +232,13 @@ func _identity_line(identity: Dictionary) -> String:
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         call_deferred("_refresh_layout")
+
+func _publish_e2e_actions() -> void:
+    if not WebE2EProbe.enabled() or _next_button == null:
+        return
+    await get_tree().process_frame
+    var extra: Dictionary = {}
+    if _stay_button != null:
+        var rect := _stay_button.get_global_rect()
+        extra["listenRect"] = {"x":rect.position.x,"y":rect.position.y,"w":rect.size.x,"h":rect.size.y}
+    WebE2EProbe.control_action("completion", "continueRect", _next_button, get_viewport_rect().size, extra)

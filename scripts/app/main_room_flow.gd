@@ -1,6 +1,6 @@
 extends Node
 const EchoArchive := preload("res://scripts/app/echo_archive.gd"); const RoomCinematicRuntime := preload("res://scripts/app/room_cinematic_runtime.gd"); const RoomObjective := preload("res://scripts/app/room_objective.gd")
-const ViryaWorld := preload("res://scripts/app/virya_world.gd"); const RoomTimingRuntime := preload("res://scripts/app/room_timing_runtime.gd"); const RuntimeFactory := preload("res://scripts/app/room_runtime_factory.gd") # ChapterCardScript + CompletionCardScript are lazy factory products
+const ViryaWorld := preload("res://scripts/app/virya_world.gd"); const RoomTimingRuntime := preload("res://scripts/app/room_timing_runtime.gd"); const RuntimeFactory := preload("res://scripts/app/room_runtime_factory.gd"); const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd") # ChapterCardScript + CompletionCardScript are lazy factory products
 var app: Node; var cinematic_runtime: Node; var _completion_performance: Dictionary = {}; var timing_runtime: Node
 func bind(owner: Node) -> void:
     app = owner; cinematic_runtime = RoomCinematicRuntime.new(); cinematic_runtime.bind(app); add_child(cinematic_runtime)
@@ -226,7 +226,7 @@ func _on_coverage_changed(value: float) -> void:
     app.current_coverage = value
     var normalized: float = float(app.room.get_normalized_progress())
     if app.audio_director != null:
-        app.audio_director.set_progress(normalized, int(app.room.get_found_count()))
+        app.audio_director.set_progress(normalized, int(app.room.get_found_count())); WebE2EProbe.audio_state(str(app.manifest.get("release_id", "")), app.audio_director)
     if app.hud != null and is_instance_valid(app.hud):
         app.hud.update_reveal(normalized)
     var room_value: Variant = app.manifest.get("room", {})
@@ -284,7 +284,7 @@ func _complete_current_room() -> void:
     if app.audio_director != null:
         app.audio_director.set_progress(1.0, _collectible_total())
         app.audio_director.reveal_release_excerpt()
-        app.audio_director.play_cinematic_sfx()
+        app.audio_director.play_cinematic_sfx(); WebE2EProbe.audio_state(str(app.manifest.get("release_id", "")), app.audio_director)
     if app.hud != null and is_instance_valid(app.hud):
         app.hud.update_reveal(1.0)
         app.hud.enter_completion_beat()
