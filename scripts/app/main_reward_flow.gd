@@ -4,6 +4,7 @@ const REWARD_CLIENT_PATH := "res://scripts/reward_client.gd"
 const FINALE_BACKGROUND_PATH := "res://scripts/ui/echoes_finale_background.gd"
 const SIGNAL_FINALE_CARD_PATH := "res://scripts/ui/signal_finale_card.gd"
 const SIGNAL_FINALE_FALLBACK_PATH := "res://scripts/ui/signal_finale_fallback_card.gd"
+var _link_state := SignalLinkState.new()
 const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd")
 
 var app: Node
@@ -173,6 +174,10 @@ func _show_reward_panel() -> void:
     # runtime and keeps a visible finale even when CrowdRelay is temporarily down.
     if app.reward_client != null:
         app.reward_client.start_run()
+    else:
+        # Nothing will ever confirm completion, so the CTA must not sit disabled.
+        _link_state.mark_failed(app.reward_panel)
+    _link_state.apply(app.reward_panel)
     _refresh_leaderboard()
 
 func _verify_reward_panel_ready() -> void:
@@ -217,6 +222,7 @@ func _install_reward_fallback(message: String) -> void:
     app.reward_panel.signal_link_retry_requested.connect(_retry_signal_link)
     app.reward_panel.reset_requested.connect(app._confirm_reset_album)
     app.reward_panel.album_mode_requested.connect(app._show_album_archive)
+    _link_state.apply(app.reward_panel)
     WebE2EProbe.emit("finale", {"ready":true,"fallback":true})
 
 func _refresh_leaderboard() -> void:
@@ -342,14 +348,13 @@ func _on_room_recorded(room_id_value: String, next_room_index: int) -> void:
     _sync_completed_rooms_to_server(next_room_index)
 
 func _retry_signal_link() -> void:
-    # start_run() is idempotent for a restored run and _on_run_started()
-    # reconciles every locally completed room before completing the album, so
-    # this is exactly the path the finale takes when it opens.
+    # start_run() is idempotent; it is the same path the finale takes on open.
     if app.reward_client == null or not is_instance_valid(app.reward_client):
         return
     app.reward_client.start_run()
 
 func _on_album_recorded(context: Dictionary = {}) -> void:
+    _link_state.clear()
     app.completion_context = context.duplicate(true)
     app.album_state["server_album_completed"] = true
     app._save_album_state()
@@ -373,22 +378,22 @@ func _on_draw_entered(status: String, message: String) -> void:
         app.reward_client.refresh_completion_context(int(app.album_state.get("total_elapsed_ms", 0)))
 
 func _on_reward_request_failed(operation: String, message: String) -> void:
-    if operation == "enter_draw" and app.reward_panel != null and is_instance_valid(app.reward_panel):
+    if app.reward_panel == null or not is_instance_valid(app.reward_panel):
+        if app.hud != null and is_instance_valid(app.hud):
+            app.hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")
+        return
+    if operation == "enter_draw":
         app.reward_panel.set_status(message)
         app.reward_panel.set_claim_enabled(true)
-    elif operation.begins_with("leaderboard_") and app.reward_panel != null and is_instance_valid(app.reward_panel):
+        return
+    if operation.begins_with("leaderboard_"):
         app.reward_panel.set_leaderboard_status(message)
         app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
-    elif operation in ["recover_album", "completion_context_refresh", "handoff_issue"] and app.reward_panel != null and is_instance_valid(app.reward_panel):
-        app.reward_panel.set_status(message)
-        # Linking the run to Signal has failed rather than still being in
-        # flight. Mark it retryable so the finale keeps a live CTA: the run is
-        # already durable locally and the server path is idempotent, so a dead
-        # button here would permanently remove the only route into Signal.
-        app.reward_panel.set_signal_link_retryable(true)
-        app.reward_panel.apply_signal_context(app.completion_context)
-    elif app.hud != null and is_instance_valid(app.hud):
-        app.hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")
+        return
+    # Every remaining operation links this run to Signal. See SignalLinkState.
+    app.reward_panel.set_status(message)
+    _link_state.mark_failed(app.reward_panel)
+    app.reward_panel.apply_signal_context(app.completion_context)
 
 func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
     var text_value: String = "Ponawiam połączenie z Sygnałem · próba %d/3" % attempt
