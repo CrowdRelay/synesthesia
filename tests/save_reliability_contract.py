@@ -36,9 +36,27 @@ commit_tail = source[source.find("var rename_error:") :]
 if "DirAccess.remove_absolute(BACKUP_PATH)" in commit_tail:
     failures.append("last-good backup is still deleted after a successful commit")
 
+# current_room_index is persisted while a room completes, but only advances when
+# the next room loads. Resuming on the raw saved index therefore drops a player
+# who left at the completion card back into the room they had just finished,
+# which on web is the ordinary reload/restored-tab path.
+main_source = (ROOT / "scripts/main.gd").read_text(encoding="utf-8")
+metrics_source = (ROOT / "scripts/app/progress_metrics.gd").read_text(encoding="utf-8")
+if "resume_room_index(" not in metrics_source:
+    failures.append("resume must skip rooms that are already completed")
+else:
+    resume_body = metrics_source.split("static func resume_room_index(", 1)[1].split("\nstatic func ", 1)[0]
+    if "completed_room_ids" not in resume_body:
+        failures.append("resume must consult completed_room_ids, not just the saved index")
+    if 'entry.get("id"' not in resume_body:
+        failures.append("resume must match release entries on their release identifier")
+    load_body = main_source.split("album_state = ProgressStoreScript.load_album()", 1)[1][:600]
+    if "resume_room_index(" not in load_body:
+        failures.append("the resume index must be resolved when album state is loaded")
+
 if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_SAVE_RELIABILITY=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_SAVE_RELIABILITY=PASS commit=copy-on-write+flush+temp+rename backup=last-good corrupt-main=recoverable")
+print("SYNESTHESIA_SAVE_RELIABILITY=PASS commit=copy-on-write+flush+temp+rename backup=last-good corrupt-main=recoverable resume=skips-completed")

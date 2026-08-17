@@ -4,6 +4,26 @@ extends RefCounted
 const ProgressStoreScript := preload("res://scripts/progress_store.gd")
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
 
+static func resume_room_index(release_entries: Array, album_state: Dictionary, saved_index: int) -> int:
+    # current_room_index is persisted while a room completes, but only advances
+    # when the next room loads. A player who finishes a room and leaves at the
+    # completion card (on web, an ordinary reload or a restored tab) would
+    # otherwise be dropped back into the room they just finished. Resume at the
+    # first room that is not yet completed, which also heals saves already
+    # written that way. Once every room is completed the saved index stands, so
+    # replaying a finished album still lands where the player left off.
+    var completed: Array = _array_value(album_state.get("completed_room_ids", []))
+    if completed.is_empty():
+        return saved_index
+    for index in range(saved_index, release_entries.size()):
+        var entry_value: Variant = release_entries[index]
+        var entry: Dictionary = entry_value if entry_value is Dictionary else {}
+        # The release index calls it "id"; it is the same value the room manifest
+        # exposes as release_id and the one recorded in completed_room_ids.
+        if not completed.has(str(entry.get("id", ""))):
+            return index
+    return saved_index
+
 static func experience_summary(release_entries: Array, current_room_index: int, album_state: Dictionary) -> Dictionary:
     var room_name: String = "kolejny pokój"
     if current_room_index >= 0 and current_room_index < release_entries.size():
