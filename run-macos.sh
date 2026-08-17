@@ -61,10 +61,19 @@ for name in "${required_sensory_audio[@]}"; do
   [[ -s "$ROOT/assets/audio/$name" ]] || { echo "Missing sensory audio asset: assets/audio/$name" >&2; exit 4; }
 done
 [[ -s "$ROOT/assets/finale/echoes-finale.webp" ]] || { echo "Missing finale artwork: assets/finale/echoes-finale.webp" >&2; exit 4; }
-required_video=(uncertainty unmasked seed technophobia invaluable finale)
-for name in "${required_video[@]}"; do
-  [[ -s "$ROOT/assets/video/$name.ogv" ]] || { echo "Missing cinematic video: assets/video/$name.ogv" >&2; exit 4; }
-done
+# Only the clips the video manifest actually packages are required. Room motion
+# became procedural in v2, which removed five Theora streams; a hardcoded list
+# here outlived that change and blocked the run on assets that no longer exist.
+# Read the manifest so the two cannot drift apart again.
+while IFS= read -r clip_path; do
+  [[ -n "$clip_path" ]] || continue
+  [[ -s "$ROOT/${clip_path#res://}" ]] || { echo "Missing cinematic video: ${clip_path#res://}" >&2; exit 4; }
+done < <(python3 -c "
+import json,sys
+manifest = json.load(open('$ROOT/assets/video/manifest.json'))
+for clip in manifest.get('clips', {}).values():
+    print(clip.get('path', ''))
+")
 
 # A source checkout needs Godot's imported cache for MP3/OGG/WebP resources.
 # v0.11.0 used to delete .godot after validation, which made real assets look missing at runtime.
