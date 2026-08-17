@@ -154,7 +154,6 @@ def reveal_sweep(page: Page):
 def complete_room(page: Page, expected_room: str | None, artifact_dir: pathlib.Path):
     previous_completion_count = page.evaluate("(window.__viryaSynE2EEvents || []).filter(x => x.kind === 'completion').length")
     deadline = time.monotonic() + 75
-    iterations = 0
     seen_room = expected_room
     while time.monotonic() < deadline:
         completion = state(page, "completion")
@@ -188,12 +187,13 @@ def complete_room(page: Page, expected_room: str | None, artifact_dir: pathlib.P
                 target = targets[slot % len(targets)]
                 perform_target(page, current, target, target_peer if target is not target_peer else None)
             reveal_sweep(page)
-            iterations += 1
             page.wait_for_timeout(160)
         else:
             page.wait_for_timeout(180)
-        if iterations > 40:
-            break
+        # Keep the wall-clock deadline as the single stop condition. Completion
+        # is published deferred by the game; a fixed gesture-count cap could
+        # break on the exact frame the completion card became visible and turn
+        # a successful room into a false-negative E2E failure.
     screenshot = artifact_dir / f"failure-room-{seen_room or 'unknown'}.png"
     page.screenshot(path=str(screenshot), full_page=True)
     raise AssertionError(f"room did not complete through real gestures: {seen_room!r}; screenshot={screenshot}")
