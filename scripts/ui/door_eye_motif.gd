@@ -275,7 +275,11 @@ func _draw_textured_eye_animation(art: Rect2, min_side: float, glow: float) -> v
     var eye_center := art.position + art.size * Vector2(0.50, 0.505)
     var eye_size := art.size * Vector2(0.57, 0.235)
     var video_active: bool = _video_is_active()
-    var lid_close: float = 0.0 if video_active else clampf(_blink, 0.0, 1.0)
+    # The lid is a near-black polygon standing in for eyelid anatomy. The panel
+    # profile carries a room still rather than the glyph, so there it has no eye
+    # to close and just wipes a black square across the artwork. Skip only the
+    # overlay; the blink state, processing and redraw cadence stay untouched.
+    var lid_close: float = 0.0 if video_active or _profile == "panel" else clampf(_blink, 0.0, 1.0)
 
     if video_active:
         # The user-authored clip owns eyelid anatomy. Keep only the live neural

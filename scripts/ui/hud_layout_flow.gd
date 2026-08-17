@@ -32,7 +32,11 @@ func _apply_ui_scale() -> void:
     if app.top_margin != null:
         app.top_margin.size_flags_stretch_ratio = 1.0 if portrait else 1.18
     if app.mobile_instruction_panel != null:
-        app.mobile_instruction_panel.visible = portrait
+        # The bordered instruction panel reads better than the bare label in every
+        # orientation, and it is purely decorative: MOUSE_FILTER_IGNORE plus
+        # disabled recursive mouse behaviour keep room interaction passing
+        # straight through it. Landscape gets the same treatment as portrait.
+        app.mobile_instruction_panel.visible = true
     _layout_story_overlays()
     _apply_mobile_safe_area()
 func _build_header_row() -> void:
