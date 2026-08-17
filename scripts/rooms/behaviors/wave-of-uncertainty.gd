@@ -18,7 +18,7 @@ func interaction_hint() -> String:
 func hint_targets() -> Array[Dictionary]:
     if bool(state.get("horizon", false)):
         return []
-    return [{"point": Vector2(0.50, 0.62), "kind": "drag_horizontal", "radius": 0.18}]
+    return [{"point": Vector2(0.50, 0.50), "kind": "drag_horizontal", "radius": 0.20}]
 
 func captures_pointer_at(point_norm: Vector2) -> bool:
     return not bool(state.get("horizon", false)) and point_norm.y >= 0.44
@@ -49,7 +49,7 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
         var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
         var calmness: float = clampf(float(state.get("calmness", 0.0)) + absf(delta.x) * 0.44, 0.0, 1.0)
         state["calmness"] = calmness
-        if calmness >= 0.70 and not bool(state.get("horizon", false)):
+        if calmness >= 0.68 and not bool(state.get("horizon", false)):
             state["horizon"] = true
             return [_interaction_event("wave", 0, "Fala znalazła rytm — horyzont przestał uciekać", Vector2(0.5, 0.43), 0.11, 0.92)]
     if kind == "swipe" and not bool(state.get("horizon", false)):
@@ -64,7 +64,7 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
 func mechanic_progress() -> float:
     if bool(state.get("horizon", false)):
         return 1.0
-    return clampf(float(state.get("calmness", 0.0)) / 0.72, 0.0, 0.94)
+    return clampf(float(state.get("calmness", 0.0)) / 0.70, 0.0, 0.94)
 
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
     if progress > 0.72 and not bool(state.get("horizon", false)) and point_norm.y < 0.44 + radius_norm:
