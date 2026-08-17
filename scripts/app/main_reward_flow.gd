@@ -123,7 +123,11 @@ func _show_reward_panel() -> void:
     if app.reward_client == null:
         _configure_reward_client()
     _prepare_finale_background()
-    app.SoundscapeRuntime.enter_outro(app.menu_soundscape, app.music_level, app.noise_level, app.quiet_mode)
+    # Nothing between the background and the card may abort construction: the
+    # background is already on screen, so a failure here leaves the animation
+    # running with no final menu. Outro audio is cosmetic; the finale is not.
+    if app.menu_soundscape != null and is_instance_valid(app.menu_soundscape):
+        app.SoundscapeRuntime.enter_outro(app.menu_soundscape, app.music_level, app.noise_level, app.quiet_mode)
     # Persisted 11/11 journeys intentionally skip gameplay runtime. The finale
     # must therefore never assume HUD exists: otherwise the animated background
     # survives while the actual final menu aborts before it is constructed.
