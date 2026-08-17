@@ -25,7 +25,18 @@ assert 'FINAŁ · SYGNAŁ DOTARŁ · 5 PŁYT' in finale
 
 # A decorative/runtime failure can never leave only the finale animation.
 transition_to_reward = room_flow.split("func _transition_to_reward", 1)[1]
-assert transition_to_reward.index("app._show_reward_panel()") < transition_to_reward.index("await app.transition_director.travel_in()")
+for token in (
+    "_clear_room_runtime()",
+    "app.room_layer.visible = false",
+    "app.hud.visible = false",
+    "app.reward_flow.arm_finale_guard()",
+    "app._show_reward_panel()",
+):
+    assert token in transition_to_reward, token
+assert transition_to_reward.index("_clear_room_runtime()") < transition_to_reward.index("app.reward_flow.arm_finale_guard()")
+assert transition_to_reward.index("app.reward_flow.arm_finale_guard()") < transition_to_reward.index("app._show_reward_panel()")
+assert "await app.transition_director.travel_out()" not in transition_to_reward
+assert "await app.transition_director.travel_in()" not in transition_to_reward
 assert "if app.reward_panel != null and is_instance_valid(app.reward_panel):" in reward
 assert 'SIGNAL_FINALE_FALLBACK_PATH' in reward
 assert 'call_deferred("_verify_reward_panel_ready")' in reward

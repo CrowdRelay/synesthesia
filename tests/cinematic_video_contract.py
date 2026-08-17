@@ -71,6 +71,17 @@ for token in (
 if 'preload("res://shaders/room_video_postprocess.gdshader")' in layer:
     failures.append("video postprocess shader must stay lazy until finale")
 
+if "_player.loop = true" not in layer:
+    failures.append("finale skull video must loop behind the form")
+if "FINALE_VIEW_SCALE" in layer:
+    failures.append("finale must use full-bleed cover, not inset aspect-fit")
+fit = layer.split("func _fit_finale_player()", 1)[1].split("func _on_finale_video_finished()", 1)[0]
+if "cover_size" not in fit or "FINALE_SOURCE_ASPECT" not in fit:
+    failures.append("finale skull video must use aspect-cover geometry")
+finished = layer.split("func _on_finale_video_finished()", 1)[1].split("func configure(", 1)[0]
+if "visible = false" in finished or "_player.stream = null" in finished:
+    failures.append("finale skull video must not disappear after one playback")
+
 stage = (ROOT / "scripts/render/room_stage.gd").read_text()
 for dead in ("AtmosphereLayerScript", "InteractionFxLayerScript", "RoomDressingLayerScript", "RoomVideoLayerScript", "InteractionHintLayerScript", "CompositeShader"):
     if dead in stage:

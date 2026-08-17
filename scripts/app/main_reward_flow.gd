@@ -70,23 +70,20 @@ func _prepare_finale_background() -> void:
     app.experience_surface.move_child(app.finale_background, app.game_surface.get_index() + 1)
 
 func arm_finale_guard() -> void:
-    # Final menu is invariant: reassert it even if a stalled transition left
-    # an existing panel configured but invisible.
     if app.hud != null and is_instance_valid(app.hud):
         app.hud.suspend_for_menu()
+        app.hud.visible = false
+    app.room_layer.visible = false
     _prepare_finale_background()
-
-    # Expose the actionable form before cinematic work; timer is only a watchdog.
     _show_reward_panel()
     _force_reward_panel_visible()
     call_deferred("_verify_reward_panel_ready")
-
     var guard := get_tree().create_timer(0.80)
     guard.timeout.connect(func() -> void:
         _show_reward_panel()
+        _force_reward_panel_visible()
         call_deferred("_verify_reward_panel_ready")
     )
-
 func _reward_panel_ready() -> bool:
     return (
         app.reward_panel != null

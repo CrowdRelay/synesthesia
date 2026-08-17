@@ -399,22 +399,19 @@ func _transition_to_room(next_index: int) -> void:
     app.transition_running = false
     resume_room_timer()
 func _transition_to_reward() -> void:
-    if app.transition_running: return
+    if app.transition_running:
+        return
     app.transition_running = true
     if app.haptics != null:
         app.haptics.door_open()
     app._remove_modal(app.completion_panel)
     app.completion_panel = null
-    # Hide stale HUD and arm a transition-independent fallback before door travel can stall.
-    app.reward_flow.arm_finale_guard()
-    if app.transition_director != null:
-        app.transition_director.set_next_accent(Color("e35f83"))
-        await app.transition_director.travel_out()
     _clear_room_runtime()
     app.room_layer.visible = false
-    # Idempotent: if the guard already constructed the finale this only re-shows it.
+    if app.hud != null and is_instance_valid(app.hud):
+        app.hud.suspend_for_menu()
+        app.hud.visible = false
+    app.reward_flow.arm_finale_guard()
     app._show_reward_panel()
-    if app.transition_director != null:
-        await app.transition_director.travel_in()
     app.transition_running = false
     app.call_deferred("_show_reward_panel")

@@ -64,19 +64,31 @@ assert "OTWÓRZ MÓJ SYGNAŁ" in menu
 # watchdog timer; a stalled door/video transition may never be the first chance
 # the player gets to see the form.
 guard = reward_flow.split("func arm_finale_guard()", 1)[1].split("func _reward_panel_ready()", 1)[0]
+assert "app.hud.visible = false" in guard
+assert "app.room_layer.visible = false" in guard
 assert "_show_reward_panel()" in guard
 assert "_force_reward_panel_visible()" in guard
+assert guard.index("app.room_layer.visible = false") < guard.index("_show_reward_panel()")
 assert guard.index("_show_reward_panel()") < guard.index("get_tree().create_timer(0.80)")
 assert guard.index("_force_reward_panel_visible()") < guard.index("get_tree().create_timer(0.80)")
 
-# Replay completion is a lifecycle invariant, not just a source-presence check.
-# The final door must show the actionable card before animation and reassert it
-# after animation; stale-but-valid panels are reusable only when input-ready.
+# Final reward surface owns the screen: gameplay/HUD are retired first, then
+# the persistent skull background and actionable Signal card are mounted.
+# The room transition director must never animate over or hide the final form.
 transition = room_flow.split("func _transition_to_reward", 1)[1]
-assert transition.count('app._show_reward_panel()') >= 1
-assert 'app.call_deferred("_show_reward_panel")' in transition
-assert transition.index('app._show_reward_panel()') < transition.index('await app.transition_director.travel_in()')
-assert transition.index('await app.transition_director.travel_in()') < transition.index('app.call_deferred("_show_reward_panel")')
+for token in (
+    "_clear_room_runtime()",
+    "app.room_layer.visible = false",
+    "app.hud.visible = false",
+    "app.reward_flow.arm_finale_guard()",
+    "app._show_reward_panel()",
+    'app.call_deferred("_show_reward_panel")',
+):
+    assert token in transition, token
+assert transition.index("_clear_room_runtime()") < transition.index("app.reward_flow.arm_finale_guard()")
+assert transition.index("app.reward_flow.arm_finale_guard()") < transition.index("app._show_reward_panel()")
+assert "travel_out()" not in transition
+assert "travel_in()" not in transition
 assert "func _reward_panel_ready()" in reward_flow
 assert "if _reward_panel_ready():" in show_reward
 assert "app._remove_modal(app.reward_panel)" in show_reward
@@ -99,14 +111,21 @@ assert "is_publish_eligible" in leaderboard
 assert "is_leaderboard_publish_eligible" in reward_flow
 assert "CZAS RANKINGOWY · NIEPEŁNY POMIAR" in summary
 
-# Finale video preserves the authored portrait frame without an aspect-cover crop.
+# Finale skull is the persistent full-bleed background behind the form.
 video_layer = read("scripts/render/room_video_layer.gd")
 assert "FINALE_SOURCE_ASPECT: float = 720.0 / 1280.0" in video_layer
-assert "FINALE_VIEW_SCALE: float = 0.86" in video_layer
-assert "fit_size *= FINALE_VIEW_SCALE" in video_layer
-assert "_player.loop = false" in video_layer
+assert "FINALE_VIEW_SCALE" not in video_layer
+assert "_player.loop = true" in video_layer
+fit = video_layer.split("func _fit_finale_player()", 1)[1].split("func _on_finale_video_finished()", 1)[0]
+assert "cover_size = Vector2(available.x, available.x / FINALE_SOURCE_ASPECT)" in fit
+assert "cover_size = Vector2(available.y * FINALE_SOURCE_ASPECT, available.y)" in fit
+finished = video_layer.split("func _on_finale_video_finished()", 1)[1].split("func configure(", 1)[0]
+assert "_player.play()" in finished
+assert "visible = false" not in finished
+assert "_player.stream = null" not in finished
 assert "source_aspect = 720.0 / 1280.0" not in video_shader
 assert "target_aspect = SCREEN_PIXEL_SIZE.y" not in video_shader
+
 assert readme.startswith("# Synesthesia\n")
 
-print("SYNESTHESIA_FINALE_TIMING_SIGNAL_FLOW=PASS timing=11of11+checkpoint-recovery signal=finale-bootstrap+menu fallback leaderboard=explicit-opt-in finale=aspect-fit+breathing-room readme=clean-title")
+print("SYNESTHESIA_FINALE_TIMING_SIGNAL_FLOW=PASS timing=11of11+checkpoint-recovery signal=finale-bootstrap+menu fallback leaderboard=explicit-opt-in finale=skull-cover-loop+form-overlay readme=clean-title")
