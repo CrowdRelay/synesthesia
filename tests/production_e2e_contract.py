@@ -5,6 +5,7 @@ checks={
   'semantic bridge': ('scripts/render/room_stage.gd', 'WebE2EProbe.room_state'),
   'menu action rect': ('scripts/ui/experience_intro_card.gd', 'WebE2EProbe.control_action_deferred("menu", "continueRect"'),
   'completion action rect': ('scripts/ui/completion_card.gd', '_publish_e2e_actions'),
+  'dynamic semantic target refresh': ('scripts/render/room_interaction_flow.gd', 'app._refresh_hint_targets()'),
   'completion discriminator producer': ('scripts/app/web_e2e_probe.gd', 'detail["kind"] = kind'),
   'completion discriminator consumer': ('tests/e2e/full_game_web.py', "x.kind === 'completion'"),
   'finale readiness': ('scripts/app/main_reward_flow.gd', 'WebE2EProbe.emit("finale", {"ready":true'),

@@ -115,6 +115,11 @@ func _on_runtime_special(kind: String, index: int) -> void:
     _unlock_semantic_collectibles(kind)
     app.attempt_feedback.success(app.pointer_norm, 0.78)
     app.special_interaction.emit(kind, index)
+    # Dynamic mechanics (notably Party Time membranes) mutate their remaining
+    # targets synchronously while dispatching the confirmed event. Publish that
+    # new semantic state immediately instead of leaving assist/E2E consumers on
+    # the previous 200 ms snapshot and repeatedly targeting an already-cleared hit.
+    app._refresh_hint_targets()
 
 func _on_attempt_confirmed(point: Vector2, strength: float) -> void:
     if app.interaction_fx != null:
