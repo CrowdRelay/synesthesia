@@ -5,6 +5,8 @@ checks={
   'semantic bridge': ('scripts/render/room_stage.gd', 'WebE2EProbe.room_state'),
   'menu action rect': ('scripts/ui/experience_intro_card.gd', 'WebE2EProbe.control_action_deferred("menu", "continueRect"'),
   'completion action rect': ('scripts/ui/completion_card.gd', '_publish_e2e_actions'),
+  'completion discriminator producer': ('scripts/app/web_e2e_probe.gd', 'detail["kind"] = kind'),
+  'completion discriminator consumer': ('tests/e2e/full_game_web.py', "x.kind === 'completion'"),
   'finale readiness': ('scripts/app/main_reward_flow.gd', 'WebE2EProbe.emit("finale", {"ready":true'),
   'finale signal CTA': ('scripts/ui/signal_finale_card.gd', 'WebE2EProbe.emit("finale_actions"'),
   'signal conversion gate': ('tests/e2e/full_game_web.py', 'SYNESTHESIA_SIGNAL_CONVERSION_E2E=PASS'),
@@ -20,6 +22,9 @@ checks={
   'production post-deploy gate': ('.github/workflows/deploy-web.yml', 'SYNESTHESIA_PROD_E2E=PASS'),
 }
 missing=[]
+driver=(ROOT/'tests/e2e/full_game_web.py').read_text(errors='replace')
+if "x.phase === 'completion'" in driver:
+    raise SystemExit('SYNESTHESIA_PRODUCTION_E2E_CONTRACT=FAIL stale-completion-discriminator=phase')
 for name,(path,token) in checks.items():
     if token not in (ROOT/path).read_text(errors='replace'):
         missing.append(name)
