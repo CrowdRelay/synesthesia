@@ -5,6 +5,7 @@ signal leaderboard_publish_requested
 signal leaderboard_refresh_requested
 signal signal_context_refresh_requested
 signal signal_handoff_requested
+signal signal_link_retry_requested
 signal reset_requested
 signal album_mode_requested
 
@@ -39,6 +40,8 @@ var _ritual_complete: bool = false
 var _server_completed: bool = false
 var _awaiting_signal_return: bool = false
 var _awaiting_handoff_issue: bool = false
+# Linking failed, as opposed to still being in flight. See SignalCtaState.
+var _signal_link_retryable: bool = false
 var _configured_for_input: bool = false
 
 func _ready() -> void:
@@ -284,23 +287,14 @@ func apply_signal_context(context: Dictionary) -> void:
     var linked: bool = bool(_signal_context.get("linked_to_fan", false))
     var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
     set_leaderboard_publish_enabled(linked)
-    if linked:
-        _awaiting_signal_return = false
-        _signal_button.disabled = false
-        _signal_button.text = "OTWÓRZ MÓJ SYGNAŁ"
-    elif not _server_completed:
-        _signal_button.disabled = true
-        _signal_button.text = "ŁĄCZĘ WYNIK Z SYGNAŁEM…"
-    elif handoff.length() == 64:
-        _signal_button.disabled = false
-        _signal_button.text = "PO POWROCIE: SPRAWDŹ POŁĄCZENIE" if _awaiting_signal_return else "POŁĄCZ WYNIK Z SYGNAŁEM"
-        if _awaiting_handoff_issue:
-            _awaiting_handoff_issue = false
-            _awaiting_signal_return = true
-            call_deferred("_open_signal")
-    else:
-        _signal_button.disabled = false
-        _signal_button.text = "POŁĄCZ WYNIK Z SYGNAŁEM"
+    if linked: _awaiting_signal_return = false
+    var cta: Dictionary = SignalCtaState.resolve(linked, _server_completed, _signal_link_retryable, handoff, _awaiting_signal_return)
+    _signal_button.disabled = bool(cta.get("disabled", false))
+    _signal_button.text = str(cta.get("text", ""))
+    if not linked and _server_completed and handoff.length() == 64 and _awaiting_handoff_issue:
+        _awaiting_handoff_issue = false
+        _awaiting_signal_return = true
+        call_deferred("_open_signal")
 
     var event_value: Variant = _signal_context.get("next_event", {})
     var event: Dictionary = event_value if event_value is Dictionary else {}
@@ -321,8 +315,13 @@ func apply_signal_context(context: Dictionary) -> void:
     _next_event.visible = true
     _next_event_button.visible = true
 
+func set_signal_link_retryable(value: bool) -> void:
+    _signal_link_retryable = value
+    apply_signal_context(_signal_context)
+
 func set_server_completed(value: bool) -> void:
     _server_completed = value
+    if value: _signal_link_retryable = false
     set_claim_enabled(value)
     apply_signal_context(_signal_context)
 
@@ -336,7 +335,12 @@ func _handle_signal_action() -> void:
         _open_signal()
         return
     if not _server_completed:
-        set_status("Najpierw kończę synchronizację ukończenia z CrowdRelay.")
+        if not _signal_link_retryable:
+            set_status("Najpierw kończę synchronizację ukończenia z CrowdRelay.")
+            return
+        set_signal_link_retryable(false)
+        set_status("Ponawiam synchronizację ukończenia z CrowdRelay…")
+        signal_link_retry_requested.emit()
         return
     if _awaiting_signal_return:
         set_status("Sprawdzam, czy wynik jest już połączony z Twoim Sygnałem…")

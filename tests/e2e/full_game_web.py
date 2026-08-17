@@ -171,7 +171,13 @@ def complete_room(page: Page, expected_room: str | None, artifact_dir: pathlib.P
             # drifted away. This is state synchronisation, not a delay: the
             # producer republishes on its own cadence and we always act on the
             # newest snapshot it has emitted.
-            for slot in range(4):
+            # The gesture budget stays derived from how many targets the room
+            # actually published, capped at four. Spending a fixed four gestures
+            # would starve reveal-driven rooms that publish a single target: the
+            # sweep below is what advances their coverage, and every extra
+            # gesture is ~0.7s taken from the same deadline.
+            budget = min(4, len(room.get("targets") or []))
+            for slot in range(budget):
                 current = state(page, "room")
                 if not current or not current.get("interactionEnabled"):
                     break

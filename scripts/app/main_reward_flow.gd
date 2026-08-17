@@ -164,6 +164,7 @@ func _show_reward_panel() -> void:
     app.reward_panel.leaderboard_refresh_requested.connect(_refresh_leaderboard)
     app.reward_panel.signal_context_refresh_requested.connect(_refresh_signal_context)
     app.reward_panel.signal_handoff_requested.connect(_issue_signal_handoff)
+    app.reward_panel.signal_link_retry_requested.connect(_retry_signal_link)
     app.reward_panel.reset_requested.connect(app._confirm_reset_album)
     app.reward_panel.album_mode_requested.connect(app._show_album_archive)
     # UI first, network second. start_run() is idempotent for a restored run and
@@ -213,6 +214,7 @@ func _install_reward_fallback(message: String) -> void:
     app.reward_panel.draw_entry_requested.connect(_submit_reward_claim_values)
     app.reward_panel.signal_context_refresh_requested.connect(_refresh_signal_context)
     app.reward_panel.signal_handoff_requested.connect(_issue_signal_handoff)
+    app.reward_panel.signal_link_retry_requested.connect(_retry_signal_link)
     app.reward_panel.reset_requested.connect(app._confirm_reset_album)
     app.reward_panel.album_mode_requested.connect(app._show_album_archive)
     WebE2EProbe.emit("finale", {"ready":true,"fallback":true})
@@ -339,6 +341,14 @@ func _on_room_recorded(room_id_value: String, next_room_index: int) -> void:
     app.ProgressStoreScript.save_run(app.reward_client.get_run_state())
     _sync_completed_rooms_to_server(next_room_index)
 
+func _retry_signal_link() -> void:
+    # start_run() is idempotent for a restored run and _on_run_started()
+    # reconciles every locally completed room before completing the album, so
+    # this is exactly the path the finale takes when it opens.
+    if app.reward_client == null or not is_instance_valid(app.reward_client):
+        return
+    app.reward_client.start_run()
+
 func _on_album_recorded(context: Dictionary = {}) -> void:
     app.completion_context = context.duplicate(true)
     app.album_state["server_album_completed"] = true
@@ -371,6 +381,11 @@ func _on_reward_request_failed(operation: String, message: String) -> void:
         app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
     elif operation in ["recover_album", "completion_context_refresh", "handoff_issue"] and app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_status(message)
+        # Linking the run to Signal has failed rather than still being in
+        # flight. Mark it retryable so the finale keeps a live CTA: the run is
+        # already durable locally and the server path is idempotent, so a dead
+        # button here would permanently remove the only route into Signal.
+        app.reward_panel.set_signal_link_retryable(true)
         app.reward_panel.apply_signal_context(app.completion_context)
     elif app.hud != null and is_instance_valid(app.hud):
         app.hud.update_discovery("Postęp jest bezpieczny lokalnie · synchronizacja wróci później")

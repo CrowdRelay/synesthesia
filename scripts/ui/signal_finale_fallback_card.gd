@@ -5,6 +5,7 @@ signal leaderboard_publish_requested
 signal leaderboard_refresh_requested
 signal signal_context_refresh_requested
 signal signal_handoff_requested
+signal signal_link_retry_requested
 signal reset_requested
 signal album_mode_requested
 
@@ -15,6 +16,7 @@ var _status: Label
 var _claim: Button
 var _signal_button: Button
 var _server_completed: bool = false
+var _signal_link_retryable: bool = false
 var _signal_context: Dictionary = {}
 
 func _ready() -> void:
@@ -90,25 +92,39 @@ func is_claim_enabled() -> bool:
 
 func set_server_completed(value: bool) -> void:
     _server_completed = value
+    if value:
+        _signal_link_retryable = false
     set_claim_enabled(value)
+    apply_signal_context(_signal_context)
+
+func set_signal_link_retryable(value: bool) -> void:
+    _signal_link_retryable = value
     apply_signal_context(_signal_context)
 
 func apply_signal_context(context: Dictionary) -> void:
     _signal_context = context.duplicate(true)
     if _signal_button == null:
         return
-    if bool(_signal_context.get("linked_to_fan", false)):
-        _signal_button.text = "OTWÓRZ MÓJ SYGNAŁ"
-        _signal_button.disabled = false
-    else:
-        _signal_button.text = "POŁĄCZ WYNIK Z SYGNAŁEM"
-        _signal_button.disabled = not _server_completed
+    var cta: Dictionary = SignalCtaState.resolve(
+        bool(_signal_context.get("linked_to_fan", false)),
+        _server_completed,
+        _signal_link_retryable,
+        "",
+        false,
+    )
+    _signal_button.text = str(cta.get("text", ""))
+    _signal_button.disabled = bool(cta.get("disabled", false))
 
 func _handle_signal() -> void:
     if bool(_signal_context.get("linked_to_fan", false)):
         OS.shell_open("https://virya.music/pl/my-signal/?source=synesthesia")
     elif _server_completed:
         signal_handoff_requested.emit()
+    elif _signal_link_retryable:
+        _signal_link_retryable = false
+        _signal_button.disabled = true
+        set_status("Ponawiam synchronizację ukończenia z CrowdRelay…")
+        signal_link_retry_requested.emit()
     else:
         set_status("Najpierw kończę synchronizację ukończenia z CrowdRelay.")
 

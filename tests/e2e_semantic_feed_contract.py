@@ -87,6 +87,16 @@ def main() -> int:
             "complete_room must re-read the freshest published room state before each "
             "gesture"
         )
+    # A fixed gesture budget starves reveal-driven rooms that publish a single
+    # target: each extra gesture costs the deadline roughly a second, and the
+    # reveal sweep is what actually advances their coverage.
+    if "for slot in range(4)" in complete_room:
+        failures.append(
+            "the per-iteration gesture budget must follow the published target count, "
+            "not a fixed four"
+        )
+    if "budget = min(4, len(" not in complete_room:
+        failures.append("complete_room must bound its gesture budget by the published targets")
 
     # Consumer: no room-specific special-casing, and no sleep-based stabilisation.
     for room_name in ("party-time", "party_time", "wave-of-uncertainty"):
