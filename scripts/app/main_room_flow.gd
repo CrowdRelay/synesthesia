@@ -306,10 +306,9 @@ func _complete_current_room() -> void:
     elapsed[release_id] = maxi(int(elapsed.get(release_id, 0)), elapsed_at_completion)
     app.album_state["room_elapsed_ms"] = elapsed
     app.album_state["total_elapsed_ms"] = app.ProgressMetrics.sum_elapsed_ms(elapsed)
-    if app.current_room_index == app.release_entries.size() - 1:
-        app.album_state["album_completed"] = true
-        app.album_state["replay_unlocked"] = true
-    var journey_completed: bool = app.current_room_index == app.release_entries.size() - 1; var journey_timed_complete: bool = app.ProgressMetrics.has_complete_journey_timing(app.release_entries, app.album_state)
+    var journey_completed: bool = app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state)
+    if journey_completed: app.album_state["album_completed"] = true; app.album_state["replay_unlocked"] = true
+    var journey_timed_complete: bool = app.ProgressMetrics.has_complete_journey_timing(app.release_entries, app.album_state)
     if journey_completed: WebE2EProbe.emit("finale", {"stage":"queued_from_completion"}); app.reward_flow.call_deferred("arm_finale_guard")
     _completion_performance = app.ProgressMetrics.record_completion_performance(app.album_state, app.release_entries, release_id, elapsed_at_completion, journey_completed, journey_timed_complete, int(app.room.get_found_count()), _collectible_total(), guidance)
     timing_runtime.record_pb_splits(release_id, bool(_completion_performance.get("room_personal_best", false)))
@@ -322,8 +321,7 @@ func _complete_current_room() -> void:
         cinematic_runtime.play_signal_breach()
     if app.reward_client != null and app.reward_client.has_run():
         app.reward_client.record_room(release_id, app.current_room_index, elapsed_at_completion)
-        if app.current_room_index == app.release_entries.size() - 1:
-            app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
+        if journey_completed: app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
     if not journey_completed: app.call_deferred("_show_completion_panel")
 func pause_room_timer() -> void: timing_runtime.pause()
 func resume_room_timer() -> void: timing_runtime.resume()
@@ -332,7 +330,7 @@ func _replay_mode() -> bool: return timing_runtime.is_replay_mode()
 func _show_completion_panel() -> void:
     var hold_seconds: float = 0.52 if _replay_mode() else cinematic_runtime.hero_beat_delay()
     await get_tree().create_timer(hold_seconds).timeout
-    if app.current_room_index + 1 >= app.release_entries.size():
+    if app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state):
         if app.transition_running: await get_tree().create_timer(1.20).timeout
         if app.transition_running: app.reward_flow.arm_finale_guard(); return
         _transition_to_reward(); return

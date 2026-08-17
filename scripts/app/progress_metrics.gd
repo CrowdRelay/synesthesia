@@ -235,6 +235,21 @@ static func timed_room_count(release_entries: Array, album_state: Dictionary) ->
             count += 1
     return count
 
+static func all_rooms_completed(release_entries: Array, album_state: Dictionary) -> bool:
+    # The journey is finished when every room is finished, not when the player
+    # happens to be standing in the last one. Resuming, replaying or finishing
+    # the rooms out of order all leave the final completion on some other index,
+    # and keying the finale off current_room_index silently strands the player
+    # in a completed world with the door open and nothing to advance to.
+    if release_entries.is_empty():
+        return false
+    var completed: Array = _array_value(album_state.get("completed_room_ids", []))
+    for entry_value in release_entries:
+        var entry: Dictionary = entry_value if entry_value is Dictionary else {}
+        if not completed.has(str(entry.get("id", ""))):
+            return false
+    return true
+
 static func has_complete_journey_timing(release_entries: Array, album_state: Dictionary) -> bool:
     if release_entries.is_empty():
         return false

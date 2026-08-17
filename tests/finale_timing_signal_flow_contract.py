@@ -85,16 +85,23 @@ assert completion.index('call_deferred("arm_finale_guard")') < completion.index(
 assert '    app.call_deferred("_show_completion_panel")\n' not in completion
 
 # The final room has a terminal path before the ordinary CompletionCard guard.
-# This prevents 11/11 from remaining in a live HUD/post-reveal room.
+# This prevents 11/11 from remaining in a live HUD/post-reveal room. The gate is
+# keyed off every room being completed rather than off current_room_index: a
+# journey finished by resuming, replaying or completing out of order leaves the
+# final completion on some other index, and an index test silently strands the
+# player in exactly the state this contract exists to prevent.
 completion_gate = room_flow.split("func _show_completion_panel()", 1)[1].split("func _transition_to_room", 1)[0]
 for token in (
-    "if app.current_room_index + 1 >= app.release_entries.size():",
+    "if app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state):",
     "if app.transition_running: await get_tree().create_timer(1.20).timeout",
     "if app.transition_running: app.reward_flow.arm_finale_guard(); return",
     "_transition_to_reward(); return",
 ):
     assert token in completion_gate, token
-assert completion_gate.index("if app.current_room_index + 1 >= app.release_entries.size():") < completion_gate.index("if app.completion_panel != null")
+assert completion_gate.index("if app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state):") < completion_gate.index("if app.completion_panel != null")
+# The arming path must use the same predicate, or the two disagree at 11/11.
+assert "var journey_completed: bool = app.ProgressMetrics.all_rooms_completed(" in room_flow
+assert "app.current_room_index == app.release_entries.size() - 1" not in room_flow
 assert completion_gate.index("_transition_to_reward()") < completion_gate.index("if app.completion_panel != null")
 
 # Final reward surface owns the screen: gameplay/HUD are retired first, then
