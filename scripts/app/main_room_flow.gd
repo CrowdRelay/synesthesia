@@ -1,6 +1,6 @@
 extends Node
 const EchoArchive := preload("res://scripts/app/echo_archive.gd"); const RoomCinematicRuntime := preload("res://scripts/app/room_cinematic_runtime.gd"); const RoomObjective := preload("res://scripts/app/room_objective.gd")
-const ViryaWorld := preload("res://scripts/app/virya_world.gd"); const RoomTimingRuntime := preload("res://scripts/app/room_timing_runtime.gd"); const RuntimeFactory := preload("res://scripts/app/room_runtime_factory.gd"); const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd") # ChapterCardScript + CompletionCardScript are lazy factory products
+const FINALE_GRACE_SECONDS: float = 25.0; const ViryaWorld := preload("res://scripts/app/virya_world.gd"); const RoomTimingRuntime := preload("res://scripts/app/room_timing_runtime.gd"); const RuntimeFactory := preload("res://scripts/app/room_runtime_factory.gd"); const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd") # ChapterCardScript + CompletionCardScript are lazy factory products
 var app: Node; var cinematic_runtime: Node; var _completion_performance: Dictionary = {}; var timing_runtime: Node
 func bind(owner: Node) -> void:
     app = owner; cinematic_runtime = RoomCinematicRuntime.new(); cinematic_runtime.bind(app); add_child(cinematic_runtime)
@@ -309,7 +309,7 @@ func _complete_current_room() -> void:
     var journey_completed: bool = app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state)
     if journey_completed: app.album_state["album_completed"] = true; app.album_state["replay_unlocked"] = true
     var journey_timed_complete: bool = app.ProgressMetrics.has_complete_journey_timing(app.release_entries, app.album_state)
-    if journey_completed: WebE2EProbe.emit("finale", {"stage":"queued_from_completion"}); app.reward_flow.call_deferred("arm_finale_guard")
+    if journey_completed: WebE2EProbe.emit("finale", {"stage":"queued_from_completion"}); call_deferred("_arm_finale_after_grace")
     _completion_performance = app.ProgressMetrics.record_completion_performance(app.album_state, app.release_entries, release_id, elapsed_at_completion, journey_completed, journey_timed_complete, int(app.room.get_found_count()), _collectible_total(), guidance)
     timing_runtime.record_pb_splits(release_id, bool(_completion_performance.get("room_personal_best", false)))
     app.room_elapsed_before_start_ms = elapsed_at_completion
@@ -322,7 +322,7 @@ func _complete_current_room() -> void:
     if app.reward_client != null and app.reward_client.has_run():
         app.reward_client.record_room(release_id, app.current_room_index, elapsed_at_completion)
         if journey_completed: app.reward_client.complete_album(int(app.album_state.get("total_elapsed_ms", 0)))
-    if not journey_completed: app.call_deferred("_show_completion_panel")
+    app.call_deferred("_show_completion_panel")
 func pause_room_timer() -> void: timing_runtime.pause()
 func resume_room_timer() -> void: timing_runtime.resume()
 func reset_room_timer(start_now: bool = true) -> void: timing_runtime.reset(start_now)
@@ -330,10 +330,9 @@ func _replay_mode() -> bool: return timing_runtime.is_replay_mode()
 func _show_completion_panel() -> void:
     var hold_seconds: float = 0.52 if _replay_mode() else cinematic_runtime.hero_beat_delay()
     await get_tree().create_timer(hold_seconds).timeout
-    if app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state):
-        if app.transition_running: await get_tree().create_timer(1.20).timeout
+    if app.transition_running and app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state):
+        await get_tree().create_timer(1.20).timeout
         if app.transition_running: app.reward_flow.arm_finale_guard(); return
-        _transition_to_reward(); return
     if app.completion_panel != null or app.transition_running or app.reward_panel != null or app.experience_intro_panel != null or not app.room_layer.visible: return
     var room_value: Variant = app.manifest.get("room", {})
     var room_data: Dictionary = room_value if room_value is Dictionary else {}
@@ -350,7 +349,7 @@ func _show_completion_panel() -> void:
                 next_name = str(next_room_value.get("name", next_name))
         next_label = "Dalej · %s" % next_name
     else:
-        next_label = "Przejdź przez ostatnie drzwi"
+        next_label = "Odbierz finał"
     app.completion_panel = RuntimeFactory.completion_card(app.asset_preloader)
     app.completion_panel.name = "CompletionCard"
     app.ui_root.attach(app.completion_panel, 30)
@@ -362,7 +361,7 @@ func _show_completion_panel() -> void:
             found_echoes, total_echoes, total_echoes - found_echoes, "czekają" if total_echoes - found_echoes > 1 else "czeka",
         ]
     app.completion_panel.configure(
-        str(app.manifest.get("completion_title", "Pokój się otworzył")),
+        "Album domknięty" if app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state) else str(app.manifest.get("completion_title", "Pokój się otworzył")),
         completion_message,
         next_label,
         accent,
@@ -379,6 +378,9 @@ func _show_completion_panel() -> void:
         if app.room != null and is_instance_valid(app.room):
             app.room.set_interaction_enabled(false)
     )
+func _arm_finale_after_grace() -> void:
+    await get_tree().create_timer(FINALE_GRACE_SECONDS).timeout
+    if app.reward_panel == null or not is_instance_valid(app.reward_panel): app.reward_flow.arm_finale_guard()
 func _transition_to_room(next_index: int) -> void:
     if app.transition_running: return
     app.transition_running = true

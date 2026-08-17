@@ -72,37 +72,50 @@ assert guard.index("app.room_layer.visible = false") < guard.index("_show_reward
 assert guard.index("_show_reward_panel()") < guard.index("get_tree().create_timer(0.80)")
 assert guard.index("_force_reward_panel_visible()") < guard.index("get_tree().create_timer(0.80)")
 
-# The final room queues its local-first finale directly from room completion,
-# before performance bookkeeping, persistence/network reconciliation, or the
-# ordinary CompletionCard path can strand the player on the live 11/11 HUD.
+# The closing room earns its completion card, and the finale hand-off is owned by
+# that card's confirm action. A graced watchdog still arms the finale on its own
+# if the player never confirms, so the journey can never end on a live 11/11 HUD
+# while the card no longer races the finale for the screen.
 completion = room_flow.split("func _complete_current_room()", 1)[1].split("func pause_room_timer", 1)[0]
-direct_queue = 'if journey_completed: WebE2EProbe.emit("finale", {"stage":"queued_from_completion"}); app.reward_flow.call_deferred("arm_finale_guard")'
+direct_queue = 'if journey_completed: WebE2EProbe.emit("finale", {"stage":"queued_from_completion"}); call_deferred("_arm_finale_after_grace")'
 assert direct_queue in completion
-assert 'if not journey_completed: app.call_deferred("_show_completion_panel")' in completion
-assert completion.index('call_deferred("arm_finale_guard")') < completion.index("record_completion_performance")
-assert completion.index('call_deferred("arm_finale_guard")') < completion.index("app._save_progress()")
-assert completion.index('call_deferred("arm_finale_guard")') < completion.index("app.reward_client.record_room")
-assert '    app.call_deferred("_show_completion_panel")\n' not in completion
+# The card runs for every room, the closing one included.
+assert 'app.call_deferred("_show_completion_panel")' in completion
+assert 'if not journey_completed: app.call_deferred("_show_completion_panel")' not in completion
+# The watchdog must only fire when no finale panel exists, and must still arm it.
+watchdog = room_flow.split("func _arm_finale_after_grace()", 1)[1].split("\nfunc ", 1)[0]
+assert "FINALE_GRACE_SECONDS" in watchdog
+assert "app.reward_panel == null or not is_instance_valid(app.reward_panel)" in watchdog
+assert "app.reward_flow.arm_finale_guard()" in watchdog
+# The card's confirm action is the primary hand-off into the finale.
+assert "app.completion_panel.continue_requested.connect(_transition_to_reward)" in room_flow
+# The hand-off is still queued before bookkeeping or network reconciliation runs.
+assert completion.index('call_deferred("_arm_finale_after_grace")') < completion.index("record_completion_performance")
+assert completion.index('call_deferred("_arm_finale_after_grace")') < completion.index("app._save_progress()")
+assert completion.index('call_deferred("_arm_finale_after_grace")') < completion.index("app.reward_client.record_room")
 
-# The final room has a terminal path before the ordinary CompletionCard guard.
+# The card's own terminal path: a transition already in flight arms the finale
+# directly rather than opening a card the transition is about to replace.
 # This prevents 11/11 from remaining in a live HUD/post-reveal room. The gate is
 # keyed off every room being completed rather than off current_room_index: a
 # journey finished by resuming, replaying or completing out of order leaves the
 # final completion on some other index, and an index test silently strands the
 # player in exactly the state this contract exists to prevent.
 completion_gate = room_flow.split("func _show_completion_panel()", 1)[1].split("func _transition_to_room", 1)[0]
+bypass = "if app.transition_running and app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state):"
 for token in (
-    "if app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state):",
-    "if app.transition_running: await get_tree().create_timer(1.20).timeout",
+    bypass,
+    "await get_tree().create_timer(1.20).timeout",
     "if app.transition_running: app.reward_flow.arm_finale_guard(); return",
-    "_transition_to_reward(); return",
 ):
     assert token in completion_gate, token
-assert completion_gate.index("if app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state):") < completion_gate.index("if app.completion_panel != null")
+assert completion_gate.index(bypass) < completion_gate.index("if app.completion_panel != null")
 # The arming path must use the same predicate, or the two disagree at 11/11.
 assert "var journey_completed: bool = app.ProgressMetrics.all_rooms_completed(" in room_flow
 assert "app.current_room_index == app.release_entries.size() - 1" not in room_flow
-assert completion_gate.index("_transition_to_reward()") < completion_gate.index("if app.completion_panel != null")
+# The closing card announces the finished album rather than another opened room.
+assert '"Album domknięty" if app.ProgressMetrics.all_rooms_completed(' in room_flow
+assert 'next_label = "Odbierz finał"' in room_flow
 
 # Final reward surface owns the screen: gameplay/HUD are retired first, then
 # the persistent skull background and actionable Signal card are mounted.
