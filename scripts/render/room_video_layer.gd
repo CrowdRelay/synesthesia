@@ -8,6 +8,8 @@ const VIDEO_PATHS: Dictionary = {
     "finale": "res://assets/video/finale.ogv",
 }
 const FINALE_SOURCE_ASPECT: float = 720.0 / 1280.0
+const FINALE_COVER_RELIEF: float = 1.14
+const FINALE_DISPLAY_ASPECT: float = FINALE_SOURCE_ASPECT * FINALE_COVER_RELIEF
 const PROCEDURAL_LIVING_STYLES: Array[String] = [
     "uncertainty", "party", "unmasked", "calling", "seed", "hybrid",
     "technophobia", "invaluable", "ashes", "waves", "rise",
@@ -69,10 +71,10 @@ func _fit_finale_player() -> void:
         return
     var available: Vector2 = size
     var cover_size: Vector2
-    if available.x / available.y > FINALE_SOURCE_ASPECT:
-        cover_size = Vector2(available.x, available.x / FINALE_SOURCE_ASPECT)
+    if available.x / available.y > FINALE_DISPLAY_ASPECT:
+        cover_size = Vector2(available.x, available.x / FINALE_DISPLAY_ASPECT)
     else:
-        cover_size = Vector2(available.y * FINALE_SOURCE_ASPECT, available.y)
+        cover_size = Vector2(available.y * FINALE_DISPLAY_ASPECT, available.y)
     cover_size = cover_size.round()
     _player.position = ((available - cover_size) * 0.5).round()
     _player.size = cover_size

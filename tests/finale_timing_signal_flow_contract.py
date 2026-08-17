@@ -72,6 +72,19 @@ assert guard.index("app.room_layer.visible = false") < guard.index("_show_reward
 assert guard.index("_show_reward_panel()") < guard.index("get_tree().create_timer(0.80)")
 assert guard.index("_force_reward_panel_visible()") < guard.index("get_tree().create_timer(0.80)")
 
+# The final room has a terminal path before the ordinary CompletionCard guard.
+# This prevents 11/11 from remaining in a live HUD/post-reveal room.
+completion_gate = room_flow.split("func _show_completion_panel()", 1)[1].split("func _transition_to_room", 1)[0]
+for token in (
+    "if app.current_room_index + 1 >= app.release_entries.size():",
+    "if app.transition_running: await get_tree().create_timer(1.20).timeout",
+    "if app.transition_running: app.reward_flow.arm_finale_guard(); return",
+    "_transition_to_reward(); return",
+):
+    assert token in completion_gate, token
+assert completion_gate.index("if app.current_room_index + 1 >= app.release_entries.size():") < completion_gate.index("if app.completion_panel != null")
+assert completion_gate.index("_transition_to_reward()") < completion_gate.index("if app.completion_panel != null")
+
 # Final reward surface owns the screen: gameplay/HUD are retired first, then
 # the persistent skull background and actionable Signal card are mounted.
 # The room transition director must never animate over or hide the final form.
@@ -114,11 +127,13 @@ assert "CZAS RANKINGOWY · NIEPEŁNY POMIAR" in summary
 # Finale skull is the persistent full-bleed background behind the form.
 video_layer = read("scripts/render/room_video_layer.gd")
 assert "FINALE_SOURCE_ASPECT: float = 720.0 / 1280.0" in video_layer
+assert "FINALE_COVER_RELIEF: float = 1.14" in video_layer
+assert "FINALE_DISPLAY_ASPECT: float = FINALE_SOURCE_ASPECT * FINALE_COVER_RELIEF" in video_layer
 assert "FINALE_VIEW_SCALE" not in video_layer
 assert "_player.loop = true" in video_layer
 fit = video_layer.split("func _fit_finale_player()", 1)[1].split("func _on_finale_video_finished()", 1)[0]
-assert "cover_size = Vector2(available.x, available.x / FINALE_SOURCE_ASPECT)" in fit
-assert "cover_size = Vector2(available.y * FINALE_SOURCE_ASPECT, available.y)" in fit
+assert "cover_size = Vector2(available.x, available.x / FINALE_DISPLAY_ASPECT)" in fit
+assert "cover_size = Vector2(available.y * FINALE_DISPLAY_ASPECT, available.y)" in fit
 finished = video_layer.split("func _on_finale_video_finished()", 1)[1].split("func configure(", 1)[0]
 assert "_player.play()" in finished
 assert "visible = false" not in finished

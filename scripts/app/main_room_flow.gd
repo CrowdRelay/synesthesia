@@ -332,8 +332,11 @@ func _replay_mode() -> bool: return timing_runtime.is_replay_mode()
 func _show_completion_panel() -> void:
     var hold_seconds: float = 0.52 if _replay_mode() else cinematic_runtime.hero_beat_delay()
     await get_tree().create_timer(hold_seconds).timeout
-    if app.completion_panel != null or app.transition_running or app.reward_panel != null or app.experience_intro_panel != null or not app.room_layer.visible:
-        return
+    if app.current_room_index + 1 >= app.release_entries.size():
+        if app.transition_running: await get_tree().create_timer(1.20).timeout
+        if app.transition_running: app.reward_flow.arm_finale_guard(); return
+        _transition_to_reward(); return
+    if app.completion_panel != null or app.transition_running or app.reward_panel != null or app.experience_intro_panel != null or not app.room_layer.visible: return
     var room_value: Variant = app.manifest.get("room", {})
     var room_data: Dictionary = room_value if room_value is Dictionary else {}
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))

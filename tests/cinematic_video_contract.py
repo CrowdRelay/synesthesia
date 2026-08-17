@@ -75,9 +75,13 @@ if "_player.loop = true" not in layer:
     failures.append("finale skull video must loop behind the form")
 if "FINALE_VIEW_SCALE" in layer:
     failures.append("finale must use full-bleed cover, not inset aspect-fit")
+if "FINALE_COVER_RELIEF: float = 1.14" not in layer:
+    failures.append("finale cover relief must remain bounded at the approved 14 percent")
+if "FINALE_DISPLAY_ASPECT: float = FINALE_SOURCE_ASPECT * FINALE_COVER_RELIEF" not in layer:
+    failures.append("finale display aspect must remain derived from the authored source")
 fit = layer.split("func _fit_finale_player()", 1)[1].split("func _on_finale_video_finished()", 1)[0]
-if "cover_size" not in fit or "FINALE_SOURCE_ASPECT" not in fit:
-    failures.append("finale skull video must use aspect-cover geometry")
+if "cover_size" not in fit or "FINALE_DISPLAY_ASPECT" not in fit:
+    failures.append("finale skull video must use relieved aspect-cover geometry")
 finished = layer.split("func _on_finale_video_finished()", 1)[1].split("func configure(", 1)[0]
 if "visible = false" in finished or "_player.stream = null" in finished:
     failures.append("finale skull video must not disappear after one playback")
