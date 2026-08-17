@@ -224,10 +224,15 @@ def main() -> int:
 
         completed_rooms: list[str] = []
         for index in range(ROOM_TOTAL):
-            room = wait_state(page, "room", lambda v: bool(v.get("interactionEnabled")), timeout_ms=DEFAULT_TIMEOUT_MS)
+            previous_room_id = completed_rooms[-1] if completed_rooms else None
+            room = wait_state(
+                page,
+                "room",
+                lambda v: bool(v.get("interactionEnabled"))
+                and (previous_room_id is None or str(v.get("roomId", "")) != previous_room_id),
+                timeout_ms=DEFAULT_TIMEOUT_MS,
+            )
             room_id = str(room.get("roomId", f"room-{index+1}"))
-            if completed_rooms and room_id == completed_rooms[-1]:
-                raise AssertionError(f"room transition did not advance: {room_id}")
             completion, actual_room = complete_room(page, room_id, artifact_dir)
             actual_room = actual_room or room_id
             completed_rooms.append(actual_room)
