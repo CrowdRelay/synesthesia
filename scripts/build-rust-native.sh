@@ -132,7 +132,12 @@ build_web() {
     rustup toolchain install "$WEB_TOOLCHAIN" --profile minimal
   fi
   rustup component add rust-src --toolchain "$WEB_TOOLCHAIN" >/dev/null
-  rustup target add wasm32-unknown-emscripten --toolchain "$WEB_TOOLCHAIN" >/dev/null
+  # The Web target is built with -Zbuild-std from rust-src, so the precompiled
+  # rust-std for wasm32-unknown-emscripten must NOT be installed: rustc then
+  # loads two different `core` rlibs (the build-std one and the rustup one) and
+  # fails the link with E0152 "duplicate lang item in crate `core`". rust-src
+  # above is the only component this target needs.
+  rustup target remove wasm32-unknown-emscripten --toolchain "$WEB_TOOLCHAIN" >/dev/null 2>&1 || true
 
   local godot_bin
   godot_bin="$(resolve_godot_bin)"
@@ -160,7 +165,10 @@ build_web() {
 
   local cargo_args=(
     "+$WEB_TOOLCHAIN" build
-    -Zbuild-std
+    # `panic_abort` must be listed explicitly: the release profile sets
+    # panic = "abort", and a bare -Zbuild-std builds std + panic_unwind only,
+    # which fails the link with E0463 "can't find crate for `panic_abort`".
+    -Zbuild-std=std,panic_abort
     --manifest-path "$NATIVE/Cargo.toml"
     --package synesthesia-gdext
     --target wasm32-unknown-emscripten
