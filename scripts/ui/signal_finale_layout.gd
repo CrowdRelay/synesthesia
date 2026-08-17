@@ -21,7 +21,10 @@ static func layout_columns(app: Control) -> void:
         return
     var viewport := app.get_viewport_rect().size
     app._ui_scale = UiMetrics.scale_for_viewport(viewport)
-    var portrait_layout: bool = viewport.x < 900.0 * app._ui_scale or viewport.x / maxf(1.0, viewport.y) < 0.95
+    # One finale layout everywhere: the single-column portrait treatment reads
+    # better than the two-column desktop split, so web matches mobile 1:1 rather
+    # than switching presentation on viewport width.
+    var portrait_layout: bool = true
     app._layout.vertical = portrait_layout
     # The actionable result/form is always first, including desktop replay.
     # Decorative art must never push the e-mail/Signal actions outside the first
@@ -32,8 +35,11 @@ static func layout_columns(app: Control) -> void:
         app.call_deferred("_scroll_to_start")
     var margin := UiMetrics.safe_margin(viewport, clampf(minf(viewport.x, viewport.y) * 0.035, 14.0 * app._ui_scale, 46.0 * app._ui_scale))
     var panel_width := minf(1120.0 * app._ui_scale, maxf(320.0 * app._ui_scale, viewport.x - margin * 2.0))
-    var usable_width := maxf(272.0 * app._ui_scale, panel_width - 48.0 * app._ui_scale)
-    app._layout.custom_minimum_size.x = usable_width
+    # Never force a minimum width on the column: the scroll container has
+    # horizontal scrolling disabled, so any content wider than the panel is
+    # simply clipped off the right edge instead of wrapping. Let the layout take
+    # the width the panel actually offers.
+    app._layout.custom_minimum_size.x = 0.0
     if app._visual != null:
         app._visual.custom_minimum_size.x = 0.0 if portrait_layout else 380.0 * app._ui_scale
         app._visual.size_flags_stretch_ratio = 1.25
