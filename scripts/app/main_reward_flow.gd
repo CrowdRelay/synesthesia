@@ -70,18 +70,13 @@ func _prepare_finale_background() -> void:
     app.experience_surface.move_child(app.finale_background, app.game_surface.get_index() + 1)
 
 func arm_finale_guard() -> void:
-    # The final menu is an invariant. Hide the room HUD immediately and schedule
-    # an independent fallback so a stalled door/render coroutine cannot strand
-    # the player on a dimmed last-room frame. Reassert even an existing panel:
-    # the previous implementation only checked for a Node reference, so a fully
-    # configured but alpha-zero finale could be mistaken for a successful reveal.
+    # Final menu is invariant: reassert it even if a stalled transition left
+    # an existing panel configured but invisible.
     if app.hud != null and is_instance_valid(app.hud):
         app.hud.suspend_for_menu()
     _prepare_finale_background()
 
-    # The actionable finale is a product invariant; the cinematic is cosmetic.
-    # Build and expose the form synchronously before any transition/video work
-    # can stall. The timer below is only a watchdog/reassert now.
+    # Expose the actionable form before cinematic work; timer is only a watchdog.
     _show_reward_panel()
     _force_reward_panel_visible()
     call_deferred("_verify_reward_panel_ready")
@@ -112,16 +107,12 @@ func _force_reward_panel_visible() -> bool:
     if not _reward_panel_ready():
         return false
     app.reward_panel.show()
-    # The visual fade is cosmetic; input accessibility is the invariant. If a
-    # slow Web video decoder or lifecycle pause stalls the tween, never let it
-    # leave a perfectly configured finale at alpha zero.
+    # Never let a stalled cosmetic fade leave an input-ready finale at alpha zero.
     app.reward_panel.modulate.a = 1.0
     return app.reward_panel.is_visible_in_tree()
 
 func _show_reward_panel() -> void:
-    # Finale is an invariant, not a one-shot side effect. Replay/restore can keep
-    # a valid Node reference whose form was never configured (or was detached by
-    # a transition). Reuse only an input-ready panel; otherwise rebuild it.
+    # Replay/restore reuses only an input-ready finale; otherwise rebuild it.
     if _reward_panel_ready():
         app.reward_panel.show()
         return
