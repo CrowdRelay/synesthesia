@@ -60,6 +60,15 @@ assert "func _ensure_http" in signup and "not _ensure_http()" in signup
 assert "OTWÓRZ MÓJ SYGNAŁ" in menu
 
 
+# arm_finale_guard itself must construct the actionable UI before the
+# watchdog timer; a stalled door/video transition may never be the first chance
+# the player gets to see the form.
+guard = reward_flow.split("func arm_finale_guard()", 1)[1].split("func _reward_panel_ready()", 1)[0]
+assert "_show_reward_panel()" in guard
+assert "_force_reward_panel_visible()" in guard
+assert guard.index("_show_reward_panel()") < guard.index("get_tree().create_timer(0.80)")
+assert guard.index("_force_reward_panel_visible()") < guard.index("get_tree().create_timer(0.80)")
+
 # Replay completion is a lifecycle invariant, not just a source-presence check.
 # The final door must show the actionable card before animation and reassert it
 # after animation; stale-but-valid panels are reusable only when input-ready.

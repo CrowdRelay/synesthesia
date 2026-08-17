@@ -78,6 +78,14 @@ func arm_finale_guard() -> void:
     if app.hud != null and is_instance_valid(app.hud):
         app.hud.suspend_for_menu()
     _prepare_finale_background()
+
+    # The actionable finale is a product invariant; the cinematic is cosmetic.
+    # Build and expose the form synchronously before any transition/video work
+    # can stall. The timer below is only a watchdog/reassert now.
+    _show_reward_panel()
+    _force_reward_panel_visible()
+    call_deferred("_verify_reward_panel_ready")
+
     var guard := get_tree().create_timer(0.80)
     guard.timeout.connect(func() -> void:
         _show_reward_panel()
