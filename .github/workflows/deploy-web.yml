@@ -157,9 +157,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m pip install --disable-pip-version-check --no-cache-dir 'playwright==1.57.0'
+          # The hosted runner images no longer ship a browser on PATH, and the
+          # previous `test -n` guard failed this step silently. Install
+          # Playwright's own pinned Chromium and only export a system browser
+          # when one actually exists; the driver falls back to the bundled one.
+          python3 -m playwright install --with-deps chromium
           browser="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
-          test -n "${browser}"
-          echo "SYNESTHESIA_E2E_BROWSER=${browser}" >> "${GITHUB_ENV}"
+          if [[ -n "${browser}" ]]; then
+            echo "SYNESTHESIA_E2E_BROWSER=${browser}" >> "${GITHUB_ENV}"
+            echo "browser=system path=${browser}"
+          else
+            echo "browser=playwright-bundled-chromium"
+          fi
 
       - name: Deploy exact artifact to isolated Netlify preview
         if: steps.freshness.outputs.current == 'true'

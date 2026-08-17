@@ -183,8 +183,19 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m pip install --disable-pip-version-check --no-cache-dir 'playwright==1.57.0'
+          # Do not depend on a browser preinstalled in the runner image. The
+          # hosted images have stopped shipping google-chrome/chromium on PATH,
+          # and the previous `test -n` guard aborted this step with no output at
+          # all when the lookup came up empty. Playwright ships its own pinned
+          # Chromium and the driver falls back to it when no system browser is
+          # given, which also makes the browser version match the pin above.
+          python3 -m playwright install --with-deps chromium
           browser="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
-          test -n "${browser}"
+          if [[ -n "${browser}" ]]; then
+            echo "SYNESTHESIA_E2E_BROWSER=system browser=${browser}"
+          else
+            echo "SYNESTHESIA_E2E_BROWSER=playwright-bundled-chromium"
+          fi
           python3 -m http.server 8765 --directory build/web >build/e2e-http.log 2>&1 &
           server_pid=$!
           trap 'kill "${server_pid}" 2>/dev/null || true' EXIT
