@@ -37,7 +37,6 @@ func configure(data: Dictionary) -> void:
     state["signal_tune"] = 0.0
     state["signal_locked"] = false
     state["failed_pulls"] = 0
-    state["tension_bucket"] = -1
 func needs_tick() -> bool:
     return cinematic_active() or int(state.get("active_cable", -1)) >= 0 or int(state.get("snap_cable", -1)) >= 0
 func advance(delta: float) -> void:

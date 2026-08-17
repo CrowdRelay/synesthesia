@@ -250,7 +250,8 @@ func _on_leaderboard_published(context: Dictionary) -> void:
 
 func _submit_reward_claim_values(email: String) -> void:
     if app.reward_client == null:
-        app.reward_panel.set_status("Sygnał jest chwilowo niedostępny. Ukończenie pozostało zapisane lokalnie.")
+        if app.reward_panel != null and is_instance_valid(app.reward_panel):
+            app.reward_panel.set_status("Sygnał jest chwilowo niedostępny. Ukończenie pozostało zapisane lokalnie.")
         return
     if not bool(app.album_state.get("server_album_completed", false)):
         app.reward_panel.set_status("Najpierw kończę synchronizację jedenastu pokojów.")
