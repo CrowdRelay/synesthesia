@@ -98,6 +98,27 @@ if "if status == ResourceLoader.THREAD_LOAD_LOADED:" not in startup_cache:
 if "await startup_scripts.experience_intro_script()" not in intro:
     failures.append("main menu does not await the non-blocking script handoff")
 
+
+diagnostics = warmup[warmup.index("func install_diagnostics()"):]
+for token in (
+    'OS.has_feature("editor")',
+    'OS.get_cmdline_args().has("--synesthesia-debug")',
+):
+    if token not in diagnostics:
+        failures.append(f"production diagnostics gate missing: {token}")
+if (
+    'ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH)' in diagnostics
+    and diagnostics.index('OS.has_feature("editor")')
+    > diagnostics.index('ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH)')
+):
+    failures.append("diagnostics resource lookup occurs before debug-only gate")
+if (
+    'load(DIAGNOSTICS_OVERLAY_PATH)' in diagnostics
+    and diagnostics.index('OS.has_feature("editor")')
+    > diagnostics.index('load(DIAGNOSTICS_OVERLAY_PATH)')
+):
+    failures.append("diagnostics script load occurs before debug-only gate")
+
 if failures:
     for failure in failures:
         print(f"FAIL: {failure}")

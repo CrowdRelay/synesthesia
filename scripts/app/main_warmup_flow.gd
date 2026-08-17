@@ -23,6 +23,8 @@ func warm_under_main_menu() -> void:
     call_deferred("install_diagnostics")
 
 func install_diagnostics() -> void:
+    if not OS.has_feature("editor") or not OS.get_cmdline_args().has("--synesthesia-debug"):
+        return
     if app.get_node_or_null("Diagnostics") != null or not ResourceLoader.exists(DIAGNOSTICS_OVERLAY_PATH):
         return
     var diagnostics_script: Script = load(DIAGNOSTICS_OVERLAY_PATH) as Script
