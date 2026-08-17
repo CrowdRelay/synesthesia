@@ -29,6 +29,9 @@ assert transition_to_reward.index("app._show_reward_panel()") < transition_to_re
 assert "if app.reward_panel != null and is_instance_valid(app.reward_panel):" in reward
 assert 'SIGNAL_FINALE_FALLBACK_PATH' in reward
 assert 'call_deferred("_verify_reward_panel_ready")' in reward
+assert 'func _reward_panel_visibly_ready()' in reward
+assert 'app.reward_panel.modulate.a >= 0.94' in reward
+assert 'func _force_reward_panel_visible()' in reward
 assert 'func _install_reward_fallback' in reward
 assert 'SignalFinaleFallbackCard' in reward
 assert 'func is_ready_for_input() -> bool:' in fallback

@@ -7,6 +7,8 @@ const VIDEO_PATHS: Dictionary = {
     # from the Web PCK without reducing interactive/living-world feedback.
     "finale": "res://assets/video/finale.ogv",
 }
+const FINALE_SOURCE_ASPECT: float = 720.0 / 1280.0
+const FINALE_VIEW_SCALE: float = 0.86
 const PROCEDURAL_LIVING_STYLES: Array[String] = [
     "uncertainty", "party", "unmasked", "calling", "seed", "hybrid",
     "technophobia", "invaluable", "ashes", "waves", "rise",
@@ -36,6 +38,7 @@ func _ready() -> void:
     clip_contents = true
     visible = false
     set_process(false)
+    resized.connect(_fit_finale_player)
 
 func _ensure_player() -> bool:
     if _player != null:
@@ -50,16 +53,57 @@ func _ensure_player() -> bool:
     _player.name = "CinematicVideo"
     _player.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _player.expand = true
-    _player.loop = true
+    # Finale is a transition beat, not a permanent decoder loop behind the menu.
+    # Play the authored four-second clip once, then return to the static finale
+    # artwork to reduce Web CPU pressure while the user reads/types.
+    _player.loop = false
     _player.autoplay = false
     _player.buffering_msec = 220
     _player.volume_db = -80.0
     add_child(_player)
-    _player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _player.set_anchors_preset(Control.PRESET_TOP_LEFT)
+    _player.finished.connect(_on_finale_video_finished)
+    _fit_finale_player()
     _material = ShaderMaterial.new()
     _material.shader = shader_resource as Shader
     _player.material = _material
     return true
+
+
+func _fit_finale_player() -> void:
+    if _player == null or size.x <= 1.0 or size.y <= 1.0:
+        return
+    # Keep the authored 9:16 frame intact. The old UV aspect-cover correction
+    # deliberately cropped most of a portrait clip on wide viewports, making the
+    # skull look massively zoomed. The existing finale artwork fills the area
+    # behind this centered frame, so aspect-fit needs no black bars.
+    var available: Vector2 = size
+    var fit_size: Vector2
+    if available.x / available.y > FINALE_SOURCE_ASPECT:
+        fit_size = Vector2(available.y * FINALE_SOURCE_ASPECT, available.y)
+    else:
+        fit_size = Vector2(available.x, available.x / FINALE_SOURCE_ASPECT)
+    fit_size *= FINALE_VIEW_SCALE
+    fit_size = fit_size.round()
+    _player.position = ((available - fit_size) * 0.5).round()
+    _player.size = fit_size
+
+func _on_finale_video_finished() -> void:
+    if _player == null:
+        return
+    if _fade_tween != null and _fade_tween.is_valid():
+        _fade_tween.kill()
+    _fade_tween = create_tween()
+    _fade_tween.set_trans(Tween.TRANS_SINE)
+    _fade_tween.set_ease(Tween.EASE_OUT)
+    _fade_tween.tween_property(_player, "modulate:a", 0.0, 0.28)
+    _fade_tween.tween_callback(func() -> void:
+        if _player != null:
+            _player.stop()
+            _player.stream = null
+        visible = false
+        set_process(false)
+    )
 
 func configure(style: String, reduced_motion: bool, quiet_visuals: bool, calm_mode: bool) -> void:
     _style = style

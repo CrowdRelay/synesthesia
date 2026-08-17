@@ -234,7 +234,7 @@ func _publish_e2e_actions() -> void:
     })
 
 func is_ready_for_input() -> bool:
-    return _configured_for_input and _form != null and _form.visible and _email != null and _claim != null
+    return is_inside_tree() and _configured_for_input and _form != null and _form.visible and _email != null and _claim != null
 
 func _scroll_to_start() -> void:
     if _scroll != null:

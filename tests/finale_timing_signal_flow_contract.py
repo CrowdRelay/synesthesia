@@ -71,7 +71,10 @@ assert transition.index('await app.transition_director.travel_in()') < transitio
 assert "func _reward_panel_ready()" in reward_flow
 assert "if _reward_panel_ready():" in show_reward
 assert "app._remove_modal(app.reward_panel)" in show_reward
-assert "for _attempt in range(6):" in reward_flow
+assert "func _reward_panel_visibly_ready()" in reward_flow
+assert "app.reward_panel.modulate.a >= 0.94" in reward_flow
+assert "func _force_reward_panel_visible()" in reward_flow
+assert "Time.get_ticks_msec() + 650" in reward_flow
 assert "await get_tree().process_frame" in reward_flow
 layout = read("scripts/ui/signal_finale_layout.gd")
 assert 'app._layout.move_child(app._form, 0)' in layout
@@ -87,10 +90,14 @@ assert "is_publish_eligible" in leaderboard
 assert "is_leaderboard_publish_eligible" in reward_flow
 assert "CZAS RANKINGOWY · NIEPEŁNY POMIAR" in summary
 
-# Finale art/video preserve the authored portrait aspect instead of stretching it across desktop.
-assert "STRETCH_KEEP_ASPECT_COVERED" in finale_bg
-assert "source_aspect = 720.0 / 1280.0" in video_shader
-assert "target_aspect = SCREEN_PIXEL_SIZE.y" in video_shader
+# Finale video preserves the authored portrait frame without an aspect-cover crop.
+video_layer = read("scripts/render/room_video_layer.gd")
+assert "FINALE_SOURCE_ASPECT: float = 720.0 / 1280.0" in video_layer
+assert "FINALE_VIEW_SCALE: float = 0.86" in video_layer
+assert "fit_size *= FINALE_VIEW_SCALE" in video_layer
+assert "_player.loop = false" in video_layer
+assert "source_aspect = 720.0 / 1280.0" not in video_shader
+assert "target_aspect = SCREEN_PIXEL_SIZE.y" not in video_shader
 assert readme.startswith("# Synesthesia\n")
 
-print("SYNESTHESIA_FINALE_TIMING_SIGNAL_FLOW=PASS timing=11of11+checkpoint-recovery signal=finale-bootstrap+menu fallback leaderboard=explicit-opt-in finale=aspect-covered readme=clean-title")
+print("SYNESTHESIA_FINALE_TIMING_SIGNAL_FLOW=PASS timing=11of11+checkpoint-recovery signal=finale-bootstrap+menu fallback leaderboard=explicit-opt-in finale=aspect-fit+breathing-room readme=clean-title")

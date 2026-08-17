@@ -71,23 +71,43 @@ func _prepare_finale_background() -> void:
 func arm_finale_guard() -> void:
     # The final menu is an invariant. Hide the room HUD immediately and schedule
     # an independent fallback so a stalled door/render coroutine cannot strand
-    # the player on a dimmed last-room frame.
+    # the player on a dimmed last-room frame. Reassert even an existing panel:
+    # the previous implementation only checked for a Node reference, so a fully
+    # configured but alpha-zero finale could be mistaken for a successful reveal.
     if app.hud != null and is_instance_valid(app.hud):
         app.hud.suspend_for_menu()
     _prepare_finale_background()
     var guard := get_tree().create_timer(0.80)
     guard.timeout.connect(func() -> void:
-        if app.reward_panel == null or not is_instance_valid(app.reward_panel):
-            _show_reward_panel()
+        _show_reward_panel()
+        call_deferred("_verify_reward_panel_ready")
     )
 
 func _reward_panel_ready() -> bool:
     return (
         app.reward_panel != null
         and is_instance_valid(app.reward_panel)
+        and app.reward_panel.is_inside_tree()
         and app.reward_panel.has_method("is_ready_for_input")
         and bool(app.reward_panel.is_ready_for_input())
     )
+
+func _reward_panel_visibly_ready() -> bool:
+    return (
+        _reward_panel_ready()
+        and app.reward_panel.is_visible_in_tree()
+        and app.reward_panel.modulate.a >= 0.94
+    )
+
+func _force_reward_panel_visible() -> bool:
+    if not _reward_panel_ready():
+        return false
+    app.reward_panel.show()
+    # The visual fade is cosmetic; input accessibility is the invariant. If a
+    # slow Web video decoder or lifecycle pause stalls the tween, never let it
+    # leave a perfectly configured finale at alpha zero.
+    app.reward_panel.modulate.a = 1.0
+    return app.reward_panel.is_visible_in_tree()
 
 func _show_reward_panel() -> void:
     # Finale is an invariant, not a one-shot side effect. Replay/restore can keep
@@ -155,13 +175,20 @@ func _show_reward_panel() -> void:
     _refresh_leaderboard()
 
 func _verify_reward_panel_ready() -> void:
-    # Allow the Control tree, layout and focus chain to settle. This is especially
-    # important on desktop replay, where a final transition and two-column layout
-    # complete on adjacent frames.
-    for _attempt in range(6):
+    # Verify what the player can actually see, not merely that input controls
+    # were allocated. The full finale intentionally fades in for 300 ms, so use
+    # a monotonic deadline instead of a fixed six-frame check (which could pass
+    # while modulate.a was still zero).
+    var deadline_ms: int = Time.get_ticks_msec() + 650
+    while Time.get_ticks_msec() < deadline_ms:
         await get_tree().process_frame
-        if _reward_panel_ready():
-            WebE2EProbe.emit("finale", {"ready":true,"fallback":false})
+        if _reward_panel_visibly_ready():
+            WebE2EProbe.emit("finale", {"ready":true,"fallback":false,"forced":false})
+            return
+    if _force_reward_panel_visible():
+        await get_tree().process_frame
+        if _reward_panel_visibly_ready():
+            WebE2EProbe.emit("finale", {"ready":true,"fallback":false,"forced":true})
             return
     _install_reward_fallback("Finał przełączył się w tryb bezpieczny. Wynik jest zachowany lokalnie i może zostać zsynchronizowany.")
 
