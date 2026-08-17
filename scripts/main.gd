@@ -6,6 +6,10 @@ const MainWarmupFlowScript := preload("res://scripts/app/main_warmup_flow.gd")
 const MainRuntimeFlowScript := preload("res://scripts/app/main_runtime_flow.gd")
 const FatalErrorPresenter := preload("res://scripts/app/fatal_error_presenter.gd")
 const ProgressStoreScript := preload("res://scripts/progress_store.gd")
+# The flow nodes reach these through `app.`, so they must be members of main.gd.
+# ProgressMetrics is a global class_name, which is not reachable as a property on
+# an instance: every `app.ProgressMetrics...` call was a runtime error.
+const ProgressMetrics := preload("res://scripts/app/progress_metrics.gd")
 const QualityManager := preload("res://scripts/app/quality_manager.gd")
 const NativeExperienceSurfaceScript := preload("res://scripts/app/native_experience_surface.gd")
 const InteractiveUiRootScript := preload("res://scripts/app/interactive_ui_root.gd")
