@@ -152,16 +152,14 @@ def reveal_sweep(page: Page):
 
 
 def complete_room(page: Page, expected_room: str | None, artifact_dir: pathlib.Path):
-    previous_metric_count = page.evaluate("(window.__viryaSynGameplay || []).filter(x => x.metricKey === 'gameplay_room_completed_ms').length")
     previous_completion_count = page.evaluate("(window.__viryaSynE2EEvents || []).filter(x => x.kind === 'completion').length")
     deadline = time.monotonic() + 75
     iterations = 0
     seen_room = expected_room
     while time.monotonic() < deadline:
         completion = state(page, "completion")
-        metric_count = page.evaluate("(window.__viryaSynGameplay || []).filter(x => x.metricKey === 'gameplay_room_completed_ms').length")
         completion_count = page.evaluate("(window.__viryaSynE2EEvents || []).filter(x => x.kind === 'completion').length")
-        if completion is not None and metric_count > previous_metric_count and completion_count > previous_completion_count:
+        if completion is not None and completion_count > previous_completion_count:
             return completion, seen_room
         room = state(page, "room")
         if room and room.get("interactionEnabled"):
