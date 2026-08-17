@@ -281,6 +281,14 @@ def main() -> int:
                 raise AssertionError(f"finale CTA begins outside viewport: {key}={rect}")
             if float(rect.get("x", 0)) + float(rect.get("w", 0)) > float(finale_actions.get("viewportWidth", width)) + 1:
                 raise AssertionError(f"finale CTA overflows viewport horizontally: {key}={rect}")
+            # A CTA laid out below the fold is invisible to the player even though
+            # every other assertion here passes: it has a sane size, a positive
+            # origin and no horizontal overflow. The finale scrolls, so this is
+            # about what the player sees without being told to scroll.
+            if float(rect.get("y", 0)) + float(rect.get("h", 0)) > float(finale_actions.get("viewportHeight", height)) + 1:
+                raise AssertionError(f"finale CTA is below the fold: {key}={rect}")
+        if not finale_actions.get("leaderboardPresent", True):
+            raise AssertionError(f"finale rendered without the leaderboard: {finale_actions}")
         if finale_actions.get("signalDisabled"):
             raise AssertionError(f"Signal conversion CTA remained disabled at finale: {finale_actions}")
 

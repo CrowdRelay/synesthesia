@@ -221,8 +221,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
 
 
 func _publish_e2e_actions() -> void:
-    if not WebE2EProbe.enabled() or _signal_button == null or _claim == null:
-        return
+    if not WebE2EProbe.enabled() or _signal_button == null or _claim == null: return
     await get_tree().process_frame
     var viewport := get_viewport_rect().size
     var signal_rect := _signal_button.get_global_rect()
@@ -232,6 +231,7 @@ func _publish_e2e_actions() -> void:
         "claimRect": {"x":claim_rect.position.x,"y":claim_rect.position.y,"w":claim_rect.size.x,"h":claim_rect.size.y},
         "signalDisabled": _signal_button.disabled,
         "claimDisabled": _claim.disabled,
+        "leaderboardPresent": _leaderboard_panel != null and _leaderboard_panel.is_visible_in_tree(),
         "viewportWidth": viewport.x,
         "viewportHeight": viewport.y,
     })
