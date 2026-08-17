@@ -251,7 +251,13 @@ func _enter_main_menu_mode() -> void:
     _remove_modal(completion_panel)
     completion_panel = null
     SoundscapeRuntime.suspend_for_menu(menu_soundscape, room_layer, room, hud, audio_director, transition_director, adaptive_performance, music_level, noise_level, quiet_mode, false)
-func _resume_room_runtime() -> void: SoundscapeRuntime.resume_room(menu_soundscape, room_layer, hud, audio_director, adaptive_performance)
+func _resume_room_runtime() -> void:
+    # Once the finale owns the screen the room is retired for good. Resuming the
+    # room runtime here would make room_layer and the HUD visible again on top of
+    # it, stranding the player at 11/11 in a completed room with the finale
+    # already armed behind it.
+    if reward_panel != null and is_instance_valid(reward_panel): return
+    SoundscapeRuntime.resume_room(menu_soundscape, room_layer, hud, audio_director, adaptive_performance)
 func _configure_reward_client() -> void:
     if reward_client == null:
         reward_flow._configure_reward_client()
