@@ -192,7 +192,7 @@ func _process(delta: float) -> void:
         # video reset with a forced glitch.
         _last_video_position = _video_player.stream_position
     if not _reduced_motion:
-        if _wants_procedural_lid() and not _blink_active:
+        if not _video_is_active() and not _blink_active:
             _next_blink_at -= delta
             if _next_blink_at <= 0.0:
                 _blink_active = true
@@ -222,13 +222,6 @@ func _process(delta: float) -> void:
 
 func _sync_processing() -> void:
     set_process(is_visible_in_tree() and not _reduced_motion)
-
-func _wants_procedural_lid() -> bool:
-    # The procedural lid is eyelid anatomy drawn as a near-black polygon. It only
-    # reads as a blink where an eye is actually rendered: the authored clip owns
-    # its own lids, and the panel profile carries a room still rather than the
-    # glyph, so there the overlay is just a black rectangle wiping the artwork.
-    return not _video_is_active() and _profile != "panel"
 
 func _schedule_next_blink() -> void:
     var base: float = 2.7 if _profile == "menu" else 1.8
@@ -282,7 +275,7 @@ func _draw_textured_eye_animation(art: Rect2, min_side: float, glow: float) -> v
     var eye_center := art.position + art.size * Vector2(0.50, 0.505)
     var eye_size := art.size * Vector2(0.57, 0.235)
     var video_active: bool = _video_is_active()
-    var lid_close: float = clampf(_blink, 0.0, 1.0) if _wants_procedural_lid() else 0.0
+    var lid_close: float = 0.0 if video_active else clampf(_blink, 0.0, 1.0)
 
     if video_active:
         # The user-authored clip owns eyelid anatomy. Keep only the live neural
