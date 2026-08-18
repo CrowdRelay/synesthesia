@@ -29,6 +29,7 @@ python3 scripts/run-contracts.py --jobs "${SYNESTHESIA_CONTRACT_JOBS:-4}" \
   tests/release_hardening_v3_contract.py \
   tests/web_cache_fingerprint_contract.py \
   tests/web_bundle_budget_contract.py \
+  tests/web_cold_load_payload_contract.py \
   tests/ecosystem_v4_player_context_contract.py \
   tests/application_lifecycle_contract.py \
   tests/source_hygiene_contract.py \

@@ -357,6 +357,10 @@ fi
 
 rm -rf build/web
 mkdir -p build/web
+# Keep the Godot editor out of the export output. Without this marker the editor
+# imports the multi-MiB build artifacts as project assets and writes .import
+# sidecars back into the directory that ships to Netlify.
+printf '' > build/.gdignore
 install_web_templates_for_godot
 run_godot_checked web-export "" --headless --path "$ROOT" --export-release Web build/web/index.html
 

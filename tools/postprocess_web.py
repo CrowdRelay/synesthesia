@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,7 +52,33 @@ if register_tag not in html:
     html = html.replace("</body>", f"  {register_tag}\n</body>")
 if rum_tag not in html:
     html = html.replace("</body>", f"  {rum_tag}\n</body>")
+# project.godot sets boot_splash/show_image.web=false, so Godot renders the
+# status splash with display:none — but it still exports the image and still
+# emits its src, so every cold load pays ~2 MiB of incompressible PNG for a
+# picture the custom boot shell covers and the player never sees. Drop the src
+# (keeping the element, which the engine template still owns) and the file.
+html, splash_src_removed = re.subn(
+    r'(<img id="status-splash"[^>]*?)\s+src="[^"]*"',
+    r"\1",
+    html,
+)
+
 index_path.write_text(html)
+
+removed_bytes = 0
+if splash_src_removed:
+    splash_image = BUILD / "index.png"
+    if splash_image.is_file():
+        removed_bytes += splash_image.stat().st_size
+        splash_image.unlink()
+
+# Godot editor .import sidecars are build-time metadata; the runtime reads
+# everything it needs from the PCK. Shipping them only widens the deploy
+# fingerprint surface.
+stray_imports = sorted(BUILD.rglob("*.import"))
+for stray in stray_imports:
+    removed_bytes += stray.stat().st_size
+    stray.unlink()
 
 manifest_path = BUILD / "manifest.webmanifest"
 manifest = {
@@ -126,5 +153,6 @@ report = BUILD / "asset-report.txt"
 report.write_text("\n".join(f"{size}\t{name}" for size, name in sizes) + "\n")
 print(
     f"SYNESTHESIA_WEB_POSTPROCESS=PASS version={VERSION} cache={cache_id} "
-    f"runtime_files={len(runtime_files)} fingerprint_files={len(fingerprint_files)} files={len(sizes)}"
+    f"runtime_files={len(runtime_files)} fingerprint_files={len(fingerprint_files)} files={len(sizes)} "
+    f"splash_src_removed={bool(splash_src_removed)} stray_imports={len(stray_imports)} reclaimed_kib={removed_bytes / 1024:.1f}"
 )
