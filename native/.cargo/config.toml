@@ -1,3 +1,9 @@
+[target.aarch64-linux-android]
+rustflags = [
+    "-C", "link-arg=-Wl,-z,max-page-size=16384",
+    "-C", "link-arg=-Wl,-z,common-page-size=16384",
+]
+
 [target.wasm32-unknown-emscripten]
 rustflags = [
     "-C", "link-args=-sSIDE_MODULE=2",

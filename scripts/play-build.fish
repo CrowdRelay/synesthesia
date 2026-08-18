@@ -339,6 +339,12 @@ or begin
     exit 1
 end
 
+python3 scripts/check-android-elf-alignment.py "$AAB" "$ANDROID_NDK_HOME"
+or begin
+    echo "ERROR: one or more arm64 native libraries are not 16 KiB page compatible" >&2
+    exit 1
+end
+
 #
 # SUCCESS — keep bumped code
 #
@@ -361,6 +367,7 @@ shasum -a 256 "$AAB" | tee "$AAB.sha256"
 echo
 echo "SIGNATURE=PASS"
 echo "RUST_GDEXTENSION=PASS"
+echo "PAGE_SIZE_16K=PASS"
 echo "BUILD=PASS"
 echo "AAB=$ROOT/$AAB"
 

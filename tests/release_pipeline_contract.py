@@ -6,16 +6,26 @@ ROOT = Path(__file__).resolve().parents[1]
 workflow = (ROOT / ".github/workflows/build.yml").read_text()
 failures: list[str] = []
 
+pins = {}
+for raw in (ROOT / "config/toolchains.env").read_text().splitlines():
+    line = raw.strip()
+    if not line or line.startswith("#"):
+        continue
+    key, value = line.split("=", 1)
+    pins[key] = value
+
 for token in (
     "./scripts/build-web-preview.sh",
     'SYNESTHESIA_RUST_WEB_REQUIRED: "1"',
-    "nightly-2026-08-07",
     "./scripts/build-linux-release.sh",
     "linux_release.x86_64",
     'SYNESTHESIA_DISABLE_RUST_NATIVE: "0"',
 ):
     if token not in workflow:
         failures.append(f"release workflow missing: {token}")
+web_toolchain = pins.get("RUST_WEB_TOOLCHAIN")
+if not web_toolchain or f"SYNESTHESIA_RUST_WEB_TOOLCHAIN: {web_toolchain}" not in workflow:
+    failures.append("release workflow Rust Web toolchain must match config/toolchains.env")
 if "firebelley/godot-export" in workflow or "presets_to_export:" in workflow:
     failures.append("tagged release still downloads the full Godot template pack through generic exporter")
 if "SYNESTHESIA_ENABLE_RUST_NATIVE" in workflow:

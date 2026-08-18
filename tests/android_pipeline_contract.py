@@ -82,17 +82,33 @@ for token in (
         failures.append(f"Android build script missing token: {token}")
 
 
-for token in (
-    "GODOT_VERSION=4.7.1-stable",
-    "GODOT_EDITOR_SHA256=c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba",
-    "GODOT_TEMPLATES_SHA256=86409db6200b6f8fd3230989c2d2002851f3dd18acf11d7bdbafddf5a0dd0f72",
-    "ANDROID_BUILD_TOOLS_VERSION=35.0.1",
-    "ANDROID_PLATFORM_VERSION=android-35",
-    "ANDROID_NDK_VERSION=28.1.13356709",
-    "ANDROID_CMAKE_VERSION=3.10.2.4988404",
+toolchain_values = {}
+for raw in toolchains.splitlines():
+    line = raw.strip()
+    if not line or line.startswith("#"):
+        continue
+    if "=" not in line:
+        failures.append(f"Malformed canonical toolchain line: {line}")
+        continue
+    key, value = line.split("=", 1)
+    toolchain_values[key] = value
+
+for key in (
+    "GODOT_VERSION",
+    "GODOT_EDITOR_SHA256",
+    "GODOT_TEMPLATES_SHA256",
+    "ANDROID_BUILD_TOOLS_VERSION",
+    "ANDROID_PLATFORM_VERSION",
+    "ANDROID_NDK_VERSION",
+    "ANDROID_CMAKE_VERSION",
 ):
-    if token not in toolchains:
-        failures.append(f"Canonical toolchain config missing token: {token}")
+    if not toolchain_values.get(key):
+        failures.append(f"Canonical toolchain config missing key: {key}")
+
+for sha_key in ("GODOT_EDITOR_SHA256", "GODOT_TEMPLATES_SHA256"):
+    value = toolchain_values.get(sha_key, "")
+    if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
+        failures.append(f"Canonical toolchain checksum malformed: {sha_key}")
 
 if "templates-unpack" in script or 'cp -R "$unpack_dir/templates/."' in script or 'sha256sum --check --strict' in script:
     failures.append("Android builder must install only selected templates with portable checksum verification")
@@ -100,6 +116,30 @@ if "\nyes |" in script:
     failures.append("Android license acceptance must not use yes|sdkmanager under pipefail")
 
 rust_builder = (ROOT / "scripts/build-rust-native.sh").read_text()
+native_cargo_config = (ROOT / "native/.cargo/config.toml").read_text()
+for token in (
+    "[target.aarch64-linux-android]",
+    "max-page-size=16384",
+    "common-page-size=16384",
+):
+    if token not in native_cargo_config:
+        failures.append(f"Android Rust 16 KiB linker contract missing: {token}")
+
+play_builder_path = ROOT / "scripts/play-build.fish"
+alignment_checker_path = ROOT / "scripts/check-android-elf-alignment.py"
+play_builder = play_builder_path.read_text() if play_builder_path.is_file() else ""
+alignment_checker = alignment_checker_path.read_text() if alignment_checker_path.is_file() else ""
+for token in (
+    "SYNESTHESIA_RUST_PROFILE=release",
+    "./scripts/build-rust-native.sh android-arm64",
+    'scripts/check-android-elf-alignment.py "$AAB" "$ANDROID_NDK_HOME"',
+):
+    if token not in play_builder:
+        failures.append(f"Play AAB builder missing release-native contract: {token}")
+for token in ("PT_LOAD", "16K_PAGE_ALIGNMENT=FAIL", "SYNESTHESIA_AAB_16K=PASS"):
+    if token not in alignment_checker:
+        failures.append(f"AAB ELF alignment checker missing token: {token}")
+
 for token in (
     '(cd "$NATIVE" && cargo ndk --version',
     '(cd "$NATIVE" && cargo ndk "${args[@]}")',
@@ -134,4 +174,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_ANDROID_PIPELINE=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_ANDROID_PIPELINE=PASS target=arm64 rust=required apk=verified sdk=35 artifact=after-green-main-ci")
+print("SYNESTHESIA_ANDROID_PIPELINE=PASS target=arm64 rust=required apk=verified play-aab=16k-verified toolchains=central-config")

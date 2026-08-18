@@ -212,6 +212,35 @@ static func record_completion_performance(album_state: Dictionary, release_entri
         performance[key] = mastery[key]
     return performance
 
+static func record_rerun_attempt(album_state: Dictionary, release_id: String, room_elapsed_ms: int, found_echoes: int, total_echoes: int, guidance: Dictionary) -> Dictionary:
+    # A rerun is room-scoped by construction. It may take a room record or raise
+    # room mastery, and it must never touch completed rooms, the album clock, the
+    # local run counter or the album personal best: those belong to the run that
+    # actually closed the album, and a consequence-free replay cannot rewrite it.
+    # This deliberately does not reuse record_personal_best, which owns exactly
+    # that journey-level bookkeeping.
+    var best_rooms_value: Variant = album_state.get("personal_best_room_ms", {})
+    var best_rooms: Dictionary = best_rooms_value if best_rooms_value is Dictionary else {}
+    var previous_room_best: int = maxi(0, int(best_rooms.get(release_id, 0)))
+    var elapsed: int = maxi(0, room_elapsed_ms)
+    var room_personal_best: bool = previous_room_best <= 0 or elapsed < previous_room_best
+    if room_personal_best:
+        best_rooms[release_id] = elapsed
+    album_state["personal_best_room_ms"] = best_rooms
+
+    var performance := {
+        "room_elapsed_ms": elapsed,
+        "previous_room_best_ms": previous_room_best,
+        "room_personal_best": room_personal_best,
+    }
+    # Mastery is stored on its own better-only rule, so a sloppier replay of a
+    # room cannot lower a grade the player already earned.
+    var mastery := record_room_mastery(album_state, release_id, room_mastery(found_echoes, total_echoes, guidance, performance))
+    for key in mastery.keys():
+        performance[key] = mastery[key]
+    performance["rerun_improved"] = room_personal_best or bool(mastery.get("mastery_personal_best", false))
+    return performance
+
 static func current_room_elapsed_ms(room_started_ms: int, room_elapsed_before_start_ms: int, room_timer_running: bool) -> int:
     if room_started_ms <= 0 or not room_timer_running:
         return room_elapsed_before_start_ms
