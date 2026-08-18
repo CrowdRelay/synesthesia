@@ -37,9 +37,17 @@ static func _panel_rect(app: Control) -> Rect2:
         MOBILE_BASE_MARGIN_PX,
         28.0 * app._ui_scale
     )
-    var left: float = maxf(base_margin, safe.x)
+    # A centred card must read as centred. Taking the left and right insets
+    # independently let the panel inherit any horizontal safe-area asymmetry
+    # verbatim: left_gap - right_gap works out to exactly safe.x - safe.z, so a
+    # cutout or gesture inset on one edge visibly shoves the whole finale
+    # sideways. Safe areas raise the floor for both edges instead of skewing
+    # one. Top and bottom stay independent, where a status bar and a gesture
+    # bar are genuinely different sizes and matching them would waste height.
+    var horizontal: float = maxf(base_margin, maxf(safe.x, safe.z))
+    var left: float = horizontal
     var top: float = maxf(base_margin, safe.y)
-    var right: float = maxf(base_margin, safe.z)
+    var right: float = horizontal
     var bottom: float = maxf(base_margin, safe.w)
     var usable_width: float = maxf(1.0, available.x - left - right)
     var usable_height: float = maxf(1.0, available.y - top - bottom)
