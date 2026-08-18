@@ -37,3 +37,7 @@ synesthesia_rust.gdextension.uid
 /tests/room_rerun_contract.py
 /tests/room_rerun_smoke.gd
 /tests/room_rerun_smoke.gd.uid
+
+# Manual pre-release snapshots of the export preset; the Play script keeps its
+# own mktemp backup and restores on exit, so these are throwaway.
+*.before-play-release

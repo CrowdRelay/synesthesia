@@ -287,9 +287,11 @@ def main() -> int:
         if token not in project:
             fail(f"project.godot missing {token}", failures)
     export_source = (ROOT / "export_presets.cfg").read_text()
-    for token in ('version/name="2.0.0"', 'version/code=22', 'html/canvas_resize_policy=2'):
+    for token in ('version/name="2.0.0"', 'html/canvas_resize_policy=2'):
         if token not in export_source:
             fail(f"adaptive export contract missing: {token}", failures)
+    if not re.search(r'(?m)^version/code=[1-9][0-9]*$', export_source):
+        fail("adaptive export contract missing: positive version/code", failures)
     native_surface = (ROOT / "scripts/app/native_experience_surface.gd").read_text()
     for token in ('PRESET_FULL_RECT', 'PHONE_ASPECT_CUTOFF', 'get_content_surface', 'get_render_label', 'viewport_size.x / viewport_size.y'):
         if token not in native_surface:
