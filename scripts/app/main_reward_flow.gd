@@ -385,9 +385,13 @@ func _on_album_recorded(context: Dictionary = {}) -> void:
     app.ProgressStoreScript.save_run(app.reward_client.get_run_state())
     if app.reward_panel != null and is_instance_valid(app.reward_panel):
         app.reward_panel.set_server_completed(true)
-        app.reward_panel.apply_signal_context(app.completion_context)
         var linked: bool = bool(app.completion_context.get("linked_to_fan", false))
+        # The generic line goes first: apply_signal_context() owns the handoff
+        # exchange and may replace it with something specific to this response
+        # ("łącze gotowe", "jeszcze nie widzę połączenia"). Setting it afterwards
+        # would overwrite the only instruction telling the player what to press.
         app.reward_panel.set_status("Wynik połączony z Sygnałem. Możesz teraz opublikować PB w rankingu." if linked else "Ukończenie potwierdzone. Aby wejść do rankingu, połącz wynik z Sygnałem lub e-mailem, a potem opublikuj PB.")
+        app.reward_panel.apply_signal_context(app.completion_context)
         app.reward_panel.set_claim_enabled(true)
         app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
 
@@ -415,9 +419,10 @@ func _on_reward_request_failed(operation: String, message: String) -> void:
         app.reward_panel.set_leaderboard_publish_enabled(bool(app.completion_context.get("linked_to_fan", false)))
         return
     # Every remaining operation links this run to Signal. See SignalLinkState.
+    # mark_failed() re-renders the CTA by itself; re-applying the stored context
+    # here would replay a stale server answer through the handoff exchange.
     app.reward_panel.set_status(message)
     _link_state.mark_failed(app.reward_panel)
-    app.reward_panel.apply_signal_context(app.completion_context)
 
 func _on_reward_retry_scheduled(operation: String, attempt: int) -> void:
     var text_value: String = "Ponawiam połączenie z Sygnałem · próba %d/3" % attempt

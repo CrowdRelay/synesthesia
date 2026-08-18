@@ -40,6 +40,11 @@ var _ritual_complete: bool = false
 var _server_completed: bool = false
 var _awaiting_signal_return: bool = false
 var _awaiting_handoff_issue: bool = false
+# The handoff is held locally, not read back out of _signal_context. The status
+# refresh is read-only by contract and deliberately returns no code, so a card
+# that trusted the last response alone erased a link the player was still using.
+var _handoff_code: String = ""
+var _handoff_issued_ms: int = 0
 # Linking failed, as opposed to still being in flight. See SignalCtaState.
 var _signal_link_retryable: bool = false
 var _configured_for_input: bool = false
@@ -282,21 +287,35 @@ func set_leaderboard_publish_enabled(value: bool) -> void:
     if _leaderboard_panel != null:
         _leaderboard_panel.set_publish_enabled(value)
 
+## A fresh server context arrived. This is the only entry point allowed to move
+## the handoff exchange forward; re-rendering alone goes through _refresh_cta().
 func apply_signal_context(context: Dictionary) -> void:
     _signal_context = context.duplicate(true)
     if _signal_button == null:
         return
     var linked: bool = bool(_signal_context.get("linked_to_fan", false))
-    var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
+    var issued: String = str(_signal_context.get("handoff_code", "")).strip_edges()
     set_leaderboard_publish_enabled(linked)
-    if linked: _awaiting_signal_return = false
-    var cta: Dictionary = SignalCtaState.resolve(linked, _server_completed, _signal_link_retryable, handoff, _awaiting_signal_return)
-    _signal_button.disabled = bool(cta.get("disabled", false))
-    _signal_button.text = str(cta.get("text", ""))
-    if not linked and _server_completed and handoff.length() == 64 and _awaiting_handoff_issue:
+    if SignalCtaState.is_usable_handoff(issued):
+        _handoff_code = issued
+        _handoff_issued_ms = Time.get_ticks_msec()
+    if linked:
+        # The code is spent. My Signal owns the link from here.
+        _handoff_code = ""
+        _awaiting_signal_return = false
         _awaiting_handoff_issue = false
-        _awaiting_signal_return = true
-        call_deferred("_open_signal")
+    elif _awaiting_handoff_issue and SignalCtaState.is_usable_handoff(issued):
+        _awaiting_handoff_issue = false
+        _hand_over_to_signal()
+    elif _awaiting_signal_return:
+        # A check that came back unlinked must return the route, not leave the
+        # player pressing a button that can only ever re-check.
+        _awaiting_signal_return = false
+        if _active_handoff().is_empty():
+            set_status("Łącze wygasło. Kliknij, aby przygotować nowe i połączyć wynik.")
+        else:
+            set_status("Jeszcze nie widzę połączenia. Otwórz My Signal i zaloguj się tym samym łączem.")
+    _refresh_cta()
 
     var event_value: Variant = _signal_context.get("next_event", {})
     var event: Dictionary = event_value if event_value is Dictionary else {}
@@ -319,21 +338,59 @@ func apply_signal_context(context: Dictionary) -> void:
 
 func set_signal_link_retryable(value: bool) -> void:
     _signal_link_retryable = value
-    apply_signal_context(_signal_context)
+    # A reported failure is the end of whatever attempt was in flight. Leaving
+    # the issue latch armed lets an unrelated later context response open the
+    # browser on its own, long after the press that asked for it.
+    if value: _awaiting_handoff_issue = false
+    _refresh_cta()
 
 func set_server_completed(value: bool) -> void:
     _server_completed = value
     if value: _signal_link_retryable = false
     set_claim_enabled(value)
-    apply_signal_context(_signal_context)
+    _refresh_cta()
+
+## Re-render the CTA from current state without advancing the exchange.
+func _refresh_cta() -> void:
+    if _signal_button == null:
+        return
+    var cta: Dictionary = SignalCtaState.resolve(
+        bool(_signal_context.get("linked_to_fan", false)),
+        _server_completed,
+        _signal_link_retryable,
+        _active_handoff(),
+        _awaiting_signal_return,
+    )
+    _signal_button.disabled = bool(cta.get("disabled", false))
+    _signal_button.text = str(cta.get("text", ""))
+
+## The handoff this card may still hand to My Signal, or "" when there is none.
+func _active_handoff() -> String:
+    if not SignalCtaState.is_usable_handoff(_handoff_code):
+        return ""
+    if Time.get_ticks_msec() - _handoff_issued_ms >= SignalCtaState.HANDOFF_LOCAL_TTL_MS:
+        return ""
+    return _handoff_code
+
+## A browser only honours window.open inside the click that asked for it, and
+## the handoff answer lands one round trip after that click. Web therefore keeps
+## the ready link on the button and opens it on the next press; native, where no
+## popup blocker sits in the path, still hands the player straight over.
+func _hand_over_to_signal() -> void:
+    if OS.has_feature("web"):
+        set_status("Bezpieczne łącze gotowe. Kliknij „OTWÓRZ MÓJ SYGNAŁ”, aby połączyć wynik z Sygnałem.")
+        return
+    _awaiting_signal_return = true
+    set_status("Otwieram My Signal. Po zalogowaniu wróć tutaj i kliknij „SPRAWDŹ POŁĄCZENIE”.")
+    call_deferred("_open_signal")
 
 func is_leaderboard_publish_eligible() -> bool:
     return _leaderboard_panel != null and _leaderboard_panel.is_publish_eligible()
 
+# The press must always do what the button says, so it reads the same state the
+# label was resolved from and never a second, independently ordered rule.
 func _handle_signal_action() -> void:
-    var linked: bool = bool(_signal_context.get("linked_to_fan", false))
-    var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
-    if linked:
+    if bool(_signal_context.get("linked_to_fan", false)):
         _open_signal()
         return
     if not _server_completed:
@@ -344,30 +401,27 @@ func _handle_signal_action() -> void:
         set_status("Ponawiam synchronizację ukończenia z CrowdRelay…")
         signal_link_retry_requested.emit()
         return
-    if _awaiting_signal_return:
-        set_status("Sprawdzam, czy wynik jest już połączony z Twoim Sygnałem…")
-        signal_context_refresh_requested.emit()
-        return
-    if handoff.length() != 64:
+    if _active_handoff().is_empty():
+        # No usable link. Ask for one; the press that follows opens it, which is
+        # also what keeps the browser tab inside a real user gesture on Web.
         _awaiting_handoff_issue = true
+        _awaiting_signal_return = false
         _signal_button.disabled = true
         _signal_button.text = "PRZYGOTOWUJĘ BEZPIECZNE ŁĄCZE…"
         set_status("Przygotowuję krótkotrwałe, bezpieczne łącze do My Signal…")
         signal_handoff_requested.emit()
         return
+    if _awaiting_signal_return:
+        set_status("Sprawdzam, czy wynik jest już połączony z Twoim Sygnałem…")
+        signal_context_refresh_requested.emit()
+        return
     _awaiting_signal_return = true
-    _signal_button.text = "PO POWROCIE: SPRAWDŹ POŁĄCZENIE"
     set_status("Otwieram My Signal. Po zalogowaniu wróć tutaj i kliknij „SPRAWDŹ POŁĄCZENIE”.")
     _open_signal()
+    _refresh_cta()
 
 func _open_signal() -> void:
-    var handoff: String = str(_signal_context.get("handoff_code", "")).strip_edges()
-    var url := "https://virya.music/pl/my-signal/?source=synesthesia"
-    # Only the short-lived single-fan completion handoff travels in the fragment.
-    # Fan/session credentials never leave the API cookie/native secure store.
-    if handoff.length() == 64:
-        url += "#handoff=%s" % handoff.uri_encode()
-    OS.shell_open(url)
+    OS.shell_open(SignalCtaState.my_signal_url(_active_handoff()))
 
 func _open_next_event() -> void:
     var event_value: Variant = _signal_context.get("next_event", {})
