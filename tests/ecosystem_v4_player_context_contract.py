@@ -6,6 +6,7 @@ base=read('scripts/rooms/behavior_base.gd')
 flow=read('scripts/app/main_room_flow.gd')
 metrics=read('scripts/app/progress_metrics.gd')
 finale=read('scripts/ui/signal_finale_card.gd')
+cta_state=read('scripts/ui/signal_cta_state.gd')
 journey_summary=read('scripts/ui/signal_journey_summary.gd')
 reward=read('scripts/reward_client.gd')
 reward_flow=read('scripts/app/main_reward_flow.gd')
@@ -17,6 +18,10 @@ assert 'latest_echo' in flow and 'ECHO Z POPRZEDNIEGO POKOJU' in flow
 assert 'journey_marks' in metrics and 'PEŁNY REZONANS' in metrics
 assert 'SignalJourneySummary' in finale and 'ŚLADY · %s' in journey_summary
 assert 'album_recorded(context: Dictionary)' in reward
-assert '#handoff=' in finale and 'fan_session' not in finale.lower()
+# The My Signal URL moved into SignalCtaState; the handoff must stay a URL
+# fragment so it never reaches a server log or Referer header, and neither
+# the finale nor the CTA helper may touch fan session tokens.
+assert '#handoff=' in cta_state and 'fan_session' not in cta_state.lower()
+assert 'SignalCtaState.my_signal_url(' in finale and 'fan_session' not in finale.lower()
 assert 'reward_client.complete_album' in reward_flow and 'Reward entry durably links the run' in reward_flow
 print('SYNESTHESIA_ECOSYSTEM_V4=PASS assist=adaptive-reversible memory=echo-continuity finale=journey-marks handoff=fragment-only')
