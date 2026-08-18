@@ -63,6 +63,8 @@ jobs:
             .cache/godot-${{ env.GODOT_VERSION }}/web-templates/4.7.1.stable/.synesthesia-web-templates.sha256
             .cache/godot-${{ env.GODOT_VERSION }}/web-templates/4.7.1.stable/web_dlink_nothreads_debug.zip
             .cache/godot-${{ env.GODOT_VERSION }}/web-templates/4.7.1.stable/web_dlink_nothreads_release.zip
+            .cache/godot-${{ env.GODOT_VERSION }}/web-templates/4.7.1.stable/web_nothreads_debug.zip
+            .cache/godot-${{ env.GODOT_VERSION }}/web-templates/4.7.1.stable/web_nothreads_release.zip
           key: ${{ runner.os }}-synesthesia-godot-web-${{ env.GODOT_VERSION }}-${{ env.GODOT_EDITOR_SHA256 }}-v5
 
       - name: Install pinned Rust toolchain

@@ -11,7 +11,11 @@ netlify = (ROOT / "netlify.toml").read_text()
 
 for token in (
     "SYNESTHESIA_GODOT_EDITOR_CACHE=HIT",
+    # Template family follows the extension decision, so both must be reachable
+    # and the cache/manifest logic must be driven by the selected array.
     "WEB_TEMPLATE_NAMES=(web_dlink_nothreads_debug.zip web_dlink_nothreads_release.zip)",
+    "WEB_TEMPLATE_NAMES=(web_nothreads_debug.zip web_nothreads_release.zip)",
+    "WEB_EXTENSIONS_SUPPORT=false",
     "verify_web_template_manifest_at",
     "write_web_template_manifest",
     'CACHE_TEMPLATE_DIR="${SYNESTHESIA_WEB_TEMPLATE_CACHE_DIR:-$CACHE_DIR/web-templates/$GODOT_RELEASE_VERSION}"',
@@ -25,6 +29,7 @@ for token in (
     "Cache verified Godot and Web inputs",
     ".cache/godot-${{ env.GODOT_VERSION }}/editor.zip",
     "web_dlink_nothreads_release.zip",
+    "web_nothreads_release.zip",
     "Build production Web artifact once",
     'SYNESTHESIA_RUST_WEB_REQUIRED: "0"',
     'SYNESTHESIA_SKIP_SOURCE_VALIDATION: "1"',

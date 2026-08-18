@@ -73,7 +73,13 @@ def main() -> None:
     if sign_pos < 0 or descriptor_pos < 0 or sign_pos > descriptor_pos:
         raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL macos-signing-must-precede-descriptor")
     require(web_build, 'RUST_WEB_REQUIRED="${SYNESTHESIA_RUST_WEB_REQUIRED:-1}"', "web-rust-default-required")
+    # Extensions and dynamic linking travel together: the Rust-primary path
+    # takes the dlink template, the extension-free production path must not.
     require(web_build, "web_dlink_nothreads_release.zip", "web-dlink-template")
+    require(web_build, "web_nothreads_release.zip", "web-plain-template")
+    require(web_build, "WEB_EXTENSIONS_SUPPORT=true", "web-extensions-with-dlink")
+    require(web_build, "WEB_EXTENSIONS_SUPPORT=false", "web-no-extensions-without-dlink")
+    require(web_build, "restore_export_preset", "web-preset-restored")
     require(web_build, "SYNESTHESIA_RUST_WEB_EXPORT=PASS", "web-export-verification")
     require(netlify, 'ignore = "exit 0"', "netlify-build-stop-guard")
     if "command =" in netlify or "[[plugins]]" in netlify:

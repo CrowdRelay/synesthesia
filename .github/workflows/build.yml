@@ -47,6 +47,8 @@ jobs:
             .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/.synesthesia-web-templates.sha256
             .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_dlink_nothreads_debug.zip
             .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_dlink_nothreads_release.zip
+            .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_nothreads_debug.zip
+            .cache/godot-4.7.1-stable/web-templates/4.7.1.stable/web_nothreads_release.zip
             ~/.local/share/godot/export_templates/4.7.1.stable/linux_release.x86_64
           key: ${{ runner.os }}-synesthesia-web-rust-${{ hashFiles('native/Cargo.lock') }}-godot4.7.1-emsdk3.1.74
 

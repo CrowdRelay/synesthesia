@@ -176,7 +176,17 @@ GODOT_RUNTIME_DATA_DIR="$(./scripts/godot-runtime-data-dir.sh)"
 RUNTIME_TEMPLATE_DIR="$GODOT_RUNTIME_DATA_DIR/export_templates/$GODOT_RELEASE_VERSION"
 CACHE_TEMPLATE_DIR="${SYNESTHESIA_WEB_TEMPLATE_CACHE_DIR:-$CACHE_DIR/web-templates/$GODOT_RELEASE_VERSION}"
 WEB_TEMPLATE_MANIFEST="$CACHE_TEMPLATE_DIR/.synesthesia-web-templates.sha256"
-WEB_TEMPLATE_NAMES=(web_dlink_nothreads_debug.zip web_dlink_nothreads_release.zip)
+# Extension support decides the template family. The Rust-primary verification
+# path loads synesthesia_gdext.wasm and needs the dynamic-linking build; the
+# production path ships zero extensions, so it takes the plain template and
+# saves ~5.8 MiB of raw engine wasm plus the startup relocation work.
+if [[ "$RUST_WEB_REQUIRED" == "1" ]]; then
+  WEB_TEMPLATE_NAMES=(web_dlink_nothreads_debug.zip web_dlink_nothreads_release.zip)
+  WEB_EXTENSIONS_SUPPORT=true
+else
+  WEB_TEMPLATE_NAMES=(web_nothreads_debug.zip web_nothreads_release.zip)
+  WEB_EXTENSIONS_SUPPORT=false
+fi
 
 calculate_template_set_sha() {
   local dir="$1"
@@ -194,10 +204,11 @@ verify_web_template_manifest_at() {
   local expected name actual count=0
   while read -r expected name; do
     [[ -n "$expected" && -n "$name" ]] || continue
-    case "$name" in
-      web_dlink_nothreads_debug.zip|web_dlink_nothreads_release.zip) ;;
-      *) return 1 ;;
-    esac
+    local allowed=1 candidate
+    for candidate in "${WEB_TEMPLATE_NAMES[@]}"; do
+      [[ "$name" == "$candidate" ]] && allowed=0
+    done
+    [[ "$allowed" == "0" ]] || return 1
     [[ -s "$dir/$name" ]] || return 1
     actual="$(calculate_sha256 "$dir/$name")"
     [[ "$actual" == "$expected" ]] || return 1
@@ -291,8 +302,10 @@ if verify_web_template_manifest; then
   printf 'SYNESTHESIA_WEB_TEMPLATE_CACHE=HIT verified=manifest path=%s\n' "$CACHE_TEMPLATE_DIR"
 else
   # Never normalize a corrupt manifest into a new baseline.
-  rm -f "$CACHE_TEMPLATE_DIR/web_dlink_nothreads_debug.zip" \
-    "$CACHE_TEMPLATE_DIR/web_dlink_nothreads_release.zip" "$WEB_TEMPLATE_MANIFEST"
+  for template_name in "${WEB_TEMPLATE_NAMES[@]}"; do
+    rm -f "$CACHE_TEMPLATE_DIR/$template_name"
+  done
+  rm -f "$WEB_TEMPLATE_MANIFEST"
 fi
 
 if [[ "$web_templates_ready" != "1" ]]; then
@@ -362,7 +375,37 @@ mkdir -p build/web
 # sidecars back into the directory that ships to Netlify.
 printf '' > build/.gdignore
 install_web_templates_for_godot
+
+# Godot reads extension support from the preset, and there is no CLI override,
+# so apply the decision to the tracked file for the duration of the export and
+# put it back on every exit path. The committed value stays the Rust-primary
+# one, so a plain editor export is unchanged.
+restore_export_preset() {
+  if [[ -n "${EXPORT_PRESET_BACKUP:-}" && -s "$EXPORT_PRESET_BACKUP" ]]; then
+    mv "$EXPORT_PRESET_BACKUP" "$ROOT/export_presets.cfg"
+    EXPORT_PRESET_BACKUP=""
+  fi
+}
+if [[ "$WEB_EXTENSIONS_SUPPORT" != "true" ]]; then
+  EXPORT_PRESET_BACKUP="$ROOT/export_presets.cfg.build-backup"
+  cp "$ROOT/export_presets.cfg" "$EXPORT_PRESET_BACKUP"
+  trap restore_export_preset EXIT INT TERM
+  sed -i.sed-tmp "s/^variant\/extensions_support=true$/variant\/extensions_support=false/" \
+    "$ROOT/export_presets.cfg"
+  rm -f "$ROOT/export_presets.cfg.sed-tmp"
+  grep -q '^variant/extensions_support=false$' "$ROOT/export_presets.cfg" || {
+    echo 'ERROR: could not disable extension support for the production Web export' >&2
+    exit 1
+  }
+fi
+
 run_godot_checked web-export "" --headless --path "$ROOT" --export-release Web build/web/index.html
+
+restore_export_preset
+git -C "$ROOT" diff --quiet -- export_presets.cfg 2>/dev/null || {
+  echo 'ERROR: export_presets.cfg was left modified after the Web export' >&2
+  exit 1
+}
 
 if [[ "$RUST_WEB_REQUIRED" == "1" ]]; then
   rust_wasm="$(find build/web -type f -name 'synesthesia_gdext.wasm' -print -quit)"
