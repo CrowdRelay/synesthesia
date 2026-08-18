@@ -32,18 +32,27 @@ var _retry_timer: Timer
 var _retry_request: Dictionary = {}
 
 func _ready() -> void:
-    _http = HTTPRequest.new()
-    _http.name = "SynesthesiaRewardHttp"
-    _http.timeout = 15.0
-    _http.body_size_limit = MAX_RESPONSE_BYTES
-    _http.request_completed.connect(_on_request_completed)
-    add_child(_http)
+    _ensure_transport()
 
-    _retry_timer = Timer.new()
-    _retry_timer.name = "SynesthesiaRewardRetry"
-    _retry_timer.one_shot = true
-    _retry_timer.timeout.connect(_on_retry_timeout)
-    add_child(_retry_timer)
+func _ensure_transport() -> void:
+    # The finale may create this node and immediately call start_run() in the
+    # same frame. On Web, transport must therefore not depend on _ready having
+    # already run. This also self-heals after a browser lifecycle invalidates a
+    # child transport node.
+    if _http == null or not is_instance_valid(_http):
+        _http = HTTPRequest.new()
+        _http.name = "SynesthesiaRewardHttp"
+        _http.timeout = 15.0
+        _http.body_size_limit = MAX_RESPONSE_BYTES
+        _http.request_completed.connect(_on_request_completed)
+        add_child(_http)
+
+    if _retry_timer == null or not is_instance_valid(_retry_timer):
+        _retry_timer = Timer.new()
+        _retry_timer.name = "SynesthesiaRewardRetry"
+        _retry_timer.one_shot = true
+        _retry_timer.timeout.connect(_on_retry_timeout)
+        add_child(_retry_timer)
 
 func configure(api_url: String, campaign_slug: String, app_version: String, install_id: String, attempt_id: String = "legacy") -> void:
     _api_url = api_url.trim_suffix("/")
@@ -243,6 +252,9 @@ func _contains_idempotency_key(idempotency_key: String) -> bool:
 func _pump() -> void:
     if _busy or _queue.is_empty():
         return
+    # Never let a Web lifecycle/_ready ordering race turn a queued request into
+    # a null transport call. A CTA retry must reach HTTPRequest.request().
+    _ensure_transport()
     _active = _queue.pop_front()
     _busy = true
     var method_name: String = str(_active.get("method", "POST")).to_upper()
@@ -327,6 +339,7 @@ func _handle_failure(request_data: Dictionary, response_code: int, message: Stri
         request_data["attempt"] = attempt
         _retry_request = request_data.duplicate(true)
         _busy = true
+        _ensure_transport()
         var delay_seconds: float = RETRY_BASE_SECONDS * pow(2.0, float(attempt - 1))
         _retry_timer.start(delay_seconds)
         retry_scheduled.emit(str(request_data.get("operation", "request")), attempt)

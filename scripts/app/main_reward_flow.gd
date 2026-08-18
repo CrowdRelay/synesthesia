@@ -25,6 +25,15 @@ func _runtime_script(path: String) -> Script:
         return resource as Script
     return null
 
+func _ensure_reward_client() -> bool:
+    # Finale/retry is an explicit user action and must be able to recover even
+    # when the lazy runtime client failed to materialise earlier.
+    if app.reward_client != null and is_instance_valid(app.reward_client):
+        return true
+    app.reward_client = null
+    _configure_reward_client()
+    return app.reward_client != null and is_instance_valid(app.reward_client)
+
 func _configure_reward_client() -> void:
     var config_value: Variant = app.index_document.get("reward", {})
     if not config_value is Dictionary:
@@ -120,8 +129,7 @@ func _show_reward_panel() -> void:
     # path _begin_experience() intentionally skips gameplay startup, so the
     # reward client may not exist yet. Bring it online here as well and let the
     # normal run-start callback reconcile all locally completed rooms.
-    if app.reward_client == null:
-        _configure_reward_client()
+    _ensure_reward_client()
     _prepare_finale_background()
     # Nothing between the background and the card may abort construction: the
     # background is already on screen, so a failure here leaves the animation
@@ -172,11 +180,12 @@ func _show_reward_panel() -> void:
     # _on_run_started() reconciles every locally completed room before complete.
     # This makes replay/persisted completion registration independent of HUD/menu
     # runtime and keeps a visible finale even when CrowdRelay is temporarily down.
-    if app.reward_client != null:
+    if _ensure_reward_client():
         app.reward_client.start_run()
     else:
         # Nothing will ever confirm completion, so the CTA must not sit disabled.
         _link_state.mark_failed(app.reward_panel)
+        app.reward_panel.set_status("Nie udało się uruchomić klienta Sygnału. Kliknij ponownie, aby spróbować jeszcze raz.")
     _link_state.apply(app.reward_panel)
     _refresh_leaderboard()
 
@@ -245,8 +254,12 @@ func refresh_link_context_after_resume() -> void:
 func _refresh_signal_context() -> void:
     if app.reward_panel == null or not is_instance_valid(app.reward_panel):
         return
-    if app.reward_client == null or not bool(app.album_state.get("server_album_completed", false)):
+    if not bool(app.album_state.get("server_album_completed", false)):
         app.reward_panel.set_status("Ukończenie nie jest jeszcze zsynchronizowane z CrowdRelay.")
+        return
+    if not _ensure_reward_client():
+        app.reward_panel.set_status("Nie udało się uruchomić klienta Sygnału. Spróbuj ponownie.")
+        _link_state.mark_failed(app.reward_panel)
         return
     app.reward_client.refresh_completion_context(int(app.album_state.get("total_elapsed_ms", 0)))
 
@@ -254,8 +267,12 @@ func _refresh_signal_context() -> void:
 func _issue_signal_handoff() -> void:
     if app.reward_panel == null or not is_instance_valid(app.reward_panel):
         return
-    if app.reward_client == null or not bool(app.album_state.get("server_album_completed", false)):
+    if not bool(app.album_state.get("server_album_completed", false)):
         app.reward_panel.set_status("Ukończenie nie jest jeszcze zsynchronizowane z CrowdRelay.")
+        return
+    if not _ensure_reward_client():
+        app.reward_panel.set_status("Nie udało się uruchomić klienta Sygnału. Spróbuj ponownie.")
+        _link_state.mark_failed(app.reward_panel)
         return
     app.reward_client.request_handoff()
 
@@ -284,9 +301,10 @@ func _on_leaderboard_published(context: Dictionary) -> void:
         app.reward_client.fetch_leaderboard(10)
 
 func _submit_reward_claim_values(email: String) -> void:
-    if app.reward_client == null:
+    if not _ensure_reward_client():
         if app.reward_panel != null and is_instance_valid(app.reward_panel):
             app.reward_panel.set_status("Sygnał jest chwilowo niedostępny. Ukończenie pozostało zapisane lokalnie.")
+            _link_state.mark_failed(app.reward_panel)
         return
     if not bool(app.album_state.get("server_album_completed", false)):
         app.reward_panel.set_status("Najpierw kończę synchronizację jedenastu pokojów.")
@@ -348,9 +366,15 @@ func _on_room_recorded(room_id_value: String, next_room_index: int) -> void:
     _sync_completed_rooms_to_server(next_room_index)
 
 func _retry_signal_link() -> void:
-    # start_run() is idempotent; it is the same path the finale takes on open.
-    if app.reward_client == null or not is_instance_valid(app.reward_client):
+    # start_run() is idempotent; retry must recreate the lazy Web client instead
+    # of silently returning before any request reaches CrowdRelay.
+    if not _ensure_reward_client():
+        if app.reward_panel != null and is_instance_valid(app.reward_panel):
+            app.reward_panel.set_status("Nie udało się uruchomić klienta Sygnału. Spróbuj ponownie.")
+            _link_state.mark_failed(app.reward_panel)
         return
+    if app.reward_panel != null and is_instance_valid(app.reward_panel):
+        app.reward_panel.set_status("Łączę z CrowdRelay…")
     app.reward_client.start_run()
 
 func _on_album_recorded(context: Dictionary = {}) -> void:

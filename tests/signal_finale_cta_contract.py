@@ -86,6 +86,27 @@ def main() -> int:
 
     if "func _retry_signal_link(" not in flow:
         failures.append("a retry must re-enter the idempotent run/completion path")
+    else:
+        retry = flow.split("func _retry_signal_link(", 1)[1].split("\nfunc ", 1)[0]
+        if "_ensure_reward_client()" not in retry:
+            failures.append("a CTA retry must recreate a missing lazy reward client")
+        if "app.reward_client.start_run()" not in retry:
+            failures.append("a CTA retry must issue the idempotent CrowdRelay start_run path")
+        if "app.reward_client == null or not is_instance_valid(app.reward_client):\n        return" in retry:
+            failures.append("a missing reward client must not make CTA retry a silent no-op")
+
+    if "func _ensure_reward_client()" not in flow:
+        failures.append("reward flow must expose a recoverable lazy-client bootstrap")
+
+    reward = read("scripts/reward_client.gd")
+    if "func _ensure_transport()" not in reward:
+        failures.append("RewardClient must self-heal its HTTPRequest/Timer transport")
+    else:
+        pump = reward.split("func _pump()", 1)[1].split("\nfunc ", 1)[0]
+        if "_ensure_transport()" not in pump or "_http.request(" not in pump:
+            failures.append("RewardClient pump must ensure transport before issuing HTTP")
+        elif pump.index("_ensure_transport()") > pump.index("_http.request("):
+            failures.append("RewardClient transport must be ensured before HTTPRequest.request")
 
     if failures:
         for failure in failures:

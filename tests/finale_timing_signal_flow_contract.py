@@ -51,7 +51,11 @@ assert '"complete_album", "recover_album", "completion_context_refresh", "handof
 assert "refresh_completion_context" in reward_flow
 assert "signal_context_refresh_requested" in finale
 assert "PO POWROCIE: SPRAWDŹ POŁĄCZENIE" in finale
-assert "if app.reward_client == null:" in reward_flow and "app.reward_client.start_run()" in reward_flow
+assert "func _ensure_reward_client()" in reward_flow
+assert "_ensure_reward_client()" in reward_flow and "app.reward_client.start_run()" in reward_flow
+assert "func _ensure_transport()" in reward
+reward_pump = reward.split("func _pump()", 1)[1].split("\nfunc ", 1)[0]
+assert reward_pump.index("_ensure_transport()") < reward_pump.index("_http.request(")
 show_reward = reward_flow.split("func _show_reward_panel", 1)[1].split("func _refresh_leaderboard", 1)[0]
 assert "if app.hud != null and is_instance_valid(app.hud):" in show_reward
 assert show_reward.index("app.reward_panel.configure(") < show_reward.index("app.reward_client.start_run()")

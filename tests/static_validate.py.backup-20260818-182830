@@ -398,26 +398,10 @@ def main() -> int:
             fail(f"custom draw_* helper forbidden: {rel}", failures)
         if "scripts/paint_room.gd" in source or "visual_snow.gdshader" in source:
             fail(f"legacy renderer reference in {rel}", failures)
-    # Keep the readability ratchet, but allow a narrow engineering headroom
-    # band so a small resilience fix does not force artificial file splitting.
-    # 420 remains the design target; 460 is the hard stop.
-    readability_soft_budget = 420
-    readability_hard_budget = 460
     for path in sorted((ROOT / "scripts").rglob("*.gd")):
         lines = len(path.read_text().splitlines())
-        rel = path.relative_to(ROOT)
-        if lines > readability_hard_budget:
-            fail(
-                f"production GDScript exceeds {readability_hard_budget}-line hard readability cap: "
-                f"{rel}={lines}",
-                failures,
-            )
-        elif lines > readability_soft_budget:
-            print(
-                f"WARN: production GDScript above {readability_soft_budget}-line soft readability budget: "
-                f"{rel}={lines} hard_cap={readability_hard_budget}",
-                file=sys.stderr,
-            )
+        if lines > 420:
+            fail(f"production GDScript exceeds 420-line readability budget: {path.relative_to(ROOT)}={lines}", failures)
 
     shader = (ROOT / "shaders/room_composite.gdshader").read_text()
     for token in ("reveal_mask", "background_texture", "subject_texture", "foreground_texture", "noise_intensity", "scanline_strength", "quiet_visuals", "quality_level", "completion_reveal", "brush_energy", "runtime_scale", "cinematic_time", "unlock_motion", "unlock_profile"):
