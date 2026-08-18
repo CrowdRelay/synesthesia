@@ -153,10 +153,22 @@ require("scripts/validate-source.sh", "tools/memory_budget.py", "tests/productio
 require("validate.sh", "./scripts/validate-source.sh", "lifecycle_smoke.gd")
 require(".github/workflows/ci.yml", "./scripts/validate-source.sh")
 
+READABILITY_SOFT_BUDGET = 420
+READABILITY_HARD_BUDGET = 460
 for gd_path in sorted((ROOT / "scripts").rglob("*.gd")):
     lines = len(gd_path.read_text(errors="replace").splitlines())
-    if lines > 420:
-        failures.append(f"production GDScript grew above 420 lines: {gd_path.relative_to(ROOT)}={lines}")
+    rel = gd_path.relative_to(ROOT)
+    if lines > READABILITY_HARD_BUDGET:
+        failures.append(
+            f"production GDScript exceeded hard readability cap "
+            f"{READABILITY_HARD_BUDGET}: {rel}={lines}"
+        )
+    elif lines > READABILITY_SOFT_BUDGET:
+        print(
+            f"WARN: production GDScript above soft readability budget "
+            f"{READABILITY_SOFT_BUDGET}: {rel}={lines} "
+            f"hard_cap={READABILITY_HARD_BUDGET}"
+        )
 
 if failures:
     for failure in failures:

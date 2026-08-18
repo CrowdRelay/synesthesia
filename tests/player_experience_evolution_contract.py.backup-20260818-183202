@@ -56,22 +56,8 @@ assert 'audio_director.begin_transition_out()' in main
 # CTA remains comfortably thumb-sized in the lower completion sheet.
 assert '_next_button.custom_minimum_size = Vector2(280.0, 54.0)' in completion
 
-# Preserve orchestration budgets without forcing artificial refactors for small
-# resilience fixes. 420 remains the design target; 460 is the hard stop.
-READABILITY_SOFT_BUDGET = 420
-READABILITY_HARD_BUDGET = 460
+# Preserve orchestration budgets instead of buying polish with central-file growth.
 for path in (ROOT / "scripts").rglob("*.gd"):
-    lines = len(path.read_text().splitlines())
-    if lines > READABILITY_HARD_BUDGET:
-        raise AssertionError(
-            f"{path}: {lines} lines exceeds hard readability cap "
-            f"{READABILITY_HARD_BUDGET}"
-        )
-    if lines > READABILITY_SOFT_BUDGET:
-        print(
-            f"WARN: {path.relative_to(ROOT)}={lines} lines above "
-            f"soft readability budget {READABILITY_SOFT_BUDGET}; "
-            f"hard_cap={READABILITY_HARD_BUDGET}"
-        )
+    assert len(path.read_text().splitlines()) <= 420, path
 
 print('SYNESTHESIA_PLAYER_EXPERIENCE_V32=PASS feedback=tri-modal misses=assist-only touch=forgiving hud=focus completion=diegetic audio=ducked')

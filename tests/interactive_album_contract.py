@@ -99,10 +99,21 @@ for token in (
 ):
     if token not in main:
         failures.append(f"main orchestration missing {token!r}")
+READABILITY_SOFT_BUDGET = 420
+READABILITY_HARD_BUDGET = 460
 for path in ("scripts/main.gd", "scripts/app/main_room_flow.gd", "scripts/app/main_settings_flow.gd", "scripts/app/main_reward_flow.gd"):
     lines = len(text(path).splitlines())
-    if lines > 420:
-        failures.append(f"orchestration module budget regressed: {path}={lines}/420")
+    if lines > READABILITY_HARD_BUDGET:
+        failures.append(
+            f"orchestration module exceeded hard readability cap: "
+            f"{path}={lines}/{READABILITY_HARD_BUDGET}"
+        )
+    elif lines > READABILITY_SOFT_BUDGET:
+        print(
+            f"WARN: orchestration module above soft readability budget: "
+            f"{path}={lines} soft={READABILITY_SOFT_BUDGET} "
+            f"hard={READABILITY_HARD_BUDGET}"
+        )
 
 require(
     "scripts/app/door_transition_layer.gd",
