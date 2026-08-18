@@ -131,7 +131,24 @@ else
     exit 1
 end
 
-echo "GODOT="($GODOT --version)
+set -l GODOT_ACTUAL ($GODOT --version | string trim)
+set -l GODOT_EXPECTED (grep '^GODOT_RELEASE_VERSION=' config/toolchains.env | cut -d= -f2)
+
+test -n "$GODOT_EXPECTED"
+or begin
+    echo "ERROR: GODOT_RELEASE_VERSION missing from config/toolchains.env" >&2
+    exit 1
+end
+
+string match -q "$GODOT_EXPECTED*" "$GODOT_ACTUAL"
+or begin
+    echo "ERROR: Godot editor/export-template version mismatch" >&2
+    echo "EXPECTED=$GODOT_EXPECTED" >&2
+    echo "ACTUAL=$GODOT_ACTUAL" >&2
+    exit 1
+end
+
+echo "GODOT=$GODOT_ACTUAL"
 
 #
 # RELEASE SIGNING

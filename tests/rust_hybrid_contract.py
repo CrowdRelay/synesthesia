@@ -31,7 +31,7 @@ def main() -> None:
     template = (ROOT / "native/synesthesia_rust.gdextension.template").read_text()
 
     require(native_manifest, 'rust-version = "1.94"', "rust-msrv")
-    require(adapter_manifest, 'features = ["api-4-6"]', "native-godot-api-level")
+    require(adapter_manifest, 'features = ["api-4-7"]', "native-godot-api-level")
     require(adapter_manifest, '"api-custom", "experimental-wasm", "lazy-function-tables"', "web-godot-features")
     require(adapter_manifest, 'nothreads = ["godot/experimental-wasm-nothreads"]', "web-nothreads-feature")
     require(cargo_config, 'link-args=-sSIDE_MODULE=2', "wasm-side-module")

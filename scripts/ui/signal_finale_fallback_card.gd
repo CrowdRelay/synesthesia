@@ -10,7 +10,16 @@ signal reset_requested
 signal album_mode_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const SignalFinaleLayout := preload("res://scripts/ui/signal_finale_layout.gd")
 
+var _panel: PanelContainer
+var _scroll: ScrollContainer
+var _layout: VBoxContainer
+var _visual: VBoxContainer
+var _form: VBoxContainer
+var _body: Label
+var _motif
+var _ui_scale: float = 1.0
 var _email: LineEdit
 var _status: Label
 var _claim: Button
@@ -32,19 +41,31 @@ func configure(server_completed: bool, saved_reward: Dictionary, _journey_summar
     dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     add_child(dim)
 
-    var panel := PanelContainer.new()
-    panel.name = "FinaleFallbackPanel"
-    panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(Color("e35f83"), true))
-    panel.set_anchors_preset(Control.PRESET_CENTER)
-    panel.offset_left = -minf(330.0, get_viewport_rect().size.x * 0.44)
-    panel.offset_right = minf(330.0, get_viewport_rect().size.x * 0.44)
-    panel.offset_top = -260.0
-    panel.offset_bottom = 260.0
-    add_child(panel)
+    _panel = PanelContainer.new()
+    _panel.name = "FinaleFallbackPanel"
+    _panel.mouse_filter = Control.MOUSE_FILTER_PASS
+    _panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(Color("e35f83"), true))
+    add_child(_panel)
+    SignalFinaleLayout.layout_panel(self)
 
-    var stack := VBoxContainer.new()
-    stack.add_theme_constant_override("separation", 12)
-    panel.add_child(stack)
+    _scroll = ScrollContainer.new()
+    _scroll.name = "FinaleFallbackScroll"
+    _scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+    _scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    _scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    _scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    _scroll.scroll_deadzone = SignalFinaleLayout.MOBILE_SCROLL_DEADZONE_PX
+    _scroll.scroll_vertical_custom_step = 48.0
+    _scroll.follow_focus = true
+    _panel.add_child(_scroll)
+
+    _layout = VBoxContainer.new()
+    _layout.name = "FinaleFallbackStack"
+    _layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _layout.add_theme_constant_override("separation", 12)
+    _scroll.add_child(_layout)
+    var stack := _layout
     var heading := UIFactory.heading("Sygnał dotarł.")
     stack.add_child(heading)
     var body := UIFactory.body("Jedenaście pokojów ukończone. Formularz pozostaje dostępny nawet wtedy, gdy rozszerzona warstwa finału nie może się uruchomić.")
@@ -60,6 +81,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, _journey_summar
 
     _email = UIFactory.line_edit("E-mail do losowania", Color("7fd7ef"))
     stack.add_child(_email)
+    _email.focus_entered.connect(_on_email_focus_entered)
     _claim = UIFactory.product_button("DOŁĄCZ DO LOSOWANIA 5 PŁYT", Color("e35f83"), true)
     _claim.disabled = not server_completed
     _claim.pressed.connect(func() -> void: draw_entry_requested.emit(_email.text.strip_edges()))
@@ -71,6 +93,8 @@ func configure(server_completed: bool, saved_reward: Dictionary, _journey_summar
     var replay := UIFactory.product_button("PRZEJDŹ ALBUM JESZCZE RAZ", Color("73869d"))
     replay.pressed.connect(func() -> void: reset_requested.emit())
     stack.add_child(replay)
+    SignalFinaleLayout.prepare_scroll_content(_layout)
+    SignalFinaleLayout.apply_ui_scale(self)
     apply_signal_context(_signal_context)
     if str(saved_reward.get("status", "")) == "entered_draw":
         _status.text = str(saved_reward.get("message", "Jesteś już w losowaniu 5 płyt."))
@@ -134,3 +158,32 @@ func set_leaderboard_items(_items: Array) -> void: pass
 func set_leaderboard_publish_result(_context: Dictionary) -> void: pass
 func set_leaderboard_status(_text_value: String) -> void: pass
 func set_leaderboard_publish_enabled(_value: bool) -> void: pass
+
+func _on_email_focus_entered() -> void:
+    if _scroll != null and _email != null:
+        call_deferred("_ensure_email_visible")
+
+func _ensure_email_visible() -> void:
+    if _scroll != null and _email != null:
+        _scroll.ensure_control_visible(_email)
+
+func _scroll_to_start() -> void:
+    if _scroll != null:
+        _scroll.scroll_vertical = 0
+
+func _layout_panel() -> void:
+    SignalFinaleLayout.layout_panel(self)
+
+func _layout_columns() -> void:
+    if _layout != null:
+        _layout.custom_minimum_size.x = 0.0
+        SignalFinaleLayout.prepare_scroll_content(_layout)
+
+func _apply_ui_scale() -> void:
+    SignalFinaleLayout.apply_ui_scale(self)
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_RESIZED:
+        call_deferred("_layout_panel")
+        call_deferred("_layout_columns")
+        call_deferred("_apply_ui_scale")

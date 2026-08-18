@@ -77,8 +77,9 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     _scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     _scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    _scroll.scroll_vertical_custom_step = 48.0
     _scroll.follow_focus = true
-    _scroll.scroll_deadzone = 18
+    _scroll.scroll_deadzone = SignalFinaleLayout.MOBILE_SCROLL_DEADZONE_PX
     _panel.add_child(_scroll)
 
     _layout = BoxContainer.new()
@@ -209,6 +210,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
         _status.text = str(saved_reward.get("message", "Jesteś już w losowaniu 5 płyt."))
         _claim.disabled = true
     _form.visible = true
+    SignalFinaleLayout.prepare_scroll_content(_layout)
     _configured_for_input = _email != null and _claim != null and _form != null
 
     _layout_columns()

@@ -35,7 +35,7 @@ for token in (
 
 for token in (
     "_scroll.follow_focus = true",
-    "_scroll.scroll_deadzone = 18",
+    "_scroll.scroll_deadzone = SignalFinaleLayout.MOBILE_SCROLL_DEADZONE_PX",
     '_email.name = "RewardEmail"',
     "_email.gui_input.connect(_on_email_gui_input)",
     "_email.focus_entered.connect(_on_email_focus_entered)",

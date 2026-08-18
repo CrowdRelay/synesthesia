@@ -13,7 +13,7 @@ path = "src/lib.rs"
 synesthesia-core.workspace = true
 
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
-godot = { workspace = true, features = ["api-4-6"] }
+godot = { workspace = true, features = ["api-4-7"] }
 
 [target.'cfg(target_os = "emscripten")'.dependencies]
 godot = { workspace = true, features = ["api-custom", "experimental-wasm", "lazy-function-tables"] }

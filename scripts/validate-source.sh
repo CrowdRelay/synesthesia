@@ -10,6 +10,7 @@ python3 scripts/check-ci-policy.py
 ./scripts/validate-fast.sh
 python3 scripts/run-contracts.py --jobs "${SYNESTHESIA_CONTRACT_JOBS:-4}" \
   tests/boot_visual_continuity_contract.py \
+  tests/finale_mobile_layout_contract.py \
   tests/e2e_semantic_feed_contract.py \
   tests/signal_finale_cta_contract.py \
   tools/memory_budget.py \
