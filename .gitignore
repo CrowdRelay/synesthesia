@@ -25,3 +25,15 @@ synesthesia_rust.gdextension.uid
 /native/bin/
 /native/android-out/
 /.ci-cache/
+
+# In-progress room-rerun feature. Tracked deliberately as untracked: the smoke
+# test calls ProgressMetrics.record_rerun_attempt() and room_rerun_contract.py
+# names ~24 integration points still to build, so publishing it breaks the
+# GDScript parse gate. Remove these lines when the feature is finished.
+/scripts/app/room_rerun_runtime.gd
+/scripts/app/room_rerun_runtime.gd.uid
+/scripts/app/finale_panel_builder.gd
+/scripts/app/finale_panel_builder.gd.uid
+/tests/room_rerun_contract.py
+/tests/room_rerun_smoke.gd
+/tests/room_rerun_smoke.gd.uid

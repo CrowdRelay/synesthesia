@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/hybrid-subject.webp-1c37a7394e1689b6a7dee8a51
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

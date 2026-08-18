@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/hybrid-bg.webp-a7d855a2519f82969cafa19383caf2
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

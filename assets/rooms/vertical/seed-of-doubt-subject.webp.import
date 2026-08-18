@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/seed-of-doubt-subject.webp-514f9b98d63195c4d3
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/the-calling-foreground.webp-cfc1484d29660ca54
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

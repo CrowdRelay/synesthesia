@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/unmasked-scene.webp-247aa988d6b9d1bb451ed14c3
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

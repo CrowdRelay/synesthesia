@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/seed-of-doubt-bg.webp-5bdb413a1f785618c1e237b
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

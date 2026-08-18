@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/from-the-ashes-bg.webp-f6eab1492c597d31909c6d
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

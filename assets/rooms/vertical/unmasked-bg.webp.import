@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/unmasked-bg.webp-e279e5aeec5ccc36659e431a60cc
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

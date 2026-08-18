@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/invaluable-scene.webp-db969c730b5936b17b6c0b2
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

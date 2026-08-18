@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/party-time-foreground.webp-c01574dc5e0d826b1b
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
