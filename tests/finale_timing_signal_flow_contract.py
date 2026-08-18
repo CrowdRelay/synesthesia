@@ -50,7 +50,9 @@ assert '"idempotency_key": ""' in refresh
 assert '"complete_album", "recover_album", "completion_context_refresh", "handoff_issue"' in reward
 assert "refresh_completion_context" in reward_flow
 assert "signal_context_refresh_requested" in finale
-assert "PO POWROCIE: SPRAWDŹ POŁĄCZENIE" in finale
+cta_state = read("scripts/ui/signal_cta_state.gd")
+assert "PO POWROCIE: SPRAWDŹ POŁĄCZENIE" in cta_state
+assert "SignalCtaState.resolve(" in finale
 assert "func _ensure_reward_client()" in reward_flow
 assert "_ensure_reward_client()" in reward_flow and "app.reward_client.start_run()" in reward_flow
 assert "func _ensure_transport()" in reward

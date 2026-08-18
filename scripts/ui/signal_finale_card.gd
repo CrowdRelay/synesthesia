@@ -16,6 +16,7 @@ const SignalFinaleLayout := preload("res://scripts/ui/signal_finale_layout.gd")
 const ViryaRosterStrip := preload("res://scripts/ui/virya_roster_strip.gd")
 const SignalResonanceRitual := preload("res://scripts/ui/signal_resonance_ritual.gd")
 const SignalLeaderboardPanel := preload("res://scripts/ui/signal_leaderboard_panel.gd")
+const SignalFinaleNextEvent := preload("res://scripts/ui/signal_finale_next_event.gd")
 const SignalJourneySummary := preload("res://scripts/ui/signal_journey_summary.gd"); const SignalRelayShare := preload("res://scripts/app/signal_relay_share.gd")
 
 var _panel: PanelContainer
@@ -317,24 +318,7 @@ func apply_signal_context(context: Dictionary) -> void:
             set_status("Jeszcze nie widzę połączenia. Otwórz My Signal i zaloguj się tym samym łączem.")
     _refresh_cta()
 
-    var event_value: Variant = _signal_context.get("next_event", {})
-    var event: Dictionary = event_value if event_value is Dictionary else {}
-    var slug: String = str(event.get("slug", ""))
-    if _next_event == null or _next_event_button == null:
-        return
-    if slug.is_empty():
-        _next_event.visible = false
-        _next_event_button.visible = false
-        return
-    var city: String = str(event.get("city", ""))
-    var venue: String = str(event.get("venue", ""))
-    var place: String = city
-    if not venue.is_empty():
-        place = "%s · %s" % [place, venue] if not place.is_empty() else venue
-    _next_event.text = "Podróż nie kończy się tutaj. Następny fizyczny Sygnał%s." % (" · %s" % place if not place.is_empty() else "")
-    _next_event_button.text = "NASTĘPNY SYGNAŁ · %s" % str(event.get("title", slug)).to_upper()
-    _next_event.visible = true
-    _next_event_button.visible = true
+    SignalFinaleNextEvent.apply(_next_event, _next_event_button, _signal_context)
 
 func set_signal_link_retryable(value: bool) -> void:
     _signal_link_retryable = value
