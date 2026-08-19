@@ -10,6 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build" / "web"
 VERSION = (ROOT / "VERSION").read_text().strip()
+# All player-facing copy in the export and the manifest is Polish. The Godot
+# web template hard-codes <html lang="en">, which mislabels the page for screen
+# readers and translation prompts, so both consumers read this one value.
+DOCUMENT_LANG = "pl"
 
 index_path = BUILD / "index.html"
 if not index_path.is_file():
@@ -63,6 +67,20 @@ html, splash_src_removed = re.subn(
     html,
 )
 
+# The engine template ships lang="en" regardless of project locale, so the
+# page advertised English while every string in it is Polish.
+html, lang_fixed = re.subn(
+    r'(<html\b[^>]*?)\blang="[^"]*"',
+    rf'\1lang="{DOCUMENT_LANG}"',
+    html,
+    count=1,
+)
+if not lang_fixed:
+    # A future template may drop the attribute; add it rather than fail.
+    html, lang_added = re.subn(r"<html\b", f'<html lang="{DOCUMENT_LANG}"', html, count=1)
+    if not lang_added:
+        raise SystemExit("index.html has no <html> element to label")
+
 index_path.write_text(html)
 
 removed_bytes = 0
@@ -92,7 +110,7 @@ manifest = {
     "orientation": "portrait",
     "background_color": "#030509",
     "theme_color": "#e73535",
-    "lang": "pl",
+    "lang": DOCUMENT_LANG,
     "categories": ["music", "entertainment", "games"],
     "icons": [
         {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
