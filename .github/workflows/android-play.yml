@@ -1,0 +1,160 @@
+name: Android Google Play
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: synesthesia-google-play-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  play:
+    name: Build signed AAB and publish Internal
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment:
+      name: store-testing
+    env:
+      SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+      SYNESTHESIA_ANDROID_VERSION_CODE: ${{ 100000000 + github.run_number }}
+
+    steps:
+      - name: Check out exact validated source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Bind release to CI-validated source
+        if: github.event_name == 'workflow_run'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${SOURCE_SHA}" = "${{ github.event.workflow_run.head_sha }}"
+          echo "SYNESTHESIA_PLAY_SOURCE=CI_VALIDATED sha=${SOURCE_SHA}"
+
+      - name: Validate release secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_KEYSTORE_BASE64}" || { echo 'Missing ANDROID_KEYSTORE_BASE64' >&2; exit 1; }
+          test -n "${ANDROID_KEY_ALIAS}" || { echo 'Missing ANDROID_KEY_ALIAS' >&2; exit 1; }
+          test -n "${ANDROID_KEY_PASSWORD}" || { echo 'Missing ANDROID_KEY_PASSWORD' >&2; exit 1; }
+          test -n "${PLAY_JSON}" || { echo 'Missing GOOGLE_PLAY_SERVICE_ACCOUNT_JSON' >&2; exit 1; }
+          jq -e '.type == "service_account" and (.client_email | type == "string") and (.private_key | type == "string")' <<<"${PLAY_JSON}" >/dev/null
+          echo 'SYNESTHESIA_PLAY_SECRETS=PASS'
+
+      - name: Cache bounded Rust and Godot build inputs
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-ndk
+            ~/.cache/synesthesia/godot-4.7.1-stable/editor.zip
+            ~/.local/share/godot/export_templates/4.7.1.stable/android_debug.apk
+            ~/.local/share/godot/export_templates/4.7.1.stable/android_release.apk
+          key: ${{ runner.os }}-synesthesia-play-rust1.97.1-ndk4.1.2-godot4.7.1-${{ hashFiles('native/Cargo.lock') }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+
+      - name: Set up Rust Android toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.97.1 --profile minimal
+          rustup target add aarch64-linux-android --toolchain 1.97.1
+          if ! (cd native && cargo ndk --version 2>/dev/null) | grep -Fq 'cargo-ndk 4.1.2'; then
+            cargo install cargo-ndk --locked --version 4.1.2
+          else
+            echo 'SYNESTHESIA_CARGO_NDK_CACHE=HIT version=4.1.2'
+          fi
+
+      - name: Configure release upload key
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_path="${RUNNER_TEMP}/synesthesia-upload.jks"
+          printf '%s' "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${key_path}"
+          chmod 600 "${key_path}"
+          keytool -list -keystore "${key_path}" -storepass "${ANDROID_KEY_PASSWORD}" -alias "${ANDROID_KEY_ALIAS}" >/dev/null
+          echo "ANDROID_RELEASE_KEYSTORE_PATH=${key_path}" >> "$GITHUB_ENV"
+          echo "ANDROID_RELEASE_KEYSTORE_USER=${ANDROID_KEY_ALIAS}" >> "$GITHUB_ENV"
+          echo "ANDROID_RELEASE_KEYSTORE_PASSWORD=${ANDROID_KEY_PASSWORD}" >> "$GITHUB_ENV"
+          echo 'SYNESTHESIA_UPLOAD_KEY=PASS'
+
+      - name: Build and verify exact signed AAB
+        shell: bash
+        env:
+          CI: "true"
+          SYNESTHESIA_GODOT_LOG_DIR: build/ci-logs
+        run: ./scripts/build-android-play-aab.sh
+
+      - name: Bind AAB to exact source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p promoted
+          cp build/android/synesthesia-release.aab promoted/synesthesia-release.aab
+          cp build/android/synesthesia-release.aab.sha256 promoted/synesthesia-release.aab.sha256
+          python3 tools/artifact_manifest.py create promoted promoted/android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
+          python3 tools/artifact_manifest.py verify promoted promoted/android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
+          echo "SYNESTHESIA_PLAY_ARTIFACT=PASS sha=${SOURCE_SHA} versionCode=${SYNESTHESIA_ANDROID_VERSION_CODE}"
+
+      - name: Upload exact AAB artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: synesthesia-google-play-${{ env.SOURCE_SHA }}
+          path: |
+            promoted/synesthesia-release.aab
+            promoted/synesthesia-release.aab.sha256
+            promoted/android-artifact-manifest.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload exact AAB to Google Play Internal
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: music.virya.synesthesia
+          releaseFiles: promoted/synesthesia-release.aab
+          track: internal
+          status: completed
+          releaseName: Synesthesia 2.0.0 · CI ${{ github.run_number }}
+
+      - name: Publish receipt
+        shell: bash
+        run: |
+          echo "GOOGLE_PLAY_UPLOAD=PASS package=music.virya.synesthesia track=internal versionCode=${SYNESTHESIA_ANDROID_VERSION_CODE} sha=${SOURCE_SHA}"
+
+      - name: Upload Godot diagnostics
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: synesthesia-play-godot-logs-${{ env.SOURCE_SHA }}
+          path: build/ci-logs/*.log
+          if-no-files-found: ignore
+          retention-days: 7
