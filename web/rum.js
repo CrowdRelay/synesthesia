@@ -13,11 +13,16 @@
     }).catch(() => {});
   }
   addEventListener("synesthesia:interactive", (event) => report("boot_interactive_ms", Number(event.detail?.durationMs || performance.now())), { once: true });
-  let lastFrame = performance.now();
+  // Seeded on the first callback, not at parse time: the gap between this
+  // script running and the first animation frame covers the WASM boot, so
+  // seeding here reported that startup cost as a frame hitch on every session.
+  let lastFrame = 0;
   let worstHitch = 0;
   let frames = 0;
   function frame(now) {
-    worstHitch = Math.max(worstHitch, Math.max(0, now - lastFrame - 16.7));
+    if (lastFrame !== 0) {
+      worstHitch = Math.max(worstHitch, Math.max(0, now - lastFrame - 16.7));
+    }
     lastFrame = now;
     if (++frames < 300) requestAnimationFrame(frame);
     else if (worstHitch >= 25) report("frame_hitch_ms", worstHitch);
