@@ -33,13 +33,24 @@ jobs:
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
       PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-      SYNESTHESIA_ANDROID_VERSION_CODE: ${{ 100000000 + github.run_number }}
 
     steps:
       - name: Check out exact validated source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ env.SOURCE_SHA }}
+
+      - name: Resolve release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_name="$(awk '/\[preset\.3\.options\]/{p=1;next} p && /^version\/name=/{gsub(/^version\/name="|"$/,""); print; exit}' export_presets.cfg)"
+          test -n "${version_name}"
+          version_code=$((100000000 + GITHUB_RUN_NUMBER))
+          (( version_code >= 1 && version_code <= 2100000000 ))
+          echo "SYNESTHESIA_VERSION_NAME=${version_name}" >> "$GITHUB_ENV"
+          echo "SYNESTHESIA_ANDROID_VERSION_CODE=${version_code}" >> "$GITHUB_ENV"
+          echo "SYNESTHESIA_PLAY_RELEASE=PASS version=${version_name} versionCode=${version_code} sha=${SOURCE_SHA}"
 
       - name: Bind release to CI-validated source
         if: github.event_name == 'workflow_run'
@@ -48,6 +59,10 @@ jobs:
           set -euo pipefail
           test "${SOURCE_SHA}" = "${{ github.event.workflow_run.head_sha }}"
           echo "SYNESTHESIA_PLAY_SOURCE=CI_VALIDATED sha=${SOURCE_SHA}"
+
+      - name: Validate source contracts for manual release
+        if: github.event_name == 'workflow_dispatch'
+        run: ./scripts/validate-source.sh
 
       - name: Validate release secrets
         shell: bash
@@ -120,9 +135,9 @@ jobs:
           mkdir -p promoted
           cp build/android/synesthesia-release.aab promoted/synesthesia-release.aab
           cp build/android/synesthesia-release.aab.sha256 promoted/synesthesia-release.aab.sha256
-          python3 tools/artifact_manifest.py create promoted promoted/android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
-          python3 tools/artifact_manifest.py verify promoted promoted/android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
-          echo "SYNESTHESIA_PLAY_ARTIFACT=PASS sha=${SOURCE_SHA} versionCode=${SYNESTHESIA_ANDROID_VERSION_CODE}"
+          python3 tools/artifact_manifest.py create promoted android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
+          python3 tools/artifact_manifest.py verify promoted android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
+          echo "SYNESTHESIA_PLAY_ARTIFACT=PASS sha=${SOURCE_SHA} version=${SYNESTHESIA_VERSION_NAME} versionCode=${SYNESTHESIA_ANDROID_VERSION_CODE}"
 
       - name: Upload exact AAB artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -131,7 +146,7 @@ jobs:
           path: |
             promoted/synesthesia-release.aab
             promoted/synesthesia-release.aab.sha256
-            promoted/android-artifact-manifest.json
+            android-artifact-manifest.json
           if-no-files-found: error
           retention-days: 90
 
@@ -143,12 +158,12 @@ jobs:
           releaseFiles: promoted/synesthesia-release.aab
           track: internal
           status: completed
-          releaseName: Synesthesia 2.0.0 · CI ${{ github.run_number }}
+          releaseName: Synesthesia ${{ env.SYNESTHESIA_VERSION_NAME }} · CI ${{ github.run_number }}
 
       - name: Publish receipt
         shell: bash
         run: |
-          echo "GOOGLE_PLAY_UPLOAD=PASS package=music.virya.synesthesia track=internal versionCode=${SYNESTHESIA_ANDROID_VERSION_CODE} sha=${SOURCE_SHA}"
+          echo "GOOGLE_PLAY_UPLOAD=PASS package=music.virya.synesthesia track=internal version=${SYNESTHESIA_VERSION_NAME} versionCode=${SYNESTHESIA_ANDROID_VERSION_CODE} sha=${SOURCE_SHA}"
 
       - name: Upload Godot diagnostics
         if: always()
