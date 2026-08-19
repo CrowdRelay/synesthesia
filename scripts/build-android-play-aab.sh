@@ -163,6 +163,10 @@ if (( validation_status != 0 )) || ! grep -q '^SYNESTHESIA_GODOT_RUNTIME=PASS$' 
 fi
 rm -f "$validation_log"
 
+# Godot's Linux editor opens the project before Android export and resolves
+# linux.debug.x86_64 from the generated GDExtension descriptor. Build that
+# host bridge explicitly, while keeping the packaged Android library release.
+SYNESTHESIA_RUST_PROFILE=debug ./scripts/build-rust-native.sh host
 SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh android-arm64
 
 preset_backup="$(mktemp "${TMPDIR:-/tmp}/synesthesia-play-presets.XXXXXX")"
