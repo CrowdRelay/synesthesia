@@ -1,7 +1,7 @@
 extends Control
 
-const GEAR_COLOR := Color("e6f1ff")
-const GEAR_DIM := Color("9fb2c9")
+const GEAR_COLOR := Color("eef4f1")
+const GEAR_DIM := Color("98a5a0")
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE

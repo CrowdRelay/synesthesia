@@ -1,5 +1,6 @@
 extends Node
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const MobileInstructionBuilder := preload("res://scripts/ui/mobile_instruction_builder.gd")
@@ -87,7 +88,7 @@ func _build_top() -> void:
     app.counter_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     UIFactory.apply_display_font(app.counter_label)
     app.counter_label.add_theme_font_size_override("font_size", 10)
-    app.counter_label.add_theme_color_override("font_color", Color("88bfff"))
+    app.counter_label.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     row.add_child(app.counter_label)
     app.split_label = Label.new()
     app.split_label.name = "SplitDelta"
@@ -96,7 +97,7 @@ func _build_top() -> void:
     app.split_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     UIFactory.apply_display_font(app.split_label)
     app.split_label.add_theme_font_size_override("font_size", 9)
-    app.split_label.add_theme_color_override("font_color", Color("8fe3b0"))
+    app.split_label.add_theme_color_override("font_color", ViryaDesign.SUCCESS)
     row.add_child(app.split_label)
     app.title_label = Label.new()
     app.title_label.name = "RoomTitle"
@@ -105,7 +106,7 @@ func _build_top() -> void:
     app.title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
     UIFactory.apply_title_font(app.title_label)
     app.title_label.add_theme_font_size_override("font_size", 15)
-    app.title_label.add_theme_color_override("font_color", Color("f4f7fb"))
+    app.title_label.add_theme_color_override("font_color", ViryaDesign.TEXT)
     row.add_child(app.title_label)
     app.settings_button = UIFactory.button("", true)
     var settings_gear: Control = SettingsGearIcon.new()
@@ -126,7 +127,7 @@ func _build_top() -> void:
     app.subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     app.subtitle_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     app.subtitle_label.add_theme_font_size_override("font_size", 10)
-    app.subtitle_label.add_theme_color_override("font_color", Color("b6c4d5"))
+    app.subtitle_label.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     content.add_child(app.subtitle_label)
     app.progress_row = HBoxContainer.new()
     app.progress_row.name = "RevealProgressRow"
@@ -140,7 +141,7 @@ func _build_top() -> void:
     app.progress_bar.show_percentage = false
     app.progress_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     app.progress_bar.custom_minimum_size = Vector2(0.0, 5.0)
-    app.progress_bar.add_theme_stylebox_override("background", _bar_style(Color("0b1320d9")))
+    app.progress_bar.add_theme_stylebox_override("background", _bar_style(Color(ViryaDesign.VOID, 0.86)))
     app.progress_bar.add_theme_stylebox_override("fill", _bar_style(app._accent))
     app.progress_row.add_child(app.progress_bar)
     app.progress_label = Label.new()
@@ -150,7 +151,7 @@ func _build_top() -> void:
     app.progress_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     UIFactory.apply_display_font(app.progress_label)
     app.progress_label.add_theme_font_size_override("font_size", 9)
-    app.progress_label.add_theme_color_override("font_color", Color("8ec4ff"))
+    app.progress_label.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     app.progress_row.add_child(app.progress_label)
     app.journey_row = HBoxContainer.new()
     app.journey_row.name = "JourneyRow"
@@ -168,13 +169,13 @@ func _build_bottom() -> void:
     app.bottom_panel = PanelContainer.new()
     app.bottom_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     app.bottom_panel.custom_minimum_size = Vector2(0.0, 146.0)
-    app.bottom_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(Color("f0cf88"), 0.18))
+    app.bottom_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(ViryaDesign.SIGNAL_DEEP, 0.18))
     app.bottom_margin.add_child(app.bottom_panel)
     var shell := HBoxContainer.new()
     shell.add_theme_constant_override("separation", 10)
     app.bottom_panel.add_child(shell)
     app.bottom_accent_bar = ColorRect.new()
-    app.bottom_accent_bar.color = Color("f3d39d")
+    app.bottom_accent_bar.color = ViryaDesign.SIGNAL
     app.bottom_accent_bar.custom_minimum_size = Vector2(3.0, 0.0)
     app.bottom_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
     shell.add_child(app.bottom_accent_bar)
@@ -194,7 +195,7 @@ func _build_bottom() -> void:
     app.act_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
     UIFactory.apply_display_font(app.act_label)
     app.act_label.add_theme_font_size_override("font_size", 10)
-    app.act_label.add_theme_color_override("font_color", Color("f0d39d"))
+    app.act_label.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     content.add_child(app.act_label)
     app.instruction_label = Label.new()
     app.instruction_label.name = "InstructionLabel"
@@ -204,7 +205,7 @@ func _build_bottom() -> void:
     app.instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     UIFactory.apply_display_font(app.instruction_label)
     app.instruction_label.add_theme_font_size_override("font_size", 9)
-    app.instruction_label.add_theme_color_override("font_color", Color("b5c3d4"))
+    app.instruction_label.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     content.add_child(app.instruction_label)
     app.palette_row = HBoxContainer.new()
     app.palette_row.name = "PaletteRow"
@@ -219,7 +220,7 @@ func _build_bottom() -> void:
     app.brush_label.custom_minimum_size = Vector2(0.0, 28.0)
     UIFactory.apply_display_font(app.brush_label)
     app.brush_label.add_theme_font_size_override("font_size", 9)
-    app.brush_label.add_theme_color_override("font_color", Color("8d9fb5"))
+    app.brush_label.add_theme_color_override("font_color", ViryaDesign.TEXT_DIM)
     content.add_child(app.brush_label)
 func _build_mobile_instruction() -> void:
     MobileInstructionBuilder.build(app, self)
@@ -248,21 +249,21 @@ func _build_toast() -> void:
     app.toast_label.custom_minimum_size = Vector2(360.0, 0.0)
     UIFactory.apply_display_font(app.toast_label)
     app.toast_label.add_theme_font_size_override("font_size", 11)
-    app.toast_label.add_theme_color_override("font_color", Color("e6f1ff"))
+    app.toast_label.add_theme_color_override("font_color", ViryaDesign.TEXT)
     row.add_child(app.toast_label)
 func _build_act_banner() -> void:
     app.act_banner = PanelContainer.new()
     app.act_banner.visible = false
     app.act_banner.modulate.a = 0.0
     app.act_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    app.act_banner.add_theme_stylebox_override("panel", UIFactory.product_surface_style(Color("f0cf88"), true))
+    app.act_banner.add_theme_stylebox_override("panel", UIFactory.product_surface_style(ViryaDesign.SIGNAL_DEEP, true))
     add_child(app.act_banner)
     var row: HBoxContainer = HBoxContainer.new()
     row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     row.add_theme_constant_override("separation", 10)
     app.act_banner.add_child(row)
     app.act_accent_bar = ColorRect.new()
-    app.act_accent_bar.color = Color("f3d39d")
+    app.act_accent_bar.color = ViryaDesign.SIGNAL
     app.act_accent_bar.custom_minimum_size = Vector2(3.0, 26.0)
     app.act_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(app.act_accent_bar)
@@ -275,7 +276,7 @@ func _build_act_banner() -> void:
     app.act_banner_label.custom_minimum_size = Vector2(360.0, 0.0)
     UIFactory.apply_display_font(app.act_banner_label)
     app.act_banner_label.add_theme_font_size_override("font_size", 10)
-    app.act_banner_label.add_theme_color_override("font_color", Color("f7e7c7"))
+    app.act_banner_label.add_theme_color_override("font_color", ViryaDesign.TEXT)
     row.add_child(app.act_banner_label)
     _layout_story_overlays()
 func _layout_story_overlays() -> void:
@@ -351,7 +352,7 @@ func _repair_runtime_refs() -> void:
         app.progress_bar.show_percentage = false
         app.progress_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         app.progress_bar.custom_minimum_size = Vector2(0.0, 7.0)
-        app.progress_bar.add_theme_stylebox_override("background", _bar_style(Color("0b1320d9")))
+        app.progress_bar.add_theme_stylebox_override("background", _bar_style(Color(ViryaDesign.VOID, 0.86)))
         app.progress_bar.add_theme_stylebox_override("fill", _bar_style(app._accent))
         app.progress_row.add_child(app.progress_bar)
 func _apply_mobile_safe_area() -> void:

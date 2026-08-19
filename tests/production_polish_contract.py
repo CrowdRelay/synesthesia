@@ -107,9 +107,9 @@ main = require_group(
 )
 settings = require(
     "scripts/ui/settings_card.gd",
-    "OBRAZ I RUCH",
+    "BODŹCE WZROKOWE",
     "DŹWIĘK I DOTYK",
-    "POSTĘP LOKALNY",
+    "KARTA POSTĘPU",
     "reset_album_requested",
     "brak stroboskopu",
     "quality_cycle_requested",
@@ -129,7 +129,7 @@ hud = require_group(
 require("scripts/ui/chapter_card.gd", "ROZEJRZYJ SIĘ", "_timer.wait_time = 4.4", "MOUSE_FILTER_IGNORE")
 require("scripts/ui/confirm_card.gd", "signal confirmed", "signal cancelled", "UIFactory.modal_content")
 require("scripts/ui/completion_card.gd", "DRZWI OTWARTE", "Zostań i słuchaj")
-require("scripts/ui/signal_finale_card.gd", "Sygnał dotarł.", "ECHOES OF THE MODERN MIND", "DOŁĄCZ DO LOSOWANIA 5 PŁYT", "DoorEyeMotif")
+require("scripts/ui/signal_finale_card.gd", "Sygnał dotarł.", "VIRYA // WYPIS Z ODDZIAŁU // FINAŁ", "DOŁĄCZ DO LOSOWANIA 5 PŁYT", "DoorEyeMotif")
 require("scripts/ui/echoes_finale_background.gd", "echoes-finale.webp", "echoes_finale.gdshader")
 require("scripts/app/transition_director.gd", "travel_out", "travel_in", "DoorTransitionLayerScript")
 require("scripts/render/room_dressing_layer.gd", "_draw_chamber_shell", "_draw_open_doorway")

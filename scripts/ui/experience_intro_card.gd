@@ -4,6 +4,7 @@ signal new_journey_requested
 signal settings_requested
 signal album_mode_requested
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const SignalSignupClient := preload("res://scripts/app/signal_signup_client.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
@@ -61,9 +62,9 @@ func _build() -> void:
 
     _panel = PanelContainer.new()
     _panel.mouse_filter = Control.MOUSE_FILTER_PASS
-    var panel_style := UIFactory.product_surface_style(_accent, true)
-    panel_style.bg_color = Color(0.018, 0.026, 0.038, 0.87)
-    panel_style.border_color = Color(_accent, 0.38)
+    var panel_style := UIFactory.product_surface_style(ViryaDesign.SIGNAL, true)
+    panel_style.bg_color = Color(ViryaDesign.VOID, 0.92)
+    panel_style.border_color = Color(ViryaDesign.HAIRLINE, 0.96)
     _panel.add_theme_stylebox_override("panel", panel_style)
     add_child(_panel)
     _layout_panel()
@@ -84,12 +85,12 @@ func _build() -> void:
     _scroll.add_child(_content_root)
 
     var eyebrow := Label.new()
-    eyebrow.text = "VIRYA · ECHOES OF THE MODERN MIND"
+    eyebrow.text = "VIRYA // ODDZIAŁ SYNESTHESIA"
     eyebrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
     eyebrow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     eyebrow.add_theme_font_size_override("font_size", 10)
-    eyebrow.add_theme_color_override("font_color", _accent)
+    eyebrow.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     UIFactory.apply_display_font(eyebrow)
     _content_root.add_child(eyebrow)
 
@@ -98,17 +99,12 @@ func _build() -> void:
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     title.add_theme_font_size_override("font_size", 40)
     UIFactory.apply_title_font(title)
-    title.add_theme_constant_override("outline_size", 2)
-    title.add_theme_color_override("font_outline_color", Color("05060af0"))
-    title.add_theme_constant_override("shadow_offset_x", 2)
-    title.add_theme_constant_override("shadow_offset_y", 3)
-    title.add_theme_color_override("font_shadow_color", Color(_accent, 0.24))
     _content_root.add_child(title)
 
     var header_line := ColorRect.new()
     header_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    header_line.color = Color(_accent, 0.44)
-    header_line.custom_minimum_size = Vector2(0.0, 2.0)
+    header_line.color = Color(ViryaDesign.SIGNAL, 0.72)
+    header_line.custom_minimum_size = Vector2(0.0, 1.0)
     header_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _content_root.add_child(header_line)
 
@@ -166,19 +162,19 @@ func _build() -> void:
     _layout.add_child(_action_column)
 
     var menu_label := Label.new()
-    menu_label.text = "ZANURZ SIĘ"
+    menu_label.text = "WEJŚCIE // SESJA"
     UIFactory.apply_display_font(menu_label)
     menu_label.add_theme_font_size_override("font_size", 9)
-    menu_label.add_theme_color_override("font_color", Color("99a9be"))
+    menu_label.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     _action_column.add_child(menu_label)
 
     var continue_label: String = "ZOBACZ FINAŁ" if _album_completed else ("WRÓĆ DO WĘDRÓWKI" if _has_progress else "PRZEKROCZ PRÓG")
-    _continue_button = UIFactory.product_button(continue_label, _accent, true)
+    _continue_button = UIFactory.product_button(continue_label, ViryaDesign.SIGNAL_HOT, true)
     _continue_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     _continue_button.pressed.connect(func() -> void: begin_requested.emit())
     _action_column.add_child(_continue_button)
 
-    var album_mode_button := UIFactory.product_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
+    var album_mode_button := UIFactory.product_button("ALBUM MODE · KORYTARZ", ViryaDesign.SIGNAL)
     album_mode_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     album_mode_button.visible = _album_completed
     album_mode_button.pressed.connect(func() -> void: album_mode_requested.emit())
@@ -193,31 +189,31 @@ func _build() -> void:
     var utility_divider := UIFactory.signal_rule(_accent, 0.22)
     _action_column.add_child(utility_divider)
     var utility_label := Label.new()
-    utility_label.text = "SYGNAŁ · KRĄG USTAWIEŃ · ŚWIAT VIRYA"
+    utility_label.text = "KARTA SESJI // SYGNAŁ // USTAWIENIA"
     UIFactory.apply_display_font(utility_label)
     utility_label.add_theme_font_size_override("font_size", 8)
-    utility_label.add_theme_color_override("font_color", Color("788ba2"))
+    utility_label.add_theme_color_override("font_color", ViryaDesign.TEXT_DIM)
     _action_column.add_child(utility_label)
 
-    var settings_button := UIFactory.product_button("USTAWIENIA", _accent)
+    var settings_button := UIFactory.product_button("USTAWIENIA", ViryaDesign.SIGNAL_DEEP)
     settings_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     settings_button.pressed.connect(func() -> void: settings_requested.emit())
     _action_column.add_child(settings_button)
 
-    var signal_button := UIFactory.product_button("SYGNAŁ", Color("71dcff"))
+    var signal_button := UIFactory.product_button("SYGNAŁ", ViryaDesign.SIGNAL)
     signal_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     signal_button.tooltip_text = "Dołącz do Sygnału VIRYA bez udziału w losowaniu Synesthesii"
     signal_button.pressed.connect(_toggle_signal_form)
     _action_column.add_child(signal_button)
 
-    var creators_button := UIFactory.product_button("ZESPÓŁ VIRYA · ŚWIAT", _accent)
+    var creators_button := UIFactory.product_button("ZESPÓŁ VIRYA · ŚWIAT", ViryaDesign.SIGNAL_DEEP)
     creators_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     creators_button.tooltip_text = "TWÓRCY · persony · świat VIRYA"
     creators_button.pressed.connect(_show_creators)
     _action_column.add_child(creators_button)
 
     var exit_label: String = "WRÓĆ DO VIRYA.MUSIC" if OS.has_feature("web") else "WYJDŹ"
-    var exit_button := UIFactory.product_button(exit_label, Color("73869d"))
+    var exit_button := UIFactory.product_button(exit_label, ViryaDesign.TEXT_DIM)
     exit_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     exit_button.pressed.connect(_exit_requested)
     _action_column.add_child(exit_button)
@@ -243,12 +239,12 @@ func _build_signal_form() -> void:
     _signal_form.add_theme_constant_override("separation", 7)
     _action_column.add_child(_signal_form)
 
-    var divider := UIFactory.signal_rule(Color("71dcff"), 0.24)
+    var divider := UIFactory.signal_rule(ViryaDesign.SIGNAL, 0.24)
     _signal_form.add_child(divider)
     var heading := Label.new()
-    heading.text = "WŁĄCZ SYGNAŁ"
+    heading.text = "SYGNAŁ // POŁĄCZENIE"
     heading.add_theme_font_size_override("font_size", 10)
-    heading.add_theme_color_override("font_color", Color("71dcff"))
+    heading.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     _signal_form.add_child(heading)
 
     var note := UIFactory.body("Koncerty, premiery i ważne wiadomości od VIRYA. Ten zapis nie daje losu w puli 5 płyt — los dostajesz tylko za ukończenie Synesthesii.")
@@ -256,28 +252,28 @@ func _build_signal_form() -> void:
     note.add_theme_font_size_override("font_size", 10)
     _signal_form.add_child(note)
 
-    _signal_email = UIFactory.line_edit("Twój e-mail", Color("71dcff"))
+    _signal_email = UIFactory.line_edit("Twój e-mail", ViryaDesign.SIGNAL)
     _signal_form.add_child(_signal_email)
 
-    _signal_city = UIFactory.option_button(Color("71dcff"))
+    _signal_city = UIFactory.option_button(ViryaDesign.SIGNAL)
     _signal_city.add_item("Wczytuję miasta…")
     _signal_city.disabled = true
     _signal_form.add_child(_signal_city)
 
-    _signal_consent = UIFactory.check_box("Chcę otrzymywać informacje od VIRYA.", Color("71dcff"))
+    _signal_consent = UIFactory.check_box("Chcę otrzymywać informacje od VIRYA.", ViryaDesign.SIGNAL)
     _signal_form.add_child(_signal_consent)
 
     _signal_status = UIFactory.body("")
     _signal_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     _signal_status.add_theme_font_size_override("font_size", 9)
-    _signal_status.add_theme_color_override("font_color", Color("8ccfe8"))
+    _signal_status.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     _signal_form.add_child(_signal_status)
 
-    _signal_submit = UIFactory.product_button("WŁĄCZ SYGNAŁ", Color("71dcff"), true)
+    _signal_submit = UIFactory.product_button("WŁĄCZ SYGNAŁ", ViryaDesign.SIGNAL, true)
     _signal_submit.pressed.connect(_submit_signal)
     _signal_form.add_child(_signal_submit)
 
-    var my_signal_button := UIFactory.product_button("OTWÓRZ MÓJ SYGNAŁ", Color("73869d"))
+    var my_signal_button := UIFactory.product_button("OTWÓRZ MÓJ SYGNAŁ", ViryaDesign.SIGNAL_DEEP)
     my_signal_button.tooltip_text = "Otwórz panel Virya Signal bezpośrednio"
     my_signal_button.pressed.connect(func() -> void:
         OS.shell_open("https://virya.music/pl/my-signal/?source=synesthesia-menu")
@@ -355,7 +351,7 @@ func _restore_description() -> void:
     _description.text = _default_description()
 
 func _default_description() -> String:
-    return "Jedenaście komnat utkanych z obrazu, szumu i muzyki. Dotykaj znaków, prowadź światło i budź echa ruchem dłoni. To nie próba ani zagadka — każda komnata odpowiada inaczej, a za ostatnim progiem czeka Sygnał. Ten świat będzie rósł razem z Viryatkowem i postaciami zespołu."
+    return "Jedenaście komnat jednego oddziału utkanych z obrazu, szumu i muzyki. Dotykaj znaków, prowadź światło i budź echa ruchem dłoni. To nie test ani diagnoza — każda komnata odpowiada inaczej, a za ostatnim progiem czeka Sygnał. Stała rama należy do VIRYA; wnętrze każdego pokoju ma własny język."
 
 func _exit_requested() -> void:
     if OS.has_feature("web"):

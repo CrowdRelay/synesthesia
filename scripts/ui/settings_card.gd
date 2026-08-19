@@ -15,6 +15,7 @@ signal music_changed(value: float)
 signal noise_changed(value: float)
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 
 var _calm: bool = true
@@ -94,8 +95,8 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
 
     _panel = PanelContainer.new()
     _panel.mouse_filter = Control.MOUSE_FILTER_PASS
-    var settings_style := UIFactory.product_surface_style(Color("43d6df"), true)
-    settings_style.bg_color = Color(0.012, 0.020, 0.030, 0.94)
+    var settings_style := UIFactory.product_surface_style(ViryaDesign.SIGNAL, true)
+    settings_style.bg_color = Color(ViryaDesign.VOID, 0.95)
     _panel.add_theme_stylebox_override("panel", settings_style)
     add_child(_panel)
     _panel.set_anchors_preset(Control.PRESET_CENTER)
@@ -134,12 +135,12 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     _layout_close_button()
 
     var eyebrow: Label = Label.new()
-    eyebrow.text = "VIRYA · SYNESTEZJA"
+    eyebrow.text = "VIRYA // ODDZIAŁ SYNESTHESIA"
     UIFactory.apply_display_font(eyebrow)
     eyebrow.add_theme_font_size_override("font_size", 9)
-    eyebrow.add_theme_color_override("font_color", Color("79b7ff"))
+    eyebrow.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     _content.add_child(eyebrow)
-    var heading: Label = UIFactory.heading("Doświadczenie")
+    var heading: Label = UIFactory.heading("Parametry sesji")
     heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     _content.add_child(heading)
     var intro: Label = UIFactory.body("Dopasuj intensywność bez przerywania podróży. Zmiany sensoryczne działają od razu.")
@@ -147,7 +148,7 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     intro.add_theme_font_size_override("font_size", 11)
     _content.add_child(intro)
 
-    _content.add_child(_section("OBRAZ I RUCH"))
+    _content.add_child(_section("BODŹCE WZROKOWE"))
     var calm_button: Button = UIFactory.button(_calm_text())
     calm_button.pressed.connect(func() -> void:
         _calm = not _calm
@@ -205,7 +206,7 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     _content.add_child(_slider_row("Różowy szum", noise, noise_changed))
 
     if _has_room:
-        _content.add_child(_section("POKÓJ"))
+        _content.add_child(_section("BIEŻĄCY POKÓJ"))
         var reload_button: Button = UIFactory.button("Zastosuj jakość i przeładuj pokój")
         reload_button.pressed.connect(func() -> void: reload_requested.emit())
         _content.add_child(reload_button)
@@ -213,7 +214,7 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
         reset_button.pressed.connect(func() -> void: reset_requested.emit())
         _content.add_child(reset_button)
 
-    _content.add_child(_section("POSTĘP LOKALNY"))
+    _content.add_child(_section("KARTA POSTĘPU"))
     var reset_album_label: String = "Zagraj od nowa · wyczyść lokalną podróż…" if _album_completed else "Wyczyść całą lokalną podróż…"
     var reset_album_button: Button = UIFactory.button(reset_album_label)
     reset_album_button.pressed.connect(func() -> void: reset_album_requested.emit())
@@ -221,12 +222,12 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     var reset_note: Label = UIFactory.body("Reset czyści malowanie i czasy 11 pokojów. Nie cofa istniejącego wpisu do losowania ani stanu po stronie Sygnału.")
     reset_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     reset_note.add_theme_font_size_override("font_size", 10)
-    reset_note.add_theme_color_override("font_color", Color("718398"))
+    reset_note.add_theme_color_override("font_color", ViryaDesign.TEXT_DIM)
     _content.add_child(reset_note)
 
     var note: Label = UIFactory.body("v%s · postęp zapisuje się lokalnie · brak stroboskopu" % version)
     note.add_theme_font_size_override("font_size", 9)
-    note.add_theme_color_override("font_color", Color("718398"))
+    note.add_theme_color_override("font_color", ViryaDesign.TEXT_DIM)
     _content.add_child(note)
     var close_button: Button = UIFactory.button("Wróć do malowania")
     close_button.pressed.connect(func() -> void: close_requested.emit())
@@ -280,7 +281,7 @@ func _section(text_value: String) -> Label:
     label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     UIFactory.apply_display_font(label)
     label.add_theme_font_size_override("font_size", 9)
-    label.add_theme_color_override("font_color", Color("8fbef4"))
+    label.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     return label
 
 func _slider_row(label_text: String, value: float, signal_ref: Signal) -> VBoxContainer:

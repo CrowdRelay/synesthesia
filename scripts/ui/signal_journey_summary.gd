@@ -2,6 +2,7 @@ class_name SignalJourneySummary
 extends PanelContainer
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const SignalLeaderboardPanel := preload("res://scripts/ui/signal_leaderboard_panel.gd")
 
 func configure(summary: Dictionary, accent: Color) -> void:
@@ -30,7 +31,7 @@ func configure(summary: Dictionary, accent: Color) -> void:
     time_line.text = "CZAS CAŁEGO ALBUMU · %s" % SignalLeaderboardPanel.format_time(elapsed_ms) if timed_run_complete else "CZAS RANKINGOWY · NIEPEŁNY POMIAR %d/%d" % [timed_rooms, rooms_total]
     UIFactory.apply_display_font(time_line)
     time_line.add_theme_font_size_override("font_size", 19)
-    time_line.add_theme_color_override("font_color", Color("f2f8ff") if timed_run_complete else Color("f0cf88"))
+    time_line.add_theme_color_override("font_color", ViryaDesign.TEXT if timed_run_complete else ViryaDesign.WARNING)
     content.add_child(time_line)
 
     var personal_best_ms: int = maxi(0, int(summary.get("personal_best_total_ms", 0)))
@@ -38,12 +39,12 @@ func configure(summary: Dictionary, accent: Color) -> void:
     if personal_best_ms > 0:
         var pb := UIFactory.body("PB · %s%s" % [SignalLeaderboardPanel.format_time(personal_best_ms), " · %d przebiegów" % completed_runs if completed_runs > 1 else ""])
         pb.add_theme_font_size_override("font_size", 9)
-        pb.add_theme_color_override("font_color", Color("f0cf88"))
+        pb.add_theme_color_override("font_color", ViryaDesign.WARNING)
         content.add_child(pb)
 
     var line := UIFactory.body("POKOJE %d/%d  ·  ECHA %d/%d" % [rooms_done, rooms_total, echoes_found, echoes_total])
     line.add_theme_font_size_override("font_size", 10)
-    line.add_theme_color_override("font_color", Color("d9e8f4"))
+    line.add_theme_color_override("font_color", ViryaDesign.TEXT)
     content.add_child(line)
 
     var marks_value: Variant = summary.get("journey_marks", [])
@@ -53,7 +54,7 @@ func configure(summary: Dictionary, accent: Color) -> void:
             mark_labels.append(str(value))
         var marks := UIFactory.body("ŚLADY · %s" % " · ".join(mark_labels))
         marks.add_theme_font_size_override("font_size", 9)
-        marks.add_theme_color_override("font_color", Color("f0cf88"))
+        marks.add_theme_color_override("font_color", ViryaDesign.WARNING)
         content.add_child(marks)
 
     if echoes_total > 0 and echoes_found >= echoes_total:
@@ -61,17 +62,17 @@ func configure(summary: Dictionary, accent: Color) -> void:
 
     var unlock := UIFactory.body("Album Mode odblokowany · możesz wracać do dowolnego pokoju bez kasowania tej podróży.")
     unlock.add_theme_font_size_override("font_size", 9)
-    unlock.add_theme_color_override("font_color", Color("8fdff0"))
+    unlock.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     content.add_child(unlock)
 
 func _add_full_resonance_secret(content: VBoxContainer) -> void:
-    var secret_button := UIFactory.product_button("33/33 · ODSŁOŃ UKRYTY SYGNAŁ", Color("f0cf88"))
+    var secret_button := UIFactory.product_button("33/33 · ODSŁOŃ UKRYTY SYGNAŁ", ViryaDesign.WARNING)
     content.add_child(secret_button)
     var secret := UIFactory.body("Wszystkie echa wróciły do jednego źródła. Pełny rezonans odblokował ukrytą wiadomość VIRYA — ten ślad istnieje tylko po znalezieniu wszystkiego.")
     secret.visible = false
     secret.modulate.a = 0.0
     secret.add_theme_font_size_override("font_size", 10)
-    secret.add_theme_color_override("font_color", Color("f0cf88"))
+    secret.add_theme_color_override("font_color", ViryaDesign.WARNING)
     content.add_child(secret)
     secret_button.pressed.connect(func() -> void:
         if secret.visible:

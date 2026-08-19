@@ -45,6 +45,7 @@ python3 scripts/run-contracts.py --jobs "${SYNESTHESIA_CONTRACT_JOBS:-4}" \
   tests/sensory_room_contract.py \
   tests/door_transition_contract.py \
   tests/cinematic_video_contract.py \
+  tests/ecosystem_visual_convergence_contract.py \
   tests/presentation_contract.py \
   tests/rum_contract.py \
   tests/android_pipeline_contract.py \

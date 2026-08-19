@@ -4,21 +4,29 @@ extends RefCounted
 # The game keeps its comic texture in artwork and identity accents, while product
 # UI uses calmer dark surfaces, thin signal lines and a restrained accent system.
 
-const VOID: Color = Color("070A0F")
-const SURFACE: Color = Color("0D131C")
-const SURFACE_RAISED: Color = Color("121B27")
-const SURFACE_SOFT: Color = Color("172231")
-const TEXT: Color = Color("F3EEE6")
-const TEXT_MUTED: Color = Color("A9B3C2")
-const TEXT_DIM: Color = Color("738297")
-const SIGNAL: Color = Color("71DCFF")
-const ROSE: Color = Color("E35F83")
-const MEMORY: Color = Color("F0CF88")
-const SUCCESS: Color = Color("72D79A")
-const HAIRLINE: Color = Color("A9C0DA2A")
+# Canonical VIRYA / Virya Signal V2 product chrome. Room artwork may use its
+# own sensory palette; fixed navigation, forms and operational surfaces do not.
+const VOID: Color = Color("070908")
+const BG_RAISED: Color = Color("0B100F")
+const SURFACE: Color = Color("101715")
+const SURFACE_RAISED: Color = Color("16201D")
+const SURFACE_SOFT: Color = Color("0B100F")
+const TEXT: Color = Color("EEF4F1")
+const TEXT_MUTED: Color = Color("98A5A0")
+const TEXT_DIM: Color = Color("7D8A85")
+const HAIRLINE: Color = Color("27322F")
+const SIGNAL: Color = Color("84B4AC")
+const SIGNAL_HOT: Color = Color("93C6C0")
+const SIGNAL_DEEP: Color = Color("26655D")
+const WARNING: Color = Color("F3C51A")
+const DANGER: Color = Color("E73535")
+const SUCCESS: Color = Color("70DB91")
+# Sensory/story-only accents. Never use these as generic product chrome.
+const ROSE: Color = Color("D87996")
+const MEMORY: Color = WARNING
 
-const RADIUS_LARGE: float = 4.0
-const RADIUS_MEDIUM: float = 3.0
+const RADIUS_LARGE: float = 6.0
+const RADIUS_MEDIUM: float = 6.0
 const RADIUS_SMALL: float = 2.0
 
 static func surface(accent: Color = SIGNAL, strong: bool = false) -> StyleBoxFlat:
@@ -62,11 +70,14 @@ static func button(accent: Color, state: String, primary: bool) -> StyleBoxFlat:
         "disabled":
             strength = 0.04
             border_alpha = 0.12
-    if primary:
-        strength += 0.10
-    var base := SURFACE_SOFT.lerp(accent, clampf(strength, 0.0, 0.52))
-    style.bg_color = Color(base, 0.82 if state != "disabled" else 0.42)
-    style.border_color = Color(accent if state != "disabled" else TEXT_DIM, border_alpha)
+    if primary and state != "disabled":
+        var primary_color := accent.lerp(Color.WHITE, 0.08 if state == "hover" else 0.0)
+        style.bg_color = primary_color
+        style.border_color = primary_color
+    else:
+        var base := SURFACE_SOFT.lerp(accent, clampf(strength, 0.0, 0.42))
+        style.bg_color = Color(base, 0.86 if state != "disabled" else 0.42)
+        style.border_color = Color(accent if state != "disabled" else TEXT_DIM, border_alpha)
     style.set_border_width_all(1)
     style.set_corner_radius_all(roundi(RADIUS_SMALL))
     style.content_margin_left = 16.0
@@ -77,7 +88,7 @@ static func button(accent: Color, state: String, primary: bool) -> StyleBoxFlat:
 
 static func input(accent: Color, focused: bool) -> StyleBoxFlat:
     var style := StyleBoxFlat.new()
-    style.bg_color = Color("080D14F2")
+    style.bg_color = Color(VOID, 0.95)
     style.border_color = Color(accent, 0.68 if focused else 0.22)
     style.set_border_width_all(1 if not focused else 2)
     style.set_corner_radius_all(roundi(RADIUS_SMALL))

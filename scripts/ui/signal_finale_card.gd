@@ -10,6 +10,7 @@ signal reset_requested
 signal album_mode_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd")
 const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const SignalFinaleLayout := preload("res://scripts/ui/signal_finale_layout.gd")
@@ -33,7 +34,7 @@ var _signal_button: Button
 var _next_event: Label
 var _next_event_button: Button
 var _signal_context: Dictionary = {}
-var _accent: Color = Color("e73535")
+var _accent: Color = ViryaDesign.DANGER
 var _motif
 var _ui_scale: float = 1.0
 var _ritual
@@ -60,7 +61,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _signal_context = signal_context.duplicate(true)
     _server_completed = server_completed
     var dim := ColorRect.new()
-    dim.color = Color(0.003, 0.004, 0.010, 0.58)
+    dim.color = Color(ViryaDesign.VOID, 0.72)
     dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(dim)
@@ -71,7 +72,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _panel.name = "SignalFinalePanel"
     _panel.mouse_filter = Control.MOUSE_FILTER_PASS
     var finale_style := UIFactory.product_surface_style(_accent, true)
-    finale_style.bg_color = Color(0.012, 0.019, 0.028, 0.88)
+    finale_style.bg_color = Color(ViryaDesign.VOID, 0.94)
     finale_style.border_color = Color(_accent, 0.40)
     _panel.add_theme_stylebox_override("panel", finale_style)
     add_child(_panel)
@@ -102,10 +103,10 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _layout.add_child(_visual)
 
     var eyebrow := Label.new()
-    eyebrow.text = "ECHOES OF THE MODERN MIND · FINAŁ"
+    eyebrow.text = "VIRYA // WYPIS Z ODDZIAŁU // FINAŁ"
     UIFactory.apply_display_font(eyebrow)
     eyebrow.add_theme_font_size_override("font_size", 11)
-    eyebrow.add_theme_color_override("font_color", Color("7fd7ef"))
+    eyebrow.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     _visual.add_child(eyebrow)
 
     var heading := UIFactory.heading("Sygnał dotarł.")
@@ -137,7 +138,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     memory_line.text = "FALA · KONFETTI · MASKA · WINO · KORZEŃ · POJEDYNEK · SYGNAŁ · LUSTRO · POPIÓŁ · ODDECH · ŚWIATŁO"
     memory_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     memory_line.add_theme_font_size_override("font_size", 8)
-    memory_line.add_theme_color_override("font_color", Color("8fdff0"))
+    memory_line.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     _visual.add_child(memory_line)
 
     _form = VBoxContainer.new()
@@ -148,7 +149,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _layout.add_child(_form)
 
     var form_title := Label.new()
-    form_title.text = "FINAŁ · SYGNAŁ DOTARŁ · 5 PŁYT"
+    form_title.text = "WYPIS // SYGNAŁ DOTARŁ // 5 PŁYT"
     UIFactory.apply_display_font(form_title)
     form_title.add_theme_font_size_override("font_size", 12)
     form_title.add_theme_color_override("font_color", _accent)
@@ -157,16 +158,16 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     var ranking_help := UIFactory.body("RANKING · 1) połącz ten przebieg z My Signal albo e-mailem, 2) opublikuj swój PB. Samo połączenie niczego nie publikuje.")
     ranking_help.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     ranking_help.add_theme_font_size_override("font_size", 11)
-    ranking_help.add_theme_color_override("font_color", Color("9eafc3"))
+    ranking_help.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     _form.add_child(ranking_help)
 
-    _signal_button = UIFactory.product_button("POŁĄCZ WYNIK Z SYGNAŁEM", Color("71dcff"))
+    _signal_button = UIFactory.product_button("POŁĄCZ WYNIK Z SYGNAŁEM", ViryaDesign.SIGNAL)
     _signal_button.pressed.connect(_handle_signal_action)
     _form.add_child(_signal_button)
 
     _build_leaderboard(journey_summary)
 
-    _email = UIFactory.line_edit("E-mail do losowania", Color("7fd7ef"))
+    _email = UIFactory.line_edit("E-mail do losowania", ViryaDesign.SIGNAL_HOT)
     _email.name = "RewardEmail"
     _email.focus_entered.connect(_on_email_focus_entered)
     _email.gui_input.connect(_on_email_gui_input)
@@ -174,12 +175,12 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     var note := UIFactory.body("Jeden e-mail = jeden los. To nie zapisuje do newslettera. Dane wysyłkowe podadzą dopiero zwycięzcy.")
     note.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     note.add_theme_font_size_override("font_size", 12)
-    note.add_theme_color_override("font_color", Color("9eafc3"))
+    note.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     _form.add_child(note)
 
     _status = UIFactory.body("")
     _status.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-    _status.add_theme_color_override("font_color", Color("82d7ff"))
+    _status.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     _form.add_child(_status)
 
     _claim = UIFactory.product_button("DOŁĄCZ DO LOSOWANIA 5 PŁYT", _accent, true)
@@ -190,23 +191,23 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _next_event = UIFactory.body("")
     _next_event.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     _next_event.add_theme_font_size_override("font_size", 9)
-    _next_event.add_theme_color_override("font_color", Color("9eafc3"))
+    _next_event.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     _next_event.visible = false
     _form.add_child(_next_event)
-    _next_event_button = UIFactory.product_button("NASTĘPNY SYGNAŁ", Color("73869d"))
+    _next_event_button = UIFactory.product_button("NASTĘPNY SYGNAŁ", ViryaDesign.TEXT_DIM)
     _next_event_button.visible = false
     _next_event_button.pressed.connect(_open_next_event)
     _form.add_child(_next_event_button)
     apply_signal_context(_signal_context)
 
-    var album_mode := UIFactory.product_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
+    var album_mode := UIFactory.product_button("ALBUM MODE · KORYTARZ", ViryaDesign.SIGNAL)
     album_mode.pressed.connect(func() -> void: album_mode_requested.emit())
     _form.add_child(album_mode)
 
-    var reset_journey := UIFactory.product_button("PRZEJDŹ ALBUM JESZCZE RAZ", Color("73869d"))
+    var reset_journey := UIFactory.product_button("PRZEJDŹ ALBUM JESZCZE RAZ", ViryaDesign.TEXT_DIM)
     reset_journey.pressed.connect(func() -> void: reset_requested.emit())
     _form.add_child(reset_journey)
-    SignalRelayShare.add_to(_form, Color("71dcff"), _status)
+    SignalRelayShare.add_to(_form, ViryaDesign.SIGNAL, _status)
 
     if not _ritual_complete:
         _status.text = "Domknij 4 sygnały rezonansu — formularz i ranking możesz już przejrzeć."
@@ -225,7 +226,6 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     modulate.a = 0.0
     var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     tween.tween_property(self, "modulate:a", 1.0, 0.30)
-
 
 
 func _publish_e2e_actions() -> void:

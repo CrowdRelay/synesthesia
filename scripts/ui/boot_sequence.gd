@@ -100,7 +100,7 @@ func _build() -> void:
     _motif.offset_top = -motif_h * 0.47
     _motif.offset_bottom = motif_h * 0.53
     add_child(_motif)
-    _motif.configure(Color("43d6df"), "splash", Color("e73535"))
+    _motif.configure(Color("84b4ac"), "splash", Color("e73535"))
     _motif.modulate.a = 0.36
     _motif.set_reduced_motion(_reduced_motion)
 

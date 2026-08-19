@@ -93,15 +93,20 @@ if validate.count('./scripts/prepare-bundled-fonts.sh') < 1:
 if 'repair_missing_font_import_remaps' not in validate or 'SYNESTHESIA_FONT_IMPORT_ARTIFACTS=PASS' not in validate:
     failures.append('validate.sh: stale tracked font remaps are not repaired and verified before glyph smoke')
 
-# Tagged/manual release validates once before cache/toolchain setup, then delegates
-# platform-specific work to builders with source validation explicitly skipped.
+# Tagged/manual release validates canonical source once in a dedicated prerequisite
+# job. Platform jobs may restore heavyweight caches only after that prerequisite
+# succeeds, and builders explicitly skip the duplicate source suite.
 for builder in ('./scripts/build-web-preview.sh', './scripts/build-android-apk.sh'):
     if builder not in build:
         failures.append(f'build.yml: missing canonical platform builder {builder}')
-if build.count('./scripts/validate-source.sh') < 2:
-    failures.append('build.yml: desktop-web and Android jobs must each fail-fast through canonical source validation')
-if build.find('./scripts/validate-source.sh') > build.find('Cache bounded Web build inputs'):
-    failures.append('build.yml: desktop-web source validation runs after cache restore')
+if build.count('./scripts/validate-source.sh') != 1:
+    failures.append('build.yml: canonical source validation must run exactly once per release workflow')
+if 'validate-source:' not in build or 'needs: validate-source' not in build:
+    failures.append('build.yml: desktop/web and Android release jobs must depend on validate-source')
+if build.count('needs: validate-source') < 2:
+    failures.append('build.yml: both platform jobs must be gated by the validate-source prerequisite')
+if build.find('./scripts/validate-source.sh') > build.find('desktop-web:'):
+    failures.append('build.yml: canonical source validation is not isolated before platform/cache jobs')
 if 'SYNESTHESIA_SKIP_SOURCE_VALIDATION: "1"' not in build:
     failures.append('build.yml: platform builder re-runs canonical source suite')
 

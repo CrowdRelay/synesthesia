@@ -5,6 +5,7 @@ signal publish_requested
 signal refresh_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 
 var _status: Label
 var _list: VBoxContainer
@@ -30,7 +31,7 @@ func configure(summary: Dictionary, _scroll: ScrollContainer) -> void:
     title.text = "TABLICA SYGNAŁU · TOP 10"
     UIFactory.apply_display_font(title)
     title.add_theme_font_size_override("font_size", 13)
-    title.add_theme_color_override("font_color", Color("7fd7ef"))
+    title.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     add_child(title)
 
     var own_time_text: String
@@ -40,7 +41,7 @@ func configure(summary: Dictionary, _scroll: ScrollContainer) -> void:
         own_time_text = "WYNIK RANKINGOWY · BRAK PEŁNEGO POMIARU (%d/%d POKOI)" % [_timed_rooms, _room_total]
     var own_time := UIFactory.body(own_time_text)
     own_time.add_theme_font_size_override("font_size", 16)
-    own_time.add_theme_color_override("font_color", Color("f2f8ff") if _timed_run_complete else Color("f0cf88"))
+    own_time.add_theme_color_override("font_color", ViryaDesign.TEXT if _timed_run_complete else ViryaDesign.WARNING)
     add_child(own_time)
 
     _list = VBoxContainer.new()
@@ -50,20 +51,20 @@ func configure(summary: Dictionary, _scroll: ScrollContainer) -> void:
 
     var privacy := UIFactory.body("Publikacja jest dobrowolna. CrowdRelay pokaże wyłącznie zamaskowany adres, np. woj••••, i Twój najlepszy pełny czas. Pełny e-mail, konto Signal i urządzenie nigdy nie trafiają na publiczną listę. Ranking nie wpływa na losowanie.")
     privacy.add_theme_font_size_override("font_size", 11)
-    privacy.add_theme_color_override("font_color", Color("9eafc3"))
+    privacy.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     add_child(privacy)
 
     _status = UIFactory.body(_default_status())
     _status.add_theme_font_size_override("font_size", 11)
-    _status.add_theme_color_override("font_color", Color("82d7ff"))
+    _status.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     add_child(_status)
 
-    _publish = UIFactory.product_button("OPUBLIKUJ MÓJ PB W TOP 10", Color("7fd7ef"))
+    _publish = UIFactory.product_button("OPUBLIKUJ MÓJ PB W TOP 10", ViryaDesign.SIGNAL_HOT)
     _publish.disabled = true
     _publish.pressed.connect(func() -> void: publish_requested.emit())
     add_child(_publish)
 
-    var refresh := UIFactory.product_button("ODŚWIEŻ TOP 10", Color("73869d"))
+    var refresh := UIFactory.product_button("ODŚWIEŻ TOP 10", ViryaDesign.TEXT_DIM)
     refresh.pressed.connect(func() -> void: refresh_requested.emit())
     add_child(refresh)
 
@@ -75,7 +76,7 @@ func set_items(items: Array) -> void:
     if items.is_empty():
         var empty := UIFactory.body("Pierwsza publiczna pozycja może być Twoja.")
         empty.add_theme_font_size_override("font_size", 11)
-        empty.add_theme_color_override("font_color", Color("9eafc3"))
+        empty.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
         _list.add_child(empty)
     else:
         var index: int = 0
@@ -93,7 +94,7 @@ func set_items(items: Array) -> void:
             UIFactory.apply_display_font(row)
             row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
             row.add_theme_font_size_override("font_size", 13 if own else (12 if rank <= 3 else 11))
-            row.add_theme_color_override("font_color", Color("7fd7ef") if own else (Color("f0cf88") if rank <= 3 else Color("d9e8f4")))
+            row.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT if own else (ViryaDesign.WARNING if rank <= 3 else ViryaDesign.TEXT))
             _list.add_child(row)
     if _own_rank > 0:
         set_status("TWÓJ RANK · #%d · PB %s" % [_own_rank, format_time(_own_best_elapsed_ms)])

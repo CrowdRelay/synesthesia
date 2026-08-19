@@ -21,7 +21,7 @@ assert 'app._layout.move_child(app._form, 0)' in finale_layout
 assert 'app._layout.move_child(app._visual, 1)' in finale_layout
 assert 'call_deferred("_scroll_to_start")' in finale_layout
 assert 'func is_ready_for_input() -> bool:' in finale
-assert 'FINAŁ · SYGNAŁ DOTARŁ · 5 PŁYT' in finale
+assert 'WYPIS // SYGNAŁ DOTARŁ // 5 PŁYT' in finale
 
 # A decorative/runtime failure can never leave only the finale animation.
 transition_to_reward = room_flow.split("func _transition_to_reward", 1)[1]

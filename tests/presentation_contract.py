@@ -32,8 +32,8 @@ for token in (
 
 for token in (
     'SYNESTHESIA',
-    'Jedenaście komnat utkanych z obrazu',
-    'ZANURZ SIĘ',
+    'Jedenaście komnat jednego oddziału utkanych z obrazu',
+    'WEJŚCIE // SESJA',
     'PRZEKROCZ PRÓG',
     'NOWA WĘDRÓWKA',
     'USTAWIENIA',

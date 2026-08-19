@@ -10,6 +10,7 @@ signal reset_requested
 signal album_mode_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const SignalFinaleLayout := preload("res://scripts/ui/signal_finale_layout.gd")
 
 var _panel: PanelContainer
@@ -44,7 +45,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, _journey_summar
     _panel = PanelContainer.new()
     _panel.name = "FinaleFallbackPanel"
     _panel.mouse_filter = Control.MOUSE_FILTER_PASS
-    _panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(Color("e35f83"), true))
+    _panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(ViryaDesign.DANGER, true))
     add_child(_panel)
     SignalFinaleLayout.layout_panel(self)
 
@@ -72,25 +73,25 @@ func configure(server_completed: bool, saved_reward: Dictionary, _journey_summar
     stack.add_child(body)
 
     _status = UIFactory.body(message)
-    _status.add_theme_color_override("font_color", Color("82d7ff"))
+    _status.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     stack.add_child(_status)
 
-    _signal_button = UIFactory.product_button("POŁĄCZ WYNIK Z SYGNAŁEM", Color("71dcff"))
+    _signal_button = UIFactory.product_button("POŁĄCZ WYNIK Z SYGNAŁEM", ViryaDesign.SIGNAL)
     _signal_button.pressed.connect(_handle_signal)
     stack.add_child(_signal_button)
 
-    _email = UIFactory.line_edit("E-mail do losowania", Color("7fd7ef"))
+    _email = UIFactory.line_edit("E-mail do losowania", ViryaDesign.SIGNAL_HOT)
     stack.add_child(_email)
     _email.focus_entered.connect(_on_email_focus_entered)
-    _claim = UIFactory.product_button("DOŁĄCZ DO LOSOWANIA 5 PŁYT", Color("e35f83"), true)
+    _claim = UIFactory.product_button("DOŁĄCZ DO LOSOWANIA 5 PŁYT", ViryaDesign.DANGER, true)
     _claim.disabled = not server_completed
     _claim.pressed.connect(func() -> void: draw_entry_requested.emit(_email.text.strip_edges()))
     stack.add_child(_claim)
 
-    var album_mode := UIFactory.product_button("ALBUM MODE · KORYTARZ", Color("71dcff"))
+    var album_mode := UIFactory.product_button("ALBUM MODE · KORYTARZ", ViryaDesign.SIGNAL)
     album_mode.pressed.connect(func() -> void: album_mode_requested.emit())
     stack.add_child(album_mode)
-    var replay := UIFactory.product_button("PRZEJDŹ ALBUM JESZCZE RAZ", Color("73869d"))
+    var replay := UIFactory.product_button("PRZEJDŹ ALBUM JESZCZE RAZ", ViryaDesign.TEXT_DIM)
     replay.pressed.connect(func() -> void: reset_requested.emit())
     stack.add_child(replay)
     SignalFinaleLayout.prepare_scroll_content(_layout)

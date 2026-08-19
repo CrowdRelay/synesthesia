@@ -2,6 +2,7 @@ extends Control
 # Legacy presentation contract token: UIFactory.story_style(_accent, 0.88, false)
 signal settings_requested
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
+const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const SettingsGearIcon := preload("res://scripts/ui/settings_gear_icon.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const InteractionGuide := preload("res://scripts/app/interaction_guide.gd")
@@ -54,7 +55,7 @@ var _echo_total: int = 0
 var _resonance_chain: int = 0
 var _current_act_index: int = 0
 var _current_act_title: String = "ROZPOZNANIE"
-var _accent: Color = Color("72afff")
+var _accent: Color = ViryaDesign.SIGNAL
 var _ui_scale: float = 1.0
 var _layout_flow: Node
 func _ready() -> void:
@@ -168,9 +169,9 @@ func configure_room(title: String, subtitle: String, room_index: int, room_total
     _refresh_mobile_meta()
     _accent = Color.from_string(str(room_data.get("accent_color", "#72AFFF")), Color("72afff"))
     top_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent, 0.22))
-    bottom_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent.lerp(Color("f0cf88"), 0.42), 0.18))
+    bottom_panel.add_theme_stylebox_override("panel", UIFactory.product_inset_style(_accent.lerp(ViryaDesign.WARNING, 0.42), 0.18))
     top_accent_bar.color = _accent
-    bottom_accent_bar.color = _accent.lerp(Color("f3d39d"), 0.42)
+    bottom_accent_bar.color = _accent.lerp(ViryaDesign.SIGNAL, 0.42)
     progress_bar.add_theme_stylebox_override("fill", _bar_style(_accent))
     if toast_panel != null:
         toast_panel.add_theme_stylebox_override("panel", UIFactory.product_surface_style(_accent, true))
@@ -199,7 +200,7 @@ func show_split_delta(delta_ms: int) -> void:
     if delta_ms == 0:
         sign = "±"
     split_label.text = "SPLIT %s%s" % [sign, _format_split_time(absi(delta_ms))]
-    split_label.add_theme_color_override("font_color", Color("8fe3b0") if delta_ms <= 0 else Color("f0cf88"))
+    split_label.add_theme_color_override("font_color", ViryaDesign.SUCCESS if delta_ms <= 0 else ViryaDesign.WARNING)
     split_label.visible = true
     split_label.modulate.a = 0.0
     var tween: Tween = create_tween()
@@ -339,7 +340,7 @@ func _rebuild_journey(force_complete: bool = false) -> void:
         elif current:
             dot.color = _accent
         else:
-            dot.color = Color("91a4b42f")
+            dot.color = Color(ViryaDesign.TEXT_MUTED, 0.18)
         dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
         journey_row.add_child(dot)
 func _set_palette(room_data: Dictionary) -> void:

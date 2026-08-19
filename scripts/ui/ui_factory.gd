@@ -4,7 +4,7 @@ const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const SignalBackdrop := preload("res://scripts/ui/signal_backdrop.gd")
 const SignalGrain := preload("res://scripts/ui/signal_grain.gd")
 
-const PANEL_COLOR: Color = Color("101724f2")
+const PANEL_COLOR: Color = Color("101715f2")
 # Legacy finale opacity contract: 0.975; product surfaces now encode opacity directly.
 
 static var _display_font: Font
@@ -100,9 +100,10 @@ static func product_button(text_value: String, accent: Color, primary: bool = fa
     control.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
     control.alignment = HORIZONTAL_ALIGNMENT_LEFT
     control.add_theme_font_size_override("font_size", 14 if primary else 12)
-    control.add_theme_color_override("font_color", ViryaDesign.TEXT)
-    control.add_theme_color_override("font_hover_color", Color.WHITE)
-    control.add_theme_color_override("font_pressed_color", Color.WHITE)
+    var action_text := Color("07100e") if primary else ViryaDesign.TEXT
+    control.add_theme_color_override("font_color", action_text)
+    control.add_theme_color_override("font_hover_color", action_text if primary else Color.WHITE)
+    control.add_theme_color_override("font_pressed_color", action_text if primary else Color.WHITE)
     control.add_theme_color_override("font_disabled_color", ViryaDesign.TEXT_DIM)
     control.add_theme_stylebox_override("normal", ViryaDesign.button(accent, "normal", primary))
     control.add_theme_stylebox_override("hover", ViryaDesign.button(accent, "hover", primary))
@@ -122,6 +123,11 @@ static func product_chip(text_value: String, accent: Color) -> Label:
     chip.add_theme_stylebox_override("normal", ViryaDesign.chip(accent))
     apply_display_font(chip)
     return chip
+
+static func clinical_eyebrow(text_value: String) -> Label:
+    var label := section_label(text_value, ViryaDesign.SIGNAL_HOT)
+    label.add_theme_font_size_override("font_size", 9)
+    return label
 
 static func section_label(text_value: String, accent: Color = ViryaDesign.SIGNAL) -> Label:
     var label := Label.new()
@@ -166,7 +172,7 @@ static func finale_style(accent: Color) -> StyleBoxFlat:
     return ViryaDesign.surface(accent, true)
 
 static func button(text_value: String, compact: bool = false) -> Button:
-    var control := product_button(text_value, Color("7f9fbd"), false)
+    var control := product_button(text_value, ViryaDesign.SIGNAL, false)
     control.custom_minimum_size = Vector2(100.0 if compact else 128.0, 42.0 if compact else 48.0)
     control.add_theme_font_size_override("font_size", 12 if compact else 13)
     return control
