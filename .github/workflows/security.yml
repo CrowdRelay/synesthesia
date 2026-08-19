@@ -43,7 +43,14 @@ jobs:
           path: artifacts/synesthesia-sbom.cdx.json
           if-no-files-found: error
           retention-days: 90
+      - name: Cache pinned cargo-audit binary
+        id: cargo-audit-cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit-0.22.2
       - name: Install pinned cargo-audit
+        if: steps.cargo-audit-cache.outputs.cache-hit != 'true'
         run: cargo +1.97.1 install cargo-audit --locked --version 0.22.2
       - name: Audit native Rust dependency lock
         run: cargo +1.97.1 audit --file native/Cargo.lock

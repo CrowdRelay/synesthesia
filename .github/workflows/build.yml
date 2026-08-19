@@ -24,18 +24,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-source:
+    name: Validate release source once
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Validate canonical source contracts
+        run: ./scripts/validate-source.sh
+
   desktop-web:
     name: Linux and Web
     if: github.event_name == 'push' || github.event.inputs.target == 'all' || github.event.inputs.target == 'desktop-web'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    needs: validate-source
 
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Validate canonical source contracts
-        run: ./scripts/validate-source.sh
 
       - name: Cache bounded Web build inputs
         uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
@@ -89,13 +97,11 @@ jobs:
     if: github.event_name == 'push' || github.event.inputs.target == 'all' || github.event.inputs.target == 'android'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    needs: validate-source
 
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Validate canonical source contracts
-        run: ./scripts/validate-source.sh
 
       - name: Cache bounded Android build inputs
         uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
