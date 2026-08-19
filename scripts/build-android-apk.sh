@@ -234,7 +234,11 @@ else
   export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
   export NDK_HOME="$ANDROID_NDK_HOME"
   [[ -d "$ANDROID_NDK_HOME" ]] || { printf 'ERROR: Android NDK directory missing: %s\n' "$ANDROID_NDK_HOME" >&2; exit 1; }
-  SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh android-arm64
+  # Godot's Linux editor opens the project before Android export and resolves
+# linux.debug.x86_64 from the generated GDExtension descriptor. Build that
+# host bridge explicitly, while keeping the packaged Android library release.
+SYNESTHESIA_RUST_PROFILE=debug ./scripts/build-rust-native.sh host
+SYNESTHESIA_RUST_PROFILE=release ./scripts/build-rust-native.sh android-arm64
 fi
 
 mkdir -p "$(dirname "$APK_PATH")"
