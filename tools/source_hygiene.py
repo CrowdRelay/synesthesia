@@ -18,7 +18,7 @@ FORBIDDEN_PREFIXES = (
     "native/bin/",
     "native/android-out/",
 )
-FORBIDDEN_SUFFIXES = (".rlib", ".rmeta", ".dylib", ".so", ".apk", ".aab", ".tpz")
+FORBIDDEN_SUFFIXES = (".rlib", ".rmeta", ".dylib", ".so", ".apk", ".aab", ".tpz", ".orig", ".rej", "~")
 FORBIDDEN_EXACT = ("synesthesia_rust.gdextension", "synesthesia_rust.gdextension.uid")
 REQUIRED_IGNORES = (
     ".godot/",
@@ -29,6 +29,9 @@ REQUIRED_IGNORES = (
     "synesthesia_rust.gdextension",
     "synesthesia_rust.gdextension.uid",
     "assets/fonts/generated/*.ttf",
+    "*.backup-*",
+    "*.orig",
+    "*.rej",
 )
 
 failures: list[str] = []
@@ -60,6 +63,15 @@ if (ROOT / ".git").exists() and shutil.which("git"):
                 f"tracked file exceeds {MAX_TRACKED_BYTES // (1024 * 1024)} MiB source budget: "
                 f"{normalized} ({path.stat().st_size} bytes)"
             )
+
+# Backups/rejects are source-tree debris even when this archive has no .git metadata.
+for path in ROOT.rglob("*"):
+    if not path.is_file():
+        continue
+    rel = path.relative_to(ROOT).as_posix()
+    name = path.name
+    if ".backup-" in name or name.endswith((".orig", ".rej", "~")):
+        failures.append(f"source debris present: {rel}")
 
 if failures:
     for failure in failures:

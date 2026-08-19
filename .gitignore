@@ -41,3 +41,6 @@ synesthesia_rust.gdextension.uid
 # Manual pre-release snapshots of the export preset; the Play script keeps its
 # own mktemp backup and restores on exit, so these are throwaway.
 *.before-play-release
+*.backup-*
+*.orig
+*.rej
