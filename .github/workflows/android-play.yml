@@ -126,7 +126,7 @@ jobs:
         env:
           CI: "true"
           SYNESTHESIA_GODOT_LOG_DIR: build/ci-logs
-        run: ./scripts/build-android-play-aab.sh
+        run: bash ./scripts/build-android-play-aab.sh
 
       - name: Bind AAB to exact source SHA
         shell: bash
