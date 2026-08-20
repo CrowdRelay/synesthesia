@@ -120,8 +120,8 @@ for path in ("scripts/main.gd", "scripts/app/main_room_flow.gd", "scripts/app/ma
 
 require(
     "scripts/app/door_transition_layer.gd",
-    "set_memory_count", "_draw_corridor_memory", 'Color("b91346"', 'Color("72d79a"',
-    'Color("ffd56d"',
+    "set_memory_count", "_draw_corridor_memory", "WARD_RED", "WARD_GLASS", "WARD_PAPER",
+    "_wobble_line", "_wobbly_oval",
 )
 require(
     "scripts/ui/echoes_finale_background.gd",
