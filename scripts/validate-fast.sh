@@ -41,8 +41,9 @@ python3 scripts/run-contracts.py --jobs "${SYNESTHESIA_CONTRACT_JOBS:-4}" \
   tests/mobile_speedrun_feedback_contract.py \
   tests/leaderboard_player_feedback_contract.py \
   tests/finale_timing_signal_flow_contract.py \
+  tests/reward_client_reliability_contract.py \
   tests/finale_scroll_and_native_signal_contract.py \
   tests/v2_gameplay_polish_contract.py \
   tests/mastery_memory_contract.py
 
-printf '%s\n' 'SYNESTHESIA_FAST_VALIDATION=PASS scope=gameplay+mobile+hot-path+source execution=parallel'
+printf '%s\n' 'SYNESTHESIA_FAST_VALIDATION=PASS scope=gameplay+mobile+hot-path+reward-reliability+source execution=parallel'
