@@ -141,7 +141,7 @@ jobs:
           echo "SYNESTHESIA_PLAY_AUTH=PASS mode=$([[ "${wif}" == true ]] && echo wif || echo json-fallback) track=${SYNESTHESIA_PLAY_TRACK}"
 
       - name: Require production CrowdRelay and Synesthesia surfaces
-        if: env.SYNESTHESIA_PLAY_TRACK == 'production'
+        if: github.event_name == 'workflow_dispatch' && inputs.play_track == 'production'
         env:
           CROWDRELAY_BASE_URL: ${{ vars.CROWDRELAY_PRODUCTION_BASE_URL }}
           SYNESTHESIA_BASE_URL: ${{ vars.SYNESTHESIA_PRODUCTION_BASE_URL || 'https://synesthesia.virya.music' }}
