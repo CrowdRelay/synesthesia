@@ -163,8 +163,11 @@ def validate_manifest(path: Path, slug: str, order: int, failures: list[str]) ->
                     fail(f"{slug}: scene must be 675x1200", failures)
             except ValueError as exc:
                 fail(f"{slug}: invalid scene WebP: {exc}", failures)
-            if not 45_000 <= scene.stat().st_size <= 420_000:
-                fail(f"{slug}: scene outside 45..420 KB budget", failures)
+            # File size is only a corruption/placeholder guard. Highly compressible
+            # authored ward paintings remain visually clean well below the old
+            # 45 KB floor, while the 420 KB ceiling still protects mobile payload.
+            if not 12_000 <= scene.stat().st_size <= 420_000:
+                fail(f"{slug}: scene outside 12..420 KB budget", failures)
         if background and background.suffix.lower() == ".webp":
             try:
                 if webp_size(background) != (405, 720):
