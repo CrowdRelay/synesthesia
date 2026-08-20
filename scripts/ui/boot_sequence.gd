@@ -4,11 +4,12 @@ signal released
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
+const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"
 
-# Keep startup branded but bounded. The same authored ward corridor is used by
-# the native splash, Web shell, Godot boot and menu, so the handoff never jumps
-# back to the retired sci-fi eye artwork.
+# Keep startup branded but bounded. Native, Web, Godot boot and the menu all
+# share the same authored psychiatric-ward world so startup never flashes the
+# retired eye/purple language between platform surfaces.
 const COLD_BOOT_HOLD: float = 0.16
 const COLD_REVEAL_DURATION: float = 0.34
 const COLD_FADE_DURATION: float = 0.14
@@ -16,6 +17,7 @@ const WARM_BOOT_HOLD: float = 0.025
 const WARM_REVEAL_DURATION: float = 0.16
 const WARM_FADE_DURATION: float = 0.09
 
+var _eyebrow: Label
 var _title: Label
 var _subtitle: Label
 var _tagline: Label
@@ -51,43 +53,64 @@ func _build() -> void:
     var viewport_size: Vector2 = get_viewport_rect().size
     _ui_scale = UiMetrics.scale_for_viewport(viewport_size)
 
-    UIFactory.add_signal_backdrop(self, MENU_WORLD_PATH, Color("E73535"), 0.46, _reduced_motion)
+    UIFactory.add_signal_backdrop(self, MENU_WORLD_PATH, ViryaDesign.SIGNAL, 0.38, _reduced_motion)
     var background := ColorRect.new()
-    background.color = Color(0.005, 0.008, 0.012, 0.22)
+    background.color = Color(ViryaDesign.VOID, 0.27)
     background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     background.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(background)
-    UIFactory.add_grain(self, 0.06)
+    UIFactory.add_grain(self, 0.045)
+
+    _eyebrow = Label.new()
+    _eyebrow.text = "VIRYA // ODDZIAŁ SYNESTHESIA"
+    _eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _eyebrow.add_theme_font_size_override("font_size", 8)
+    _eyebrow.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
+    UIFactory.apply_display_font(_eyebrow)
+    _eyebrow.set_anchors_preset(Control.PRESET_TOP_WIDE)
+    _eyebrow.offset_top = 116.0 * _ui_scale
+    _eyebrow.offset_bottom = 144.0 * _ui_scale
+    add_child(_eyebrow)
+
+    var status_rule := ColorRect.new()
+    status_rule.color = Color(ViryaDesign.SIGNAL_HOT, 0.42)
+    status_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    status_rule.set_anchors_preset(Control.PRESET_TOP_WIDE)
+    status_rule.offset_left = viewport_size.x * 0.36
+    status_rule.offset_right = -viewport_size.x * 0.36
+    status_rule.offset_top = 148.0 * _ui_scale
+    status_rule.offset_bottom = 149.0 * _ui_scale
+    add_child(status_rule)
 
     _title = Label.new()
     _title.text = "SYNESTHESIA"
     _title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _title.add_theme_font_size_override("font_size", 34)
-    _title.add_theme_color_override("font_color", Color("f4eef8"))
+    _title.add_theme_color_override("font_color", ViryaDesign.TEXT)
     _title.add_theme_constant_override("outline_size", 2)
-    _title.add_theme_color_override("font_outline_color", Color("05060ae8"))
+    _title.add_theme_color_override("font_outline_color", Color(ViryaDesign.VOID, 0.92))
     UIFactory.apply_display_font(_title)
     _title.set_anchors_preset(Control.PRESET_TOP_WIDE)
-    _title.offset_top = 154.0 * _ui_scale
-    _title.offset_bottom = 212.0 * _ui_scale
+    _title.offset_top = 166.0 * _ui_scale
+    _title.offset_bottom = 224.0 * _ui_scale
     add_child(_title)
 
     _subtitle = Label.new()
-    _subtitle.text = "VIRYA · ECHOES OF THE MODERN MIND"
+    _subtitle.text = "ECHOES OF THE MODERN MIND // SESJA 01"
     _subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _subtitle.add_theme_font_size_override("font_size", 9)
-    _subtitle.add_theme_color_override("font_color", Color("a895b8"))
+    _subtitle.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     UIFactory.apply_display_font(_subtitle)
     _subtitle.set_anchors_preset(Control.PRESET_TOP_WIDE)
-    _subtitle.offset_top = 216.0 * _ui_scale
-    _subtitle.offset_bottom = 246.0 * _ui_scale
+    _subtitle.offset_top = 228.0 * _ui_scale
+    _subtitle.offset_bottom = 258.0 * _ui_scale
     add_child(_subtitle)
 
     _tagline = Label.new()
-    _tagline.text = "NASŁUCHUJ  ·  DOTKNIJ  ·  ODSŁOŃ"
+    _tagline.text = "WEJŚCIE DO ODDZIAŁU  ·  DOTKNIJ  ·  ODSŁOŃ  ·  NASŁUCHUJ"
     _tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _tagline.add_theme_font_size_override("font_size", 9)
-    _tagline.add_theme_color_override("font_color", Color("a895b8"))
+    _tagline.add_theme_font_size_override("font_size", 8)
+    _tagline.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     UIFactory.apply_display_font(_tagline)
     _tagline.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
     _tagline.offset_top = -96.0 * _ui_scale
@@ -95,10 +118,10 @@ func _build() -> void:
     add_child(_tagline)
 
     _load_label = Label.new()
-    _load_label.text = "WZNAWIAM SYGNAŁ" if _warm_boot else "URUCHAMIAM DOŚWIADCZENIE"
+    _load_label.text = "WZNAWIAM SESJĘ" if _warm_boot else "PRZYGOTOWUJĘ ODDZIAŁ"
     _load_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _load_label.add_theme_font_size_override("font_size", 7)
-    _load_label.add_theme_color_override("font_color", Color("66778d"))
+    _load_label.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     UIFactory.apply_display_font(_load_label)
     _load_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
     _load_label.offset_top = -52.0 * _ui_scale
@@ -106,7 +129,7 @@ func _build() -> void:
     add_child(_load_label)
 
     var progress_track := ColorRect.new()
-    progress_track.color = Color("1d2633b8")
+    progress_track.color = Color(ViryaDesign.SURFACE_RAISED, 0.86)
     progress_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
     progress_track.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
     var line_half: float = minf(120.0 * _ui_scale, viewport_size.x * 0.22)
@@ -117,7 +140,7 @@ func _build() -> void:
     add_child(progress_track)
 
     _progress_fill = ColorRect.new()
-    _progress_fill.color = Color("e73535")
+    _progress_fill.color = ViryaDesign.SIGNAL_HOT
     _progress_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _progress_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _progress_fill.scale = Vector2(0.08, 1.0)
@@ -132,8 +155,8 @@ func _play() -> void:
     await get_tree().create_timer(hold).timeout
     var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
     tween.tween_property(_progress_fill, "scale:x", 1.0, reveal_duration)
-    tween.tween_property(_title, "modulate:a", 0.84, reveal_duration)
-    tween.tween_property(_load_label, "modulate:a", 0.58, reveal_duration)
+    tween.tween_property(_title, "modulate:a", 0.88, reveal_duration)
+    tween.tween_property(_load_label, "modulate:a", 0.62, reveal_duration)
     await tween.finished
 
     # The boot layer is decorative from here. Release the modal input boundary
@@ -141,7 +164,7 @@ func _play() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_DISABLED
-    # Build the real menu underneath, then fade into the same corridor artwork.
+    # Build the real menu underneath, then fade into the same ward artwork.
     released.emit()
     var fade := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     fade.tween_property(self, "modulate:a", 0.0, fade_duration if not _reduced_motion else minf(fade_duration, 0.07))
