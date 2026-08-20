@@ -12,11 +12,12 @@ def read(rel: str) -> str:
 ward = ROOT / "assets/v2/branding/menu-world.webp"
 if not ward.is_file() or not (20_000 <= ward.stat().st_size <= 160_000):
     failures.append("ward boot artwork missing/outside startup budget")
-native_splash = ROOT / "assets/branding/boot-splash.png"
-if not native_splash.is_file() or not (500_000 <= native_splash.stat().st_size <= 2_000_000):
-    failures.append("native ward PNG missing/outside startup budget")
+legacy_native_splash = ROOT / "assets/branding/boot-splash.png"
+if not legacy_native_splash.is_file():
+    failures.append("legacy validator compatibility splash source missing")
 
 project = read("project.godot")
+exports = read("export_presets.cfg")
 boot = read("scripts/ui/boot_sequence.gd")
 web_css = read("web/boot-shell.css")
 web_post = read("tools/postprocess_web.py")
@@ -27,8 +28,14 @@ main = read("scripts/main.gd")
 intro = read("scripts/ui/experience_intro_card.gd")
 
 checks = [
-    ('boot_splash/image="res://assets/branding/boot-splash.png"', project, "native ward boot image"),
+    ('boot_splash/image="res://assets/v2/branding/menu-world.webp"', project, "native ward boot image"),
+    ('boot_splash/use_filter=true', project, "native splash scaling filter"),
+    ('assets/branding/boot-splash*', exports, "legacy compatibility splash excluded from exports"),
     ('MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"', boot, "Godot ward boot image"),
+    ('const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")', boot, "boot design token convergence"),
+    ('VIRYA // ODDZIAŁ SYNESTHESIA', boot, "ward boot eyebrow"),
+    ('ECHOES OF THE MODERN MIND // SESJA 01', boot, "ward boot session identity"),
+    ('PRZYGOTOWUJĘ ODDZIAŁ', boot, "ward loading copy"),
     ('await RenderingServer.frame_post_draw', boot, "first-frame presentation gate"),
     ('<div class="synesthesia-boot__ward" aria-hidden="true"></div>', web_post, "Web ward shell"),
     ('background: url("/menu-world.webp") center center / cover no-repeat;', web_css, "Web ward styling"),
@@ -49,8 +56,12 @@ for source, label in (
     (web_css, "Web style"),
     (web_js, "Web runtime"),
 ):
-    if "menu-eye" in source or "BootAuthoredEye" in source:
-        failures.append(f"{label} still references retired eye splash")
+    if "menu-eye" in source or "BootAuthoredEye" in source or "boot-splash.png" in source:
+        failures.append(f"{label} still references retired splash language")
+
+for legacy_color in ("a895b8", "f4eef8", "66778d"):
+    if legacy_color in boot.lower():
+        failures.append(f"Godot boot still contains legacy purple/blue chrome: {legacy_color}")
 
 try:
     release_at = boot.index("released.emit()")
@@ -67,4 +78,4 @@ if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_BOOT_VISUAL_CONTINUITY=FAIL count={len(failures)}")
-print("SYNESTHESIA_BOOT_VISUAL_CONTINUITY=PASS art=ward-corridor native=web=godot=menu handoff=single-frame debug-chrome=hidden")
+print("SYNESTHESIA_BOOT_VISUAL_CONTINUITY=PASS art=ward-world native=web=godot=menu compatibility-source=export-excluded chrome=clinical-mint")

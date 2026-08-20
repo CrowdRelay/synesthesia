@@ -9,6 +9,9 @@ var resonance_memory_strength: float = 0.0
 # Ward paintings are now the source of truth for physical prop placement. The
 # room mechanics keep stable logical coordinates; these anchors adapt touch and
 # haptic/event points to the authored compositions without changing save state.
+const ART_WARP_RADIUS: float = 0.30
+const ART_EXACT_RADIUS: float = 0.060
+const MOBILE_FORGIVENESS_BONUS: float = 0.08
 const ART_ANCHORS := {
     "party-time": [
         [Vector2(0.19, 0.31), Vector2(0.22, 0.39)],
@@ -80,7 +83,7 @@ const ART_ANCHORS := {
 func configure(data: Dictionary) -> void:
     room_data = data.duplicate(true)
     state = {}
-    interaction_forgiveness = 1.12
+    interaction_forgiveness = 1.12 + (MOBILE_FORGIVENESS_BONUS if OS.has_feature("mobile") else 0.0)
     assist_level = 0
     resonance_memory_strength = 0.0
 
@@ -149,11 +152,18 @@ func set_resonance_memory(memory: Dictionary) -> void:
 func set_assist_level(level: int) -> void:
     assist_level = clampi(level, 0, 3)
     interaction_forgiveness = [1.12, 1.20, 1.30, 1.40][assist_level]
+    if OS.has_feature("mobile"):
+        interaction_forgiveness += MOBILE_FORGIVENESS_BONUS
 
 func _near(point: Vector2, target: Vector2, radius: float) -> bool:
     var forgiving_radius: float = radius * (interaction_forgiveness + resonance_memory_strength)
     var r2 := forgiving_radius * forgiving_radius
-    return point.distance_squared_to(target) <= r2 or point.distance_squared_to(_art_point(target)) <= r2
+    var art_target: Vector2 = _art_point(target)
+    var point_as_logic: Vector2 = _logic_point(point)
+    return minf(
+        point.distance_squared_to(target),
+        minf(point.distance_squared_to(art_target), point_as_logic.distance_squared_to(target))
+    ) <= r2
 
 func _gesture_point(gesture: Dictionary) -> Vector2:
     var value: Variant = gesture.get("point", Vector2(0.5, 0.5))
@@ -192,21 +202,36 @@ func _anchor_pairs() -> Array:
 
 func _art_point(logic_point: Vector2) -> Vector2:
     var pairs := _anchor_pairs()
-    if pairs.is_empty(): return logic_point
+    if pairs.is_empty():
+        return logic_point
     var best_logic := Vector2.ZERO
     var best_art := Vector2.ZERO
     var best_distance := INF
+    var weighted_offset := Vector2.ZERO
+    var total_weight: float = 0.0
     for pair_value in pairs:
-        if not (pair_value is Array) or pair_value.size() < 2: continue
+        if not (pair_value is Array) or pair_value.size() < 2:
+            continue
         var logic: Vector2 = pair_value[0]
         var art: Vector2 = pair_value[1]
-        var distance := logic_point.distance_squared_to(logic)
-        if distance < best_distance:
-            best_distance = distance
+        var distance_squared := logic_point.distance_squared_to(logic)
+        if distance_squared < best_distance:
+            best_distance = distance_squared
             best_logic = logic
             best_art = art
-    if best_distance > 0.055 * 0.055: return logic_point
-    return (best_art + (logic_point - best_logic)).clamp(Vector2.ZERO, Vector2.ONE)
+        var distance := sqrt(distance_squared)
+        if distance >= ART_WARP_RADIUS:
+            continue
+        var proximity := clampf(1.0 - distance / ART_WARP_RADIUS, 0.0, 1.0)
+        var weight := proximity * proximity * (3.0 - 2.0 * proximity)
+        weighted_offset += (art - logic) * weight
+        total_weight += weight
+    if best_distance <= ART_EXACT_RADIUS * ART_EXACT_RADIUS:
+        return (best_art + (logic_point - best_logic)).clamp(Vector2.ZERO, Vector2.ONE)
+    if total_weight <= 0.00001:
+        return logic_point
+    var nearest_blend := clampf(1.0 - sqrt(best_distance) / ART_WARP_RADIUS, 0.0, 1.0)
+    return (logic_point + weighted_offset / total_weight * nearest_blend).clamp(Vector2.ZERO, Vector2.ONE)
 
 func _art_offset_point(logic_origin: Vector2, logic_point: Vector2) -> Vector2:
     return (_art_point(logic_origin) + (logic_point - logic_origin)).clamp(Vector2.ZERO, Vector2.ONE)
@@ -216,18 +241,33 @@ func _art_lerp_point(logic_start: Vector2, logic_finish: Vector2, weight: float)
 
 func _logic_point(art_point: Vector2) -> Vector2:
     var pairs := _anchor_pairs()
-    if pairs.is_empty(): return art_point
+    if pairs.is_empty():
+        return art_point
     var best_logic := Vector2.ZERO
     var best_art := Vector2.ZERO
     var best_distance := INF
+    var weighted_offset := Vector2.ZERO
+    var total_weight: float = 0.0
     for pair_value in pairs:
-        if not (pair_value is Array) or pair_value.size() < 2: continue
+        if not (pair_value is Array) or pair_value.size() < 2:
+            continue
         var logic: Vector2 = pair_value[0]
         var art: Vector2 = pair_value[1]
-        var distance := art_point.distance_squared_to(art)
-        if distance < best_distance:
-            best_distance = distance
+        var distance_squared := art_point.distance_squared_to(art)
+        if distance_squared < best_distance:
+            best_distance = distance_squared
             best_logic = logic
             best_art = art
-    if best_distance > 0.22 * 0.22: return art_point
-    return (best_logic + (art_point - best_art)).clamp(Vector2.ZERO, Vector2.ONE)
+        var distance := sqrt(distance_squared)
+        if distance >= ART_WARP_RADIUS:
+            continue
+        var proximity := clampf(1.0 - distance / ART_WARP_RADIUS, 0.0, 1.0)
+        var weight := proximity * proximity * (3.0 - 2.0 * proximity)
+        weighted_offset += (logic - art) * weight
+        total_weight += weight
+    if best_distance <= ART_EXACT_RADIUS * ART_EXACT_RADIUS:
+        return (best_logic + (art_point - best_art)).clamp(Vector2.ZERO, Vector2.ONE)
+    if total_weight <= 0.00001:
+        return art_point
+    var nearest_blend := clampf(1.0 - sqrt(best_distance) / ART_WARP_RADIUS, 0.0, 1.0)
+    return (art_point + weighted_offset / total_weight * nearest_blend).clamp(Vector2.ZERO, Vector2.ONE)
