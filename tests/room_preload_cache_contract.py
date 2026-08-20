@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard room-transition I/O: cached manifests + deferred audio prewarm."""
+"""Guard room-transition I/O: cached manifests + bounded next-room look-ahead."""
 import json
 from pathlib import Path
 
@@ -8,6 +8,7 @@ failures: list[str] = []
 
 reader = (ROOT / "scripts/app/release_reader.gd").read_text()
 preloader = (ROOT / "scripts/app/asset_preloader.gd").read_text()
+room_flow = (ROOT / "scripts/app/main_room_flow.gd").read_text()
 audio = (ROOT / "scripts/audio_director.gd").read_text()
 audio_runtime = (ROOT / "scripts/audio/audio_asset_runtime.gd").read_text()
 
@@ -25,17 +26,32 @@ for token in (
     'str(room.get("behavior_script", ""))',
     '_queue(str(audio.get("ambience", "")), false)',
     '_queue(str(audio.get("completion_excerpt", "")), false)',
+    'const MAX_QUEUED_MOBILE: int = 5',
+    'const MAX_QUEUED_WEB: int = 6',
+    'const MAX_QUEUED_DESKTOP: int = 8',
+    'var _active_limit: int = MAX_QUEUED_DESKTOP',
+    'func _platform_limit() -> int:',
+    'func set_runtime_budget(scale: float) -> void:',
     'var _pending_critical: Array[String] = []',
     'var _pending_deferred: Array[String] = []',
     'func _pump_queue() -> void:',
     'func prime_runtime_support() -> void:',
-    'while _queued.size() < MAX_QUEUED:',
+    'while _queued.size() < _active_limit:',
 ):
     if token not in preloader:
         failures.append(f"bounded look-ahead preload lifecycle missing: {token}")
 
+if "MAX_QUEUED: int = 13" in preloader:
+    failures.append("legacy 13-way decode window returned")
 if 'if _queued.size() >= MAX_QUEUED:\n        return' in preloader:
     failures.append("preloader silently drops look-ahead work when the active window is full")
+
+for token in (
+    'app.call_deferred("_preload_next_room")',
+    'app.asset_preloader.prepare(str(next_value.get("manifest", "")))',
+):
+    if token not in room_flow:
+        failures.append(f"next-room streaming is not scheduled from the active room: {token}")
 
 for token in (
     "_asset_runtime._resolve_pending_ambience()",
@@ -90,5 +106,5 @@ if failures:
 
 print(
     "SYNESTHESIA_ROOM_PRELOAD_CACHE=PASS "
-    f"manifests={manifest_count} json=process-cache queue=bounded+retained runtime=prewarmed audio=threaded+deferred transition=critical-only-wait"
+    f"manifests={manifest_count} json=process-cache queue=mobile5+web6+desktop8 next-room=active-play deferred-audio=threaded transition=critical-only-wait"
 )
