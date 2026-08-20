@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "scripts/reward_client.gd").read_text(encoding="utf-8")
+signup = (ROOT / "scripts/app/signal_signup_client.gd").read_text(encoding="utf-8")
 
 for token in (
     "MAX_RETRY_ATTEMPTS: int = 3",
@@ -40,4 +41,42 @@ transport = source.split("func _on_request_completed", 1)[1].split("\nfunc _hand
 assert "result != HTTPRequest.RESULT_SUCCESS" in transport
 assert "_handle_failure(active_copy, effective_code" in transport
 
-print("SYNESTHESIA_REWARD_CLIENT_RELIABILITY=PASS retry=bounded+jitter+retry-after transport=retryable signup=validated")
+# The lighter-weight finale signup transport must have the same resilience
+# properties as reward mutations: GET is safe to replay, POST keeps one stable
+# idempotency key, transient failures are bounded/jittered, and Retry-After is
+# capped so a server cannot strand the finale indefinitely.
+for token in (
+    "MAX_RETRY_ATTEMPTS: int = 3",
+    "RETRY_BASE_SECONDS: float = 0.8",
+    "RETRY_MAX_SECONDS: float = 6.0",
+    "RETRY_JITTER_SECONDS: float = 0.35",
+    "MAX_RETRY_AFTER_SECONDS: float = 8.0",
+    "func _retry_delay",
+    "func _retry_after_seconds",
+    "func _is_transient_failure",
+    "func _valid_email",
+    "func _valid_slug",
+    "Idempotency-Key: %s",
+):
+    assert token in signup, token
+
+signup_call = signup.split("func signup", 1)[1].split("\nfunc _begin_request", 1)[0]
+assert "normalized_email" in signup_call
+assert "normalized_city" in signup_call
+assert "normalized_policy" in signup_call
+assert "_valid_email(normalized_email)" in signup_call
+assert "_valid_slug(normalized_city)" in signup_call
+assert '"idempotency_key": key' in signup_call
+
+signup_failure = signup.split("func _handle_failure", 1)[1].split("\nfunc _retry_delay", 1)[0]
+assert "_is_transient_failure(response_code)" in signup_failure
+assert "_attempt < MAX_RETRY_ATTEMPTS" in signup_failure
+assert "_retry_delay(_attempt, headers)" in signup_failure
+
+signup_delay = signup.split("func _retry_delay", 1)[1].split("\nfunc _retry_after_seconds", 1)[0]
+assert "pow(2.0, float(attempt - 1))" in signup_delay
+assert "get_instance_id()" in signup_delay
+assert "Time.get_ticks_msec()" in signup_delay
+assert "RETRY_JITTER_SECONDS" in signup_delay
+
+print("SYNESTHESIA_REWARD_CLIENT_RELIABILITY=PASS reward=bounded+jitter+retry-after signup=validated+idempotent+bounded-jitter+retry-after")
