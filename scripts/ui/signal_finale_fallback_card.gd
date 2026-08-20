@@ -96,6 +96,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, _journey_summar
     stack.add_child(replay)
     SignalFinaleLayout.prepare_scroll_content(_layout)
     SignalFinaleLayout.apply_ui_scale(self)
+    call_deferred("_scroll_to_start")
     apply_signal_context(_signal_context)
     if str(saved_reward.get("status", "")) == "entered_draw":
         _status.text = str(saved_reward.get("message", "Jesteś już w losowaniu 5 płyt."))
@@ -168,6 +169,10 @@ func _ensure_email_visible() -> void:
     if _scroll != null and _email != null:
         _scroll.ensure_control_visible(_email)
 
+func _ensure_email_visible_after_layout() -> void:
+    await get_tree().process_frame
+    _ensure_email_visible()
+
 func _scroll_to_start() -> void:
     if _scroll != null:
         _scroll.scroll_vertical = 0
@@ -188,3 +193,5 @@ func _notification(what: int) -> void:
         call_deferred("_layout_panel")
         call_deferred("_layout_columns")
         call_deferred("_apply_ui_scale")
+        if _email != null and _email.has_focus():
+            call_deferred("_ensure_email_visible_after_layout")
