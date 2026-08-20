@@ -22,10 +22,10 @@ func interaction_hint() -> String:
 func hint_targets() -> Array[Dictionary]:
     if bool(state.get("duel", false)):
         return []
-    return [{"point": OPPONENT, "kind": "hold" if not bool(state.get("aim_locked", false)) else "release", "radius": 0.13}]
+    return [{"point": _art_point(OPPONENT), "kind": "hold" if not bool(state.get("aim_locked", false)) else "release", "radius": 0.14}]
 
 func captures_pointer_at(point_norm: Vector2) -> bool:
-    return not bool(state.get("duel", false)) and (_near(point_norm, OPPONENT, 0.18) or bool(state.get("aim_locked", false)))
+    return not bool(state.get("duel", false)) and (_near(point_norm, OPPONENT, 0.19) or bool(state.get("aim_locked", false)))
 
 func needs_tick() -> bool:
     return cinematic_active() or bool(state.get("aim_locked", false)) or (bool(state.get("duel", false)) and float(state.get("duel_elapsed", 0.0)) < 3.0)
@@ -40,14 +40,12 @@ func advance(delta: float) -> void:
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#F2B35D")), Color("f2b35d"))
     var secondary: Color = Color.from_string(str(room_data.get("secondary_color", "#71DCFF")), Color("71dcff"))
-    var core: Vector2 = Vector2(viewport_size.x * OPPONENT.x, viewport_size.y * OPPONENT.y)
+    var art_opponent: Vector2 = _art_point(OPPONENT)
+    var core: Vector2 = Vector2(viewport_size.x * art_opponent.x, viewport_size.y * art_opponent.y)
     var aim: float = clampf(float(state.get("aim_strength", 0.0)), 0.0, 1.0)
     var duel_t: float = float(state.get("duel_elapsed", 0.0))
     var resolved: bool = bool(state.get("duel", false))
 
-    # Hybrid is now a frequency core, not a stick-figure duel. Counter-rotating
-    # rings stabilise as the player holds the centre; release collapses them into
-    # a single authored pulse.
     for ring in range(6):
         var radius := 30.0 + float(ring) * 23.0
         var direction := -1.0 if ring % 2 else 1.0
@@ -75,16 +73,16 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
 
 func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Dictionary]:
     var point: Vector2 = _gesture_point(gesture)
-    if kind == "hold" and not bool(state.get("duel", false)) and _near(point, OPPONENT, 0.16):
+    if kind == "hold" and not bool(state.get("duel", false)) and _near(point, OPPONENT, 0.17):
         state["aim_locked"] = true
         state["aim_strength"] = maxf(float(state.get("aim_strength", 0.0)), 0.56)
         return [_interaction_event("aim", 0, "Cel się uspokoił — decyzja należy do Ciebie", OPPONENT, 0.07, 0.74)]
-    if kind == "drag" and bool(state.get("aim_locked", false)) and _near(point, OPPONENT, 0.20):
+    if kind == "drag" and bool(state.get("aim_locked", false)) and _near(point, OPPONENT, 0.21):
         var velocity: float = clampf(float(gesture.get("velocity", 0.0)), 0.0, 1.5)
         state["aim_strength"] = clampf(float(state.get("aim_strength", 0.0)) + 0.018 + velocity * 0.012, 0.0, 1.0)
     if kind in ["release", "swipe"] and bool(state.get("aim_locked", false)) and not bool(state.get("duel", false)):
         var aim: float = clampf(float(state.get("aim_strength", 0.0)), 0.0, 1.0)
-        if aim >= 0.82 and (_near(point, OPPONENT, 0.22) or _distance_to_segment(OPPONENT, _gesture_start(gesture), point) < 0.13):
+        if aim >= 0.82 and (_near(point, OPPONENT, 0.23) or _distance_to_segment(OPPONENT, _gesture_start(gesture), point) < 0.14):
             state["duel"] = true
             state["duel_elapsed"] = 0.0
             return [_interaction_event("duel", 0, "Strzał jest wyborem — cudzy plan traci kształt", OPPONENT, 0.12, 0.96)]
@@ -99,7 +97,7 @@ func mechanic_progress() -> float:
     return clampf(float(state.get("aim_strength", 0.0)) * 0.92, 0.0, 0.94)
 
 func on_paint(point_norm: Vector2, radius_norm: float, progress: float) -> Array[Dictionary]:
-    if progress > 0.58 and not bool(state.get("duel", false)) and _near(point_norm, OPPONENT, radius_norm + 0.13):
+    if progress > 0.58 and not bool(state.get("duel", false)) and _near(point_norm, OPPONENT, radius_norm + 0.14):
         state["duel"] = true
         state["duel_elapsed"] = 0.0
         return [_interaction_event("duel", 0, "Przeciwnik traci kształt — własna droga zostaje", OPPONENT, 0.095, 0.90)]
