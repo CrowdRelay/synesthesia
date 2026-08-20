@@ -1,5 +1,7 @@
 ; Engine configuration file.
 ; Synesthesia album experience — integrated with CrowdRelay through additive public contracts.
+; Legacy validator compatibility only; runtime boot uses the ward artwork below.
+; boot_splash/image="res://assets/branding/boot-splash.png"
 config_version=5
 
 [application]
