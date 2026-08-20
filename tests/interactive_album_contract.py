@@ -76,7 +76,8 @@ require("scripts/progress_store.gd", '"echo_archive": {}')
 require("scripts/app/echo_archive.gd", "remember", "found_at_unix")
 require(
     "scripts/ui/album_archive_card.gd",
-    "KORYTARZ", "Album Mode", "ECHA %d/%d", "PackedStringArray", "room_requested", "WRÓĆ DO FINAŁU",
+    "ODDZIAŁ WEWNĘTRZNY", "KARTA ODDZIAŁU", "Album Mode", "ECHA %d/%d",
+    "PackedStringArray", "room_requested", "WRÓĆ DO FINAŁU",
 )
 album_mode = require(
     "scripts/app/album_mode_controller.gd",
