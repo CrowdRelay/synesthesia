@@ -61,7 +61,16 @@ for rel, tokens in required.items():
             failures.append(f"{rel}: missing {token}")
 
 base = (ROOT / "scripts/rooms/behavior_base.gd").read_text(errors="replace")
-for token in ('"technophobia": [', "func _art_offset_point", "func _art_lerp_point"):
+for token in (
+    '"technophobia": [',
+    "const ART_WARP_RADIUS: float = 0.30",
+    "const MOBILE_FORGIVENESS_BONUS: float = 0.08",
+    "func _art_offset_point",
+    "func _art_lerp_point",
+    "var weighted_offset := Vector2.ZERO",
+    "var point_as_logic: Vector2 = _logic_point(point)",
+    'if OS.has_feature("mobile"):',
+):
     if token not in base:
         failures.append(f"behavior_base.gd: missing {token}")
 
@@ -70,4 +79,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_WARD_INTERACTION_ALIGNMENT=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_WARD_INTERACTION_ALIGNMENT=PASS rooms=10 hints=art-space overlays=art-space technophobia=full-wall")
+print("SYNESTHESIA_WARD_INTERACTION_ALIGNMENT=PASS rooms=10 hints=art-space hotspots=continuous-warp mobile=forgiving technophobia=full-wall")

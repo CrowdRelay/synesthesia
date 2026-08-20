@@ -50,7 +50,7 @@ for token, source, label in [
     ('html/canvas_resize_policy=2', exports, 'web-adaptive-canvas'),
     ('PHONE_ASPECT_CUTOFF: float = 0.72', surface, 'responsive-cutoff'),
     ('get_viewport_rect().size', surface, 'native-root-size'),
-    ('URUCHAMIAM DOŚWIADCZENIE', boot, 'branded-boot-status'),
+    ('PRZYGOTOWUJĘ ODDZIAŁ', boot, 'branded-boot-status'),
     ('window.devicePixelRatio', web_boot, 'web-dpr-probe'),
     ('ui_root.attach(experience_intro_panel, 20)', main, 'menu-full-native-ui-root'),
     ('room_layer.position = art_rect.position', main, 'room-cover-position'),
@@ -64,4 +64,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_ADAPTIVE_VIEWPORT=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_ADAPTIVE_VIEWPORT=PASS cases=5 fhd=fallback ultrawide=810x1440 phone=cover no-fixed-540-runtime")
+print("SYNESTHESIA_ADAPTIVE_VIEWPORT=PASS cases=5 fhd=fallback ultrawide=810x1440 phone=cover no-fixed-540-runtime boot=ward")
