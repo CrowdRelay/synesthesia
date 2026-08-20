@@ -21,17 +21,18 @@ for index, block in enumerate(presets[:4]):
         'tests/*',
         'tools/*',
         'assets/branding/boot-splash*',
-        'assets/branding/menu-eye-*',
         'assets/rooms/vertical/*-bg.webp',
         'assets/rooms/vertical/*-subject.webp',
         'assets/rooms/vertical/*-foreground.webp',
     ):
         if required not in value:
             failures.append(f'{name}: production export still includes {required}')
+    if 'assets/branding/menu-eye-*' in value:
+        failures.append(f'{name}: reduced-motion menu fallback must remain exportable')
 
 if failures:
     for failure in failures:
         print(f'FAIL: {failure}')
     raise SystemExit(f'SYNESTHESIA_EXPORT_SURFACE=FAIL count={len(failures)}')
 
-print('SYNESTHESIA_EXPORT_SURFACE=PASS runtime=scene-image-only retired-art=excluded tests=excluded tools=excluded platforms=4')
+print('SYNESTHESIA_EXPORT_SURFACE=PASS runtime=scene-image-only retired-room-layers=excluded menu-fallback=preserved tests=excluded tools=excluded platforms=4')
