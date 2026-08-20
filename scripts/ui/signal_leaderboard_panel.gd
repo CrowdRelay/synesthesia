@@ -6,10 +6,12 @@ signal refresh_requested
 
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
+const LeaderboardIdentity := preload("res://scripts/ui/leaderboard_identity.gd")
 
 var _status: Label
 var _list: VBoxContainer
 var _publish: Button
+var _alias: LineEdit
 var _own_alias: String = ""
 var _own_rank: int = 0
 var _own_best_elapsed_ms: int = 0
@@ -24,11 +26,11 @@ func configure(summary: Dictionary, _scroll: ScrollContainer) -> void:
     _room_total = maxi(0, int(summary.get("rooms_total", 0)))
 
     var divider := HSeparator.new()
-    divider.modulate = Color(1.0, 1.0, 1.0, 0.16)
+    divider.modulate = Color(1.0, 1.0, 1.0, 0.14)
     add_child(divider)
 
     var title := Label.new()
-    title.text = "TABLICA SYGNAŁU · TOP 10"
+    title.text = "TABLICA ODDZIAŁU · TOP 10"
     UIFactory.apply_display_font(title)
     title.add_theme_font_size_override("font_size", 13)
     title.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
@@ -49,7 +51,14 @@ func configure(summary: Dictionary, _scroll: ScrollContainer) -> void:
     _list.add_theme_constant_override("separation", 3)
     add_child(_list)
 
-    var privacy := UIFactory.body("Publikacja jest dobrowolna. CrowdRelay pokaże wyłącznie zamaskowany adres, np. woj••••, i Twój najlepszy pełny czas. Pełny e-mail, konto Signal i urządzenie nigdy nie trafiają na publiczną listę. Ranking nie wpływa na losowanie.")
+    _alias = UIFactory.line_edit("Nick / nazwa (opcjonalnie)", ViryaDesign.SIGNAL_HOT)
+    _alias.name = "LeaderboardAlias"
+    _alias.max_length = 24
+    _alias.text = LeaderboardIdentity.display_name()
+    _alias.text_changed.connect(func(value: String) -> void: LeaderboardIdentity.set_display_name(value))
+    add_child(_alias)
+
+    var privacy := UIFactory.body("Ranking nie wymaga maila ani konta Signal. Wpisz nick albo zostaw puste — wtedy wynik zapisze się jako „anonymous”. Ranking nie daje udziału w losowaniu 5 płyt.")
     privacy.add_theme_font_size_override("font_size", 11)
     privacy.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
     add_child(privacy)
@@ -59,10 +68,18 @@ func configure(summary: Dictionary, _scroll: ScrollContainer) -> void:
     _status.add_theme_color_override("font_color", ViryaDesign.SIGNAL_HOT)
     add_child(_status)
 
-    _publish = UIFactory.product_button("OPUBLIKUJ MÓJ PB W TOP 10", ViryaDesign.SIGNAL_HOT)
-    _publish.disabled = true
-    _publish.pressed.connect(func() -> void: publish_requested.emit())
+    _publish = UIFactory.product_button("ZAPISZ PB W TOP 10", ViryaDesign.SIGNAL_HOT)
+    _publish.disabled = not _timed_run_complete
+    _publish.pressed.connect(func() -> void:
+        LeaderboardIdentity.set_display_name(_alias.text if _alias != null else "")
+        publish_requested.emit()
+    )
     add_child(_publish)
+
+    var signal_note := UIFactory.body("Chcesz wejść do losowania 5 płyt i zostać w kontakcie z VIRYA? To osobny krok poniżej — tam potrzebny jest e-mail.")
+    signal_note.add_theme_font_size_override("font_size", 10)
+    signal_note.add_theme_color_override("font_color", ViryaDesign.TEXT_DIM)
+    add_child(signal_note)
 
     var refresh := UIFactory.product_button("ODŚWIEŻ TOP 10", ViryaDesign.TEXT_DIM)
     refresh.pressed.connect(func() -> void: refresh_requested.emit())
@@ -86,11 +103,11 @@ func set_items(items: Array) -> void:
             index += 1
             var item: Dictionary = value as Dictionary
             var rank: int = maxi(1, int(item.get("rank", index)))
-            var name: String = str(item.get("display_name", "•••"))
+            var name: String = str(item.get("display_name", "anonymous"))
             var elapsed_ms: int = maxi(0, int(item.get("elapsed_ms", 0)))
             var own: bool = rank == _own_rank and not _own_alias.is_empty() and name == _own_alias
             var row := Label.new()
-            row.text = "%s%02d · %s · %s" % ["▶ " if own else "", rank, name.left(20), format_time(elapsed_ms)]
+            row.text = "%s%02d · %s · %s" % ["▶ " if own else "", rank, name.left(24), format_time(elapsed_ms)]
             UIFactory.apply_display_font(row)
             row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
             row.add_theme_font_size_override("font_size", 13 if own else (12 if rank <= 3 else 11))
@@ -99,14 +116,14 @@ func set_items(items: Array) -> void:
     if _own_rank > 0:
         set_status("TWÓJ RANK · #%d · PB %s" % [_own_rank, format_time(_own_best_elapsed_ms)])
     elif _timed_run_complete:
-        set_status("TOP 10 aktualne · liczy się najlepszy pełny przebieg jednej osoby.")
+        set_status("TOP 10 aktualne · liczy się najlepszy pełny przebieg z tego urządzenia.")
     else:
         set_status(_default_status())
 
 func set_publish_result(context: Dictionary) -> void:
     _own_rank = maxi(1, int(context.get("rank", 1)))
     _own_best_elapsed_ms = maxi(0, int(context.get("best_elapsed_ms", 0)))
-    _own_alias = str(context.get("display_name", "•••"))
+    _own_alias = str(context.get("display_name", LeaderboardIdentity.effective_name()))
     var placement: String = "TOP 10" if _own_rank <= 10 else "poza TOP 10"
     set_status("Zapisane jako %s · #%d (%s) · PB %s" % [_own_alias, _own_rank, placement, format_time(_own_best_elapsed_ms)])
 
@@ -114,14 +131,14 @@ func set_status(text_value: String) -> void:
     if _status != null:
         _status.text = text_value
 
-func set_publish_enabled(value: bool) -> void:
+func set_publish_enabled(_value: bool) -> void:
     if _publish == null:
         return
-    _publish.disabled = not value or not _timed_run_complete
+    # Leaderboard identity is intentionally independent from Signal/e-mail.
+    # Server completion + a full 11/11 timed run are the only gameplay gates.
+    _publish.disabled = not _timed_run_complete
     if not _timed_run_complete:
         _status.text = _default_status()
-    elif not value:
-        _status.text = "Aby opublikować wynik: połącz ten przebieg z Sygnałem albo użyj e-maila do losowania. Po powrocie przycisk publikacji się odblokuje."
 
 func is_publish_eligible() -> bool:
     return _timed_run_complete
