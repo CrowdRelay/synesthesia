@@ -1,0 +1,99 @@
+name: Android Google Play rollout
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Production rollout target
+        required: true
+        type: choice
+        default: "25"
+        options: ["25", "50", "100", "halt"]
+      expected_version_code:
+        description: Optional safety pin to the active production versionCode
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: synesthesia-google-play-production-rollout
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Refuse rollout control outside main
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_REF}" == "refs/heads/main" ]]
+
+      - name: Require production WIF configuration
+        env:
+          WIF_PROVIDER: ${{ vars.GOOGLE_PLAY_WIF_PROVIDER }}
+          WIF_SERVICE_ACCOUNT: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${WIF_PROVIDER}" || { echo "SYNESTHESIA_PLAY_WIF=FAIL provider-missing" >&2; exit 1; }
+          test -n "${WIF_SERVICE_ACCOUNT}" || { echo "SYNESTHESIA_PLAY_WIF=FAIL service-account-missing" >&2; exit 1; }
+          echo "SYNESTHESIA_PLAY_WIF=PASS"
+
+      - name: Require live Synesthesia and CrowdRelay capabilities
+        env:
+          CROWDRELAY_BASE_URL: ${{ vars.CROWDRELAY_PRODUCTION_BASE_URL }}
+          SYNESTHESIA_BASE_URL: ${{ vars.SYNESTHESIA_PRODUCTION_BASE_URL || 'https://synesthesia.virya.music' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CROWDRELAY_BASE_URL}" || { echo "SYNESTHESIA_PLAY_READINESS=FAIL base-url-missing" >&2; exit 1; }
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --connect-timeout 4 --max-time 10 --retry 2 --retry-all-errors \
+            "${CROWDRELAY_BASE_URL%/}/v1/meta" \
+            | jq -e '.apiVersion == "1" and .capabilities.synesthesia_runs_v1 and .capabilities.synesthesia_rewards_v1 and .capabilities.synesthesia_leaderboard_v1 and .capabilities.synesthesia_recovery_v1' >/dev/null
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --connect-timeout 4 --max-time 10 --retry 2 --retry-all-errors \
+            "${SYNESTHESIA_BASE_URL%/}/menu-world.webp" >/dev/null
+          echo "SYNESTHESIA_PLAY_READINESS=PASS"
+
+      - name: Authenticate to Google Cloud with Workload Identity Federation
+        id: google-auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GOOGLE_PLAY_WIF_PROVIDER }}
+          service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_lifetime: 1200s
+          create_credentials_file: false
+
+      - name: Advance or halt production rollout
+        env:
+          GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          TARGET: ${{ inputs.target }}
+          EXPECTED_VERSION_CODE: ${{ inputs.expected_version_code }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--target "${TARGET}" --output artifacts/google-play-rollout.json)
+          if [[ -n "${EXPECTED_VERSION_CODE}" ]]; then
+            args+=(--expected-version-code "${EXPECTED_VERSION_CODE}")
+          fi
+          python3 tools/google_play_rollout.py "${args[@]}"
+
+      - name: Upload rollout receipt
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: synesthesia-google-play-rollout-${{ github.run_id }}
+          path: artifacts/google-play-rollout.json
+          if-no-files-found: warn
+          retention-days: 90
