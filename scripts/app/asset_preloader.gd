@@ -51,9 +51,9 @@ func prepare(manifest_path: String) -> void:
     var audio: Dictionary = audio_value if audio_value is Dictionary else {}
 
     # scene_image is authoritative for the psychiatric-ward redesign. A room
-    # prewarms only its scene graph, behavior, authored scene and ambience. The
-    # completion excerpt is intentionally demand-loaded after gameplay instead
-    # of competing with the next room's art during interaction.
+    # prewarms only its scene graph, behavior and authored scene as critical.
+    # Ambience/outro stay deferred behind that work so the next room streams
+    # during the current one without turning audio decode into a transition join.
     var critical_paths: Array[String] = [
         str(room.get("scene_path", "")),
         str(room.get("behavior_script", "")),
@@ -62,6 +62,7 @@ func prepare(manifest_path: String) -> void:
     for path in critical_paths:
         _queue(path, true)
     _queue(str(audio.get("ambience", "")), false)
+    _queue(str(audio.get("completion_excerpt", "")), false)
 
 func prime_runtime_support() -> void:
     if _runtime_support_primed:
