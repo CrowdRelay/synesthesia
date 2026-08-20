@@ -132,7 +132,7 @@ require("scripts/ui/completion_card.gd", "DRZWI OTWARTE", "Zostań i słuchaj")
 require("scripts/ui/signal_finale_card.gd", "Sygnał dotarł.", "VIRYA // WYPIS Z ODDZIAŁU // FINAŁ", "DOŁĄCZ DO LOSOWANIA 5 PŁYT", "DoorEyeMotif")
 require("scripts/ui/echoes_finale_background.gd", "echoes-finale.webp", "echoes_finale.gdshader")
 require("scripts/app/transition_director.gd", "travel_out", "travel_in", "DoorTransitionLayerScript")
-require("scripts/render/room_dressing_layer.gd", "_draw_chamber_shell", "_draw_open_doorway")
+require("scripts/render/room_dressing_layer.gd", "_draw_ward_shell", "_draw_room_signature", "_draw_open_doorway")
 require("scripts/audio_director.gd", "BALLOON_POP_PATH", "play_interaction_sfx", "music_ratio", "noise_ratio")
 
 require("scripts/ui/ui_factory.gd", "ScrollContainer.SCROLL_MODE_DISABLED", "content.custom_minimum_size")
