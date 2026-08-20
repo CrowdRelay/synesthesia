@@ -6,7 +6,7 @@ const CORE = [
   "/icon.svg",
   "/icon-192.png",
   "/icon-512.png",
-  "/menu-eye-poster.webp",
+  "/menu-world.webp",
   "/fonts/SynesthesiaTitle.ttf",
   "/fonts/SynesthesiaDisplay.ttf",
   "/boot-shell.css",

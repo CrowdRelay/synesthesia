@@ -27,11 +27,11 @@ func interaction_hint() -> String:
 
 func hint_targets() -> Array[Dictionary]:
     if not bool(state.get("poured", false)):
-        return [{"point": CORE_POINT, "kind": "hold", "radius": 0.12}]
+        return [{"point": _art_point(CORE_POINT), "kind": "hold", "radius": 0.12}]
     if not bool(state.get("toast", false)):
         return [
-            {"point": _node_position(), "kind": "drag", "radius": 0.10},
-            {"point": NODE_TARGET, "kind": "target", "radius": 0.085},
+            {"point": _art_offset_point(NODE_START, _node_position()), "kind": "drag", "radius": 0.10},
+            {"point": _art_point(NODE_TARGET), "kind": "target", "radius": 0.085},
         ]
     return []
 
@@ -45,7 +45,8 @@ func captures_pointer_at(point_norm: Vector2) -> bool:
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var signal_color: Color = Color.from_string(str(room_data.get("secondary_color", "#A40F2D")), Color("a40f2d"))
     var pale: Color = Color.from_string(str(room_data.get("accent_color", "#D8D4C8")), Color("d8d4c8"))
-    var center := Vector2(viewport_size.x * 0.5, viewport_size.y * 0.62)
+    var art_core := _art_point(CORE_POINT)
+    var center := Vector2(viewport_size.x * art_core.x, viewport_size.y * art_core.y)
     var pulse := 0.5 + 0.5 * sin(phase * 2.1)
 
     # Candle/diagnostic pins: atmosphere, not props pasted on the scene.
@@ -66,7 +67,7 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
         _draw_wave(canvas, center - Vector2(0.0, 5.0), signal_color, 0.16)
 
     if not cinematic_active() and not bool(state.get("toast", false)):
-        var node_norm := _node_position()
+        var node_norm := _art_offset_point(NODE_START, _node_position())
         var node := Vector2(node_norm.x * viewport_size.x, node_norm.y * viewport_size.y)
         _draw_signal_node(canvas, node, signal_color, pale, 0.92 + float(assist_level) * 0.07)
         if bool(state.get("poured", false)):

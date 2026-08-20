@@ -9,11 +9,12 @@ var _last_tick_ms: int = 0
 var _last_tech_buzz_ms: int = 0
 var _last_motion_ms: int = 0
 var _pulse_generation: int = 0
+var _semantic_quiet_until_ms: int = 0
 
 func configure(sensory: Dictionary, style: String = "paint") -> void:
     _pulse_generation += 1
-    calm_amplitude = float(sensory.get("haptics_calm", 0.16))
-    full_amplitude = float(sensory.get("haptics_full", 0.34))
+    calm_amplitude = clampf(float(sensory.get("haptics_calm", 0.16)), 0.04, 0.42)
+    full_amplitude = clampf(float(sensory.get("haptics_full", 0.34)), 0.08, 0.72)
     room_style = style
 
 func set_calm_mode(value: bool) -> void:
@@ -29,6 +30,8 @@ func paint_tick(speed_normalized: float) -> void:
     if not enabled:
         return
     var now: int = Time.get_ticks_msec()
+    if now < _semantic_quiet_until_ms:
+        return
     var interval: int = 118 if calm_mode else 74
     if room_style == "technophobia":
         interval = 145 if calm_mode else 92
@@ -50,6 +53,8 @@ func motion(kind: String, strength: float) -> void:
     if not enabled:
         return
     var now := Time.get_ticks_msec()
+    if now < _semantic_quiet_until_ms:
+        return
     var amount := clampf(strength, 0.0, 1.0)
     var interval := 76 if calm_mode else 52
     if kind in ["heartbeat", "breath", "resonance"]:
@@ -77,11 +82,14 @@ func motion(kind: String, strength: float) -> void:
 func discovery() -> void:
     if not enabled:
         return
+    _begin_semantic_pattern(64)
     var base: float = calm_amplitude if calm_mode else full_amplitude
     Input.vibrate_handheld(30 if calm_mode else 46, clampf(base * 1.28, 0.08, 0.62))
 
 func confirmation(strength: float = 0.6) -> void:
     if not enabled:
+        return
+    if Time.get_ticks_msec() < _semantic_quiet_until_ms:
         return
     var amount: float = clampf(strength, 0.2, 1.0)
     var base: float = calm_amplitude if calm_mode else full_amplitude
@@ -91,6 +99,10 @@ func confirmation(strength: float = 0.6) -> void:
 func special(kind: String, index: int = 0) -> void:
     if not enabled:
         return
+    # Every authored pattern owns its delayed tail. A newer semantic event
+    # cancels the previous tail and briefly suppresses paint/motion ticks, so
+    # rapid room interactions stay crisp instead of becoming one long buzz.
+    _begin_semantic_pattern(118)
     var base: float = calm_amplitude if calm_mode else full_amplitude
     match kind:
         "balloon":
@@ -179,6 +191,7 @@ func special(kind: String, index: int = 0) -> void:
 func cinematic_reveal() -> void:
     if not enabled:
         return
+    _begin_semantic_pattern(255)
     var base: float = calm_amplitude if calm_mode else full_amplitude
     Input.vibrate_handheld(28 if calm_mode else 40, clampf(base * 0.92, 0.08, 0.46))
     _pulse_after_delay(90, 38 if calm_mode else 54, clampf(base * 1.28, 0.10, 0.64))
@@ -187,6 +200,7 @@ func cinematic_reveal() -> void:
 func door_open() -> void:
     if not enabled:
         return
+    _begin_semantic_pattern(190)
     var base: float = calm_amplitude if calm_mode else full_amplitude
     Input.vibrate_handheld(18, clampf(base * 0.72, 0.06, 0.34))
     _pulse_after_delay(110, 45 if calm_mode else 64, clampf(base * 1.18, 0.10, 0.62))
@@ -199,3 +213,7 @@ func _pulse_after_delay(delay_ms: int, duration_ms: int, amplitude: float) -> vo
     await tree.create_timer(float(delay_ms) / 1000.0).timeout
     if enabled and generation == _pulse_generation and is_inside_tree():
         Input.vibrate_handheld(duration_ms, amplitude)
+
+func _begin_semantic_pattern(settle_ms: int) -> void:
+    _pulse_generation += 1
+    _semantic_quiet_until_ms = maxi(_semantic_quiet_until_ms, Time.get_ticks_msec() + maxi(0, settle_ms))

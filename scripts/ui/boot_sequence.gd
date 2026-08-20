@@ -2,22 +2,20 @@ extends Control
 
 signal released
 
-const DoorEyeMotif := preload("res://scripts/ui/door_eye_motif.gd")
 const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 const MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"
 
-# Keep startup branded but bounded. The authored Theora loop is armed only after
-# the first real Godot frame, so these timings do not move decoder work back onto
-# the critical first-frame path.
+# Keep startup branded but bounded. The same authored ward corridor is used by
+# the native splash, Web shell, Godot boot and menu, so the handoff never jumps
+# back to the retired sci-fi eye artwork.
 const COLD_BOOT_HOLD: float = 0.16
-const COLD_EYE_REVEAL_DURATION: float = 0.34
+const COLD_REVEAL_DURATION: float = 0.34
 const COLD_FADE_DURATION: float = 0.14
 const WARM_BOOT_HOLD: float = 0.025
-const WARM_EYE_REVEAL_DURATION: float = 0.16
+const WARM_REVEAL_DURATION: float = 0.16
 const WARM_FADE_DURATION: float = 0.09
 
-var _motif
 var _title: Label
 var _subtitle: Label
 var _tagline: Label
@@ -43,14 +41,9 @@ func _ready() -> void:
     call_deferred("_play")
 
 func _release_web_shell_after_first_frame() -> void:
-    # The browser shell and native engine splash both use a still taken from the
-    # exact menu-eye loop. After one cheap Godot frame is actually on screen we
-    # can safely arm the decoder and continue with the *same* art in motion.
+    # Release only after the first authored Godot frame is actually presented.
+    # The browser shell and engine already show the same ward composition.
     await RenderingServer.frame_post_draw
-    if OS.has_feature("web"):
-        JavaScriptBridge.eval("window.synesthesiaBootPrepareHandoff && window.synesthesiaBootPrepareHandoff();", true)
-    if _motif != null and not _reduced_motion:
-        _motif.arm_authored_animation(true)
     if OS.has_feature("web"):
         JavaScriptBridge.eval("window.synesthesiaBootReady && window.synesthesiaBootReady();", true)
 
@@ -75,8 +68,8 @@ func _build() -> void:
     _title.add_theme_color_override("font_outline_color", Color("05060ae8"))
     UIFactory.apply_display_font(_title)
     _title.set_anchors_preset(Control.PRESET_TOP_WIDE)
-    _title.offset_top = 46.0 * _ui_scale
-    _title.offset_bottom = 104.0 * _ui_scale
+    _title.offset_top = 154.0 * _ui_scale
+    _title.offset_bottom = 212.0 * _ui_scale
     add_child(_title)
 
     _subtitle = Label.new()
@@ -86,23 +79,9 @@ func _build() -> void:
     _subtitle.add_theme_color_override("font_color", Color("a895b8"))
     UIFactory.apply_display_font(_subtitle)
     _subtitle.set_anchors_preset(Control.PRESET_TOP_WIDE)
-    _subtitle.offset_top = 108.0 * _ui_scale
-    _subtitle.offset_bottom = 138.0 * _ui_scale
+    _subtitle.offset_top = 216.0 * _ui_scale
+    _subtitle.offset_bottom = 246.0 * _ui_scale
     add_child(_subtitle)
-
-    _motif = DoorEyeMotif.new()
-    _motif.name = "BootAuthoredEye"
-    _motif.set_anchors_preset(Control.PRESET_CENTER)
-    var motif_h: float = clampf(viewport_size.y * 0.57, 390.0 * _ui_scale, 720.0 * _ui_scale)
-    var motif_w: float = motif_h * (848.0 / 1104.0)
-    _motif.offset_left = -motif_w * 0.5
-    _motif.offset_right = motif_w * 0.5
-    _motif.offset_top = -motif_h * 0.47
-    _motif.offset_bottom = motif_h * 0.53
-    add_child(_motif)
-    _motif.configure(Color("84b4ac"), "splash", Color("e73535"))
-    _motif.modulate.a = 0.36
-    _motif.set_reduced_motion(_reduced_motion)
 
     _tagline = Label.new()
     _tagline.text = "NASŁUCHUJ  ·  DOTKNIJ  ·  ODSŁOŃ"
@@ -148,13 +127,10 @@ func _build() -> void:
 
 func _play() -> void:
     var hold: float = WARM_BOOT_HOLD if _warm_boot else COLD_BOOT_HOLD
-    var reveal_duration: float = WARM_EYE_REVEAL_DURATION if _warm_boot else COLD_EYE_REVEAL_DURATION
+    var reveal_duration: float = WARM_REVEAL_DURATION if _warm_boot else COLD_REVEAL_DURATION
     var fade_duration: float = WARM_FADE_DURATION if _warm_boot else COLD_FADE_DURATION
     await get_tree().create_timer(hold).timeout
-    if not _reduced_motion and not _warm_boot:
-        _motif.trigger_glitch(0.36)
     var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-    tween.tween_method(Callable(_motif, "set_open_mix"), 0.42 if _warm_boot else 0.12, 1.0, reveal_duration)
     tween.tween_property(_progress_fill, "scale:x", 1.0, reveal_duration)
     tween.tween_property(_title, "modulate:a", 0.84, reveal_duration)
     tween.tween_property(_load_label, "modulate:a", 0.58, reveal_duration)
@@ -165,10 +141,7 @@ func _play() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_DISABLED
-    # Freeze this splash on its authored poster, synchronously build the real
-    # menu underneath, then fade *into* it. This removes the old black-frame
-    # beat without ever running two Theora decoders at the same time.
-    _motif.suspend_authored_animation(true)
+    # Build the real menu underneath, then fade into the same corridor artwork.
     released.emit()
     var fade := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     fade.tween_property(self, "modulate:a", 0.0, fade_duration if not _reduced_motion else minf(fade_duration, 0.07))

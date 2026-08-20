@@ -42,9 +42,11 @@ boot = text("scripts/ui/boot_sequence.gd")
 if "boot.released.connect(_show_experience_intro)" not in main or "released.emit()" not in boot:
     failures.append("startup still overlaps boot/menu animated eye layers")
 if '_authored_video_armed = profile == "menu"' not in motif:
-    failures.append("splash can arm authored Theora before the first frame")
-if '_motif.arm_authored_animation(true)' not in boot or 'await RenderingServer.frame_post_draw' not in boot:
-    failures.append("splash authored eye is not deferred until after first presentation")
+    failures.append("menu eye can arm authored Theora outside its owned surface")
+if 'DoorEyeMotif' in boot or '_motif.arm_authored_animation(true)' in boot:
+    failures.append("boot still starts the retired eye decoder")
+if 'await RenderingServer.frame_post_draw' not in boot:
+    failures.append("ward splash releases before its first presented frame")
 
 stage = text("scripts/render/room_stage.gd")
 for token in (
@@ -65,4 +67,4 @@ if failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_UI_PERFORMANCE=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_UI_PERFORMANCE=PASS idle-video=sleep idle-transition=sleep idle-fx=sleep finale=visibility-gated eye=24fps-video/36fps-static startup=poster-first+deferred-decoder native-hit-test=anchor-owned")
+print("SYNESTHESIA_UI_PERFORMANCE=PASS idle-video=sleep idle-transition=sleep idle-fx=sleep finale=visibility-gated eye=menu-owned startup=ward-still+zero-decoder native-hit-test=anchor-owned")

@@ -30,7 +30,7 @@ func hint_targets() -> Array[Dictionary]:
         if removed.has(index):
             continue
         targets.append({
-            "point": MASKS[index] + _offset(index),
+            "point": _art_offset_point(MASKS[index], MASKS[index] + _offset(index)),
             "kind": "drag" if float(cracks[index]) >= 0.45 else "tap",
             "radius": 0.10,
         })
@@ -48,7 +48,8 @@ func render(canvas, viewport_size: Vector2, progress: float, _phase: float) -> v
         if removed.has(index) and not cinematic_active():
             continue
         var offset: Vector2 = _offset(index)
-        var center: Vector2 = Vector2((MASKS[index].x + offset.x) * viewport_size.x, (MASKS[index].y + offset.y) * viewport_size.y)
+        var mask_norm := _art_offset_point(MASKS[index], MASKS[index] + offset)
+        var center: Vector2 = Vector2(mask_norm.x * viewport_size.x, mask_norm.y * viewport_size.y)
         var radius: float = 27.0 + float(index) * 2.0
         canvas.draw_arc(center, radius, 0.08, PI - 0.08, 24, Color(accent, 0.13 + progress * 0.12), 2.2)
         canvas.draw_arc(center, radius * 0.72, PI + 0.15, TAU - 0.15, 20, Color(accent, 0.12), 1.7)

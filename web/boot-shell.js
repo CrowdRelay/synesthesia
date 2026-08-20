@@ -4,7 +4,6 @@
   const CACHE_MARKER = "synesthesia:web-cache-id";
   let removed = false;
   let migrationActive = false;
-  let bootVideoTimer = 0;
 
   function readCacheMarker() {
     try {
@@ -72,51 +71,6 @@
     return document.getElementById("synesthesia-boot");
   }
 
-  function bootVideoElement() {
-    return document.getElementById("synesthesia-boot-eye");
-  }
-
-  function shouldAnimateBootVideo() {
-    if (removed || migrationActive || warmBoot) return false;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (connection?.saveData) return false;
-    return !["slow-2g", "2g"].includes(connection?.effectiveType || "");
-  }
-
-  function armBootVideo() {
-    bootVideoTimer = 0;
-    if (!shouldAnimateBootVideo()) return;
-    const video = bootVideoElement();
-    const boot = bootElement();
-    if (!video || !boot || boot.dataset.ready === "true") return;
-    if (!video.getAttribute("src")) {
-      video.src = "/menu-eye-boot-loop.mp4";
-      video.load();
-    }
-    const play = video.play();
-    if (play && typeof play.catch === "function") play.catch(() => undefined);
-  }
-
-  function stopBootVideo() {
-    if (bootVideoTimer) {
-      window.clearTimeout(bootVideoTimer);
-      bootVideoTimer = 0;
-    }
-    const video = bootVideoElement();
-    if (!video) return;
-    try { video.pause(); } catch (_) {}
-    video.removeAttribute("src");
-    try { video.load(); } catch (_) {}
-  }
-
-  function scheduleBootVideo() {
-    if (!shouldAnimateBootVideo() || bootVideoTimer) return;
-    // Fast boots never fetch/decode the extra loop. Slow boots become animated
-    // after the instant poster has already painted.
-    bootVideoTimer = window.setTimeout(armBootVideo, 420);
-  }
-
   function statusElement() {
     return document.getElementById("synesthesia-boot-status");
   }
@@ -155,7 +109,6 @@
     if (removed || migrationActive) return;
     removed = true;
     window.dispatchEvent(new CustomEvent("synesthesia:interactive", { detail: { durationMs: performance.now() } }));
-    stopBootVideo();
     const el = bootElement();
     if (!el) return;
     el.dataset.ready = "true";
@@ -180,7 +133,6 @@
   function wireDom() {
     wireRetry();
     updateNativeLabel();
-    scheduleBootVideo();
   }
 
   migrateControlledDeploy();
@@ -192,9 +144,6 @@
   window.addEventListener("resize", updateNativeLabel, { passive: true });
   window.visualViewport?.addEventListener("resize", updateNativeLabel, { passive: true });
 
-  // Godot calls prepare first, then arms its authored Theora loop, then fades
-  // this shell. This prevents two decoders from running through the handoff.
-  window.synesthesiaBootPrepareHandoff = stopBootVideo;
   window.synesthesiaBootReady = removeBoot;
   window.synesthesiaBootFailed = (message) => showStalled(message);
 

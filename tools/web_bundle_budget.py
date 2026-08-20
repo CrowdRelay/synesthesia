@@ -10,7 +10,7 @@ MAX_PCK = 56 * 1024 * 1024
 MAX_RUST_WASM = 2 * 1024 * 1024
 MAX_TOTAL = 112 * 1024 * 1024
 MAX_SOURCE_RUNTIME = 42 * 1024 * 1024
-MAX_BOOT_LOOP = 220 * 1024
+MAX_BOOT_ART = 160 * 1024
 
 RUNTIME_SOURCE_ROOTS = ("assets", "scenes", "scripts", "shaders")
 RUNTIME_SOURCE_FILES = ("project.godot", "default_bus_layout.tres")
@@ -29,11 +29,11 @@ def source_runtime_bytes() -> int:
 
 def preflight() -> None:
     total = source_runtime_bytes()
-    boot_loop = ROOT / "assets/branding/menu-eye-boot-loop.mp4"
-    if not boot_loop.is_file() or boot_loop.stat().st_size > MAX_BOOT_LOOP:
+    boot_art = ROOT / "assets/v2/branding/menu-world.webp"
+    if not boot_art.is_file() or boot_art.stat().st_size > MAX_BOOT_ART:
         raise SystemExit(
             "SYNESTHESIA_WEB_BUNDLE_PREFLIGHT=FAIL "
-            f"boot_loop_bytes={boot_loop.stat().st_size if boot_loop.is_file() else -1} limit_bytes={MAX_BOOT_LOOP}"
+            f"boot_art_bytes={boot_art.stat().st_size if boot_art.is_file() else -1} limit_bytes={MAX_BOOT_ART}"
         )
     if total > MAX_SOURCE_RUNTIME:
         raise SystemExit(
@@ -43,7 +43,7 @@ def preflight() -> None:
     print(
         "SYNESTHESIA_WEB_BUNDLE_PREFLIGHT=PASS "
         f"source_runtime_mib={total / 1048576:.2f} limit_mib={MAX_SOURCE_RUNTIME / 1048576:.0f} "
-        f"boot_loop_kib={boot_loop.stat().st_size / 1024:.1f}"
+        f"boot_art_kib={boot_art.stat().st_size / 1024:.1f}"
     )
 
 def postbuild() -> None:

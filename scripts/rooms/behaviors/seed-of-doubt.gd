@@ -21,10 +21,10 @@ func interaction_hint() -> String:
 
 func hint_targets() -> Array[Dictionary]:
     if not bool(state.get("seed", false)):
-        return [{"point": SEED_POINT, "kind": "hold", "radius": 0.105}]
+        return [{"point": _art_point(SEED_POINT), "kind": "hold", "radius": 0.105}]
     if not bool(state.get("crown", false)):
         var growth: float = clampf(float(state.get("growth", 0.0)), 0.0, 1.0)
-        return [{"point": SEED_POINT.lerp(Vector2(0.50, 0.30), growth), "kind": "drag_up", "radius": 0.11}]
+        return [{"point": _art_lerp_point(SEED_POINT, Vector2(0.50, 0.30), growth), "kind": "drag_up", "radius": 0.11}]
     return []
 
 func captures_pointer_at(point_norm: Vector2) -> bool:
@@ -37,7 +37,8 @@ func captures_pointer_at(point_norm: Vector2) -> bool:
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#9DE66F")), Color("9de66f"))
     var effective: float = maxf(progress, float(state.get("growth", 0.0)))
-    var root: Vector2 = Vector2(viewport_size.x * 0.5, viewport_size.y * 0.74)
+    var art_seed := _art_point(SEED_POINT)
+    var root: Vector2 = Vector2(viewport_size.x * art_seed.x, viewport_size.y * art_seed.y)
     var cinematic_t: float = cinematic_time()
     var twist: float = sin(cinematic_t * 1.45) * 24.0 if cinematic_active() else 0.0
     var growth_bias: float = clampf(float(state.get("growth_bias_x", 0.0)), -0.13, 0.13)

@@ -19,6 +19,7 @@ python3 scripts/run-contracts.py --jobs "${SYNESTHESIA_CONTRACT_JOBS:-4}" \
   tests/interaction_guidance_contract.py \
   tests/room_mechanics_v2_contract.py \
   tests/technophobia_vertical_slice_contract.py \
+  tests/ward_interaction_alignment_contract.py \
   tests/full_room_gameplay_contract.py \
   tests/gesture_semantics_contract.py \
   tests/runtime_hot_path_contract.py \
