@@ -51,6 +51,7 @@ require_cmd unzip
 require_cmd keytool
 require_cmd cargo
 require_cmd rustup
+require_cmd python3
 
 [[ -n "$ANDROID_HOME" && -d "$ANDROID_HOME" ]] || {
   echo 'ERROR: ANDROID_HOME/ANDROID_SDK_ROOT is not configured' >&2
@@ -101,6 +102,7 @@ license_answers="$(printf 'y\n%.0s' {1..100})"
 
 export ANDROID_HOME ANDROID_SDK_ROOT
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
 export NDK_HOME="$ANDROID_NDK_HOME"
 [[ -d "$ANDROID_NDK_HOME" ]] || { echo 'ERROR: configured NDK is missing' >&2; exit 1; }
 
@@ -123,7 +125,7 @@ fi
 
 GODOT_DATA_DIR="$(./scripts/godot-runtime-data-dir.sh)"
 TEMPLATE_DIR="$GODOT_DATA_DIR/export_templates/$GODOT_RELEASE_VERSION"
-if [[ ! -f "$TEMPLATE_DIR/android_debug.apk" || ! -f "$TEMPLATE_DIR/android_release.apk" ]]; then
+if [[ ! -f "$TEMPLATE_DIR/android_debug.apk" || ! -f "$TEMPLATE_DIR/android_release.apk" || ! -f "$TEMPLATE_DIR/android_source.zip" ]]; then
   template_archive="$GODOT_CACHE_DIR/templates.tpz"
   if [[ ! -s "$template_archive" ]]; then
     curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-all-errors \
@@ -132,7 +134,7 @@ if [[ ! -f "$TEMPLATE_DIR/android_debug.apk" || ! -f "$TEMPLATE_DIR/android_rele
   fi
   check_sha256 "$GODOT_TEMPLATES_SHA256" "$template_archive"
   mkdir -p "$TEMPLATE_DIR"
-  for template_name in android_debug.apk android_release.apk; do
+  for template_name in android_debug.apk android_release.apk android_source.zip; do
     unzip -p "$template_archive" "templates/$template_name" > "$TEMPLATE_DIR/$template_name.tmp"
     test -s "$TEMPLATE_DIR/$template_name.tmp"
     mv "$TEMPLATE_DIR/$template_name.tmp" "$TEMPLATE_DIR/$template_name"
@@ -209,14 +211,21 @@ export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$KEYSTORE_PATH"
 export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$KEYSTORE_USER"
 export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$KEYSTORE_PASSWORD"
 
-if [[ ! -d android/build ]]; then
-  "$GODOT_BIN" --headless --path "$ROOT" --install-android-build-template
-fi
-
 mkdir -p "$(dirname "$AAB_PATH")"
 rm -f "$AAB_PATH" "$AAB_PATH.sha256"
-"$GODOT_BIN" --headless --path "$ROOT" --export-release 'Android Release' "$AAB_PATH"
+
+godot_export_args=(--headless --path "$ROOT")
+if [[ ! -d android/build ]]; then
+  # Godot's CLI contract requires template installation to be part of the
+  # export invocation; running --install-android-build-template by itself
+  # opens the editor and does not provide an operation that terminates it.
+  godot_export_args+=(--install-android-build-template)
+fi
+godot_export_args+=(--export-release 'Android Release' "$AAB_PATH")
+"$GODOT_BIN" "${godot_export_args[@]}" 2>&1 | tee "$SYNESTHESIA_GODOT_LOG_DIR/android-play-export.log"
+
 [[ -s "$AAB_PATH" ]] || { echo 'ERROR: Godot did not produce release AAB' >&2; exit 1; }
+[[ -f android/build/gradlew ]] || { echo 'ERROR: Android Gradle build template was not installed' >&2; exit 1; }
 
 unzip -tq "$AAB_PATH" >/dev/null
 "$JAVA_HOME/bin/jarsigner" -verify "$AAB_PATH" >/dev/null
