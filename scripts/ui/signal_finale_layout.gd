@@ -102,7 +102,6 @@ static func layout_columns(app: Control) -> void:
         app._form.custom_minimum_size.x = 0.0
         app._visual.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         app._form.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        app.call_deferred("_scroll_to_start")
 
     if app._body != null:
         app._body.custom_minimum_size.x = 0.0

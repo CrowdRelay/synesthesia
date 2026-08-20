@@ -130,12 +130,22 @@ alignment_checker_path = ROOT / "scripts/check-android-elf-alignment.py"
 play_builder = play_builder_path.read_text() if play_builder_path.is_file() else ""
 alignment_checker = alignment_checker_path.read_text() if alignment_checker_path.is_file() else ""
 for token in (
+    "SYNESTHESIA_RUST_PROFILE=debug",
+    "./scripts/build-rust-native.sh host",
     "SYNESTHESIA_RUST_PROFILE=release",
     "./scripts/build-rust-native.sh android-arm64",
     'scripts/check-android-elf-alignment.py "$AAB" "$ANDROID_NDK_HOME"',
 ):
     if token not in play_builder:
-        failures.append(f"Play AAB builder missing release-native contract: {token}")
+        failures.append(f"Play AAB builder missing native bridge contract: {token}")
+if play_builder.find("./scripts/build-rust-native.sh host") > play_builder.find("./scripts/build-rust-native.sh android-arm64"):
+    failures.append("Play AAB builder must prepare the host debug bridge before Android release native")
+for builder_name in ("build-android-play-aab.sh", "build-android-apk.sh"):
+    builder = (ROOT / "scripts" / builder_name).read_text()
+    host = builder.find("./scripts/build-rust-native.sh host")
+    android = builder.find("./scripts/build-rust-native.sh android-arm64")
+    if host < 0 or android < 0 or host > android:
+        failures.append(f"{builder_name} must prepare the host debug bridge before Android native")
 for token in ("PT_LOAD", "16K_PAGE_ALIGNMENT=FAIL", "SYNESTHESIA_AAB_16K=PASS"):
     if token not in alignment_checker:
         failures.append(f"AAB ELF alignment checker missing token: {token}")
