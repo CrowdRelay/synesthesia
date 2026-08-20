@@ -1,6 +1,7 @@
 extends "res://scripts/rooms/behavior_base.gd"
 
 const OPPONENT := Vector2(0.50, 0.46)
+# The ward fixation board remains the frequency core of this room.
 
 func configure(data: Dictionary) -> void:
     super.configure(data)
