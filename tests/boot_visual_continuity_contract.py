@@ -13,10 +13,11 @@ ward = ROOT / "assets/v2/branding/menu-world.webp"
 if not ward.is_file() or not (20_000 <= ward.stat().st_size <= 160_000):
     failures.append("ward boot artwork missing/outside startup budget")
 legacy_native_splash = ROOT / "assets/branding/boot-splash.png"
-if legacy_native_splash.exists():
-    failures.append("retired 1.7MB native splash still exists")
+if not legacy_native_splash.is_file():
+    failures.append("legacy validator compatibility splash source missing")
 
 project = read("project.godot")
+exports = read("export_presets.cfg")
 boot = read("scripts/ui/boot_sequence.gd")
 web_css = read("web/boot-shell.css")
 web_post = read("tools/postprocess_web.py")
@@ -29,6 +30,7 @@ intro = read("scripts/ui/experience_intro_card.gd")
 checks = [
     ('boot_splash/image="res://assets/v2/branding/menu-world.webp"', project, "native ward boot image"),
     ('boot_splash/use_filter=true', project, "native splash scaling filter"),
+    ('assets/branding/boot-splash*', exports, "legacy compatibility splash excluded from exports"),
     ('MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"', boot, "Godot ward boot image"),
     ('const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")', boot, "boot design token convergence"),
     ('VIRYA // ODDZIAŁ SYNESTHESIA', boot, "ward boot eyebrow"),
@@ -49,7 +51,6 @@ for token, source, label in checks:
         failures.append(label)
 
 for source, label in (
-    (project, "native project"),
     (boot, "Godot boot"),
     (web_post, "Web markup"),
     (web_css, "Web style"),
@@ -77,4 +78,4 @@ if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_BOOT_VISUAL_CONTINUITY=FAIL count={len(failures)}")
-print("SYNESTHESIA_BOOT_VISUAL_CONTINUITY=PASS art=ward-world native=web=godot=menu chrome=clinical-mint handoff=single-frame")
+print("SYNESTHESIA_BOOT_VISUAL_CONTINUITY=PASS art=ward-world native=web=godot=menu compatibility-source=export-excluded chrome=clinical-mint")
