@@ -31,7 +31,7 @@ func hint_targets() -> Array[Dictionary]:
     var targets: Array[Dictionary] = []
     for index in range(BALLOONS.size()):
         if not popped.has(index):
-            targets.append({"point": BALLOONS[index] + _offset(index), "kind": "tap", "radius": 0.085})
+            targets.append({"point": _art_point(BALLOONS[index]) + _offset(index), "kind": "tap", "radius": 0.095})
         if targets.size() >= 3:
             break
     return targets
@@ -39,7 +39,7 @@ func hint_targets() -> Array[Dictionary]:
 func captures_pointer_at(point_norm: Vector2) -> bool:
     var popped: Array = state.get("popped", [])
     for index in range(BALLOONS.size()):
-        if not popped.has(index) and _near(point_norm, BALLOONS[index] + _offset(index), 0.13):
+        if not popped.has(index) and _near(point_norm, BALLOONS[index] + _offset(index), 0.14):
             return true
     return false
 
@@ -97,7 +97,7 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
 
     for index in range(BALLOONS.size()):
         var color: Color = accent if index % 2 == 0 else secondary
-        var membrane_norm := BALLOONS[index] + _offset(index)
+        var membrane_norm := (_art_point(BALLOONS[index]) + _offset(index)).clamp(Vector2.ZERO, Vector2.ONE)
         var base := Vector2(membrane_norm.x * viewport_size.x, membrane_norm.y * viewport_size.y)
         if cinematic_active() and not popped.has(index):
             var delay := float(index) * 0.10
@@ -128,8 +128,8 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
 func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Dictionary]:
     var point := _gesture_point(gesture)
     match kind:
-        "tap": return _pop_near(point, 0.105, 1)
-        "swipe": return _pop_segment(_gesture_start(gesture), point, 0.09, 4)
+        "tap": return _pop_near(point, 0.115, 1)
+        "swipe": return _pop_segment(_gesture_start(gesture), point, 0.10, 4)
         "drag": _push_near(point, gesture)
     return []
 
@@ -175,7 +175,8 @@ func _pop_near(point: Vector2, radius: float, limit: int) -> Array[Dictionary]:
         if _near(point, target, radius):
             popped.append(index)
             _arm_burst(index)
-            events.append(_interaction_event("balloon", index, "TRZASK — powłoka puściła", target, 0.085, 0.90))
+            var art_target := (_art_point(BALLOONS[index]) + _offset(index)).clamp(Vector2.ZERO, Vector2.ONE)
+            events.append({"kind": "balloon", "index": index, "message": "TRZASK — powłoka puściła", "point": art_target, "reveal_radius": 0.085, "reveal_strength": 0.90})
             if events.size() >= limit: break
     state["popped"] = popped
     return events
@@ -189,7 +190,8 @@ func _pop_segment(start: Vector2, finish: Vector2, radius: float, limit: int) ->
         if _distance_to_segment(target, start, finish) <= radius:
             popped.append(index)
             _arm_burst(index)
-            events.append(_interaction_event("balloon", index, "TRZASK — przeciążenie pękło", target, 0.078, 0.88))
+            var art_target := (_art_point(BALLOONS[index]) + _offset(index)).clamp(Vector2.ZERO, Vector2.ONE)
+            events.append({"kind": "balloon", "index": index, "message": "TRZASK — przeciążenie pękło", "point": art_target, "reveal_radius": 0.078, "reveal_strength": 0.88})
             if events.size() >= limit: break
     state["popped"] = popped
     return events
@@ -232,7 +234,7 @@ func _push_near(point: Vector2, gesture: Dictionary) -> void:
     for index in range(BALLOONS.size()):
         if popped.has(index): continue
         var target := BALLOONS[index] + _pair_vec(offsets[index])
-        if not _near(point, target, 0.14): continue
+        if not _near(point, target, 0.15): continue
         var away := target - point
         if away.length_squared() < 0.0001: away = -drag_delta
         var impulse := away.normalized() * 0.11 + drag_delta * 3.1
@@ -250,12 +252,12 @@ func _pair_vec(value: Variant) -> Vector2:
 
 func restore_state(saved: Dictionary) -> void:
     super.restore_state(saved)
-    if not state.has("burst_ages"):
+    var popped: Array = state.get("popped", [])
+    state["popped"] = popped.filter(func(value: Variant) -> bool: return value is int and value >= 0 and value < BALLOONS.size())
+    if not state.has("offsets") or not state["offsets"] is Array or state["offsets"].size() != BALLOONS.size():
+        state["offsets"] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+    if not state.has("velocities") or not state["velocities"] is Array or state["velocities"].size() != BALLOONS.size():
+        state["velocities"] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+    if not state.has("burst_ages") or not state["burst_ages"] is Array or state["burst_ages"].size() != BALLOONS.size():
         state["burst_ages"] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
-    var velocities: Array = state.get("velocities", [])
-    var active := false
-    for raw_velocity in velocities:
-        if _pair_vec(raw_velocity).length_squared() >= 0.0000008:
-            active = true
-            break
-    state["motion_active"] = bool(state.get("motion_active", false)) or active
+    state["motion_active"] = bool(state.get("motion_active", false))
