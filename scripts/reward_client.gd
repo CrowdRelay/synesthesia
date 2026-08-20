@@ -14,7 +14,13 @@ const LeaderboardIdentity := preload("res://scripts/ui/leaderboard_identity.gd")
 const MAX_QUEUE_SIZE: int = 32
 const MAX_RETRY_ATTEMPTS: int = 3
 const RETRY_BASE_SECONDS: float = 1.2
+const RETRY_MAX_SECONDS: float = 12.0
+const RETRY_JITTER_MIN: float = 0.80
+const RETRY_JITTER_SPAN: float = 0.40
 const MAX_RESPONSE_BYTES: int = 1_048_576
+const MAX_EMAIL_LENGTH: int = 254
+const MAX_EMAIL_LOCAL_LENGTH: int = 64
+const MAX_POLICY_VERSION_LENGTH: int = 64
 
 var _api_url: String = ""
 var _campaign_slug: String = ""
@@ -209,17 +215,39 @@ func enter_draw(email: String, policy_version: String) -> void:
     if not has_run():
         request_failed.emit("enter_draw", "Nie udało się połączyć ukończenia z losowaniem.")
         return
+    var normalized_email := email.strip_edges()
+    var normalized_policy := policy_version.strip_edges()
+    if not _looks_like_email(normalized_email):
+        request_failed.emit("enter_draw", "Podaj poprawny adres e-mail.")
+        return
+    if normalized_policy.is_empty() or normalized_policy.length() > MAX_POLICY_VERSION_LENGTH:
+        request_failed.emit("enter_draw", "Wersja zgody losowania jest nieprawidłowa.")
+        return
     _enqueue({
         "operation": "enter_draw",
         "path": "/v1/public/synesthesia/reward-claims",
         "authorized": true,
         "idempotency_key": "synesthesia-claim-%s" % _run_id,
         "payload": {
-            "email": email.strip_edges(),
-            "policy_version": policy_version,
+            "email": normalized_email,
+            "policy_version": normalized_policy,
             "locale": TranslationServer.get_locale(),
         },
     })
+
+func _looks_like_email(value: String) -> bool:
+    if value.is_empty() or value.length() > MAX_EMAIL_LENGTH or value.contains(" ") or value.contains("\n") or value.contains("\r"):
+        return false
+    var parts := value.split("@", false)
+    if parts.size() != 2:
+        return false
+    var local := str(parts[0])
+    var domain := str(parts[1])
+    if local.is_empty() or local.length() > MAX_EMAIL_LOCAL_LENGTH or domain.is_empty():
+        return false
+    if local.begins_with(".") or local.ends_with(".") or domain.begins_with(".") or domain.ends_with("."):
+        return false
+    return domain.contains(".")
 
 func _enqueue(request_data: Dictionary) -> void:
     var candidate: Dictionary = request_data.duplicate(true)
@@ -268,7 +296,7 @@ func _pump() -> void:
         _active = {}
         _handle_failure(active_copy, 0, "Nie udało się rozpocząć połączenia z Sygnałem.")
 
-func _on_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+func _on_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
     var operation: String = str(_active.get("operation", "request"))
     var active_copy: Dictionary = _active.duplicate(true)
     _busy = false
@@ -284,7 +312,8 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
         var message: String = str(parsed.get("message", "Sygnał jest chwilowo niedostępny. Postęp pozostał zapisany lokalnie."))
         if operation == "enter_draw" and response_code == 409:
             message = "Losowanie nie jest teraz otwarte. Ukończenie zostało zapisane — wróć w czasie trwania akcji."
-        _handle_failure(active_copy, response_code, message)
+        var effective_code := response_code if result == HTTPRequest.RESULT_SUCCESS else 0
+        _handle_failure(active_copy, effective_code, message, _retry_after_seconds(headers))
         return
 
     match operation:
@@ -315,7 +344,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
             request_failed.emit(operation, "Nieznana odpowiedź Sygnału.")
     call_deferred("_pump")
 
-func _handle_failure(request_data: Dictionary, response_code: int, message: String) -> void:
+func _handle_failure(request_data: Dictionary, response_code: int, message: String, retry_after_seconds: float = 0.0) -> void:
     if bool(request_data.get("authorized", false)) and (response_code == 401 or response_code == 404):
         _run_id = ""
         _run_token = ""
@@ -332,12 +361,23 @@ func _handle_failure(request_data: Dictionary, response_code: int, message: Stri
         _retry_request = request_data.duplicate(true)
         _busy = true
         _ensure_transport()
-        var delay_seconds: float = RETRY_BASE_SECONDS * pow(2.0, float(attempt - 1))
+        var exponential_delay := minf(RETRY_MAX_SECONDS, RETRY_BASE_SECONDS * pow(2.0, float(attempt - 1)))
+        var jittered_delay := exponential_delay * (RETRY_JITTER_MIN + randf() * RETRY_JITTER_SPAN)
+        var delay_seconds := clampf(maxf(jittered_delay, retry_after_seconds), 0.1, RETRY_MAX_SECONDS)
         _retry_timer.start(delay_seconds)
         retry_scheduled.emit(str(request_data.get("operation", "request")), attempt)
         return
     request_failed.emit(str(request_data.get("operation", "request")), message)
     call_deferred("_pump")
+
+func _retry_after_seconds(headers: PackedStringArray) -> float:
+    for header in headers:
+        var normalized := header.strip_edges()
+        if normalized.to_lower().begins_with("retry-after:"):
+            var raw_value := normalized.substr(normalized.find(":") + 1).strip_edges()
+            if raw_value.is_valid_float():
+                return clampf(raw_value.to_float(), 0.0, RETRY_MAX_SECONDS)
+    return 0.0
 
 func _is_transient_failure(response_code: int) -> bool:
     return response_code == 0 or response_code == 408 or response_code == 425 or response_code == 429 or response_code >= 500
