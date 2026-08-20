@@ -85,6 +85,7 @@ jobs:
             ~/.cache/synesthesia/godot-4.7.1-stable/editor.zip
             ~/.local/share/godot/export_templates/4.7.1.stable/android_debug.apk
             ~/.local/share/godot/export_templates/4.7.1.stable/android_release.apk
+            ~/.local/share/godot/export_templates/4.7.1.stable/android_source.zip
           key: ${{ runner.os }}-synesthesia-play-rust1.97.1-ndk4.1.2-godot4.7.1-${{ hashFiles('native/Cargo.lock') }}
 
       - name: Set up JDK 17

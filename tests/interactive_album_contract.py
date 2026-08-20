@@ -78,11 +78,14 @@ require(
     "scripts/ui/album_archive_card.gd",
     "KORYTARZ", "Album Mode", "ECHA %d/%d", "PackedStringArray", "room_requested", "WRÓĆ DO FINAŁU",
 )
-require(
+album_mode = require(
     "scripts/app/album_mode_controller.gd",
     "is_listening", "show_archive", "enter_room", "AlbumModeCorridorButton", "corridor_requested",
     "AlbumModeCaptureButton", "ZAPISZ KADR", "I FOUND THE SIGNAL", "JavaScriptBridge.eval",
+    "JSON.stringify(room_name)", "JSON.stringify(download_name)",
 )
+if "a.download = 'virya-synesthesia-%s.png';" in album_mode:
+    failures.append("album-mode Web capture interpolates an unescaped release id into JavaScript")
 main = "\n".join(
     text(path) for path in (
         "scripts/main.gd",

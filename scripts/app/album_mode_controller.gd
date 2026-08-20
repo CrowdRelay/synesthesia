@@ -119,6 +119,7 @@ func _download_share_frame() -> void:
         var entry_value: Variant = _releases[_current_index]
         if entry_value is Dictionary:
             room_name = str(entry_value.get("id", room_name)).replace("-", " ").to_upper()
+    var download_name := "virya-synesthesia-%s.png" % room_name.to_lower().replace(" ", "-")
     var script: String = """
 (() => {
   const source = document.querySelector('canvas');
@@ -139,11 +140,11 @@ func _download_share_frame() -> void:
   ctx.textAlign = 'right';
   ctx.fillText('I FOUND THE SIGNAL', Math.floor(out.width * 0.95), out.height - Math.floor(barH * 0.30));
   const a = document.createElement('a');
-  a.download = 'virya-synesthesia-%s.png';
+  a.download = %s;
   a.href = out.toDataURL('image/png');
   a.click();
 })();
-""" % [JSON.stringify(room_name), room_name.to_lower().replace(" ", "-")]
+""" % [JSON.stringify(room_name), JSON.stringify(download_name)]
     JavaScriptBridge.eval(script, true)
 
 func close_archive() -> void:
