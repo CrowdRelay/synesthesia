@@ -424,7 +424,7 @@ cp assets/fonts/generated/SynesthesiaDisplay.ttf build/web/fonts/
 cp assets/fonts/generated/OFL-NewRocker.txt build/web/fonts/
 cp assets/fonts/generated/OFL-BebasNeue.txt build/web/fonts/
 cp assets/icon.svg assets/icon-192.png assets/icon-512.png build/web/
-cp assets/branding/menu-eye-poster.webp assets/branding/menu-eye-boot-loop.mp4 build/web/
+cp assets/v2/branding/menu-world.webp build/web/
 python3 tools/postprocess_web.py
 python3 tools/web_bundle_budget.py
 test -s build/web/index.html

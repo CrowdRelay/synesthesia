@@ -36,11 +36,21 @@ const ART_ANCHORS := {
         [Vector2(0.50, 0.46), Vector2(0.50, 0.37)],
     ],
     "technophobia": [
+        [Vector2(0.185, 0.182), Vector2(0.30, 0.555)],
+        [Vector2(0.470, 0.182), Vector2(0.45, 0.485)],
+        [Vector2(0.756, 0.182), Vector2(0.80, 0.525)],
+        [Vector2(0.185, 0.303), Vector2(0.455, 0.548)],
+        [Vector2(0.470, 0.303), Vector2(0.59, 0.525)],
+        [Vector2(0.756, 0.303), Vector2(0.58, 0.575)],
+        [Vector2(0.185, 0.424), Vector2(0.29, 0.555)],
+        [Vector2(0.20, 0.35), Vector2(0.30, 0.575)],
+        [Vector2(0.49, 0.35), Vector2(0.46, 0.575)],
+        [Vector2(0.77, 0.35), Vector2(0.80, 0.575)],
         [Vector2(0.28, 0.58), Vector2(0.40, 0.62)],
         [Vector2(0.51, 0.61), Vector2(0.52, 0.64)],
         [Vector2(0.73, 0.57), Vector2(0.64, 0.62)],
-        [Vector2(0.18, 0.67), Vector2(0.17, 0.48)],
-        [Vector2(0.76, 0.69), Vector2(0.73, 0.63)],
+        [Vector2(0.18, 0.67), Vector2(0.10, 0.40)],
+        [Vector2(0.76, 0.69), Vector2(0.58, 0.59)],
     ],
     "invaluable": [
         [Vector2(0.22, 0.35), Vector2(0.40, 0.34)],
@@ -62,6 +72,7 @@ const ART_ANCHORS := {
     "rise": [
         [Vector2(0.50, 0.20), Vector2(0.50, 0.25)],
         [Vector2(0.50, 0.54), Vector2(0.50, 0.58)],
+        [Vector2(0.50, 0.46), Vector2(0.50, 0.50)],
         [Vector2(0.50, 0.34), Vector2(0.50, 0.40)],
     ],
 }
@@ -196,6 +207,12 @@ func _art_point(logic_point: Vector2) -> Vector2:
             best_art = art
     if best_distance > 0.055 * 0.055: return logic_point
     return (best_art + (logic_point - best_logic)).clamp(Vector2.ZERO, Vector2.ONE)
+
+func _art_offset_point(logic_origin: Vector2, logic_point: Vector2) -> Vector2:
+    return (_art_point(logic_origin) + (logic_point - logic_origin)).clamp(Vector2.ZERO, Vector2.ONE)
+
+func _art_lerp_point(logic_start: Vector2, logic_finish: Vector2, weight: float) -> Vector2:
+    return _art_point(logic_start).lerp(_art_point(logic_finish), clampf(weight, 0.0, 1.0))
 
 func _logic_point(art_point: Vector2) -> Vector2:
     var pairs := _anchor_pairs()

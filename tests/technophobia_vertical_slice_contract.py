@@ -29,6 +29,11 @@ for token in (
     "_render_breaker",
     "_render_tuner",
     "captures_pointer_at",
+    '_px(_art_point(SCREEN_TARGETS[index]), viewport_size)',
+    '_px(_art_point(CABLE_SOURCES[index]), viewport_size)',
+    '_art_offset_point(CABLE_PLUGS[index], plug_norm)',
+    '_px(_art_point(BREAKER_TARGET), viewport_size)',
+    '_px(_art_point(TUNER_TARGET), viewport_size)',
 ):
     if token not in behavior:
         failures.append(f"technophobia behavior missing {token}")
@@ -50,7 +55,13 @@ for rel, tokens in {
     "scripts/ui/app_hud.gd": ("func update_instruction", "SZUKAJ ŹRÓDEŁ SZUMU"),
     "scripts/render/room_stage.gd": ("func get_interaction_hint",),
     "scripts/render/room_interaction_flow.gd": ("prop_capture", "captures_pointer_at"),
-    "scripts/rooms/behavior_base.gd": ("func captures_pointer_at",),
+    "scripts/rooms/behavior_base.gd": (
+        "func captures_pointer_at",
+        "func _art_offset_point",
+        "func _art_lerp_point",
+        "Vector2(0.185, 0.182), Vector2(0.30, 0.555)",
+        "Vector2(0.18, 0.67), Vector2(0.10, 0.40)",
+    ),
 }.items():
     text = (ROOT / rel).read_text(errors="replace")
     for token in tokens:

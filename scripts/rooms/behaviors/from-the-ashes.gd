@@ -22,7 +22,7 @@ func interaction_hint() -> String:
 func hint_targets() -> Array[Dictionary]:
     if bool(state.get("phoenix", false)):
         return []
-    return [{"point": CENTER, "kind": "swirl" if float(state.get("swirl", 0.0)) < 0.42 else "drag_up", "radius": 0.18}]
+    return [{"point": _art_point(CENTER), "kind": "swirl" if float(state.get("swirl", 0.0)) < 0.42 else "drag_up", "radius": 0.18}]
 
 func captures_pointer_at(point_norm: Vector2) -> bool:
     return not bool(state.get("phoenix", false)) and _near(point_norm, CENTER, 0.30)
@@ -31,7 +31,8 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#FF9E58")), Color("ff9e58"))
     var cinematic_t: float = cinematic_time()
     var swirl: float = clampf(float(state.get("swirl", 0.0)), 0.0, 1.0)
-    var center: Vector2 = Vector2(viewport_size.x * 0.5, viewport_size.y * 0.48)
+    var art_center := _art_point(Vector2(0.50, 0.48))
+    var center: Vector2 = Vector2(viewport_size.x * art_center.x, viewport_size.y * art_center.y)
     var wing_span: float = 44.0 + maxf(progress, swirl * 0.82) * 178.0
     var lift: float = progress * 72.0
     if cinematic_active():

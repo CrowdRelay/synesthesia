@@ -28,11 +28,11 @@ func hint_targets() -> Array[Dictionary]:
     if bool(state.get("shared_rhythm", false)):
         return []
     if not bool(state.get("presence", false)):
-        return [{"point": SECOND, "kind": "hold", "radius": 0.12}]
+        return [{"point": _art_point(SECOND), "kind": "hold", "radius": 0.12}]
     var closeness := clampf(float(state.get("closeness", 0.0)), 0.0, 1.0)
     return [
-        {"point": FIRST.lerp(Vector2(0.47, 0.58), closeness), "kind": "drag", "radius": 0.10},
-        {"point": SECOND.lerp(Vector2(0.53, 0.58), closeness), "kind": "drag", "radius": 0.10},
+        {"point": _art_lerp_point(FIRST, Vector2(0.47, 0.58), closeness), "kind": "drag", "radius": 0.10},
+        {"point": _art_lerp_point(SECOND, Vector2(0.53, 0.58), closeness), "kind": "drag", "radius": 0.10},
     ]
 
 func captures_pointer_at(point_norm: Vector2) -> bool:
@@ -63,8 +63,8 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
 
     if progress > 0.16 or bool(state.get("presence", false)):
         var alpha := clampf((progress - 0.14) / 0.86 + closeness * 0.28, 0.0, 1.0)
-        var first_norm := FIRST.lerp(Vector2(0.47, 0.58), closeness)
-        var second_norm := SECOND.lerp(Vector2(0.53, 0.58), closeness)
+        var first_norm := _art_lerp_point(FIRST, Vector2(0.47, 0.58), closeness)
+        var second_norm := _art_lerp_point(SECOND, Vector2(0.53, 0.58), closeness)
         var first := Vector2(first_norm.x * viewport_size.x, first_norm.y * viewport_size.y)
         var second := Vector2(second_norm.x * viewport_size.x, second_norm.y * viewport_size.y)
         var breath := 0.5 + 0.5 * sin(phase * (1.55 + closeness * 0.35))

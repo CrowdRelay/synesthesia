@@ -75,17 +75,19 @@ if "reward_client.start_run()" not in begin:
 if "app.room.set_interaction_enabled(false)" not in room_flow:
     failures.append("new room can receive input before restore/layout completion")
 if '_authored_video_armed = profile == "menu"' not in eye:
-    failures.append("splash authored video must remain disarmed during first-frame construction")
+    failures.append("authored eye video must remain menu-owned")
 if 'func arm_authored_animation(restart: bool = true)' not in eye:
-    failures.append("authored eye lacks explicit post-first-frame arming gate")
-if 'await RenderingServer.frame_post_draw' not in boot or '_motif.arm_authored_animation(true)' not in boot:
-    failures.append("splash eye is not armed strictly after the first rendered Godot frame")
+    failures.append("menu eye lacks explicit animation arming gate")
+if 'await RenderingServer.frame_post_draw' not in boot:
+    failures.append("ward splash releases before the first rendered Godot frame")
+if 'DoorEyeMotif' in boot or '_motif.arm_authored_animation(true)' in boot:
+    failures.append("retired eye decoder returned to the startup path")
 for token in (
     "const COLD_BOOT_HOLD: float = 0.16",
-    "const COLD_EYE_REVEAL_DURATION: float = 0.34",
+    "const COLD_REVEAL_DURATION: float = 0.34",
     "const COLD_FADE_DURATION: float = 0.14",
     "const WARM_BOOT_HOLD: float = 0.025",
-    "const WARM_EYE_REVEAL_DURATION: float = 0.16",
+    "const WARM_REVEAL_DURATION: float = 0.16",
     "const WARM_FADE_DURATION: float = 0.09",
     "_detect_warm_boot()",
 ):
@@ -123,4 +125,4 @@ if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_STARTUP_LATENCY=FAIL count={len(failures)}")
-print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=poster-only script-graphs=post-first-frame-threaded menu=present-then-warm room=thread-warm+runtime-support+door-wait network=interaction-gated audio=post-menu-threaded branded-boot=cold-0.64s+warm-0.275s")
+print("SYNESTHESIA_STARTUP_LATENCY=PASS first-frame=ward-still+zero-decoder script-graphs=post-first-frame-threaded menu=present-then-warm room=thread-warm+runtime-support+door-wait network=interaction-gated audio=post-menu-threaded branded-boot=cold-0.64s+warm-0.275s")

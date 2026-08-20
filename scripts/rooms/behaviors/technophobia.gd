@@ -106,12 +106,12 @@ func hint_targets() -> Array[Dictionary]:
         var targets: Array[Dictionary] = []
         for index in range(CABLE_PLUGS.size()):
             if not unplugged.has(index):
-                targets.append({"point": CABLE_PLUGS[index], "kind": "pull", "radius": CABLE_GRAB_RADIUS})
+                targets.append({"point": _art_point(CABLE_PLUGS[index]), "kind": "pull", "radius": CABLE_GRAB_RADIUS})
         return targets
     if not bool(state.get("breaker_off", false)):
-        return [{"point": BREAKER_TARGET, "kind": "hold", "radius": BREAKER_RADIUS}]
+        return [{"point": _art_point(BREAKER_TARGET), "kind": "hold", "radius": BREAKER_RADIUS}]
     if not bool(state.get("signal_locked", false)):
-        return [{"point": TUNER_TARGET, "kind": "tune", "radius": TUNER_RADIUS}]
+        return [{"point": _art_point(TUNER_TARGET), "kind": "tune", "radius": TUNER_RADIUS}]
     return []
 func mechanic_progress() -> float:
     if bool(state.get("signal_locked", false)):
@@ -261,7 +261,7 @@ func _render_screens(canvas, viewport_size: Vector2, progress: float, phase: flo
     var cinematic_t: float = cinematic_time()
     var cell_size := Vector2(viewport_size.x * 0.205, viewport_size.y * 0.070)
     for index in range(SCREEN_TARGETS.size()):
-        var center := Vector2(SCREEN_TARGETS[index].x * viewport_size.x, SCREEN_TARGETS[index].y * viewport_size.y)
+        var center := _px(_art_point(SCREEN_TARGETS[index]), viewport_size)
         var rect := Rect2(center - cell_size * 0.5, cell_size)
         var repaired: bool = screens.has(index)
         var jitter_strength: float = (1.0 - progress) * viewport_size.x * 0.0048 if not repaired else 0.35
@@ -293,7 +293,7 @@ func _render_cables(canvas, viewport_size: Vector2, phase: float, accent: Color)
     var snap_t: float = clampf(float(state.get("snap_time", 0.0)) / 0.24, 0.0, 1.0)
     var snap_ease: float = 1.0 - pow(1.0 - snap_t, 3.0)
     for index in range(CABLE_PLUGS.size()):
-        var source := _px(CABLE_SOURCES[index], viewport_size)
+        var source := _px(_art_point(CABLE_SOURCES[index]), viewport_size)
         var plug_norm := CABLE_PLUGS[index]
         if index == active and drag_point != Vector2.ZERO:
             plug_norm = drag_point
@@ -302,7 +302,8 @@ func _render_cables(canvas, viewport_size: Vector2, phase: float, accent: Color)
         elif unplugged.has(index):
             var sway := Vector2(sin(phase * 3.1 + float(index)) * 0.022, 0.085 + 0.012 * cos(phase * 2.2 + float(index)))
             plug_norm += sway
-        var plug := _px(plug_norm, viewport_size)
+        var art_plug_norm := _art_offset_point(CABLE_PLUGS[index], plug_norm)
+        var plug := _px(art_plug_norm, viewport_size)
         var color := CABLE_COLORS[index] if index < CABLE_COLORS.size() else accent
         _draw_cable(canvas, source, plug, viewport_size, color, unplugged.has(index), index == active, phase + float(index))
         _draw_plug(canvas, plug, viewport_size, color, unplugged.has(index), index == active)
@@ -315,7 +316,7 @@ func _render_cables(canvas, viewport_size: Vector2, phase: float, accent: Color)
             var pulse := 0.5 + 0.5 * sin(phase * 5.0 + float(index) * 1.8)
             canvas.draw_arc(plug, viewport_size.x * (0.018 + pulse * 0.003), 0.0, TAU, 28, Color(color, 0.10 + pulse * 0.11), maxf(1.0, viewport_size.x * 0.0012))
 func _render_breaker(canvas, viewport_size: Vector2, phase: float, accent: Color, secondary: Color) -> void:
-    var center := _px(BREAKER_TARGET, viewport_size)
+    var center := _px(_art_point(BREAKER_TARGET), viewport_size)
     var available := _breaker_available()
     var off := bool(state.get("breaker_off", false))
     var box_size := Vector2(viewport_size.x * 0.115, viewport_size.y * 0.085)
@@ -331,7 +332,7 @@ func _render_breaker(canvas, viewport_size: Vector2, phase: float, accent: Color
         var pulse := 0.5 + 0.5 * sin(phase * 4.3)
         canvas.draw_arc(center, box_size.x * (0.60 + pulse * 0.05), 0.0, TAU, 28, Color(secondary, 0.08 + pulse * 0.08), 1.0)
 func _render_tuner(canvas, viewport_size: Vector2, phase: float, accent: Color) -> void:
-    var center := _px(TUNER_TARGET, viewport_size)
+    var center := _px(_art_point(TUNER_TARGET), viewport_size)
     var tune := clampf(float(state.get("signal_tune", 0.0)), 0.0, 1.0)
     var active := bool(state.get("breaker_off", false))
     var locked := bool(state.get("signal_locked", false))

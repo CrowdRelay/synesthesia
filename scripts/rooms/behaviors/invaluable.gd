@@ -29,7 +29,7 @@ func hint_targets() -> Array[Dictionary]:
     for index in range(MIRRORS.size()):
         if shattered.has(index):
             continue
-        targets.append({"point": MIRRORS[index] + _mirror_offset(index), "kind": "swipe" if cracked.has(index) else "tap", "radius": 0.09})
+        targets.append({"point": _art_offset_point(MIRRORS[index], MIRRORS[index] + _mirror_offset(index)), "kind": "swipe" if cracked.has(index) else "tap", "radius": 0.09})
         if targets.size() >= 3:
             break
     return targets
@@ -43,7 +43,7 @@ func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> vo
     var shattered: Array = state.get("shattered", [])
     var cinematic_t: float = cinematic_time()
     for index in range(MIRRORS.size()):
-        var mirror_norm: Vector2 = MIRRORS[index] + _mirror_offset(index)
+        var mirror_norm: Vector2 = _art_offset_point(MIRRORS[index], MIRRORS[index] + _mirror_offset(index))
         var center: Vector2 = Vector2(mirror_norm.x * viewport_size.x, mirror_norm.y * viewport_size.y)
         if cinematic_active() or shattered.has(index):
             var burst: float = minf(cinematic_t if cinematic_active() else 0.82, 1.6)
@@ -165,4 +165,3 @@ func restore_state(saved: Dictionary) -> void:
         state["active_mirror"] = -1
     if not state.has("mirror_drag_start"):
         state["mirror_drag_start"] = Vector2.ZERO
-

@@ -19,6 +19,9 @@ for token in (
 ):
     assert token in stage, token
 assert 'func confirmation(strength: float = 0.6) -> void:' in haptics
+assert '_begin_semantic_pattern(118)' in haptics
+assert 'generation == _pulse_generation' in haptics
+assert 'now < _semantic_quiet_until_ms' in haptics
 assert 'func play_confirmation_tick(strength: float = 0.6) -> void:' in audio
 assert '_foreground_duck_target' in audio and '_foreground_duck_smoothed' in audio
 

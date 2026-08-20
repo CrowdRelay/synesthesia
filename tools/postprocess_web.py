@@ -32,11 +32,9 @@ boot_script_tag = '<script src="/boot-shell.js"></script>'
 register_tag = '<script src="/register-sw.js" defer></script>'
 rum_tag = '<script src="/rum.js" defer></script>'
 boot_markup = '''<div id="synesthesia-boot" role="status" aria-label="Ładowanie Synesthesii">
+  <div class="synesthesia-boot__ward" aria-hidden="true"></div>
   <h1 class="synesthesia-boot__title">SYNESTHESIA</h1>
   <div class="synesthesia-boot__sub">VIRYA · ECHOES OF THE MODERN MIND</div>
-  <div class="synesthesia-boot__door" aria-hidden="true">
-    <video class="synesthesia-boot__eye-art" id="synesthesia-boot-eye" muted loop playsinline preload="none" poster="/menu-eye-poster.webp" tabindex="-1"></video>
-  </div>
   <div class="synesthesia-boot__tagline">SZUKAJ · DOTKNIJ · ODSZUM</div>
   <div class="synesthesia-boot__render" id="synesthesia-boot-status">URUCHAMIAM DOŚWIADCZENIE</div>
   <button class="synesthesia-boot__retry" id="synesthesia-boot-retry" type="button">Wyczyść cache i uruchom ponownie</button>

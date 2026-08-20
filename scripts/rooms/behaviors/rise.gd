@@ -22,10 +22,10 @@ func hint_targets() -> Array[Dictionary]:
     if bool(state.get("final_gesture", false)):
         return []
     if not bool(state.get("light_tap", false)):
-        return [{"point": Vector2(0.50, 0.20), "kind": "tap", "radius": 0.14}]
+        return [{"point": _art_point(Vector2(0.50, 0.20)), "kind": "tap", "radius": 0.14}]
     if not bool(state.get("center_hold", false)):
-        return [{"point": Vector2(0.50, 0.54), "kind": "hold", "radius": 0.17}]
-    return [{"point": Vector2(0.50, 0.46), "kind": "drag_up", "radius": 0.18}]
+        return [{"point": _art_point(Vector2(0.50, 0.54)), "kind": "hold", "radius": 0.17}]
+    return [{"point": _art_point(Vector2(0.50, 0.46)), "kind": "drag_up", "radius": 0.18}]
 
 func captures_pointer_at(point_norm: Vector2) -> bool:
     if bool(state.get("final_gesture", false)):
@@ -38,7 +38,8 @@ func captures_pointer_at(point_norm: Vector2) -> bool:
 
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#FFD56D")), Color("ffd56d"))
-    var center := Vector2(viewport_size.x * 0.5, viewport_size.y * 0.18)
+    var art_light := _art_point(Vector2(0.50, 0.20))
+    var center := Vector2(viewport_size.x * art_light.x, viewport_size.y * art_light.y)
     var gestures := (float(bool(state.get("light_tap", false))) + float(bool(state.get("center_hold", false))) + float(bool(state.get("rise_swipe", false)))) / 3.0
 
     # Ascension is environmental: architectural light lanes and ascending motes live throughout the room.

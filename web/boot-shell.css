@@ -14,38 +14,33 @@ html, body { background: #03050b; overscroll-behavior: none; }
 #synesthesia-boot {
   position: fixed; inset: 0; z-index: 2147483646; overflow: hidden;
   display: grid; place-items: center; pointer-events: none;
-  background:
-    radial-gradient(circle at 58% 48%, rgba(227, 53, 53, .14) 0, rgba(3, 5, 11, 0) 44%),
-    radial-gradient(circle at 38% 58%, rgba(67, 214, 223, .08) 0, rgba(3, 5, 11, 0) 48%),
-    #030509;
+  background: #030509;
   color: #f1efeb; opacity: 1; transition: opacity .20s ease;
   font-family: "SynesthesiaDisplay", Impact, "Arial Black", ui-sans-serif, system-ui, sans-serif;
 }
 #synesthesia-boot::after {
-  content: ""; position: absolute; inset: -20%; pointer-events: none; opacity: .22;
-  background: radial-gradient(ellipse at center, transparent 42%, #03050b 78%);
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(3,5,11,.54) 0, transparent 24%, transparent 68%, rgba(3,5,11,.76) 100%);
+}
+.synesthesia-boot__ward {
+  position: absolute; inset: 0; z-index: 0;
+  background: url("/menu-world.webp") center center / cover no-repeat;
+  filter: saturate(.82) contrast(1.05) brightness(.74);
+  transform: scale(1.015);
+  animation: synesthesia-ward-arrive 2.8s cubic-bezier(.2,.7,.2,1) both;
 }
 #synesthesia-boot[data-ready="true"] { opacity: 0; }
 #synesthesia-boot[data-stalled="true"] { pointer-events: auto; }
 .synesthesia-boot__title {
-  position: absolute; z-index: 2; top: max(6.5vh, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  position: absolute; z-index: 2; top: max(18vh, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
   margin: 0; white-space: nowrap; font-family: "SynesthesiaDisplay", "DIN Condensed", Impact, ui-sans-serif, sans-serif;
   font-size: clamp(28px, 5.2vw, 62px); font-weight: 700; letter-spacing: .16em;
   text-shadow: 0 1px 0 #05060a, 0 0 26px rgba(227, 53, 53, .16);
 }
 .synesthesia-boot__sub {
-  position: absolute; z-index: 2; top: max(13vh, calc(env(safe-area-inset-top) + 64px)); left: 50%; transform: translateX(-50%);
+  position: absolute; z-index: 2; top: max(24vh, calc(env(safe-area-inset-top) + 64px)); left: 50%; transform: translateX(-50%);
   width: 92%; text-align: center; color: #9eafc3; font-size: clamp(9px, 1.35vw, 14px);
   letter-spacing: .20em; text-transform: uppercase;
-}
-.synesthesia-boot__door {
-  position: relative; z-index: 1; width: min(61vw, 424px); aspect-ratio: 848 / 1104;
-  filter: drop-shadow(0 0 44px rgba(227, 53, 53, .13));
-  animation: synesthesia-eye-breathe 3.2s ease-in-out infinite;
-}
-.synesthesia-boot__eye-art {
-  display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none;
-  background: transparent; pointer-events: none;
 }
 .synesthesia-boot__tagline {
   position: absolute; z-index: 2; bottom: max(8.1vh, calc(env(safe-area-inset-bottom) + 56px)); left: 50%; transform: translateX(-50%);
@@ -66,10 +61,9 @@ html, body { background: #03050b; overscroll-behavior: none; }
 #synesthesia-boot[data-stalled="true"] .synesthesia-boot__retry { display: block; }
 #synesthesia-boot[data-stalled="true"] .synesthesia-boot__render { animation: none; color: #d9b6cf; }
 .synesthesia-boot__retry:disabled { opacity: .55; cursor: progress; }
-@keyframes synesthesia-eye-breathe { 0%,100%{transform:scale(1);filter:drop-shadow(0 0 38px rgba(227,53,53,.11))} 50%{transform:scale(1.012);filter:drop-shadow(0 0 50px rgba(67,214,223,.14))} }
+@keyframes synesthesia-ward-arrive { from{transform:scale(1.035);filter:saturate(.68) contrast(1.08) brightness(.58)} to{transform:scale(1.015);filter:saturate(.82) contrast(1.05) brightness(.74)} }
 @keyframes synesthesia-status-pulse { 0%,100%{opacity:.55} 50%{opacity:.95} }
-@media (max-aspect-ratio: 4/5) { .synesthesia-boot__door { width:min(76vw,430px); } }
 @media (prefers-reduced-motion: reduce) {
   #synesthesia-boot { transition-duration:.08s }
-  .synesthesia-boot__door, .synesthesia-boot__render { animation:none }
+  .synesthesia-boot__ward, .synesthesia-boot__render { animation:none }
 }
