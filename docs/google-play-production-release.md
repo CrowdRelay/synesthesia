@@ -8,9 +8,10 @@ The Android release pipeline is designed so source/artifact validation stays in 
 2. Give the publishing service account access only to `music.virya.synesthesia` and the testing/production release permissions it needs.
 3. Configure repository/environment variables `GOOGLE_PLAY_WIF_PROVIDER` and `GOOGLE_PLAY_SERVICE_ACCOUNT`. Production publishing and rollout promotion deliberately fail closed without WIF.
 4. Complete every Play Console App content item required for this app/account: privacy policy, Data safety, Ads, Content rating, Target audience/content, App access, and any additional Play policy declarations shown by the console.
-5. Complete the Main store listing: app name, short and long description, icon, feature graphic, phone screenshots, category/contact details and privacy-policy URL.
-6. Enable/confirm Play App Signing and keep the upload-key material only in GitHub Actions secrets.
-7. Complete any Play account-level testing history / production-access approval that Google requires for this developer account.
+5. Use `https://virya.music/legal/privacy/` as the canonical privacy-policy URL. `https://virya.music/legal/data-deletion/` documents the shared Virya account/data-deletion flow and may be supplied where Play requests deletion information.
+6. Complete the Main store listing: app name, short and long description, icon, feature graphic, phone screenshots, category/contact details and the privacy-policy URL above.
+7. Enable/confirm Play App Signing and keep the upload-key material only in GitHub Actions secrets.
+8. Complete any Play account-level testing history / production-access approval that Google requires for this developer account.
 
 ## First production release
 
