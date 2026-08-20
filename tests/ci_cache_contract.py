@@ -9,8 +9,8 @@ android = (ROOT / ".github/workflows/android-apk.yml").read_text()
 release = (ROOT / ".github/workflows/build.yml").read_text()
 
 for source in (ci, android):
-    if "actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57" not in source:
-        failures.append("pinned actions/cache v4.2.0 missing")
+    if "actions/cache@caa296126883cff596d87d8935842f9db880ef25" not in source:
+        failures.append("pinned Node 24 actions/cache v5.1.0 missing")
     if "native/target" in source:
         failures.append("native/target must never be persisted in GitHub Actions cache")
 
