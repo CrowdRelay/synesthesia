@@ -6,17 +6,17 @@ var interaction_forgiveness: float = 1.12
 var assist_level: int = 0
 var resonance_memory_strength: float = 0.0
 
-# Ward paintings are now the source of truth for physical prop placement. The
-# room mechanics keep stable logical coordinates; these anchors adapt touch and
-# haptic/event points to the authored compositions without changing save state.
+# The ward paintings are now the source of truth for physical prop placement.
+# Behaviors keep their stable logical coordinates for save/mechanic compatibility;
+# these anchors adapt touch + haptic/event points to the authored compositions.
 const ART_ANCHORS := {
     "party-time": [
-        [Vector2(0.19, 0.31), Vector2(0.18, 0.28)],
-        [Vector2(0.37, 0.23), Vector2(0.72, 0.28)],
-        [Vector2(0.59, 0.29), Vector2(0.80, 0.50)],
-        [Vector2(0.78, 0.22), Vector2(0.84, 0.34)],
-        [Vector2(0.28, 0.49), Vector2(0.10, 0.75)],
-        [Vector2(0.69, 0.51), Vector2(0.80, 0.75)],
+        [Vector2(0.19, 0.31), Vector2(0.235, 0.397)],
+        [Vector2(0.37, 0.23), Vector2(0.263, 0.444)],
+        [Vector2(0.59, 0.29), Vector2(0.453, 0.424)],
+        [Vector2(0.78, 0.22), Vector2(0.727, 0.634)],
+        [Vector2(0.28, 0.49), Vector2(0.847, 0.675)],
+        [Vector2(0.69, 0.51), Vector2(0.234, 0.806)],
     ],
     "unmasked": [
         [Vector2(0.27, 0.31), Vector2(0.18, 0.32)],
@@ -33,7 +33,7 @@ const ART_ANCHORS := {
         [Vector2(0.50, 0.30), Vector2(0.50, 0.27)],
     ],
     "hybrid": [
-        [Vector2(0.50, 0.46), Vector2(0.50, 0.31)],
+        [Vector2(0.50, 0.46), Vector2(0.50, 0.455)],
     ],
     "technophobia": [
         [Vector2(0.28, 0.58), Vector2(0.40, 0.62)],
@@ -79,24 +79,37 @@ func acts() -> Array[String]:
 func particle_style() -> String:
     return str(room_data.get("visual_style", "uncertainty"))
 
+## Short diegetic prompt. It is intentionally a verb, not a tutorial sentence.
 func interaction_hint() -> String:
     return "DOTKNIJ ŚWIATA"
 
+## Diegetic assist targets. They stay invisible during normal play and are only
+## rendered by InteractionHintLayer after inactivity/misses. Each entry may use:
+## point: Vector2, kind: String, radius: float.
 func hint_targets() -> Array[Dictionary]:
     return []
 
+## V2 progression is mechanic-first: every room owns a different way of
+## reducing interference. The reveal brush only assists/localizes the effect.
 func mechanic_progress() -> float:
     return 0.0
 
 func brush_assist_weight() -> float:
     return 0.22
 
+## Interactive props can own the pointer so the accessibility/reveal brush does
+## not paint underneath a cable pull, knob drag or hold interaction.
 func captures_pointer_at(_point_norm: Vector2) -> bool:
     return false
 
+## Painting remains a fallback/reveal layer for every room. Gesture-driven rooms
+## can return semantic events from on_gesture without replacing the mask system.
 func on_paint(_point_norm: Vector2, _radius_norm: float, _progress: float) -> Array[Dictionary]:
     return []
 
+## Semantic gesture API. Gesture dictionaries are produced by InteractionRouter
+## and always use normalized coordinates. Returned events may include:
+## kind/index/message/reveal_radius/reveal_strength/point.
 func on_gesture(_kind: String, _gesture: Dictionary, _progress: float) -> Array[Dictionary]:
     return []
 
@@ -129,6 +142,9 @@ func restore_state(saved: Dictionary) -> void:
     state = saved.duplicate(true)
 
 func set_resonance_memory(memory: Dictionary) -> void:
+    # An Echo found in another room leaves a tiny, positive mechanical afterimage:
+    # slightly more forgiving touch geometry and a little more reveal energy.
+    # It never unlocks content or changes completion requirements.
     if memory.is_empty():
         resonance_memory_strength = 0.0
         return
@@ -136,10 +152,14 @@ func set_resonance_memory(memory: Dictionary) -> void:
     resonance_memory_strength = 0.08 if echo_type in ["gesture_trace", "interaction_trace", "mechanic_trace"] else 0.06
 
 func set_assist_level(level: int) -> void:
+    # Assist primarily changes invisible touch tolerance. Rooms may also use the
+    # level for a tiny authored affordance lift, never to change mechanic state.
     assist_level = clampi(level, 0, 3)
     interaction_forgiveness = [1.12, 1.20, 1.30, 1.40][assist_level]
 
 func _near(point: Vector2, target: Vector2, radius: float) -> bool:
+    # Behaviors still compare their stable logical coordinates internally, while
+    # raw pointer capture may arrive in authored-art coordinates. Accept both.
     var forgiving_radius: float = radius * (interaction_forgiveness + resonance_memory_strength)
     var r2 := forgiving_radius * forgiving_radius
     return point.distance_squared_to(target) <= r2 or point.distance_squared_to(_art_point(target)) <= r2
@@ -175,18 +195,23 @@ func _interaction_event(kind: String, index: int, message: String, point: Vector
         "reveal_strength": clampf(reveal_strength + resonance_memory_strength * 0.50, 0.0, 1.0),
     }
 
+func _room_id() -> String:
+    return str(room_data.get("id", ""))
+
 func _anchor_pairs() -> Array:
-    var value: Variant = ART_ANCHORS.get(str(room_data.get("id", "")), [])
+    var value: Variant = ART_ANCHORS.get(_room_id(), [])
     return value if value is Array else []
 
 func _art_point(logic_point: Vector2) -> Vector2:
     var pairs := _anchor_pairs()
-    if pairs.is_empty(): return logic_point
+    if pairs.is_empty():
+        return logic_point
     var best_logic := Vector2.ZERO
     var best_art := Vector2.ZERO
     var best_distance := INF
     for pair_value in pairs:
-        if not (pair_value is Array) or pair_value.size() < 2: continue
+        if not (pair_value is Array) or pair_value.size() < 2:
+            continue
         var logic: Vector2 = pair_value[0]
         var art: Vector2 = pair_value[1]
         var distance := logic_point.distance_squared_to(logic)
@@ -194,17 +219,20 @@ func _art_point(logic_point: Vector2) -> Vector2:
             best_distance = distance
             best_logic = logic
             best_art = art
-    if best_distance > 0.055 * 0.055: return logic_point
+    if best_distance > 0.16 * 0.16:
+        return logic_point
     return (best_art + (logic_point - best_logic)).clamp(Vector2.ZERO, Vector2.ONE)
 
 func _logic_point(art_point: Vector2) -> Vector2:
     var pairs := _anchor_pairs()
-    if pairs.is_empty(): return art_point
+    if pairs.is_empty():
+        return art_point
     var best_logic := Vector2.ZERO
     var best_art := Vector2.ZERO
     var best_distance := INF
     for pair_value in pairs:
-        if not (pair_value is Array) or pair_value.size() < 2: continue
+        if not (pair_value is Array) or pair_value.size() < 2:
+            continue
         var logic: Vector2 = pair_value[0]
         var art: Vector2 = pair_value[1]
         var distance := art_point.distance_squared_to(art)
@@ -212,5 +240,6 @@ func _logic_point(art_point: Vector2) -> Vector2:
             best_distance = distance
             best_logic = logic
             best_art = art
-    if best_distance > 0.22 * 0.22: return art_point
+    if best_distance > 0.14 * 0.14:
+        return art_point
     return (best_logic + (art_point - best_art)).clamp(Vector2.ZERO, Vector2.ONE)
