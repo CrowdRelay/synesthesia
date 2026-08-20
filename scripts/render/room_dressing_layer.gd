@@ -1,8 +1,6 @@
 extends Control
-
 const SIGNAL_GLITCH_TEXTURE := preload("res://assets/v2/fx/signal-glitch.png")
 const SCRATCH_TEXTURE := preload("res://assets/v2/fx/surface-scratches.png")
-
 const WARD_VOID := Color("070908")
 const WARD_WALL := Color("b9b9aa")
 const WARD_OIL := Color("31453f")
@@ -11,7 +9,6 @@ const WARD_GLASS := Color("93c6c0")
 const WARD_PAPER := Color("d8d5c7")
 const WARD_RUST := Color("805642")
 const WARD_RED := Color("8d3f43")
-
 var _accent: Color = Color("84b4ac")
 var _secondary: Color = Color("93c6c0")
 var _style: String = "uncertainty"
@@ -36,40 +33,30 @@ func configure(style: String, accent: Color, secondary: Color) -> void:
 
 func set_progress(value: float) -> void:
     var next: float = clampf(value, 0.0, 1.0)
-    if is_equal_approx(next, _progress):
-        return
+    if is_equal_approx(next, _progress): return
     _progress = next
-    if _reduced_motion:
-        queue_redraw()
+    if _reduced_motion: queue_redraw()
 
 func set_cinematic(value: float) -> void:
     var next: float = clampf(value, 0.0, 1.0)
-    if is_equal_approx(next, _cinematic):
-        return
+    if is_equal_approx(next, _cinematic): return
     _cinematic = next
-    if _reduced_motion:
-        queue_redraw()
+    if _reduced_motion: queue_redraw()
 
 func set_door_open_amount(value: float) -> void:
     var next: float = clampf(value, 0.0, 1.0)
-    if is_equal_approx(next, _door_open):
-        return
+    if is_equal_approx(next, _door_open): return
     _door_open = next
-    if _reduced_motion:
-        queue_redraw()
+    if _reduced_motion: queue_redraw()
 
 func set_reduced_motion(value: bool) -> void:
-    if _reduced_motion == value:
-        return
+    if _reduced_motion == value: return
     _reduced_motion = value
     _sync_processing()
     queue_redraw()
 
-func _sync_processing() -> void:
-    set_process(is_visible_in_tree() and not _reduced_motion)
-
-func set_runtime_scale(value: float) -> void:
-    _runtime_scale = clampf(value, 0.55, 1.0)
+func _sync_processing() -> void: set_process(is_visible_in_tree() and not _reduced_motion)
+func set_runtime_scale(value: float) -> void: _runtime_scale = clampf(value, 0.55, 1.0)
 
 func _process(delta: float) -> void:
     _phase = fmod(_phase + delta * (0.10 if _reduced_motion else 0.24), 1000.0)
@@ -80,14 +67,12 @@ func _process(delta: float) -> void:
         queue_redraw()
 
 func _draw() -> void:
-    if size.x <= 1.0 or size.y <= 1.0:
-        return
+    if size.x <= 1.0 or size.y <= 1.0: return
     _draw_material_wash()
     _draw_ward_shell()
     _draw_room_signature()
     _draw_document_marks()
-    if _door_open > 0.001:
-        _draw_open_doorway()
+    if _door_open > 0.001: _draw_open_doorway()
 
 func _draw_material_wash() -> void:
     var full := Rect2(Vector2.ZERO, size)
@@ -107,15 +92,10 @@ func _draw_ward_shell() -> void:
     var line := Color(WARD_LINE, 0.60)
     var wall_line := Color(WARD_WALL, 0.16)
     var floor_line := Color(_accent, 0.10 + _cinematic * 0.04)
-
-    # One building across every room: oil-painted lower wall, hard skirting,
-    # institutional ceiling and restrained perspective. The authored image stays
-    # visible underneath, but its fantasy/location identity is no longer the shell.
     draw_rect(Rect2(Vector2.ZERO, Vector2(w, h * 0.53)), Color(WARD_WALL, 0.045), true)
     draw_rect(Rect2(Vector2(0.0, h * 0.51), Vector2(w, h * 0.035)), Color(WARD_OIL, 0.22), true)
     draw_line(Vector2(0.0, h * 0.545), Vector2(w, h * 0.545), line, 1.4)
     draw_line(Vector2(0.0, h * 0.835), Vector2(w, h * 0.835), Color(WARD_LINE, 0.72), 2.0)
-
     for side in [-1.0, 1.0]:
         var bottom := Vector2(w * (0.05 if side < 0.0 else 0.95), h)
         _stroke(vanish, bottom, floor_line, 1.0, int(11 + side * 3.0))
@@ -123,16 +103,11 @@ func _draw_ward_shell() -> void:
         var ratio := float(index + 1) / 5.0
         var y := lerpf(h * 0.84, h, ratio)
         draw_line(Vector2(w * 0.08, y), Vector2(w * 0.92, y), Color(_accent, 0.035), 0.9)
-
-    # Fluorescent fitting. Its small exposure drift is perceptual, not a horror flicker.
     var breath := 0.5 + 0.5 * sin(_phase * TAU * 0.37)
     var lamp_w := w * 0.28
     var lamp_rect := Rect2(Vector2(w * 0.5 - lamp_w * 0.5, h * 0.055), Vector2(lamp_w, maxf(5.0, h * 0.010)))
     draw_rect(lamp_rect, Color(WARD_PAPER, 0.12 + breath * 0.025 + _cinematic * 0.02), true)
     draw_rect(lamp_rect.grow(2.0), Color(WARD_GLASS, 0.06), false, 1.0)
-
-    # Side wall seams and handrail anchor the scene as a psychiatric ward rather
-    # than a generic sci-fi chamber.
     var rail_y := h * 0.62
     draw_line(Vector2(w * 0.05, rail_y), Vector2(w * 0.95, rail_y), Color(WARD_WALL, 0.18), 3.2)
     draw_line(Vector2(w * 0.05, rail_y + 3.5), Vector2(w * 0.95, rail_y + 3.5), Color(WARD_LINE, 0.48), 1.0)
@@ -141,30 +116,18 @@ func _draw_ward_shell() -> void:
 
 func _draw_room_signature() -> void:
     match _style:
-        "uncertainty":
-            _draw_observation_room()
-        "party":
-            _draw_activity_room()
-        "unmasked":
-            _draw_art_therapy_room()
-        "calling":
-            _draw_group_room()
-        "seed":
-            _draw_therapy_garden()
-        "hybrid":
-            _draw_diagnostic_corridor()
-        "technophobia":
-            _draw_observation_control()
-        "invaluable":
-            _draw_deposit_room()
-        "ashes":
-            _draw_charcoal_studio()
-        "waves":
-            _draw_shared_room()
-        "rise":
-            _draw_exit_stairwell()
-        _:
-            _draw_observation_room()
+        "uncertainty": _draw_observation_room()
+        "party": _draw_activity_room()
+        "unmasked": _draw_art_therapy_room()
+        "calling": _draw_group_room()
+        "seed": _draw_therapy_garden()
+        "hybrid": _draw_diagnostic_corridor()
+        "technophobia": _draw_observation_control()
+        "invaluable": _draw_deposit_room()
+        "ashes": _draw_charcoal_studio()
+        "waves": _draw_shared_room()
+        "rise": _draw_exit_stairwell()
+        _: _draw_observation_room()
 
 func _draw_observation_room() -> void:
     var w := size.x
@@ -221,8 +184,7 @@ func _draw_group_room() -> void:
         _draw_chair(p, w * 0.078, h * 0.072, index + 40)
     var cup := Vector2(w * 0.50, h * 0.60)
     _wobbly_circle(cup, minf(w, h) * 0.021, Color(WARD_RED, 0.62), 1.6, 24, 5)
-    for ring in range(3):
-        draw_arc(cup, 18.0 + float(ring) * 13.0, 0.0, TAU, 48, Color(WARD_RED, 0.08 - float(ring) * 0.012), 1.0)
+    for ring in range(3): draw_arc(cup, 18.0 + float(ring) * 13.0, 0.0, TAU, 48, Color(WARD_RED, 0.08 - float(ring) * 0.012), 1.0)
 
 func _draw_therapy_garden() -> void:
     var w := size.x
@@ -246,8 +208,7 @@ func _draw_diagnostic_corridor() -> void:
     var w := size.x
     var h := size.y
     var vp := Vector2(w * 0.5, h * 0.35)
-    for x in [0.12, 0.25, 0.75, 0.88]:
-        draw_line(Vector2(w * x, h * 0.84), vp, Color(WARD_LINE, 0.34), 1.1)
+    for x in [0.12, 0.25, 0.75, 0.88]: draw_line(Vector2(w * x, h * 0.84), vp, Color(WARD_LINE, 0.34), 1.1)
     draw_line(Vector2(w * 0.14, h * 0.52), Vector2(w * 0.86, h * 0.52), Color(WARD_WALL, 0.22), 1.0)
     var fixation := Vector2(w * 0.50, h * 0.39)
     draw_arc(fixation, clampf(w * 0.04, 10.0, 24.0), 0.0, TAU, 32, Color(_accent, 0.42), 1.4)
@@ -392,7 +353,6 @@ func _draw_chair(center: Vector2, width: float, height: float, seed: int) -> voi
     _stroke(center + Vector2(width * 0.34, 2.0), center + Vector2(width * 0.28, height * 0.72), Color(WARD_LINE, 0.40), 1.4, seed + 5)
 
 func _draw_clipboard(center: Vector2, width: float, height: float, tilt: float) -> void:
-    var r := Rect2(center - Vector2(width, height) * 0.5, Vector2(width, height))
     draw_set_transform(center, tilt, Vector2.ONE)
     var local := Rect2(-Vector2(width, height) * 0.5, Vector2(width, height))
     draw_rect(local, Color(WARD_PAPER, 0.07), true)
