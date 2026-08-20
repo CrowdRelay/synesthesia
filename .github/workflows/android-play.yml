@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   actions: read
+  id-token: write
 
 concurrency:
   group: synesthesia-google-play-${{ github.event.workflow_run.head_sha || github.sha }}
@@ -32,7 +33,6 @@ jobs:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
 
     steps:
       - name: Check out exact validated source
@@ -64,16 +64,65 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: ./scripts/validate-source.sh
 
-      - name: Validate release secrets
+      - name: Validate release secrets and Google Play authentication policy
+        env:
+          WIF_PROVIDER: ${{ vars.GOOGLE_PLAY_WIF_PROVIDER }}
+          WIF_SERVICE_ACCOUNT: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "${ANDROID_KEYSTORE_BASE64}" || { echo 'Missing ANDROID_KEYSTORE_BASE64' >&2; exit 1; }
           test -n "${ANDROID_KEY_ALIAS}" || { echo 'Missing ANDROID_KEY_ALIAS' >&2; exit 1; }
           test -n "${ANDROID_KEY_PASSWORD}" || { echo 'Missing ANDROID_KEY_PASSWORD' >&2; exit 1; }
-          test -n "${PLAY_JSON}" || { echo 'Missing GOOGLE_PLAY_SERVICE_ACCOUNT_JSON' >&2; exit 1; }
-          jq -e '.type == "service_account" and (.client_email | type == "string") and (.private_key | type == "string")' <<<"${PLAY_JSON}" >/dev/null
-          echo 'SYNESTHESIA_PLAY_SECRETS=PASS'
+
+          wif=false
+          if [[ -n "${WIF_PROVIDER}" && -n "${WIF_SERVICE_ACCOUNT}" ]]; then
+            wif=true
+          elif [[ -n "${WIF_PROVIDER}" || -n "${WIF_SERVICE_ACCOUNT}" ]]; then
+            echo 'SYNESTHESIA_PLAY_AUTH=FAIL reason=partial-wif-configuration' >&2
+            exit 1
+          fi
+          if [[ "${wif}" != true ]]; then
+            test -n "${PLAY_JSON}" || { echo 'Missing GOOGLE_PLAY_SERVICE_ACCOUNT_JSON and WIF configuration' >&2; exit 1; }
+            jq -e '.type == "service_account" and (.client_email | type == "string") and (.private_key | type == "string")' <<<"${PLAY_JSON}" >/dev/null
+          fi
+          echo "SYNESTHESIA_PLAY_AUTH=PASS mode=$([[ "${wif}" == true ]] && echo wif || echo json-fallback)"
+
+      - name: Authenticate to Google Cloud with Workload Identity Federation
+        id: google-auth
+        if: vars.GOOGLE_PLAY_WIF_PROVIDER != '' && vars.GOOGLE_PLAY_SERVICE_ACCOUNT != ''
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GOOGLE_PLAY_WIF_PROVIDER }}
+          service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+
+      - name: Materialize legacy Play JSON fallback
+        id: play-json
+        if: vars.GOOGLE_PLAY_WIF_PROVIDER == '' && vars.GOOGLE_PLAY_SERVICE_ACCOUNT == ''
+        env:
+          PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          path="${RUNNER_TEMP}/google-play-service-account.json"
+          printf '%s' "${PLAY_JSON}" > "${path}"
+          chmod 600 "${path}"
+          jq -e '.type == "service_account"' "${path}" >/dev/null
+          echo "path=${path}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Google Play credentials file
+        id: play-credentials
+        env:
+          WIF_PATH: ${{ steps.google-auth.outputs.credentials_file_path }}
+          JSON_PATH: ${{ steps.play-json.outputs.path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          path="${WIF_PATH:-${JSON_PATH:-}}"
+          test -n "${path}" && test -s "${path}"
+          echo "path=${path}" >> "$GITHUB_OUTPUT"
 
       - name: Cache bounded Rust and Godot build inputs
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
@@ -154,7 +203,7 @@ jobs:
       - name: Upload exact AAB to Google Play Internal
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJson: ${{ steps.play-credentials.outputs.path }}
           packageName: music.virya.synesthesia
           releaseFiles: promoted/synesthesia-release.aab
           track: internal

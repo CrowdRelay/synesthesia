@@ -12,9 +12,9 @@ def read(rel: str) -> str:
 ward = ROOT / "assets/v2/branding/menu-world.webp"
 if not ward.is_file() or not (20_000 <= ward.stat().st_size <= 160_000):
     failures.append("ward boot artwork missing/outside startup budget")
-legacy_native_splash = ROOT / "assets/branding/boot-splash.png"
-if not legacy_native_splash.is_file():
-    failures.append("legacy validator compatibility splash source missing")
+native_engine_splash = ROOT / "assets/branding/boot-splash.png"
+if not native_engine_splash.is_file():
+    failures.append("native engine PNG splash source missing")
 
 project = read("project.godot")
 exports = read("export_presets.cfg")
@@ -28,9 +28,12 @@ main = read("scripts/main.gd")
 intro = read("scripts/ui/experience_intro_card.gd")
 
 checks = [
-    ('boot_splash/image="res://assets/v2/branding/menu-world.webp"', project, "native ward boot image"),
+    # Godot 4.7 accepts PNG only for application/boot_splash. The immediately
+    # following in-app boot sequence remains the authored ward world on every
+    # platform, so engine bootstrap format must not be conflated with art direction.
+    ('boot_splash/image="res://assets/branding/boot-splash.png"', project, "supported native engine PNG splash"),
     ('boot_splash/use_filter=true', project, "native splash scaling filter"),
-    ('assets/branding/boot-splash*', exports, "legacy compatibility splash excluded from exports"),
+    ('assets/branding/boot-splash*', exports, "native engine splash excluded from packed runtime resources"),
     ('MENU_WORLD_PATH: String = "res://assets/v2/branding/menu-world.webp"', boot, "Godot ward boot image"),
     ('const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")', boot, "boot design token convergence"),
     ('VIRYA // ODDZIAŁ SYNESTHESIA', boot, "ward boot eyebrow"),
@@ -78,4 +81,4 @@ if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_BOOT_VISUAL_CONTINUITY=FAIL count={len(failures)}")
-print("SYNESTHESIA_BOOT_VISUAL_CONTINUITY=PASS art=ward-world native=web=godot=menu compatibility-source=export-excluded chrome=clinical-mint")
+print("SYNESTHESIA_BOOT_VISUAL_CONTINUITY=PASS art=ward-world engine-splash=png native=web=godot=menu chrome=clinical-mint")
