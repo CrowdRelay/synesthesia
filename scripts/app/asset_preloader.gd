@@ -2,7 +2,13 @@ extends Node
 
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
 
-const MAX_QUEUED: int = 13
+# Threaded ResourceLoader requests are cheap individually but too many concurrent
+# image/audio decodes produce RAM/CPU spikes on phones. Keep the active window
+# deliberately small; pending work is retained and critical assets always win.
+const MAX_QUEUED_DESKTOP: int = 8
+const MAX_QUEUED_WEB: int = 6
+const MAX_QUEUED_MOBILE: int = 5
+const MIN_QUEUED: int = 4
 const DEFAULT_TRANSITION_WAIT_MS: int = 320
 const RUNTIME_SUPPORT_PATHS: Array[String] = [
     "res://scripts/audio_director.gd",
@@ -24,6 +30,11 @@ var _blocking_takes: int = 0
 var _max_block_ms: int = 0
 var _dropped_requests: int = 0
 var _runtime_support_primed: bool = false
+var _active_limit: int = MAX_QUEUED_DESKTOP
+var _runtime_scale: float = 1.0
+
+func _ready() -> void:
+    _active_limit = _platform_limit()
 
 func prepare(manifest_path: String) -> void:
     _prune_finished_failures()
@@ -39,11 +50,10 @@ func prepare(manifest_path: String) -> void:
     var audio_value: Variant = manifest.get("audio", {})
     var audio: Dictionary = audio_value if audio_value is Dictionary else {}
 
-    # PR #13 made scene_image authoritative. Do not spend I/O or decode budget on
-    # the legacy background/subject/foreground files that the renderer no longer samples.
-    # The current room calls this during menu/transition; main_room_flow immediately
-    # calls it for the next manifest after a room is ready, so q80+ art streams while
-    # the player is already interacting with the previous room.
+    # scene_image is authoritative for the psychiatric-ward redesign. A room
+    # prewarms only its scene graph, behavior, authored scene and ambience. The
+    # completion excerpt is intentionally demand-loaded after gameplay instead
+    # of competing with the next room's art during interaction.
     var critical_paths: Array[String] = [
         str(room.get("scene_path", "")),
         str(room.get("behavior_script", "")),
@@ -52,7 +62,6 @@ func prepare(manifest_path: String) -> void:
     for path in critical_paths:
         _queue(path, true)
     _queue(str(audio.get("ambience", "")), false)
-    _queue(str(audio.get("completion_excerpt", "")), false)
 
 func prime_runtime_support() -> void:
     if _runtime_support_primed:
@@ -61,11 +70,24 @@ func prime_runtime_support() -> void:
     for path in RUNTIME_SUPPORT_PATHS:
         _queue(path, true)
 
+func set_runtime_budget(scale: float) -> void:
+    _runtime_scale = clampf(scale, 0.55, 1.0)
+    var platform_limit: int = _platform_limit()
+    _active_limit = clampi(roundi(lerpf(float(MIN_QUEUED), float(platform_limit), _runtime_scale)), MIN_QUEUED, platform_limit)
+    _pump_queue()
+
 func queue_deferred(path: String) -> void:
     _queue(path, false)
 
 func queue_critical(path: String) -> void:
     _queue(path, true)
+
+func _platform_limit() -> int:
+    if OS.has_feature("mobile"):
+        return MAX_QUEUED_MOBILE
+    if OS.has_feature("web"):
+        return MAX_QUEUED_WEB
+    return MAX_QUEUED_DESKTOP
 
 func _queue(path: String, critical: bool) -> void:
     if path.is_empty() or _queued.has(path) or _pending_flags.has(path) or not ResourceLoader.exists(path):
@@ -78,7 +100,7 @@ func _queue(path: String, critical: bool) -> void:
     _pump_queue()
 
 func _pump_queue() -> void:
-    while _queued.size() < MAX_QUEUED:
+    while _queued.size() < _active_limit:
         var path: String = _pop_pending_path()
         if path.is_empty():
             return
@@ -169,6 +191,8 @@ func snapshot() -> Dictionary:
     return {
         "queued": _queued.size(),
         "pending": _pending_flags.size(),
+        "active_limit": _active_limit,
+        "runtime_scale": _runtime_scale,
         "critical_queued": _critical.size() + _pending_critical.size(),
         "deferred_queued": maxi(0, _queued.size() - _critical.size()) + _pending_deferred.size(),
         "requests": _requests,
