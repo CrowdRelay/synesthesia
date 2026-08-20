@@ -2,6 +2,13 @@ name: Android Google Play
 
 on:
   workflow_dispatch:
+    inputs:
+      play_track:
+        description: Google Play track
+        required: true
+        type: choice
+        default: internal
+        options: [internal, production]
   workflow_run:
     workflows: ["CI"]
     types: [completed]
@@ -18,7 +25,7 @@ concurrency:
 
 jobs:
   play:
-    name: Build signed AAB and publish Internal
+    name: Build signed AAB and publish Google Play
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
@@ -27,7 +34,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment:
-      name: store-testing
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.play_track == 'production' && 'production' || 'store-testing' }}
     env:
       SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -40,7 +47,9 @@ jobs:
         with:
           ref: ${{ env.SOURCE_SHA }}
 
-      - name: Resolve release identity
+      - name: Resolve release identity and track
+        env:
+          INPUT_TRACK: ${{ inputs.play_track }}
         shell: bash
         run: |
           set -euo pipefail
@@ -48,9 +57,25 @@ jobs:
           test -n "${version_name}"
           version_code=$((100000000 + GITHUB_RUN_NUMBER))
           (( version_code >= 1 && version_code <= 2100000000 ))
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            play_track="internal"
+          else
+            play_track="${INPUT_TRACK}"
+          fi
+          case "${play_track}" in internal|production) ;; *) exit 2 ;; esac
+          if [[ "${play_track}" == "production" ]]; then
+            play_status="inProgress"
+            user_fraction="0.10"
+          else
+            play_status="completed"
+            user_fraction=""
+          fi
           echo "SYNESTHESIA_VERSION_NAME=${version_name}" >> "$GITHUB_ENV"
           echo "SYNESTHESIA_ANDROID_VERSION_CODE=${version_code}" >> "$GITHUB_ENV"
-          echo "SYNESTHESIA_PLAY_RELEASE=PASS version=${version_name} versionCode=${version_code} sha=${SOURCE_SHA}"
+          echo "SYNESTHESIA_PLAY_TRACK=${play_track}" >> "$GITHUB_ENV"
+          echo "SYNESTHESIA_PLAY_STATUS=${play_status}" >> "$GITHUB_ENV"
+          echo "SYNESTHESIA_PLAY_USER_FRACTION=${user_fraction}" >> "$GITHUB_ENV"
+          echo "SYNESTHESIA_PLAY_RELEASE=PASS version=${version_name} versionCode=${version_code} track=${play_track} status=${play_status} sha=${SOURCE_SHA}"
 
       - name: Bind release to CI-validated source
         if: github.event_name == 'workflow_run'
@@ -63,6 +88,28 @@ jobs:
       - name: Validate source contracts for manual release
         if: github.event_name == 'workflow_dispatch'
         run: ./scripts/validate-source.sh
+
+      - name: Require exact main CI before manual production release
+        if: github.event_name == 'workflow_dispatch' && inputs.play_track == 'production'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_REF}" == "refs/heads/main" ]]
+          for attempt in $(seq 1 60); do
+            row="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow ci.yml --commit "${SOURCE_SHA}" --limit 1 --json status,conclusion,headSha,databaseId --jq '.[0] // empty' 2>/dev/null || true)"
+            if [[ -z "${row}" ]]; then sleep 15; continue; fi
+            [[ "$(jq -r '.headSha' <<<"${row}")" == "${SOURCE_SHA}" ]]
+            status="$(jq -r '.status' <<<"${row}")"
+            conclusion="$(jq -r '.conclusion // empty' <<<"${row}")"
+            if [[ "${status}" != "completed" ]]; then sleep 15; continue; fi
+            [[ "${conclusion}" == "success" ]] || { echo "SYNESTHESIA_PLAY_CI_GATE=FAIL conclusion=${conclusion}" >&2; exit 1; }
+            echo "SYNESTHESIA_PLAY_CI_GATE=PASS run=$(jq -r '.databaseId' <<<"${row}") sha=${SOURCE_SHA}"
+            exit 0
+          done
+          echo "SYNESTHESIA_PLAY_CI_GATE=FAIL reason=timeout sha=${SOURCE_SHA}" >&2
+          exit 1
 
       - name: Validate release secrets and Google Play authentication policy
         env:
@@ -83,11 +130,30 @@ jobs:
             echo 'SYNESTHESIA_PLAY_AUTH=FAIL reason=partial-wif-configuration' >&2
             exit 1
           fi
+          if [[ "${SYNESTHESIA_PLAY_TRACK}" == "production" && "${wif}" != true ]]; then
+            echo 'SYNESTHESIA_PLAY_AUTH=FAIL reason=production-requires-wif' >&2
+            exit 1
+          fi
           if [[ "${wif}" != true ]]; then
             test -n "${PLAY_JSON}" || { echo 'Missing GOOGLE_PLAY_SERVICE_ACCOUNT_JSON and WIF configuration' >&2; exit 1; }
             jq -e '.type == "service_account" and (.client_email | type == "string") and (.private_key | type == "string")' <<<"${PLAY_JSON}" >/dev/null
           fi
-          echo "SYNESTHESIA_PLAY_AUTH=PASS mode=$([[ "${wif}" == true ]] && echo wif || echo json-fallback)"
+          echo "SYNESTHESIA_PLAY_AUTH=PASS mode=$([[ "${wif}" == true ]] && echo wif || echo json-fallback) track=${SYNESTHESIA_PLAY_TRACK}"
+
+      - name: Require production CrowdRelay and Synesthesia surfaces
+        if: env.SYNESTHESIA_PLAY_TRACK == 'production'
+        env:
+          CROWDRELAY_BASE_URL: ${{ vars.CROWDRELAY_PRODUCTION_BASE_URL }}
+          SYNESTHESIA_BASE_URL: ${{ vars.SYNESTHESIA_PRODUCTION_BASE_URL || 'https://synesthesia.virya.music' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CROWDRELAY_BASE_URL}" || { echo 'SYNESTHESIA_PLAY_PREFLIGHT=FAIL crowdrelay-base-missing' >&2; exit 1; }
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location --connect-timeout 4 --max-time 10 --retry 2 --retry-all-errors \
+            "${CROWDRELAY_BASE_URL%/}/v1/meta" | jq -e '.apiVersion == "1" and .capabilities.synesthesia_runs_v1 and .capabilities.synesthesia_rewards_v1 and .capabilities.synesthesia_leaderboard_v1 and .capabilities.synesthesia_recovery_v1' >/dev/null
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location --connect-timeout 4 --max-time 10 --retry 2 --retry-all-errors \
+            "${SYNESTHESIA_BASE_URL%/}/menu-world.webp" >/dev/null
+          echo 'SYNESTHESIA_PLAY_PREFLIGHT=PASS'
 
       - name: Authenticate to Google Cloud with Workload Identity Federation
         id: google-auth
@@ -200,20 +266,22 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Upload exact AAB to Google Play Internal
+      - name: Upload exact AAB to Google Play
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJson: ${{ steps.play-credentials.outputs.path }}
           packageName: music.virya.synesthesia
           releaseFiles: promoted/synesthesia-release.aab
-          track: internal
-          status: completed
+          tracks: ${{ env.SYNESTHESIA_PLAY_TRACK }}
+          status: ${{ env.SYNESTHESIA_PLAY_STATUS }}
+          userFraction: ${{ env.SYNESTHESIA_PLAY_USER_FRACTION }}
           releaseName: Synesthesia ${{ env.SYNESTHESIA_VERSION_NAME }} · CI ${{ github.run_number }}
+          whatsNewDirectory: distribution/whatsnew
 
       - name: Publish receipt
         shell: bash
         run: |
-          echo "GOOGLE_PLAY_UPLOAD=PASS package=music.virya.synesthesia track=internal version=${SYNESTHESIA_VERSION_NAME} versionCode=${SYNESTHESIA_ANDROID_VERSION_CODE} sha=${SOURCE_SHA}"
+          echo "GOOGLE_PLAY_UPLOAD=PASS package=music.virya.synesthesia track=${SYNESTHESIA_PLAY_TRACK} status=${SYNESTHESIA_PLAY_STATUS} version=${SYNESTHESIA_VERSION_NAME} versionCode=${SYNESTHESIA_ANDROID_VERSION_CODE} sha=${SOURCE_SHA}"
 
       - name: Upload Godot diagnostics
         if: always()
