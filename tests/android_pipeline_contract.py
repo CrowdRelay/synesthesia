@@ -140,6 +140,26 @@ for token in ("PT_LOAD", "16K_PAGE_ALIGNMENT=FAIL", "SYNESTHESIA_AAB_16K=PASS"):
     if token not in alignment_checker:
         failures.append(f"AAB ELF alignment checker missing token: {token}")
 
+play_release_builder_path = ROOT / "scripts/build-android-play-aab.sh"
+play_workflow_path = ROOT / ".github/workflows/android-play.yml"
+play_release_builder = play_release_builder_path.read_text() if play_release_builder_path.is_file() else ""
+play_workflow = play_workflow_path.read_text() if play_workflow_path.is_file() else ""
+for token in (
+    'export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"',
+    'for template_name in android_debug.apk android_release.apk android_source.zip; do',
+    'godot_export_args+=(--install-android-build-template)',
+    "godot_export_args+=(--export-release 'Android Release' \"$AAB_PATH\")",
+    '"$GODOT_BIN" "${godot_export_args[@]}"',
+    'android-play-export.log',
+    'Android Gradle build template was not installed',
+):
+    if token not in play_release_builder:
+        failures.append(f"Play release builder missing Gradle-template hardening: {token}")
+if '"$GODOT_BIN" --headless --path "$ROOT" --install-android-build-template\n' in play_release_builder:
+    failures.append("Play release builder must not invoke template installation as a standalone Godot editor command")
+if "~/.local/share/godot/export_templates/4.7.1.stable/android_source.zip" not in play_workflow:
+    failures.append("Play workflow must cache the Android Gradle source template")
+
 for token in (
     '(cd "$NATIVE" && cargo ndk --version',
     '(cd "$NATIVE" && cargo ndk "${args[@]}")',
