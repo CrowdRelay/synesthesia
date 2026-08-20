@@ -12,6 +12,7 @@ PACKAGE_CHECKSUMS.txt
 *.badging.txt
 __pycache__/
 *.pyc
+gha-creds-*.json
 
 # Build-fetched OFL fonts; source package stays binary-free.
 assets/fonts/generated/*.ttf
