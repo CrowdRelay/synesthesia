@@ -10,6 +10,7 @@ signal request_failed(operation: String, message: String)
 signal retry_scheduled(operation: String, attempt: int)
 signal run_invalidated()
 
+const LeaderboardIdentity := preload("res://scripts/ui/leaderboard_identity.gd")
 const MAX_QUEUE_SIZE: int = 32
 const MAX_RETRY_ATTEMPTS: int = 3
 const RETRY_BASE_SECONDS: float = 1.2
@@ -35,10 +36,6 @@ func _ready() -> void:
     _ensure_transport()
 
 func _ensure_transport() -> void:
-    # The finale may create this node and immediately call start_run() in the
-    # same frame. On Web, transport must therefore not depend on _ready having
-    # already run. This also self-heals after a browser lifecycle invalidates a
-    # child transport node.
     if _http == null or not is_instance_valid(_http):
         _http = HTTPRequest.new()
         _http.name = "SynesthesiaRewardHttp"
@@ -105,8 +102,6 @@ func _start_run_payload() -> Dictionary:
         "attempt_id": _attempt_id,
         "locale": TranslationServer.get_locale(),
     }
-    # Do not send the additive field for normal players so an independently
-    # rolled back API remains compatible. Production E2E explicitly opts in.
     if _synthetic_run:
         payload["synthetic"] = true
     return payload
@@ -160,8 +155,6 @@ func refresh_completion_context(_total_elapsed_ms: int = 0) -> void:
     if not has_run():
         request_failed.emit("completion_context_refresh", "Brak aktywnego przebiegu Sygnału.")
         return
-    # Read-only by contract. Status refresh must never rotate the short-lived
-    # handoff that My Signal may be consuming in another tab/app.
     _enqueue({
         "operation": "completion_context_refresh",
         "method": "GET",
@@ -202,13 +195,14 @@ func publish_leaderboard() -> void:
     if not has_run():
         request_failed.emit("leaderboard_publish", "Najpierw kończę synchronizację przebiegu.")
         return
+    var display_name := LeaderboardIdentity.display_name()
     _enqueue({
         "operation": "leaderboard_publish",
         "method": "POST",
         "path": "/v1/public/synesthesia/runs/%s/leaderboard" % _run_id,
         "authorized": true,
-        "idempotency_key": "leaderboard-publish-%s" % _run_id,
-        "payload": {},
+        "idempotency_key": "leaderboard-publish-%s-%s" % [_run_id, str(display_name.hash())],
+        "payload": {"display_name": display_name},
     })
 
 func enter_draw(email: String, policy_version: String) -> void:
@@ -252,8 +246,6 @@ func _contains_idempotency_key(idempotency_key: String) -> bool:
 func _pump() -> void:
     if _busy or _queue.is_empty():
         return
-    # Never let a Web lifecycle/_ready ordering race turn a queued request into
-    # a null transport call. A CTA retry must reach HTTPRequest.request().
     _ensure_transport()
     _active = _queue.pop_front()
     _busy = true
