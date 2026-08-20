@@ -19,7 +19,10 @@ finale_layout = read("scripts/ui/signal_finale_layout.gd")
 # Mobile finale must open with the actionable form in the first scroll viewport.
 assert 'app._layout.move_child(app._form, 0)' in finale_layout
 assert 'app._layout.move_child(app._visual, 1)' in finale_layout
-assert 'call_deferred("_scroll_to_start")' in finale_layout
+# Initial scroll reset belongs to card setup only; resize/keyboard changes must preserve position.
+assert finale.count('call_deferred("_scroll_to_start")') == 1
+assert fallback.count('call_deferred("_scroll_to_start")') == 1
+assert 'call_deferred("_ensure_email_visible_after_layout")' in finale
 assert 'func is_ready_for_input() -> bool:' in finale
 assert 'WYPIS // SYGNAŁ DOTARŁ // 5 PŁYT' in finale
 

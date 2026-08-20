@@ -50,13 +50,11 @@ var _handoff_issued_ms: int = 0
 # Linking failed, as opposed to still being in flight. See SignalCtaState.
 var _signal_link_retryable: bool = false
 var _configured_for_input: bool = false
-
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
     mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_ENABLED
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
 func configure(server_completed: bool, saved_reward: Dictionary, journey_summary: Dictionary = {}, signal_context: Dictionary = {}) -> void:
     _signal_context = signal_context.duplicate(true)
     _server_completed = server_completed
@@ -222,11 +220,11 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
 
     _layout_columns()
     _apply_ui_scale()
+    call_deferred("_scroll_to_start")
     call_deferred("_publish_e2e_actions")
     modulate.a = 0.0
     var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     tween.tween_property(self, "modulate:a", 1.0, 0.30)
-
 
 func _publish_e2e_actions() -> void:
     if not WebE2EProbe.enabled() or _signal_button == null or _claim == null: return
@@ -367,10 +365,8 @@ func _hand_over_to_signal() -> void:
     _awaiting_signal_return = true
     set_status("Otwieram My Signal. Po zalogowaniu wróć tutaj i kliknij „SPRAWDŹ POŁĄCZENIE”.")
     call_deferred("_open_signal")
-
 func is_leaderboard_publish_eligible() -> bool:
     return _leaderboard_panel != null and _leaderboard_panel.is_publish_eligible()
-
 # The press must always do what the button says, so it reads the same state the
 # label was resolved from and never a second, independently ordered rule.
 func _handle_signal_action() -> void:
@@ -386,8 +382,6 @@ func _handle_signal_action() -> void:
         signal_link_retry_requested.emit()
         return
     if _active_handoff().is_empty():
-        # No usable link. Ask for one; the press that follows opens it, which is
-        # also what keeps the browser tab inside a real user gesture on Web.
         _awaiting_handoff_issue = true
         _awaiting_signal_return = false
         _signal_button.disabled = true
@@ -403,10 +397,13 @@ func _handle_signal_action() -> void:
     set_status("Otwieram My Signal. Po zalogowaniu wróć tutaj i kliknij „SPRAWDŹ POŁĄCZENIE”.")
     _open_signal()
     _refresh_cta()
-
 func _open_signal() -> void:
-    OS.shell_open(SignalCtaState.my_signal_url(_active_handoff()))
-
+    var handoff := _active_handoff()
+    if OS.has_feature("android") and SignalCtaState.is_usable_handoff(handoff):
+        var native_result := OS.shell_open(SignalCtaState.signal_app_url(handoff))
+        if native_result == OK:
+            return
+    OS.shell_open(SignalCtaState.my_signal_url(handoff))
 func _open_next_event() -> void:
     var event_value: Variant = _signal_context.get("next_event", {})
     var event: Dictionary = event_value if event_value is Dictionary else {}
@@ -433,6 +430,10 @@ func _ensure_email_visible() -> void:
     if _scroll != null and _email != null:
         _scroll.ensure_control_visible(_email)
 
+func _ensure_email_visible_after_layout() -> void:
+    await get_tree().process_frame
+    _ensure_email_visible()
+
 func _emit_claim() -> void:
     draw_entry_requested.emit(_email.text.strip_edges())
 
@@ -447,14 +448,13 @@ func set_claim_enabled(value: bool) -> void:
 func is_claim_enabled() -> bool:
     return _claim != null and not _claim.disabled
 
-func _layout_panel() -> void:
-    SignalFinaleLayout.layout_panel(self)
-func _layout_columns() -> void:
-    SignalFinaleLayout.layout_columns(self)
-func _apply_ui_scale() -> void:
-    SignalFinaleLayout.apply_ui_scale(self)
+func _layout_panel() -> void: SignalFinaleLayout.layout_panel(self)
+func _layout_columns() -> void: SignalFinaleLayout.layout_columns(self)
+func _apply_ui_scale() -> void: SignalFinaleLayout.apply_ui_scale(self)
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         call_deferred("_layout_panel")
         call_deferred("_layout_columns")
         call_deferred("_apply_ui_scale")
+        if _email != null and _email.has_focus():
+            call_deferred("_ensure_email_visible_after_layout")

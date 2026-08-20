@@ -51,6 +51,15 @@ static func is_usable_handoff(handoff: String) -> bool:
 ##
 ## Only the short-lived single-fan completion handoff travels in the fragment.
 ## Fan/session credentials never leave the API cookie/native secure store.
+## Android-native destination. The custom scheme is intentionally narrow and
+## carries only the same short-lived handoff as the HTTPS fallback. Signal
+## re-validates the complete grammar before accepting it.
+static func signal_app_url(handoff: String, source: String = "synesthesia") -> String:
+    var url: String = "virya-signal://my-signal?source=%s" % source.uri_encode()
+    if is_usable_handoff(handoff):
+        url += "#handoff=%s" % handoff.uri_encode()
+    return url
+
 static func my_signal_url(handoff: String, source: String = "synesthesia") -> String:
     var url: String = "https://virya.music/pl/my-signal/?source=%s" % source.uri_encode()
     if is_usable_handoff(handoff):
