@@ -260,6 +260,30 @@ func _run() -> void:
     await process_frame
     await process_frame
     _require_label_width(portrait_finale, "Jedenaście zakątków", 220.0, "finale-portrait")
+
+    # Model the Android IME as a focused field plus a shorter viewport. The
+    # resize notification may reflow the panel, but it must not reset an
+    # in-progress form back to scroll position zero.
+    var finale_scrolls := portrait_finale.find_children("*", "ScrollContainer", true, false)
+    var finale_email := portrait_finale.find_child("RewardEmail", true, false) as LineEdit
+    if finale_scrolls.is_empty() or finale_email == null:
+        _fail("finale portrait form is missing its runtime scroll/email controls")
+    else:
+        var finale_scroll := finale_scrolls[0] as ScrollContainer
+        finale_scroll.scroll_vertical = 120
+        await process_frame
+        finale_email.grab_focus()
+        await process_frame
+        await _set_test_viewport(Vector2i(390, 520))
+        await process_frame
+        await process_frame
+        if finale_scroll.scroll_vertical <= 0:
+            _fail("finale portrait scroll reset to top during focused viewport resize")
+        if not finale_scroll.get_global_rect().intersects(finale_email.get_global_rect()):
+            _fail("finale e-mail field is not visible after focused viewport resize")
+        else:
+            print("SYNESTHESIA_FINALE_SCROLL_RUNTIME=PASS viewport=390x520 focus=email scroll=preserved")
+        finale_email.release_focus()
     await _dispose_node(portrait_finale)
 
     # Restore a landscape viewport for the remaining non-layout lifecycle checks.

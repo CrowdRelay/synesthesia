@@ -282,6 +282,15 @@ echo "RUST_TOOLCHAIN=$RUST_NATIVE_TOOLCHAIN"
 echo "RUST_TARGET=aarch64-linux-android"
 
 echo
+echo "=== RUST HOST DEBUG BRIDGE ==="
+
+# The local Godot editor opens the project before exporting Android. Its
+# generated GDExtension descriptor therefore needs a debug host library too.
+env SYNESTHESIA_RUST_PROFILE=debug \
+    ./scripts/build-rust-native.sh host
+or exit 1
+
+echo
 echo "=== RUST ANDROID ARM64 ==="
 
 env SYNESTHESIA_RUST_PROFILE=release \

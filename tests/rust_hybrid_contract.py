@@ -93,6 +93,11 @@ def main() -> None:
 
     require(android_build, 'SYNESTHESIA_DISABLE_RUST_NATIVE:-0', "android-rust-default-required")
     require(android_build, "./scripts/build-rust-native.sh android-arm64", "android-native-package")
+    play_builder = (ROOT / "scripts/play-build.fish").read_text()
+    require(play_builder, "./scripts/build-rust-native.sh host", "play-host-debug-bridge")
+    require(play_builder, "./scripts/build-rust-native.sh android-arm64", "play-android-native-package")
+    if play_builder.index("./scripts/build-rust-native.sh host") > play_builder.index("./scripts/build-rust-native.sh android-arm64"):
+        raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL play-host-bridge-after-android")
     require(android_build, "SYNESTHESIA_RUST_ANDROID_APK=PASS", "android-apk-library-verification")
     require(android_ci, 'SYNESTHESIA_DISABLE_RUST_NATIVE: "0"', "android-ci-rust-required")
     require(ci, "cargo +1.97.1 test --manifest-path native/Cargo.toml --package synesthesia-core", "ci-core-test")

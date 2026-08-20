@@ -150,8 +150,11 @@ assert "Time.get_ticks_msec() + 650" in reward_flow
 assert "await get_tree().process_frame" in reward_flow
 layout = read("scripts/ui/signal_finale_layout.gd")
 assert 'app._layout.move_child(app._form, 0)' in layout
-assert 'app.call_deferred("_scroll_to_start")' in layout
+# Scroll starts at the form once, but resize/IME events must not force the user back to the top.
 fallback = read("scripts/ui/signal_finale_fallback_card.gd")
+assert finale.count('call_deferred("_scroll_to_start")') == 1
+assert fallback.count('call_deferred("_scroll_to_start")') == 1
+assert 'call_deferred("_scroll_to_start")' not in layout
 assert 'UIFactory.line_edit("E-mail do losowania"' in fallback
 
 # Finale explains the exact opt-in path and blocks publication for incomplete timing.
