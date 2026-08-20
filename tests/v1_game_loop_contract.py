@@ -15,6 +15,7 @@ interaction = read("scripts/render/room_interaction_flow.gd")
 world_fx = read("scripts/render/world_micro_fx_layer.gd")
 finale = read("scripts/ui/signal_finale_card.gd")
 leaderboard = read("scripts/ui/signal_leaderboard_panel.gd")
+identity = read("scripts/ui/leaderboard_identity.gd")
 summary = read("scripts/ui/signal_journey_summary.gd")
 guide = read("scripts/app/interaction_guide.gd")
 telemetry = read("scripts/app/gameplay_telemetry.gd")
@@ -40,8 +41,16 @@ assert "SignalLeaderboardPanel" in finale
 assert "TOP 10" in leaderboard and "TWÓJ CZAS CAŁEGO ALBUMU" in leaderboard
 assert "format_time" in leaderboard and "%03d" in leaderboard
 assert "best_elapsed_ms" in leaderboard
-assert "OPUBLIKUJ MÓJ PB W TOP 10" in leaderboard
-assert "woj••••" in leaderboard
+for token in (
+    "ZAPISZ PB W TOP 10",
+    "Nick / nazwa (opcjonalnie)",
+    "anonymous",
+    "Ranking nie wymaga maila ani konta Signal",
+    "Ranking nie daje udziału w losowaniu 5 płyt",
+    "osobny krok poniżej",
+):
+    assert token in leaderboard, token
+assert "effective_name" in identity
 assert "publish_leaderboard()" in reward_flow
 assert "refresh_link_context_after_resume" in reward_flow
 assert "NOTIFICATION_APPLICATION_RESUMED" in main
@@ -61,6 +70,6 @@ assert "gameplay_journey_completed_ms" in telemetry
 
 print(
     "SYNESTHESIA_V1_GAME_LOOP=PASS "
-    "replay=attempt-scoped leaderboard=top10 post-reveal=interactive "
+    "replay=attempt-scoped leaderboard=top10+optional-alias+anonymous post-reveal=interactive "
     "completion=timed+33/33 resume=handoff-refresh mobile=boosted telemetry=journey-summary"
 )
