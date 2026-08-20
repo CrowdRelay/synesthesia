@@ -39,6 +39,7 @@ python3 scripts/run-contracts.py --jobs "${SYNESTHESIA_CONTRACT_JOBS:-4}" \
   tests/godot_runtime_path_contract.py \
   tests/ci_cache_contract.py \
   tests/release_pipeline_contract.py \
+  tests/google_play_production_contract.py \
   tests/font_supply_chain_contract.py \
   tests/toolchain_pin_contract.py \
   tests/rust_architecture_doc_contract.py \
