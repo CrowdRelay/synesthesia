@@ -2,9 +2,6 @@ extends Node
 
 const ReleaseReader := preload("res://scripts/app/release_reader.gd")
 
-# Keep background I/O bounded on phones. Requests beyond this window are retained
-# in priority queues instead of being silently dropped, then pumped as the room
-# consumes already-warmed resources.
 const MAX_QUEUED: int = 13
 const DEFAULT_TRANSITION_WAIT_MS: int = 320
 const RUNTIME_SUPPORT_PATHS: Array[String] = [
@@ -41,18 +38,19 @@ func prepare(manifest_path: String) -> void:
     var art: Dictionary = art_value if art_value is Dictionary else {}
     var audio_value: Variant = manifest.get("audio", {})
     var audio: Dictionary = audio_value if audio_value is Dictionary else {}
+
+    # PR #13 made scene_image authoritative. Do not spend I/O or decode budget on
+    # the legacy background/subject/foreground files that the renderer no longer samples.
+    # The current room calls this during menu/transition; main_room_flow immediately
+    # calls it for the next manifest after a room is ready, so q80+ art streams while
+    # the player is already interacting with the previous room.
     var critical_paths: Array[String] = [
         str(room.get("scene_path", "")),
         str(room.get("behavior_script", "")),
         str(art.get("scene_image", "")),
-        str(art.get("background_image", "")),
-        str(art.get("subject_image", "")),
-        str(art.get("foreground_image", "")),
     ]
     for path in critical_paths:
         _queue(path, true)
-    # Audio is intentionally non-critical: queue it during menu/room time, but
-    # never let a decoder join delay the covered door transition.
     _queue(str(audio.get("ambience", "")), false)
     _queue(str(audio.get("completion_excerpt", "")), false)
 
@@ -105,9 +103,6 @@ func _pop_pending_path() -> String:
         return _pending_deferred.pop_front()
     return ""
 
-# Give an already-scheduled next room a short, frame-yielding grace period while
-# the door warp covers the screen. This converts the common transition case from
-# a main-thread load_threaded_get stall into non-blocking wait frames.
 func wait_for_queued(max_wait_ms: int = DEFAULT_TRANSITION_WAIT_MS) -> void:
     if _queued.is_empty() and _pending_flags.is_empty():
         return
@@ -126,8 +121,6 @@ func take_if_ready(path: String) -> Resource:
     if path.is_empty():
         return null
     if _pending_flags.has(path):
-        # It is scheduled, but a higher-priority/bounded request window is still
-        # ahead of it. Callers that can tolerate deferred attachment should wait.
         return null
     if not _queued.has(path):
         return null
@@ -151,9 +144,6 @@ func take(path: String) -> Resource:
     if _queued.has(path):
         var status: int = int(ResourceLoader.load_threaded_get_status(path))
         if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-            # Keep the legacy correctness fallback for critical callers, but
-            # measure every remaining blocking join. Deferred audio uses
-            # take_if_ready() and never enters this path during room transition.
             var started_ms: int = Time.get_ticks_msec()
             var resource: Resource = ResourceLoader.load_threaded_get(path)
             var waited_ms: int = maxi(0, Time.get_ticks_msec() - started_ms)
@@ -166,9 +156,6 @@ func take(path: String) -> Resource:
         else:
             _forget(path)
     elif _pending_flags.has(path):
-        # A user can outrun a background queue on a very fast tap. Remove only
-        # this pending request before the correctness fallback so it cannot race
-        # with a later threaded start for the same resource.
         _remove_pending(path)
     if ResourceLoader.exists(path):
         _fallbacks += 1
@@ -237,9 +224,6 @@ func drain() -> void:
     for raw_path in paths:
         var path: String = str(raw_path)
         var status: int = int(ResourceLoader.load_threaded_get_status(path))
-        # Never turn shutdown into a synchronous wait for an in-flight threaded load.
-        # Loaded resources are consumed so Godot can release their bookkeeping; in-flight
-        # requests are simply detached from this preloader and finish on the loader thread.
         if status == ResourceLoader.THREAD_LOAD_LOADED:
             ResourceLoader.load_threaded_get(path)
     _queued.clear()
