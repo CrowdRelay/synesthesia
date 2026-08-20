@@ -84,17 +84,23 @@ func _configure_art(room_data: Dictionary, asset_source = null) -> void:
         app.post_reveal_runtime.configure(room_data)
     var art_value: Variant = room_data.get("art_direction", {})
     var art: Dictionary = art_value if art_value is Dictionary else {}
+    var visual_style: String = str(room_data.get("visual_style", "uncertainty"))
     var scene_texture: Texture2D = _take_texture(str(art.get("scene_image", "")), asset_source)
     var background_texture: Texture2D = _take_texture(str(art.get("background_image", "")), asset_source)
     var subject_texture: Texture2D = _take_texture(str(art.get("subject_image", "")), asset_source)
     var foreground_texture: Texture2D = _take_texture(str(art.get("foreground_image", "")), asset_source)
     app.composite.texture = scene_texture
+    # The source paintings remain authored assets; this restrained multiplicative
+    # grade makes their formerly independent palettes sit inside one ward before
+    # the material/dressing layer adds room-specific physical detail.
+    app.composite.modulate = _ward_grade_for_style(visual_style)
     app.composite_material.set_shader_parameter("background_texture", background_texture)
     app.composite_material.set_shader_parameter("subject_texture", subject_texture)
     app.composite_material.set_shader_parameter("foreground_texture", foreground_texture)
     app.composite_material.set_shader_parameter("reveal_mask", app.reveal_mask.texture())
-    app.composite_material.set_shader_parameter("accent_color", app._accent_color)
-    app.composite_material.set_shader_parameter("noise_tint", Color.from_string(str(app.sensory.get("visual_snow_tint", "#E5C9E8")), Color("e5c9e8")))
+    app.composite_material.set_shader_parameter("accent_color", _clinical_accent(app._accent_color))
+    var source_noise := Color.from_string(str(app.sensory.get("visual_snow_tint", "#93C6C0")), Color("93c6c0"))
+    app.composite_material.set_shader_parameter("noise_tint", _clinical_accent(source_noise))
     app.composite_material.set_shader_parameter("scene_parallax", float(art.get("scene_parallax", 0.018)))
     app.composite_material.set_shader_parameter("background_parallax", float(art.get("background_parallax", 0.008)))
     app.composite_material.set_shader_parameter("subject_parallax", float(art.get("subject_parallax", 0.026)))
@@ -121,6 +127,20 @@ func _configure_art(room_data: Dictionary, asset_source = null) -> void:
     app.composite_material.set_shader_parameter("unlock_profile", 0)
     app.composite_material.set_shader_parameter("living_strength", 0.0)
     app.composite_material.set_shader_parameter("living_time", 0.0)
+
+func _ward_grade_for_style(style: String) -> Color:
+    match style:
+        "party": return Color(0.78, 0.84, 0.74, 1.0)
+        "calling": return Color(0.80, 0.80, 0.75, 1.0)
+        "seed": return Color(0.73, 0.88, 0.76, 1.0)
+        "ashes": return Color(0.83, 0.78, 0.70, 1.0)
+        "waves": return Color(0.72, 0.83, 0.84, 1.0)
+        "rise": return Color(0.84, 0.85, 0.75, 1.0)
+        _: return Color(0.73, 0.86, 0.80, 1.0)
+
+func _clinical_accent(source: Color) -> Color:
+    var luminance := source.r * 0.2126 + source.g * 0.7152 + source.b * 0.0722
+    return Color(luminance, luminance, luminance, 1.0).lerp(Color("84b4ac"), 0.70)
 
 func _take_texture(path: String, asset_source = null) -> Texture2D:
     if path.is_empty():
