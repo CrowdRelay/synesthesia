@@ -50,6 +50,7 @@ func configure(profile: String) -> void:
             _set_scale(1.0, "high-profile", false)
         _:
             _set_scale(1.0, "balanced-start", false)
+    _apply_streaming_budget()
     set_process(profile_name == "balanced" and not _suspended)
 
 func set_suspended(value: bool) -> void:
@@ -190,8 +191,18 @@ func _set_scale(value: float, reason: String, start_cooldown: bool = true) -> vo
     var next_scale: float = clampf(value, 0.60, 1.0)
     _last_reason = reason
     if is_equal_approx(next_scale, _scale):
+        _apply_streaming_budget()
         return
     _scale = next_scale
     if start_cooldown:
         _cooldown = CHANGE_COOLDOWN_SECONDS
+    _apply_streaming_budget()
     budget_changed.emit(_scale, reason)
+
+func _apply_streaming_budget() -> void:
+    var parent := get_parent()
+    if parent == null:
+        return
+    var preloader := parent.get_node_or_null("AssetPreloader")
+    if preloader != null and preloader.has_method("set_runtime_budget"):
+        preloader.set_runtime_budget(_scale)
