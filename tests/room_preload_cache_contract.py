@@ -35,12 +35,17 @@ for token in (
     'var _pending_critical: Array[String] = []',
     'var _pending_deferred: Array[String] = []',
     'func _pump_queue() -> void:',
+    'func _active_request_count() -> int:',
+    'while _active_request_count() < _active_limit:',
+    'ResourceLoader.THREAD_LOAD_IN_PROGRESS',
+    '"in_progress": _active_request_count()',
     'func prime_runtime_support() -> void:',
-    'while _queued.size() < _active_limit:',
 ):
     if token not in preloader:
         failures.append(f"bounded look-ahead preload lifecycle missing: {token}")
 
+if "while _queued.size() < _active_limit:" in preloader:
+    failures.append("loaded-but-unconsumed resources still consume active preload slots")
 if "MAX_QUEUED: int = 13" in preloader:
     failures.append("legacy 13-way decode window returned")
 if 'if _queued.size() >= MAX_QUEUED:\n        return' in preloader:
@@ -106,5 +111,5 @@ if failures:
 
 print(
     "SYNESTHESIA_ROOM_PRELOAD_CACHE=PASS "
-    f"manifests={manifest_count} json=process-cache queue=mobile5+web6+desktop8 next-room=active-play deferred-audio=threaded transition=critical-only-wait"
+    f"manifests={manifest_count} json=process-cache queue=live-work-only mobile5+web6+desktop8 next-room=active-play deferred-audio=threaded transition=critical-only-wait"
 )

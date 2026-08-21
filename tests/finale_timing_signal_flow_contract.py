@@ -65,7 +65,6 @@ assert "_sync_completed_rooms_to_server(next_room_index)" in reward_flow
 assert "func _ensure_http" in signup and "not _ensure_http()" in signup
 assert "OTWÓRZ MÓJ SYGNAŁ" in menu
 
-
 # arm_finale_guard itself must construct the actionable UI before the
 # watchdog timer; a stalled door/video transition may never be the first chance
 # the player gets to see the form.
@@ -85,28 +84,17 @@ assert guard.index("_force_reward_panel_visible()") < guard.index("get_tree().cr
 completion = room_flow.split("func _complete_current_room()", 1)[1].split("func pause_room_timer", 1)[0]
 direct_queue = 'if journey_completed: WebE2EProbe.emit("finale", {"stage":"queued_from_completion"}); call_deferred("_arm_finale_after_grace")'
 assert direct_queue in completion
-# The card runs for every room, the closing one included.
 assert 'app.call_deferred("_show_completion_panel")' in completion
 assert 'if not journey_completed: app.call_deferred("_show_completion_panel")' not in completion
-# The watchdog must only fire when no finale panel exists, and must still arm it.
 watchdog = room_flow.split("func _arm_finale_after_grace()", 1)[1].split("\nfunc ", 1)[0]
 assert "FINALE_GRACE_SECONDS" in watchdog
 assert "app.reward_panel == null or not is_instance_valid(app.reward_panel)" in watchdog
 assert "app.reward_flow.arm_finale_guard()" in watchdog
-# The card's confirm action is the primary hand-off into the finale.
 assert "app.completion_panel.continue_requested.connect(_transition_to_reward)" in room_flow
-# The hand-off is still queued before bookkeeping or network reconciliation runs.
 assert completion.index('call_deferred("_arm_finale_after_grace")') < completion.index("record_completion_performance")
 assert completion.index('call_deferred("_arm_finale_after_grace")') < completion.index("app._save_progress()")
 assert completion.index('call_deferred("_arm_finale_after_grace")') < completion.index("app.reward_client.record_room")
 
-# The card's own terminal path: a transition already in flight arms the finale
-# directly rather than opening a card the transition is about to replace.
-# This prevents 11/11 from remaining in a live HUD/post-reveal room. The gate is
-# keyed off every room being completed rather than off current_room_index: a
-# journey finished by resuming, replaying or completing out of order leaves the
-# final completion on some other index, and an index test silently strands the
-# player in exactly the state this contract exists to prevent.
 completion_gate = room_flow.split("func _show_completion_panel()", 1)[1].split("func _transition_to_room", 1)[0]
 bypass = "if app.transition_running and app.ProgressMetrics.all_rooms_completed(app.release_entries, app.album_state):"
 for token in (
@@ -116,16 +104,11 @@ for token in (
 ):
     assert token in completion_gate, token
 assert completion_gate.index(bypass) < completion_gate.index("if app.completion_panel != null")
-# The arming path must use the same predicate, or the two disagree at 11/11.
 assert "var journey_completed: bool = app.ProgressMetrics.all_rooms_completed(" in room_flow
 assert "app.current_room_index == app.release_entries.size() - 1" not in room_flow
-# The closing card announces the finished album rather than another opened room.
 assert '"Album domknięty" if app.ProgressMetrics.all_rooms_completed(' in room_flow
 assert 'next_label = "Odbierz finał"' in room_flow
 
-# Final reward surface owns the screen: gameplay/HUD are retired first, then
-# the persistent skull background and actionable Signal card are mounted.
-# The room transition director must never animate over or hide the final form.
 transition = room_flow.split("func _transition_to_reward", 1)[1]
 for token in (
     "_clear_room_runtime()",
@@ -150,7 +133,6 @@ assert "Time.get_ticks_msec() + 650" in reward_flow
 assert "await get_tree().process_frame" in reward_flow
 layout = read("scripts/ui/signal_finale_layout.gd")
 assert 'app._layout.move_child(app._form, 0)' in layout
-# Scroll starts at the form once, but resize/IME events must not force the user back to the top.
 fallback = read("scripts/ui/signal_finale_fallback_card.gd")
 assert finale.count('call_deferred("_scroll_to_start")') == 1
 assert fallback.count('call_deferred("_scroll_to_start")') == 1
@@ -159,7 +141,8 @@ assert 'UIFactory.line_edit("E-mail do losowania"' in fallback
 
 # Finale keeps leaderboard publication independent from Signal/e-mail while the
 # incomplete-timing gate still prevents invalid competitive results.
-assert "RANKING · 1) połącz ten przebieg" in finale
+assert "Konto Signal i e-mail nie są wymagane." in finale
+assert "połącz ten przebieg z My Signal albo e-mailem" not in finale
 for token in (
     "ZAPISZ PB W TOP 10",
     "Nick / nazwa (opcjonalnie)",
@@ -173,7 +156,6 @@ assert "is_publish_eligible" in leaderboard
 assert "is_leaderboard_publish_eligible" in reward_flow
 assert "CZAS RANKINGOWY · NIEPEŁNY POMIAR" in summary
 
-# Finale skull is the persistent full-bleed background behind the form.
 video_layer = read("scripts/render/room_video_layer.gd")
 assert "FINALE_SOURCE_ASPECT: float = 720.0 / 1280.0" in video_layer
 assert "FINALE_COVER_RELIEF: float = 1.14" in video_layer

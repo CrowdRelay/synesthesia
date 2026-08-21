@@ -101,7 +101,10 @@ func _queue(path: String, critical: bool) -> void:
     _pump_queue()
 
 func _pump_queue() -> void:
-    while _queued.size() < _active_limit:
+    # `_queued` also retains already-loaded resources until their consumer takes
+    # them. Those cache hits must not occupy decode slots or a completed room can
+    # starve critical look-ahead work for the next transition.
+    while _active_request_count() < _active_limit:
         var path: String = _pop_pending_path()
         if path.is_empty():
             return
@@ -118,6 +121,14 @@ func _pump_queue() -> void:
         if critical:
             _critical[path] = true
         _requests += 1
+
+func _active_request_count() -> int:
+    var active: int = 0
+    for raw_path in _queued.keys():
+        var path: String = str(raw_path)
+        if int(ResourceLoader.load_threaded_get_status(path)) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+            active += 1
+    return active
 
 func _pop_pending_path() -> String:
     if not _pending_critical.is_empty():
@@ -192,6 +203,7 @@ func snapshot() -> Dictionary:
     return {
         "queued": _queued.size(),
         "pending": _pending_flags.size(),
+        "in_progress": _active_request_count(),
         "active_limit": _active_limit,
         "runtime_scale": _runtime_scale,
         "critical_queued": _critical.size() + _pending_critical.size(),
