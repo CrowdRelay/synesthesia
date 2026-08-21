@@ -157,9 +157,9 @@ func _hints_for(interaction: String) -> Array[String]:
         "paint":
             return ["Spróbuj poprowadzić falę poziomo.", "Dłuższy ruch w bok uspokaja horyzont."]
         "pop_balloons":
-            return ["Balony reagują na dotyk, nie tylko pędzel.", "Dotknij, przeciągnij albo przesuń szybko przez balon."]
+            return ["Balony reagują na dotyk.", "Dotknij, przeciągnij albo przesuń szybko przez balon."]
         "venetian_masks":
-            return ["Jedna z masek czeka na pęknięcie.", "Dotknij maski, a potem spróbuj zsunąć ją ruchem."]
+            return ["Maski czekają, by je zdjąć.", "Dotknij maski, a potem spróbuj zdjąć ją ruchem."]
         "toast_table":
             return ["Zatrzymaj palec przy butelce.", "Przytrzymaj, żeby nalać, potem przysuń kieliszek do toastu."]
         "grow_tree":
@@ -167,13 +167,13 @@ func _hints_for(interaction: String) -> Array[String]:
         "western_duel":
             return ["Cel staje się spokojniejszy, gdy go przytrzymasz.", "Przytrzymaj cel, ustaw ruch i puść bez pośpiechu."]
         "repair_glitches":
-            return ["Nie wszystkie ekrany są problemem. Poszukaj przewodów, które je karmią.", "Chwyć świecącą wtyczkę i wyciągnij ją dalej od gniazda. Potem znajdź zasilanie."]
+            return ["Nie wszystkie ekrany są problemem. Poszukaj przewodów zasilających.", "Chwyć świecącą wtyczkę i wyrwij ją z gniazda. Potem znajdź zasilanie."]
         "crack_mirrors":
-            return ["Tafla pamięta pojedynczy dotyk.", "Pęknij lustro dotknięciem, potem zrzuć je zdecydowanym ruchem."]
+            return ["Tafla szkła pamięta pojedynczy dotyk.", "Rozbij lustro dotknięciem, potem zrzuć je zdecydowanym ruchem."]
         "raise_phoenix":
-            return ["Popiół reaguje na ruch po okręgu.", "Zbierz energię krążąc palcem, potem wyprowadź ruch w górę."]
+            return ["Popiół reaguje na okrężny ruch.", "Zbierz energię krążąc palcem, potem wyprowadź ruch w górę."]
         "intimate_bedroom":
-            return ["Druga obecność pojawia się po chwili kontaktu.", "Przytrzymaj obecność, potem zbliż dwa palce, aż oddechy się zsynchronizują."]
+            return ["Obecność pojawia się po chwili kontaktu.", "Przytrzymaj obecność, potem zbliż dwa palce, aż oddechy się zsynchronizują."]
         "rise_atrium":
             return ["Finał przypomina gesty, które już znasz.", "Dotknij światła, przytrzymaj je i zakończ spokojnym ruchem w górę."]
         _:
