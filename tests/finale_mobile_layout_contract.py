@@ -35,6 +35,7 @@ for token in (
     require(layout, token)
 
 for token in (
+    "_scroll.mouse_filter = Control.MOUSE_FILTER_STOP",
     "_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED",
     "_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO",
     "_scroll.scroll_deadzone = SignalFinaleLayout.MOBILE_SCROLL_DEADZONE_PX",
@@ -45,6 +46,7 @@ for token in (
 
 for token in (
     "var _scroll: ScrollContainer",
+    "_scroll.mouse_filter = Control.MOUSE_FILTER_STOP",
     "_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED",
     "_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO",
     "_scroll.scroll_deadzone = SignalFinaleLayout.MOBILE_SCROLL_DEADZONE_PX",
