@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Validate canonical source contracts
         run: ./scripts/validate-source.sh
 
@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Cache bounded Web build inputs
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
@@ -101,7 +101,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Cache bounded Android build inputs
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
