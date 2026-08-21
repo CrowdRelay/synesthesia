@@ -58,9 +58,9 @@ Draw rules are server-enforced: 5 winners, 1 CD each, one completion/e-mail = on
 
 The editor, scenes, UI, audio, haptics and GPU reveal renderer stay in Godot. Deterministic gameplay primitives live in the pure `native/synesthesia-core` crate and are exposed through `native/synesthesia-gdext`; the first migrated slice is gesture recognition.
 
-Native production builds are Rust-primary. Web production deliberately keeps the behavior-compatible GDScript recognizer on the critical startup path while `synesthesia_gdext.wasm` remains a CI/verification target. `SYNESTHESIA_RUST_WEB_REQUIRED=1` can be used locally to exercise that Rust/WASM path explicitly.
+Native production builds are Rust-primary. Web production deliberately uses the behavior-compatible GDScript recognizer on the critical startup path while `synesthesia_gdext.wasm` remains a CI/verification target. `SYNESTHESIA_RUST_WEB_REQUIRED=1` can be used locally to exercise that Rust/WASM path explicitly.
 
-GitHub Actions is the authoritative Web builder: CI exports and verifies `build/web`, records a source-SHA manifest and deployment promotes the exact artifact to Netlify with `--no-build`. Build products remain ignored; a clean checkout does not require committed native binaries.
+GitHub Actions is the only Web builder: CI exports and verifies `build/web`, records a source-SHA manifest and deployment promotes the exact artifact to Netlify with `--no-build`. Build products remain ignored; a clean checkout does not require committed native binaries.
 
 ## Build and validation
 
