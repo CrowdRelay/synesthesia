@@ -1,6 +1,10 @@
 # Plan: ship a non-dlink Web engine
 
-Status: not started. Measured, scoped, not implemented.
+Status: done, shipped in `perf: drop dynamic linking from the production Web engine`.
+Kept for the measurement and for the constraint that makes the flag conditional.
+`scripts/build-web-preview.sh` derives `WEB_EXTENSIONS_SUPPORT` and the template
+set from `SYNESTHESIA_RUST_WEB_REQUIRED`; the committed preset value stays the
+Rust-primary one so an editor export is unchanged.
 
 ## Why
 
