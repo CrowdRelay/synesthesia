@@ -77,7 +77,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _layout_panel()
 
     _scroll = ScrollContainer.new()
-    _scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+    _scroll.mouse_filter = Control.MOUSE_FILTER_STOP
     _scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     _scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
