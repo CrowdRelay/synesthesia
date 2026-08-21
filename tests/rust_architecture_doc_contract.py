@@ -6,7 +6,7 @@ DOC = (ROOT / "docs/RUST_HYBRID_ARCHITECTURE.md").read_text()
 
 for token in (
     "Native production builds are Rust-primary",
-    "Web production deliberately uses the behavior-compatible GDScript recognizer",
+    "production Web uses the behavior-compatible GDScript recognizer",
     "GitHub Actions is the only Web builder",
     "synesthesia_gdext.wasm",
     "SYNESTHESIA_RUST_WEB_REQUIRED=1",
