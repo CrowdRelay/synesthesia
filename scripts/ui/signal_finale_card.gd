@@ -90,7 +90,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _layout = BoxContainer.new()
     _layout.mouse_filter = Control.MOUSE_FILTER_PASS
     _layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    _layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    _layout.size_flags_vertical = Control.SIZE_SHRINK_BEGIN  # expanding here clamps the scroll content to the viewport
     _layout.add_theme_constant_override("separation", 24)
     _scroll.add_child(_layout)
 
