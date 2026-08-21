@@ -153,7 +153,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     form_title.add_theme_color_override("font_color", _accent)
     _form.add_child(form_title)
 
-    var ranking_help := UIFactory.body("RANKING · pełny pomiar 11/11 → opcjonalny nick → publikacja PB. Konto Signal i e-mail nie są wymagane.")
+    var ranking_help := UIFactory.body("RANKING · pełny pomiar 11/11 · opcjonalny nick · publikacja PB. Konto Signal i e-mail nie są wymagane.")
     ranking_help.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     ranking_help.add_theme_font_size_override("font_size", 11)
     ranking_help.add_theme_color_override("font_color", ViryaDesign.TEXT_MUTED)
