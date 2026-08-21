@@ -18,6 +18,14 @@ for source in (card, fallback):
     assert 'call_deferred("_ensure_email_visible_after_layout")' in resize
     assert 'await get_tree().process_frame' in source
 
+# A ScrollContainer clamps a child that expands along the scroll axis, which
+# silently disables scrolling while still drawing the scrollbar.
+for name, source in (('finale', card), ('fallback', fallback)):
+    stack = source.split('_scroll.add_child(_layout)', 1)[0].rsplit('_panel.add_child(_scroll)', 1)[1]
+    assert 'size_flags_vertical = Control.SIZE_EXPAND_FILL' not in stack, (
+        f'{name} scroll content must not expand along the scroll axis'
+    )
+
 # Installed Signal is the primary Android transport. HTTPS remains a fallback
 # if the custom scheme cannot be opened, so web and older installs stay usable.
 assert 'virya-signal://my-signal?source=%s' in cta
