@@ -16,9 +16,9 @@ const TRACKS: Array[String] = [
 ]
 
 const SILENCE_DB := -60.0
-const MENU_MUSIC_DB := -23.0
+const MENU_MUSIC_DB := -21.0
 const MENU_NOISE_DB := -31.0
-const OUTRO_MUSIC_DB := -17.0
+const OUTRO_MUSIC_DB := -15.0
 const OUTRO_NOISE_DB := -35.0
 const FADE_DB_PER_SECOND := 22.0
 
@@ -108,6 +108,19 @@ func _request_noise() -> void:
 func _ensure_noise_playing() -> void:
     if _noise_player.stream != null and not _noise_player.playing and _mode != "off":
         _noise_player.play()
+
+func notify_tracks_available() -> void:
+    ## The room-audio pack mounts after the menu is already up on Web, so the
+    ## once-per-run music roll can happen while no track exists yet. Claim one
+    ## now rather than leaving a menu that rolled music quiet for the session.
+    if _mode != "menu" or not _menu_has_music:
+        return
+    if _menu_track_index >= 0:
+        return
+    _menu_track_index = _start_random_track(-1)
+    if _menu_track_index >= 0:
+        _refresh_targets()
+        set_process(true)
 
 func _start_random_track(exclude_index: int) -> int:
     if TRACKS.is_empty():
