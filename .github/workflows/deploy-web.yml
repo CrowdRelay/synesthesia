@@ -171,7 +171,7 @@ jobs:
         if: steps.freshness.outputs.current == 'true'
         continue-on-error: true
         env:
-          CROWDRELAY_BASE_URL: ${{ vars.CROWDRELAY_PRODUCTION_BASE_URL }}
+          CROWDRELAY_BASE_URL: ${{ secrets.CROWDRELAY_BASE_URL }}
           CROWDRELAY_COMMERCE_API_KEY: ${{ secrets.CROWDRELAY_COMMERCE_API_KEY }}
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
         shell: bash
