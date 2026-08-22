@@ -7,6 +7,10 @@ import os
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build" / "web"
 MAX_PCK = 56 * 1024 * 1024
+BOOT_PCK = "index.pck"
+# Packs fetched after boot instead of ahead of it. Each one still counts against
+# MAX_PCK and MAX_TOTAL; only the boot payload is allowed to be the entry pack.
+DEFERRED_PCKS = ("room-audio.pck",)
 MAX_RUST_WASM = 2 * 1024 * 1024
 MAX_TOTAL = 112 * 1024 * 1024
 MAX_SOURCE_RUNTIME = 42 * 1024 * 1024
@@ -59,8 +63,16 @@ def postbuild() -> None:
     failures: list[str] = []
     rust_required = os.environ.get("SYNESTHESIA_RUST_WEB_REQUIRED", "1") == "1"
 
-    if len(pcks) != 1:
-        failures.append(f"expected exactly one Godot PCK, got {len(pcks)}")
+    boot_pcks = [path for path in pcks if path.name == BOOT_PCK]
+    deferred_pcks = [path for path in pcks if path.name in DEFERRED_PCKS]
+    unexpected_pcks = [path for path in pcks if path not in boot_pcks and path not in deferred_pcks]
+
+    if len(boot_pcks) != 1:
+        failures.append(f"expected exactly one Godot boot PCK, got {len(boot_pcks)}")
+    if unexpected_pcks:
+        failures.append(
+            "unexpected Godot PCK: " + ",".join(sorted(path.name for path in unexpected_pcks))
+        )
     if rust_required and len(rust_wasms) != 1:
         failures.append(f"expected exactly one Rust GDExtension WASM, got {len(rust_wasms)}")
     if not rust_required and rust_wasms:
@@ -82,7 +94,8 @@ def postbuild() -> None:
     print(
         "SYNESTHESIA_WEB_BUNDLE_BUDGET=PASS "
         f"files={len(files)} total_mib={total / 1048576:.2f} "
-        f"pck_mib={max((p.stat().st_size for p in pcks), default=0) / 1048576:.2f} "
+        f"boot_pck_mib={max((p.stat().st_size for p in boot_pcks), default=0) / 1048576:.2f} "
+        f"deferred_pck_mib={sum(p.stat().st_size for p in deferred_pcks) / 1048576:.2f} "
         f"rust_required={str(rust_required).lower()} "
         f"rust_wasm_kib={max((p.stat().st_size for p in rust_wasms), default=0) / 1024:.1f} "
         f"engine_wasm_mib={sum(p.stat().st_size for p in engine_wasms) / 1048576:.2f}"
