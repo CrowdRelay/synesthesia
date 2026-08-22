@@ -45,3 +45,7 @@ synesthesia_rust.gdextension.uid
 *.backup-*
 *.orig
 *.rej
+
+# Local Claude Code context (not part of the product)
+CLAUDE.md
+.claude/
