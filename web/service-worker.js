@@ -80,11 +80,11 @@ function fetchForDeliveryAndCache(request) {
   }));
 }
 
-// The navigation response is the generation pointer, so it stays network-first.
-// Do not race a cached fallback against a timer: an old HTML naming an old PCK
-// generation is worse than waiting for the network. Cache is used only after a
-// real network failure or a transient server failure, preserving offline
-// recovery.
+// The navigation response is the generation pointer and the boot shell has to
+// match it, so both stay network-first. Do not race a cached fallback against a
+// timer: an old HTML naming an old PCK generation is worse than waiting for the
+// network. Cache is used only after a real network failure or a transient
+// server failure, preserving offline recovery.
 function networkFirst(request, event, navigationFallback = false) {
   const cachePromise = caches.open(CACHE_NAME);
   const cachedPromise = cachePromise.then((cache) => cache.match(request));
@@ -172,12 +172,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (CORE_PATHS.has(url.pathname)) {
-    // The boot shell is as generation-scoped as the runtime blobs: install
-    // precaches CORE as a unit, activate deletes every older generation and
-    // reloads open clients at the deploy boundary. Blocking the branded boot on
-    // a revalidation round trip for its own CSS, JS, fonts and artwork bought
-    // nothing that CACHE_NAME does not already guarantee.
-    event.respondWith(currentGenerationCacheFirst(request, event));
+    // The boot shell stays network-first even though CACHE_NAME is
+    // generation-scoped. Serving it cache-first is only consistent once the new
+    // worker has activated: until then a navigation returns the new index.html
+    // while the shell it names is still answered from the previous generation's
+    // cache. `activate` does reload open clients, so the window is one load —
+    // but that load is the branded boot, which is the worst place to run a
+    // mismatched CSS/JS pair. A conditional request for a few KB is the cheaper
+    // side of that trade; the heavy wasm/pck/js payloads stay cache-first above.
+    event.respondWith(networkFirst(request, event));
     return;
   }
   if (/\.(?:css|webmanifest|mp3|ogg|wav|ogv|svg|png|webp|woff2?|ttf)$/.test(url.pathname)) {
