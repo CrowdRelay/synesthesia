@@ -152,6 +152,11 @@ func _play() -> void:
     var hold: float = WARM_BOOT_HOLD if _warm_boot else COLD_BOOT_HOLD
     var reveal_duration: float = WARM_REVEAL_DURATION if _warm_boot else COLD_REVEAL_DURATION
     var fade_duration: float = WARM_FADE_DURATION if _warm_boot else COLD_FADE_DURATION
+    # Build the real menu under the curtain from the first frame. The curtain is
+    # opaque and still owns input for the whole hold-reveal-fade sequence, so the
+    # menu builds invisibly and the branded animation becomes a floor on how
+    # early it may appear rather than time spent waiting for it to start.
+    released.emit()
     await get_tree().create_timer(hold).timeout
     var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
     tween.tween_property(_progress_fill, "scale:x", 1.0, reveal_duration)
@@ -164,8 +169,7 @@ func _play() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_DISABLED
-    # Build the real menu underneath, then fade into the same ward artwork.
-    released.emit()
+    # Fade into the same ward artwork the menu already painted underneath.
     var fade := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
     fade.tween_property(self, "modulate:a", 0.0, fade_duration if not _reduced_motion else minf(fade_duration, 0.07))
     await fade.finished
