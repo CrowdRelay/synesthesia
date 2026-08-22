@@ -401,6 +401,11 @@ fi
 
 run_godot_checked web-export "" --headless --path "$ROOT" --export-release Web build/web/index.html
 
+# The room outro excerpts are excluded from the boot pack and travel in their
+# own, fetched under the menu instead of ahead of it. Export it while the same
+# preset edits are still applied, so both packs come from one import state.
+run_godot_checked web-room-audio-pack "" --headless --path "$ROOT" --export-pack "Web Room Audio" build/web/room-audio.pck
+
 restore_export_preset
 git -C "$ROOT" diff --quiet -- export_presets.cfg 2>/dev/null || {
   echo 'ERROR: export_presets.cfg was left modified after the Web export' >&2

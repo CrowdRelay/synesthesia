@@ -14,8 +14,8 @@ for token in (
     'func enter_menu() -> void:',
     'func enter_outro() -> void:',
     'func leave_soundscape() -> void:',
-    'MENU_MUSIC_DB := -23.0',
-    'OUTRO_MUSIC_DB := -17.0',
+    'MENU_MUSIC_DB := -21.0',
+    'OUTRO_MUSIC_DB := -15.0',
     'PINK_NOISE_PATH',
     '_start_random_track(_current_track_index)',
 ):
