@@ -50,7 +50,7 @@ jobs:
 
       - name: Require live Synesthesia and CrowdRelay capabilities
         env:
-          CROWDRELAY_BASE_URL: ${{ vars.CROWDRELAY_PRODUCTION_BASE_URL }}
+          CROWDRELAY_BASE_URL: ${{ secrets.CROWDRELAY_BASE_URL }}
           SYNESTHESIA_BASE_URL: ${{ vars.SYNESTHESIA_PRODUCTION_BASE_URL || 'https://synesthesia.virya.music' }}
         shell: bash
         run: |
