@@ -16,9 +16,9 @@ const TRACKS: Array[String] = [
 ]
 
 const SILENCE_DB := -60.0
-const MENU_MUSIC_DB := -21.0
+const MENU_MUSIC_DB := -15.0
 const MENU_NOISE_DB := -31.0
-const OUTRO_MUSIC_DB := -15.0
+const OUTRO_MUSIC_DB := -12.0
 const OUTRO_NOISE_DB := -35.0
 const FADE_DB_PER_SECOND := 22.0
 
