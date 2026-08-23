@@ -170,6 +170,11 @@ if '"$GODOT_BIN" --headless --path "$ROOT" --install-android-build-template\n' i
 if "~/.local/share/godot/export_templates/4.7.1.stable/android_source.zip" not in play_workflow:
     failures.append("Play workflow must cache the Android Gradle source template")
 
+# Godot turns package/show_as_launcher_app into android.intent.category.HOME, which offers the
+# app as a home-screen launcher replacement. Synesthesia is an audio experience, not a launcher.
+if "package/show_as_launcher_app=true" in preset:
+    failures.append("Android presets must not publish Synesthesia as a home-screen launcher app")
+
 for token in (
     '(cd "$NATIVE" && cargo ndk --version',
     '(cd "$NATIVE" && cargo ndk "${args[@]}")',
@@ -188,7 +193,7 @@ for token in (
     'architectures/arm64-v8a=true',
     'architectures/armeabi-v7a=false',
     'package/unique_name="music.virya.synesthesia"',
-    'package/show_as_launcher_app=true',
+    'package/show_as_launcher_app=false',
     'permissions/internet=true',
     'permissions/vibrate=true',
     'include_filter="assets/video/*.ogv"',
