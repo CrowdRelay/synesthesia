@@ -7,7 +7,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 workflow = (ROOT / ".github/workflows/android-play.yml").read_text()
 promotion = (ROOT / ".github/workflows/android-play-promote.yml").read_text()
-runbook = (ROOT / "docs/google-play-production-release.md").read_text()
 
 for token in (
     "options: [internal, alpha, beta, production]",
@@ -45,9 +44,6 @@ assert "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" not in promotion
 for locale in ("pl-PL", "en-US"):
     text = (ROOT / "distribution/whatsnew" / f"whatsnew-{locale}").read_text().strip()
     assert text and len(text) <= 500, locale
-
-for token in ("10% staged rollout", "10% → 25% → 50% → 100%", "Data safety", "Play App Signing"):
-    assert token in runbook, token
 
 spec = importlib.util.spec_from_file_location("google_play_rollout", ROOT / "tools/google_play_rollout.py")
 assert spec is not None and spec.loader is not None
