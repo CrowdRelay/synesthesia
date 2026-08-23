@@ -10,7 +10,8 @@ promotion = (ROOT / ".github/workflows/android-play-promote.yml").read_text()
 runbook = (ROOT / "docs/google-play-production-release.md").read_text()
 
 for token in (
-    "options: [internal, production]",
+    "options: [internal, alpha, beta, production]",
+    "case \"${play_track}\" in internal|alpha|beta|production) ;; *) exit 2 ;; esac",
     'play_status="inProgress"',
     'user_fraction="0.10"',
     "production-requires-wif",
