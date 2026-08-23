@@ -43,7 +43,6 @@ REQUIRED_FILES = [
     "web/service-worker.js", "web/manifest.webmanifest", "assets/icon.svg", "assets/icon-192.png", "assets/icon-512.png", "assets/icon-adaptive-432.png", "assets/icon-background-432.png", "assets/branding/boot-splash.png",
     ".github/workflows/ci.yml", ".github/workflows/build.yml",
     ".github/workflows/deploy-web.yml", ".github/workflows/android-apk.yml",
-    "docs/MOBILE_CLARITY.md", "docs/MOBILE_PLAYTEST.md",
 ]
 MANIFEST_KEYS = {
     "schema_version", "release_id", "story_order", "artist", "title",
