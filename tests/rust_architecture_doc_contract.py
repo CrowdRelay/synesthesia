@@ -8,7 +8,7 @@ for token in (
     "Native production builds are Rust-primary",
     "Web production uses the behavior-compatible GDScript recognizer on the critical startup path",
     "GitHub Actions builds and verifies the Web artifact",
-    "synesthesia_gdext.wasm",
+    "Rust/WASM path remains a CI verification target",
 ):
     assert token in README, token
 
