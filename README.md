@@ -1,8 +1,10 @@
 # Synesthesia
 
-**Godot 4.7.1 + Rust hybrid runtime** for a portrait interactive-album adventure built around **Echoes Of The Modern Mind**. Eleven explorable rooms combine micro-puzzles, reactive audio, haptics and a resumable local journey.
+**Godot 4.7.1 + Rust hybrid runtime** for a portrait interactive-album adventure built around **Echoes Of The Modern Mind**.
 
-GitHub reports this repo primarily as GDScript because scenes/UI/runtime orchestration stay in Godot. The performance-sensitive deterministic core is intentionally isolated in Rust rather than forcing a full-engine rewrite.
+Eleven explorable rooms turn an album into something you play rather than watch: each room has its own mechanic, reactive audio and haptics, and the journey resumes locally where you left it. Completing a run may enter a five-CD draw through the public CrowdRelay contract — the game itself stays autonomous at runtime and owns no fan, consent or fulfillment state.
+
+GitHub reports this repo primarily as GDScript because scenes, UI and runtime orchestration stay in Godot. The performance-sensitive deterministic core is intentionally isolated in Rust rather than forcing a full-engine rewrite.
 
 ## Engineering snapshot
 
@@ -16,83 +18,47 @@ GitHub reports this repo primarily as GDScript because scenes/UI/runtime orchest
 
 See [`docs/RUST_HYBRID_ARCHITECTURE.md`](docs/RUST_HYBRID_ARCHITECTURE.md) for the Rust/Godot trade-offs.
 
-## Runtime
+## Features
 
-- bootstrap reference: `1080×1920`; runtime `stretch=disabled`;
-- Web uses Godot Adaptive canvas sizing and the app shell reads the real viewport at runtime;
-- desktop keeps the portrait room undistorted and uses side space for menu/finale UI; portrait phones use the full native viewport;
-- HiDPI is enabled on Web/Android/iOS/desktop;
-- current + next room assets are preloaded within explicit memory budgets;
-- all eleven gameplay rooms use procedural living-world motion; only the authored finale retains a lazy `720×1280 @ 24 fps` cinematic;
-- adaptive performance lowers mask upload cadence, particles and motion before dropping functionality;
-- room progress persists locally as bounded PNG reveal masks;
-- the Web boot shell owns browser startup while native targets can retain their branded splash.
-
-The source art stays asymmetrical by intent: background 405×720, scene/subject 675×1200, foreground 540×960. Those are texture-source sizes, not the runtime viewport. The runtime fits/crops portrait art inside a native-resolution shell while UI remains pixel-sharp.
-
-Video provenance for the finale cinematic is retained in `assets/video/manifest.json`. Removing the five retired room loops cut about 11.7 MiB from the source/Web pack and removed their decoder/shader startup cost. Runtime files are cache-first only inside the current fingerprinted deploy generation; the offline shell remains network-first and new deploys receive a new cache namespace plus one-time handoff.
-
-## V2 experience
-
-V2 is intentionally more game-like than the original reveal prototype. The player promise is:
+The player promise is more game than reveal prototype:
 
 ```text
 notice -> manipulate -> immediate audiovisual response -> changed world state -> optional echo -> payoff
 ```
 
-The paint mask remains an accessibility/reveal assist, but completion is driven by each room's own mechanic.
+- eleven rooms, each completed by its own mechanic; the paint mask remains an accessibility/reveal assist rather than the win condition;
+- procedural living-world motion in every gameplay room, with only the authored finale retaining a lazy `720×1280 @ 24 fps` cinematic;
+- reactive audio and haptics;
+- resumable local progress, persisted as bounded PNG reveal masks;
+- optional five-CD draw entry on completion;
+- a Web boot shell that owns browser startup while native targets keep their branded splash.
 
-## CrowdRelay integration
+### Runtime
 
-Synesthesia is autonomous at runtime and integrates only through the public CrowdRelay contract:
+- bootstrap reference `1080×1920`, runtime `stretch=disabled`;
+- Web uses Godot Adaptive canvas sizing and the app shell reads the real viewport at runtime;
+- current and next room assets are preloaded within explicit memory budgets;
+- adaptive performance lowers mask upload cadence, particles and motion before dropping functionality.
+
+The source art stays asymmetrical by intent: background 405×720, scene/subject 675×1200, foreground 540×960. Those are texture-source sizes, not the runtime viewport. The runtime fits/crops portrait art inside a native-resolution shell while UI remains pixel-sharp.
+
+Video provenance for the finale cinematic is retained in `assets/video/manifest.json`. Removing the five retired room loops cut about 11.7 MiB from the source/Web pack and removed their decoder/shader startup cost. Runtime files are cache-first only inside the current fingerprinted deploy generation; the offline shell remains network-first and new deploys receive a new cache namespace plus one-time handoff.
+
+### CrowdRelay integration
 
 ```text
 start run -> room ledger x11 -> complete run -> optional five-CD draw entry
 ```
 
-Campaign: `virya-synesthesia-album-v1`.
+Campaign: `virya-synesthesia-album-v1`. Draw rules are server-enforced: 5 winners, 1 CD each, one completion/e-mail = one entry, no referral/check-in weighting. The draw does not set marketing consent and does not collect shipping data. Signal signup is a separate explicit flow through the normal `/fans` contract and never creates a Synesthesia draw entry.
 
-Draw rules are server-enforced: 5 winners, 1 CD each, one completion/e-mail = one entry, no referral/check-in weighting. The draw does not set marketing consent and does not collect shipping data. Signal signup is a separate explicit flow through the normal `/fans` contract and never creates a Synesthesia draw entry.
+## Tech stack
 
-## Rust hybrid core
+Godot 4.7.1 owns the editor, scenes, UI, audio, haptics and the GPU reveal renderer. Deterministic gameplay primitives live in the pure `native/synesthesia-core` Rust crate and are exposed through `native/synesthesia-gdext` (godot-rust 0.5.5); the first migrated slice is gesture recognition.
 
-The editor, scenes, UI, audio, haptics and GPU reveal renderer stay in Godot. Deterministic gameplay primitives live in the pure `native/synesthesia-core` crate and are exposed through `native/synesthesia-gdext`; the first migrated slice is gesture recognition.
-
-Native production builds are Rust-primary. Web production deliberately uses the behavior-compatible GDScript recognizer on the critical startup path while `synesthesia_gdext.wasm` remains a CI/verification target. `SYNESTHESIA_RUST_WEB_REQUIRED=1` can be used locally to exercise that Rust/WASM path explicitly.
+Native production builds are Rust-primary. Web production deliberately uses the behavior-compatible GDScript recognizer on the critical startup path while `synesthesia_gdext.wasm` remains a CI/verification target. `SYNESTHESIA_RUST_WEB_REQUIRED=1` exercises that Rust/WASM path explicitly.
 
 GitHub Actions is the only Web builder: CI exports and verifies `build/web`, records a source-SHA manifest and deployment promotes the exact artifact to Netlify with `--no-build`. Build products remain ignored; a clean checkout does not require committed native binaries.
-
-## Build and validation
-
-```bash
-./scripts/validate-fast.sh
-./scripts/validate-source.sh
-./validate.sh
-
-./scripts/build-web-preview.sh
-./scripts/build-android-apk.sh
-./scripts/build-linux-release.sh
-
-SYNESTHESIA_RUST_WEB_REQUIRED=1 ./scripts/build-web-preview.sh
-```
-
-To share/review the repository without local caches:
-
-```bash
-./scripts/export-source.sh
-```
-
-The exporter uses `git archive`, records the exact SHA/ref and refuses dirty trees, generated build/cache paths or oversized tracked source blobs.
-
-For local macOS development:
-
-```bash
-./run-macos.sh
-```
-
-`validate.sh` covers static contracts, renderer/audio/memory budgets, visual snapshots, a clean Godot import and runtime instantiation. CI remains the authoritative Godot/compiler gate.
-
-## Structure
 
 ```text
 assets/rooms/vertical/       layered portrait art
@@ -111,6 +77,36 @@ native/                      pure Rust core + thin GDExtension adapter
 
 New room packs must satisfy the schema encoded by `data/release_index.json`, `data/releases/*/manifest.json` and `tests/new_release_pack_contract.py`.
 
+## Build and validation
+
+```bash
+./scripts/validate-fast.sh
+./scripts/validate-source.sh
+./validate.sh
+
+./scripts/build-web-preview.sh
+./scripts/build-android-apk.sh
+./scripts/build-linux-release.sh
+
+SYNESTHESIA_RUST_WEB_REQUIRED=1 ./scripts/build-web-preview.sh
+```
+
+For local macOS development:
+
+```bash
+./run-macos.sh
+```
+
+`validate.sh` covers static contracts, renderer/audio/memory budgets, visual snapshots, a clean Godot import and runtime instantiation. CI remains the authoritative Godot/compiler gate.
+
+To share or review the repository without local caches:
+
+```bash
+./scripts/export-source.sh
+```
+
+The exporter uses `git archive`, records the exact SHA/ref and refuses dirty trees, generated build/cache paths or oversized tracked source blobs.
+
 ## Security and privacy
 
 See [`SECURITY.md`](SECURITY.md). Run bearers are scoped to the Synesthesia lifecycle; reward entry stores only the minimum identity needed for a draw. No address, phone, location, marketing consent or gameplay brush data is sent with the draw entry.
@@ -119,6 +115,6 @@ VIRYA names, recordings and artwork remain with their respective rights holders.
 
 ## Mobile product QA
 
-- `docs/MOBILE_CLARITY.md` — renderer/UI invariants
-- `docs/MOBILE_PLAYTEST.md` — real-phone daylight/smudged-screen playtest
-- `docs/PRODUCT_READABILITY_PASS_2026-08-11.md` — current product-readability architecture and telemetry
+- [`docs/MOBILE_CLARITY.md`](docs/MOBILE_CLARITY.md) — renderer/UI invariants
+- [`docs/MOBILE_PLAYTEST.md`](docs/MOBILE_PLAYTEST.md) — real-phone daylight/smudged-screen playtest
+- [`docs/PRODUCT_READABILITY_PASS_2026-08-11.md`](docs/PRODUCT_READABILITY_PASS_2026-08-11.md) — current product-readability architecture and telemetry
