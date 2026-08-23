@@ -8,7 +8,7 @@ on:
         required: true
         type: choice
         default: internal
-        options: [internal, production]
+        options: [internal, alpha, beta, production]
   workflow_run:
     workflows: ["CI"]
     types: [completed]
@@ -62,7 +62,7 @@ jobs:
           else
             play_track="${INPUT_TRACK}"
           fi
-          case "${play_track}" in internal|production) ;; *) exit 2 ;; esac
+          case "${play_track}" in internal|alpha|beta|production) ;; *) exit 2 ;; esac
           if [[ "${play_track}" == "production" ]]; then
             play_status="inProgress"
             user_fraction="0.10"
