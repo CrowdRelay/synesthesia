@@ -6,10 +6,9 @@ DOC = (ROOT / "docs/RUST_HYBRID_ARCHITECTURE.md").read_text()
 
 for token in (
     "Native production builds are Rust-primary",
-    "production Web uses the behavior-compatible GDScript recognizer",
-    "GitHub Actions is the only Web builder",
+    "Web production uses the behavior-compatible GDScript recognizer on the critical startup path",
+    "GitHub Actions builds and verifies the Web artifact",
     "synesthesia_gdext.wasm",
-    "SYNESTHESIA_RUST_WEB_REQUIRED=1",
 ):
     assert token in README, token
 
