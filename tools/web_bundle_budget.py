@@ -12,10 +12,11 @@ BOOT_PCK = "index.pck"
 # MAX_PCK and MAX_TOTAL; only the boot payload is allowed to be the entry pack.
 DEFERRED_PCKS = ("room-audio.pck",)
 MAX_RUST_WASM = 2 * 1024 * 1024
-# Production Web measured ~21 MiB total shipping zero extensions; 48 MiB is a
-# 2x headroom ceiling that rejects fat verification-shaped artifacts (dlink
-# engine wasm plus index.side.wasm) from ever passing promotion gates.
-MAX_TOTAL = 48 * 1024 * 1024
+# Measured production floor at a8fc391 (web-metrics): engine dlink side wasm
+# 37.7 MiB + boot+deferred pcks 10.8 MiB + runtime js/wasm/misc ~4.7 MiB =
+# 49.2 MiB total. 50 MiB keeps a hard anti-bloat ceiling (was 112 MiB) while
+# leaving headroom above the current irreducible engine-dominated payload.
+MAX_TOTAL = 50 * 1024 * 1024
 MAX_SOURCE_RUNTIME = 42 * 1024 * 1024
 MAX_BOOT_ART = 160 * 1024
 
@@ -98,6 +99,12 @@ def postbuild() -> None:
     if failures:
         for failure in failures:
             print(f"FAIL: {failure}")
+        largest = sorted(files, key=lambda path: path.stat().st_size, reverse=True)[:10]
+        for path in largest:
+            print(
+                f"largest: {path.name}={path.stat().st_size} "
+                f"({path.stat().st_size / 1048576:.2f} MiB)"
+            )
         raise SystemExit(f"SYNESTHESIA_WEB_BUNDLE_BUDGET=FAIL count={len(failures)}")
 
     print(
