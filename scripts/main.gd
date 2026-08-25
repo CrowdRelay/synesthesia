@@ -21,6 +21,10 @@ const BootSequenceScript := preload("res://scripts/ui/boot_sequence.gd")
 const RELEASE_INDEX_PATH: String = "res://data/release_index.json"
 const VERSION_PATH: String = "res://VERSION"
 const FINAL_REVEAL_RATIO: float = 0.99
+# Upper bound for one legitimate begin/enter sequence, including runtime
+# preparation and asset waits on a slow network; the watchdog must never fire
+# inside that window.
+const TRANSITION_WATCHDOG_SECONDS: float = 120.0
 var index_document: Dictionary = {}
 var release_entries: Array = []
 var manifest: Dictionary = {}
@@ -34,6 +38,7 @@ var room_timer_paused_by_background: bool = false
 var completion_announced: bool = false
 var restoring_progress: bool = false
 var transition_running: bool = false
+var _transition_token: int = 0
 var calm_mode: bool = true
 var quiet_mode: bool = false
 var quiet_visuals: bool = false
@@ -199,8 +204,23 @@ func _enter_album_mode_room(index: int) -> void:
     if transition_running:
         return
     transition_running = true
+    _arm_transition_watchdog()
     await album_mode_controller.enter_room(index, finale_background, Callable(self, "_load_room"))
     transition_running = false
+# GDScript has no try/finally: if an awaited callee aborts mid-coroutine, the
+# lines after its await never run and transition_running would stay true
+# forever, deadlocking every later begin/enter request. A timer scheduled
+# outside the coroutine releases it; the token stops a stale watchdog from
+# cutting short a newer legitimate transition.
+func _arm_transition_watchdog() -> void:
+    _transition_token += 1
+    var token: int = _transition_token
+    var watchdog := get_tree().create_timer(TRANSITION_WATCHDOG_SECONDS)
+    watchdog.timeout.connect(func() -> void:
+        if token == _transition_token and transition_running:
+            push_warning("Synesthesia: stalled UI transition released by watchdog.")
+            transition_running = false
+    )
 func _begin_experience() -> void:
     if transition_running:
         return
@@ -210,6 +230,7 @@ func _begin_experience() -> void:
         _show_reward_panel()
         return
     transition_running = true
+    _arm_transition_watchdog()
     if runtime_flow != null and not await runtime_flow.ensure_ready():
         transition_running = false
         _show_fatal_error("Nie udało się przygotować runtime Synesthesii.")

@@ -17,17 +17,24 @@ const CORE_PATHS = new Set(CORE);
 const RUNTIME = __SYNESTHESIA_RUNTIME_PATHS__;
 
 self.addEventListener("install", (event) => {
-  // The offline shell is a unit. Runtime warming is opportunistic: if a CDN
-  // request is interrupted, install the worker anyway and let the normal
-  // cache-first runtime path fill the missing entry on demand.
+  // Warming is opportunistic for the core shell and the runtime alike: one
+  // failed CDN request must not reject the whole install, or no offline shell
+  // would ever land. Install resolves regardless; the normal network-first and
+  // cache-first fetch paths fill any missing entry on demand.
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(CORE);
-    await Promise.allSettled(RUNTIME.map(async (path) => {
+    const warmAsset = async (path) => {
       if (await cache.match(path)) return;
       const response = await fetch(path, { cache: "no-cache" });
       if (response.ok && response.status === 200) await cache.put(path, response);
-    }));
+    };
+    const assets = [...CORE, ...RUNTIME];
+    const results = await Promise.allSettled(assets.map((path) => warmAsset(path)));
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.warn(`Synesthesia SW: install skipped ${assets[index]}:`, result.reason);
+      }
+    });
   })());
   self.skipWaiting();
 });

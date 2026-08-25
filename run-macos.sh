@@ -82,16 +82,33 @@ for clip in manifest.get('clips', {}).values():
 if [[ -d "$ROOT/.godot/imported" ]]; then
   find "$ROOT/.godot/imported" -maxdepth 1 -type f -name 'settings-gear.svg-*' -delete 2>/dev/null || true
 fi
-IMPORT_LOG="$(mktemp "${TMPDIR:-/tmp}/synesthesia-import.XXXXXX.log")"
-trap 'rm -f "$IMPORT_LOG"' EXIT
-set +e
-"$GODOT" --headless --editor --path "$ROOT" --quit >"$IMPORT_LOG" 2>&1
-IMPORT_STATUS=$?
-set -e
-if (( IMPORT_STATUS != 0 )) || grep -Eiq '(SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed loading resource|Shader error:)' "$IMPORT_LOG"; then
-  cat "$IMPORT_LOG" >&2
-  echo "Synestezja import failed; game was not started." >&2
-  exit 5
+# A full headless editor import costs 5-15s, so run one only when the imported
+# cache is missing or some source the importer consumes is newer than it. The
+# marker is touched after a clean import: it doubles as the staleness reference
+# and forces a retry when a previous import died mid-way.
+IMPORT_MARKER="$ROOT/.godot/.synesthesia-import-current"
+import_cache_current() {
+  [[ -d "$ROOT/.godot/imported" && -f "$IMPORT_MARKER" ]] || return 1
+  find "$ROOT/scenes" "$ROOT/scripts" "$ROOT/shaders" "$ROOT/assets" "$ROOT/data" \
+    "$ROOT/project.godot" "$ROOT/synesthesia_rust.gdextension" \
+    -type f -newer "$IMPORT_MARKER" -print -quit 2>/dev/null | grep -q .
+}
+if ! import_cache_current; then
+  IMPORT_LOG="$(mktemp "${TMPDIR:-/tmp}/synesthesia-import.XXXXXX.log")"
+  trap 'rm -f "$IMPORT_LOG"' EXIT
+  set +e
+  "$GODOT" --headless --editor --path "$ROOT" --quit >"$IMPORT_LOG" 2>&1
+  IMPORT_STATUS=$?
+  set -e
+  if (( IMPORT_STATUS != 0 )) || grep -Eiq '(SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed loading resource|Shader error:)' "$IMPORT_LOG"; then
+    cat "$IMPORT_LOG" >&2
+    echo "Synestezja import failed; game was not started." >&2
+    exit 5
+  fi
+  mkdir -p "$ROOT/.godot"
+  touch "$IMPORT_MARKER"
+  rm -f "$IMPORT_LOG"
+  trap - EXIT
 fi
 
 if (( RESET == 1 )); then
@@ -101,6 +118,4 @@ if (( RESET == 1 )); then
   fi
 fi
 
-rm -f "$IMPORT_LOG"
-trap - EXIT
 SYNESTHESIA_LOCAL_DEBUG=1 exec "$GODOT" --path "$ROOT"

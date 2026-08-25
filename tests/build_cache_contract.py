@@ -54,7 +54,7 @@ for forbidden in (
         failures.append(f"deploy promotion contains avoidable build work: {forbidden}")
 
 for token in (
-    "cargo +1.97.1 test --manifest-path native/Cargo.toml --package synesthesia-core",
+    'cargo +"${RUST_NATIVE_TOOLCHAIN}" test --manifest-path native/Cargo.toml --package synesthesia-core',
     "./scripts/build-rust-native.sh host",
     'GODOT_BIN="${GODOT_BIN}" ./validate.sh',
 ):

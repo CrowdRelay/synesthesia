@@ -12,7 +12,10 @@ BOOT_PCK = "index.pck"
 # MAX_PCK and MAX_TOTAL; only the boot payload is allowed to be the entry pack.
 DEFERRED_PCKS = ("room-audio.pck",)
 MAX_RUST_WASM = 2 * 1024 * 1024
-MAX_TOTAL = 112 * 1024 * 1024
+# Production Web measured ~21 MiB total shipping zero extensions; 48 MiB is a
+# 2x headroom ceiling that rejects fat verification-shaped artifacts (dlink
+# engine wasm plus index.side.wasm) from ever passing promotion gates.
+MAX_TOTAL = 48 * 1024 * 1024
 MAX_SOURCE_RUNTIME = 42 * 1024 * 1024
 MAX_BOOT_ART = 160 * 1024
 
@@ -77,6 +80,12 @@ def postbuild() -> None:
         failures.append(f"expected exactly one Rust GDExtension WASM, got {len(rust_wasms)}")
     if not rust_required and rust_wasms:
         failures.append(f"GDScript Web fallback must not ship Rust side-module WASM, got {len(rust_wasms)}")
+    side_wasms = [path for path in wasms if path.name.endswith(".side.wasm")]
+    if not rust_required and side_wasms:
+        failures.append(
+            "production Web export must ship zero extension side WASMs: "
+            + ",".join(sorted(path.name for path in side_wasms))
+        )
     for path in pcks:
         if path.stat().st_size > MAX_PCK:
             failures.append(f"PCK exceeds 56 MiB: {path.name}={path.stat().st_size}")
@@ -84,7 +93,7 @@ def postbuild() -> None:
         if path.stat().st_size > MAX_RUST_WASM:
             failures.append(f"Rust GDExtension WASM exceeds 2 MiB: {path.name}={path.stat().st_size}")
     if total > MAX_TOTAL:
-        failures.append(f"Web artifact exceeds 112 MiB: total={total}")
+        failures.append(f"Web artifact exceeds {MAX_TOTAL // (1024 * 1024)} MiB: total={total}")
 
     if failures:
         for failure in failures:

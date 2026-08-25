@@ -100,7 +100,7 @@ def main() -> None:
         raise SystemExit("SYNESTHESIA_RUST_HYBRID=FAIL play-host-bridge-after-android")
     require(android_build, "SYNESTHESIA_RUST_ANDROID_APK=PASS", "android-apk-library-verification")
     require(android_ci, 'SYNESTHESIA_DISABLE_RUST_NATIVE: "0"', "android-ci-rust-required")
-    require(ci, "cargo +1.97.1 test --manifest-path native/Cargo.toml --package synesthesia-core", "ci-core-test")
+    require(ci, 'cargo +"${RUST_NATIVE_TOOLCHAIN}" test --manifest-path native/Cargo.toml --package synesthesia-core', "ci-core-test")
     require(ci, "./scripts/build-rust-native.sh host", "ci-native-engine-smoke")
     require(ignore, "synesthesia_rust.gdextension", "generated-descriptor-ignored")
 

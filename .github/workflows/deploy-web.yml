@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: synesthesia-netlify-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -82,7 +82,7 @@ jobs:
           test -s promoted/tests/e2e/full_game_web.py
           test -n "$(find promoted/build/web -maxdepth 1 -type f -name '*.wasm' -print -quit)"
           test -n "$(find promoted/build/web -maxdepth 1 -type f -name '*.pck' -print -quit)"
-          test -z "$(find promoted/build/web -type f -name 'synesthesia_gdext.wasm' -print -quit)"
+          test -z "$(find promoted/build/web -type f \( -name 'synesthesia_gdext.wasm' -o -name '*.side.wasm' \) -print -quit)"
           python3 promoted/tools/artifact_manifest.py verify \
             promoted/build/web \
             promoted/build/web-artifact-manifest.json \
