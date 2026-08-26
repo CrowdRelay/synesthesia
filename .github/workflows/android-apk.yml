@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: synesthesia-android-apk-${{ github.event.workflow_run.actor.login || github.actor }}-${{ github.event.workflow_run.head_sha || github.sha }}
@@ -116,6 +117,19 @@ jobs:
           python3 tools/artifact_manifest.py create build/android build/android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
           python3 tools/artifact_manifest.py verify build/android build/android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
 
+      - name: Purge stale artifacts before upload
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t ids < <(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq ".artifacts[] | select(.workflow_run.id != ${GITHUB_RUN_ID}) | select(.created_at < (now - 7200 | strftime(\"%Y-%m-%dT%H:%M:%SZ\"))) | .id" 2>/dev/null || true)
+          for id in "${ids[@]}"; do
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}" 2>/dev/null || true
+          done
+          echo "Purged ${#ids[@]} stale artifact(s)"
       - name: Upload Godot validation diagnostics
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
