@@ -96,4 +96,4 @@ jobs:
           name: synesthesia-google-play-rollout-${{ github.run_id }}
           path: artifacts/google-play-rollout.json
           if-no-files-found: warn
-          retention-days: 90
+          retention-days: 7

@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: build-${{ github.ref }}
@@ -79,6 +80,22 @@ jobs:
           python3 tools/artifact_manifest.py create build/linux build/linux-release-artifact-manifest.json --source-sha "${GITHUB_SHA}"
           python3 tools/artifact_manifest.py verify build/linux build/linux-release-artifact-manifest.json --source-sha "${GITHUB_SHA}"
 
+      - name: Purge stale artifacts before upload
+        # Account-wide Actions storage quota is tight; Godot build
+        # artifacts are large. Delete all prior artifacts before upload.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t ids < <(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq ".artifacts[] | select(.workflow_run.id != ${GITHUB_RUN_ID}) | .id" 2>/dev/null || true)
+          for id in "${ids[@]}"; do
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}" 2>/dev/null || true
+          done
+          echo "Purged ${#ids[@]} stale artifact(s)"
+
       - name: Upload Linux and Web artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -90,7 +107,7 @@ jobs:
             build/linux-release-artifact-manifest.json
             tools/artifact_manifest.py
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
   android:
     name: Android debug APK
@@ -160,7 +177,7 @@ jobs:
             build/android/synesthesia-debug.apk.badging.txt
             build/android-artifact-manifest.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
   release:
     name: Publish tagged release

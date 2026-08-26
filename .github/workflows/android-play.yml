@@ -16,7 +16,7 @@ on:
 
 permissions:
   contents: read
-  actions: read
+  actions: write
   id-token: write
 
 concurrency:
@@ -255,6 +255,20 @@ jobs:
           python3 tools/artifact_manifest.py verify promoted android-artifact-manifest.json --source-sha "${SOURCE_SHA}"
           echo "SYNESTHESIA_PLAY_ARTIFACT=PASS sha=${SOURCE_SHA} version=${SYNESTHESIA_VERSION_NAME} versionCode=${SYNESTHESIA_ANDROID_VERSION_CODE}"
 
+      - name: Purge stale artifacts before upload
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t ids < <(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq ".artifacts[] | select(.workflow_run.id != ${GITHUB_RUN_ID}) | .id" 2>/dev/null || true)
+          for id in "${ids[@]}"; do
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}" 2>/dev/null || true
+          done
+          echo "Purged ${#ids[@]} stale artifact(s)"
+
       - name: Upload exact AAB artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -264,7 +278,7 @@ jobs:
             promoted/synesthesia-release.aab.sha256
             android-artifact-manifest.json
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 7
 
       - name: Upload exact AAB to Google Play
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
