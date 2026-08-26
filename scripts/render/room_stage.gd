@@ -157,6 +157,12 @@ func _configure_behavior(room_data: Dictionary, asset_source = null) -> void: _v
 func _configure_art(room_data: Dictionary, asset_source = null) -> void: _visual_setup._configure_art(room_data, asset_source)
 func _take_texture(path: String, asset_source = null) -> Texture2D: return _visual_setup._take_texture(path, asset_source)
 func _process(delta: float) -> void:
+    # configure() runs after the node enters the tree, so an early frame can
+    # process before the mask exists (large first-frame deltas make the upload
+    # accumulator fire immediately). Everything below assumes a configured
+    # stage; skipping unconfigured frames is cheaper than null-guarding each.
+    if reveal_mask == null:
+        return
     if behavior != null and (not _behavior_tick_gated or behavior.needs_tick()):
         behavior.advance(delta)
     _interaction_flow.tick_target_republish(delta)
@@ -310,7 +316,7 @@ func _refresh_hint_targets() -> void:
     if behavior != null and behavior.has_method("hint_targets"):
         targets = behavior.hint_targets()
     hint_layer.set_targets(targets)
-    WebE2EProbe.room_state(room_id, targets, get_normalized_progress(), get_coverage(), interaction_enabled, get_viewport_rect().size)
+    WebE2EProbe.room_state(room_id, targets, get_normalized_progress(), get_coverage(), interaction_enabled, get_viewport_rect().size, get_global_rect())
 
 func get_interaction_hint() -> String:
     if behavior != null and behavior.has_method("interaction_hint"):

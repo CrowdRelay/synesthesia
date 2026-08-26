@@ -68,6 +68,25 @@ def main() -> int:
             "per-frame publish path and each call is a synchronous JS round trip"
         )
 
+    # Producer: semantic targets are normalized against the 9:16 cover rect,
+    # which on tall phones is wider than the canvas with a negative origin.
+    # The publish must carry that rect; without it every consumer gesture aims
+    # a constant distance right of the rendered target and clustered mechanics
+    # (party-time's left membrane wall) become uncompletable through the feed.
+    publish = stage.split("WebE2EProbe.room_state(", 1)[1].split("\n", 1)[0]
+    if "get_global_rect()" not in publish:
+        failures.append(
+            "room_state must publish the room's global rect next to its "
+            "rect-normalized targets"
+        )
+    if '"roomRect"' not in probe:
+        failures.append("the probe room payload must carry roomRect")
+    if "def semantic_point(" not in driver or "roomRect" not in driver:
+        failures.append(
+            "the driver must aim gestures through the published roomRect instead of "
+            "assuming canvas-box normalization"
+        )
+
     # Consumer: the completion detector reads the event discriminator `kind`.
     if "x.kind === 'completion'" not in driver:
         failures.append("completion detection must use the `kind` discriminator")
@@ -110,8 +129,8 @@ def main() -> int:
             print(f"E2E_SEMANTIC_FEED_CONTRACT=FAIL {failure}", file=sys.stderr)
         return 1
     print(
-        "E2E_SEMANTIC_FEED_CONTRACT=PASS producer=cadence+confirmed-event "
-        "consumer=fresh-per-gesture discriminator=kind sleeps=none"
+        "E2E_SEMANTIC_FEED_CONTRACT=PASS producer=cadence+confirmed-event+room-rect "
+        "consumer=fresh-per-gesture+rect-mapping discriminator=kind sleeps=none"
     )
     return 0
 

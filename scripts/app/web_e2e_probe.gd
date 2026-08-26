@@ -33,7 +33,7 @@ static func emit(kind: String, payload: Dictionary = {}) -> void:
         true,
     )
 
-static func room_state(room_id: String, targets: Array, progress: float, coverage: float, interaction_enabled: bool, viewport: Vector2) -> void:
+static func room_state(room_id: String, targets: Array, progress: float, coverage: float, interaction_enabled: bool, viewport: Vector2, room_rect: Rect2 = Rect2()) -> void:
     if not enabled():
         return
     var encoded_targets: Array[Dictionary] = []
@@ -57,6 +57,16 @@ static func room_state(room_id: String, targets: Array, progress: float, coverag
         "targets": encoded_targets,
         "viewportWidth": viewport.x,
         "viewportHeight": viewport.y,
+        # The room lives on a 9:16 cover rect that can be wider than the canvas
+        # with a negative origin. Semantic targets are normalized against that
+        # rect, not the viewport, so consumers need both to aim gestures at the
+        # pixel the game actually renders.
+        "roomRect": {
+            "x": room_rect.position.x,
+            "y": room_rect.position.y,
+            "w": room_rect.size.x,
+            "h": room_rect.size.y,
+        },
     })
 
 static func control_action(kind: String, key: String, control: Control, viewport: Vector2, extra: Dictionary = {}) -> void:

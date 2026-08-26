@@ -163,8 +163,6 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _signal_button.pressed.connect(_handle_signal_action)
     _form.add_child(_signal_button)
 
-    _build_leaderboard(journey_summary)
-
     _email = UIFactory.line_edit("E-mail do losowania", ViryaDesign.SIGNAL_HOT)
     _email.name = "RewardEmail"
     _email.focus_entered.connect(_on_email_focus_entered)
@@ -205,6 +203,10 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     var reset_journey := UIFactory.product_button("PRZEJDŹ ALBUM JESZCZE RAZ", ViryaDesign.TEXT_DIM)
     reset_journey.pressed.connect(func() -> void: reset_requested.emit())
     _form.add_child(reset_journey)
+
+    # Ranking below the action flow: a ten-row board between signup and its
+    # submit button pushed the claim ~900px down, out of the first viewport.
+    _build_leaderboard(journey_summary)
     SignalRelayShare.add_to(_form, ViryaDesign.SIGNAL, _status)
 
     if not _ritual_complete:
@@ -246,8 +248,7 @@ func is_ready_for_input() -> bool:
     return is_inside_tree() and _configured_for_input and _form != null and _form.visible and _email != null and _claim != null
 
 func _scroll_to_start() -> void:
-    if _scroll != null:
-        _scroll.scroll_vertical = 0
+    if _scroll != null: _scroll.scroll_vertical = 0
 
 func _on_ritual_completed() -> void:
     _ritual_complete = true
@@ -320,9 +321,8 @@ func apply_signal_context(context: Dictionary) -> void:
 
 func set_signal_link_retryable(value: bool) -> void:
     _signal_link_retryable = value
-    # A reported failure is the end of whatever attempt was in flight. Leaving
-    # the issue latch armed lets an unrelated later context response open the
-    # browser on its own, long after the press that asked for it.
+    # A reported failure ends the in-flight attempt; disarming the issue latch
+    # stops an unrelated later context response from opening a browser on its own.
     if value: _awaiting_handoff_issue = false
     _refresh_cta()
 
@@ -345,6 +345,9 @@ func _refresh_cta() -> void:
     )
     _signal_button.disabled = bool(cta.get("disabled", false))
     _signal_button.text = str(cta.get("text", ""))
+    # The CTA settles one round trip after the single E2E publish; re-publish
+    # on state change or consumers judge the transient "connecting" frame.
+    if WebE2EProbe.enabled(): call_deferred("_publish_e2e_actions")
 
 ## The handoff this card may still hand to My Signal, or "" when there is none.
 func _active_handoff() -> String:
@@ -354,10 +357,9 @@ func _active_handoff() -> String:
         return ""
     return _handoff_code
 
-## A browser only honours window.open inside the click that asked for it, and
-## the handoff answer lands one round trip after that click. Web therefore keeps
-## the ready link on the button and opens it on the next press; native, where no
-## popup blocker sits in the path, still hands the player straight over.
+## Browsers only honour window.open inside the click that asked for it, and the
+## handoff answer lands a round trip later: web keeps the ready link on the
+## button for the next press; native, with no popup blocker, goes straight over.
 func _hand_over_to_signal() -> void:
     if OS.has_feature("web"):
         set_status("Bezpieczne łącze gotowe. Kliknij „OTWÓRZ MÓJ SYGNAŁ”, aby połączyć wynik z Sygnałem.")
@@ -438,12 +440,10 @@ func _emit_claim() -> void:
     draw_entry_requested.emit(_email.text.strip_edges())
 
 func set_status(text_value: String) -> void:
-    if _status != null:
-        _status.text = text_value
+    if _status != null: _status.text = text_value
 
 func set_claim_enabled(value: bool) -> void:
-    if _claim != null:
-        _claim.disabled = not value or not _ritual_complete
+    if _claim != null: _claim.disabled = not value or not _ritual_complete
 
 func is_claim_enabled() -> bool:
     return _claim != null and not _claim.disabled

@@ -35,7 +35,7 @@ func hint_targets() -> Array[Dictionary]:
     return targets
 
 func captures_pointer_at(point_norm: Vector2) -> bool:
-    return _mirror_near(point_norm, 0.14) >= 0 or int(state.get("active_mirror", -1)) >= 0
+    return _mirror_near(point_norm, 0.14, true) >= 0 or int(state.get("active_mirror", -1)) >= 0
 
 func render(canvas, viewport_size: Vector2, progress: float, phase: float) -> void:
     var accent: Color = Color.from_string(str(room_data.get("accent_color", "#BDD9FF")), Color("bdd9ff"))
@@ -76,7 +76,11 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
     var point: Vector2 = _gesture_point(gesture)
     var cracked: Array = state.get("cracked", [])
     var shattered: Array = state.get("shattered", [])
-    var index: int = _mirror_near(point, 0.12)
+    # Resolve against live (non-shattered) mirrors only: a shattered pane that
+    # kept a drag offset must not shadow its living neighbour, or clustered
+    # mirrors become unwinnable — every gesture resolves to the dead pane and
+    # is dropped by the shattered guard.
+    var index: int = _mirror_near(point, 0.12, true)
     if kind in ["tap", "press"] and index >= 0 and not shattered.has(index):
         if kind == "press":
             state["active_mirror"] = index
@@ -100,6 +104,7 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
         if active >= 0 and active < MIRRORS.size() and cracked.has(active) and not shattered.has(active) and (point.distance_to(start_point) >= 0.10 or displaced >= 0.052):
             shattered.append(active)
             state["shattered"] = shattered
+            _set_mirror_offset(active, Vector2.ZERO)
             return [_interaction_event("mirror", active + 20, "Tafla zeszła ze ściany — miara została bez głosu", MIRRORS[active] + _mirror_offset(active), 0.13, 0.98)]
         if active >= 0 and active < MIRRORS.size():
             _set_mirror_offset(active, _mirror_offset(active) * 0.22)
@@ -111,6 +116,7 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
             if _distance_to_segment(MIRRORS[candidate], start_point, point) <= 0.12:
                 shattered.append(candidate)
                 state["shattered"] = shattered
+                _set_mirror_offset(candidate, Vector2.ZERO)
                 return [_interaction_event("mirror", candidate + 20, "Tafla zeszła ze ściany — miara została bez głosu", MIRRORS[candidate], 0.13, 0.98)]
     return []
 
@@ -131,11 +137,26 @@ func on_paint(point_norm: Vector2, radius_norm: float, _progress: float) -> Arra
             return [_interaction_event("mirror", index, "Tafla pękła — odbicie traci władzę", MIRRORS[index], 0.075, 0.82)]
     return []
 
-func _mirror_near(point: Vector2, radius: float) -> int:
+func _mirror_near(point: Vector2, radius: float, ignore_shattered: bool = false) -> int:
+    # Nearest match wins, not first index: mirrors cluster (0.22/0.50/0.78) and
+    # drag offsets move them around, so a first-hit scan can resolve to a far
+    # pane that merely happens to sit earlier in the array.
+    var shattered: Array = state.get("shattered", []) if ignore_shattered else []
+    var best := -1
+    var best_distance := INF
     for index in range(MIRRORS.size()):
-        if _near(point, MIRRORS[index] + _mirror_offset(index), radius):
-            return index
-    return -1
+        if shattered.has(index):
+            continue
+        var placed: Vector2 = MIRRORS[index] + _mirror_offset(index)
+        if _near(point, placed, radius):
+            var distance := minf(
+                point.distance_squared_to(placed),
+                point.distance_squared_to(_art_point(placed)),
+            )
+            if distance < best_distance:
+                best_distance = distance
+                best = index
+    return best
 
 func _shift_mirror(index: int, delta: Vector2) -> void:
     var current := _mirror_offset(index) + delta
@@ -161,6 +182,13 @@ func restore_state(saved: Dictionary) -> void:
     var offsets: Array = state.get("mirror_offsets", [])
     if offsets.size() != MIRRORS.size():
         state["mirror_offsets"] = [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+    # Heals saves captured while a shattered pane could keep its drag offset:
+    # the displaced ghost shadowed living neighbours and soft-locked the room.
+    var shattered: Array = state.get("shattered", [])
+    offsets = state.get("mirror_offsets", [])
+    for index in range(offsets.size()):
+        if shattered.has(index):
+            offsets[index] = [0.0, 0.0]
     if not state.has("active_mirror"):
         state["active_mirror"] = -1
     if not state.has("mirror_drag_start"):

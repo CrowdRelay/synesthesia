@@ -82,7 +82,11 @@ func on_gesture(kind: String, gesture: Dictionary, _progress: float) -> Array[Di
     elif kind == "hold" and not bool(state.get("center_hold", false)) and _near(point, Vector2(0.5, 0.54), 0.22):
         state["center_hold"] = true
         event = _interaction_event("light", 11, "Atrium utrzymało Twój ciężar", Vector2(0.5, 0.54), 0.09, 0.82)
-    elif kind == "swipe" and not bool(state.get("rise_swipe", false)):
+    elif kind == "swipe" or kind == "release":
+        # Under load (web/mobile main-thread pressure) an upward stroke often
+        # outlives SWIPE_MAX_MS and degrades to a bare release event; both carry
+        # the same net delta, so accept either. Without this the ascension
+        # stroke becomes undeliverable exactly when the device struggles.
         var delta_value: Variant = gesture.get("delta", Vector2.ZERO)
         var delta: Vector2 = delta_value if delta_value is Vector2 else Vector2.ZERO
         if delta.y < -0.16:
