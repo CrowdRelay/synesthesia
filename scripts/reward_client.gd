@@ -86,6 +86,11 @@ func get_run_state() -> Dictionary:
     }
 
 func start_run() -> void:
+    # Guard against deferred calls arriving after the node has been freed
+    # (e.g. scene change during a network failure that triggered
+    # call_deferred("start_run") in _handle_failure).
+    if not is_instance_valid(self):
+        return
     if _api_url.is_empty() or _campaign_slug.is_empty() or _install_id.is_empty():
         request_failed.emit("start_run", "Konfiguracja Sygnału jest niepełna.")
         return

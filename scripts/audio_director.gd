@@ -303,7 +303,10 @@ func reset_release_excerpt() -> void:
     if _music_player != null and _music_available:
         _music_player.stop()
         _music_player.volume_db = SILENCE_DB
-        _music_player.play()
+        # Defer the restart to the next idle frame. Calling stop() then
+        # play() in the same frame can produce a brief audio glitch on some
+        # platforms because the stream may not fully reset between calls.
+        _music_player.call_deferred("play")
     _apply_filter(0.0)
 func get_release_title() -> String:
     return _release_title

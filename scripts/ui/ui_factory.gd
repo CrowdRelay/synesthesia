@@ -41,7 +41,7 @@ static func display_font() -> Font:
 static func title_font() -> Font:
     if _title_font != null:
         return _title_font
-    var bundled := _load_bundled_font(BUNDLED_DISPLAY_FONT_PATH)
+    var bundled := _load_bundled_font(BUNDLED_TITLE_FONT_PATH)
     if bundled != null:
         _title_font = bundled
         return _title_font
