@@ -61,7 +61,11 @@ static func signal_app_url(handoff: String, source: String = "synesthesia") -> S
     return url
 
 static func my_signal_url(handoff: String, source: String = "synesthesia") -> String:
-    var url: String = "https://virya.music/pl/my-signal/?source=%s" % source.uri_encode()
+    var locale: String = TranslationServer.get_locale()
+    var prefix: String = ""
+    if locale.begins_with("pl"):
+        prefix = "/pl"
+    var url: String = "https://virya.music%s/my-signal/?source=%s" % [prefix, source.uri_encode()]
     if is_usable_handoff(handoff):
         url += "#handoff=%s" % handoff.uri_encode()
     return url
