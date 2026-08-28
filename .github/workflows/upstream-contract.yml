@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: synesthesia-upstream-contract-${{ github.ref }}
@@ -43,4 +44,20 @@ jobs:
           persist-credentials: false
 
       - name: Verify Synesthesia against current upstream run contract and CSP
+        id: contract
         run: python3 crowdrelay/scripts/test-ecosystem-contract-v2.py
+
+      # If the scheduled/polling check detects drift, trigger the
+      # contract-propagate workflow to open an issue for manual review.
+      # Synesthesia has no generated files — the issue tells a human what to fix.
+      - name: Trigger issue creation on drift
+        if: failure() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          OPENAPI_SHA="$(sha256sum crowdrelay/openapi/openapi.yaml | awk '{print $1}')"
+          echo "Contract drift detected on polling check — triggering contract-propagate"
+          gh workflow run contract-propagate.yml \
+            -f openapi_sha="$OPENAPI_SHA" \
+            || echo "WARN: could not trigger contract-propagate workflow"

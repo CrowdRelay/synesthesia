@@ -1,0 +1,106 @@
+name: Contract propagate
+
+# Triggered by CrowdRelay when its OpenAPI spec changes on main.
+# Synesthesia has no generated contract files — its contract is static
+# (reward_client.gd contains "synesthesia", web/_headers permits the
+# CrowdRelay API origin). This workflow runs the contract test immediately
+# on dispatch rather than waiting for the 6-hour cron, and opens an issue
+# if the contract fails so a human can review what changed.
+
+on:
+  repository_dispatch:
+    types: [crowdrelay-contract-propagated]
+  workflow_dispatch:
+    inputs:
+      openapi_sha:
+        description: "CrowdRelay OpenAPI SHA256 (optional — defaults to current main)"
+        required: false
+        type: string
+  schedule:
+    - cron: "37 */6 * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: contract-propagate
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify Synesthesia contract against CrowdRelay
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # Canonical ecosystem layout: both repos as siblings under $GITHUB_WORKSPACE.
+      - name: Check out Synesthesia
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: synesthesia
+
+      - name: Check out CrowdRelay (dispatch SHA or current main)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: CrowdRelay/crowdrelay
+          ref: ${{ github.event.client_payload.crowdrelay_sha || 'main' }}
+          path: crowdrelay
+          persist-credentials: false
+
+      - name: Run ecosystem contract test
+        id: contract
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python3 crowdrelay/scripts/test-ecosystem-contract-v2.py
+
+      - name: Open or update issue on failure
+        if: steps.contract.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAPI_SHA: ${{ github.event.client_payload.openapi_sha || inputs.openapi_sha || 'unknown' }}
+        working-directory: synesthesia
+        run: |
+          set -euo pipefail
+          # Check if an open issue with the contract-failure label already exists
+          EXISTING=$(gh issue list --label "contract-failure" --state open --json number --jq '.[0].number' 2>/dev/null || true)
+          BODY="## CrowdRelay contract test failed
+
+          The ecosystem contract test (\`test-ecosystem-contract-v2.py\`) failed when checking Synesthesia against the current CrowdRelay OpenAPI spec.
+
+          **OpenAPI SHA256:** \`${OPENAPI_SHA}\`
+          **Trigger:** ${{ github.event_name }}
+
+          ### What to check
+          Synesthesia's contract is static — it verifies:
+          1. \`scripts/reward_client.gd\` contains the word \"synesthesia\"
+          2. \`web/_headers\` permits \`https://signal-api.virya.music\`
+
+          If the CrowdRelay API origin changed, update \`web/_headers\`.
+          If the synesthesia run endpoints changed, update \`scripts/reward_client.gd\`."
+
+          if [[ -n "$EXISTING" ]]; then
+            gh issue edit "$EXISTING" --body "$BODY"
+            echo "Updated existing issue #$EXISTING"
+          else
+            gh issue create \
+              --title "CrowdRelay contract test failed — Synesthesia needs review" \
+              --body "$BODY" \
+              --label "contract-failure" 2>/dev/null || \
+              gh issue create \
+                --title "CrowdRelay contract test failed — Synesthesia needs review" \
+                --body "$BODY"
+          fi
+
+      - name: Close resolved issue on success
+        if: steps.contract.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: synesthesia
+        run: |
+          set -euo pipefail
+          EXISTING=$(gh issue list --label "contract-failure" --state open --json number --jq '.[0].number' 2>/dev/null || true)
+          if [[ -n "$EXISTING" ]]; then
+            gh issue close "$EXISTING" --comment "Contract test now passes — issue resolved."
+            echo "Closed issue #$EXISTING"
+          fi

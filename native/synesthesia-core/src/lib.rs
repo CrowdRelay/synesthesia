@@ -23,10 +23,17 @@ pub struct Point {
 impl Point {
     #[must_use]
     pub fn new(x: f32, y: f32) -> Self {
-        Self {
-            x: x.clamp(0.0, 1.0),
-            y: y.clamp(0.0, 1.0),
-        }
+        let x = if x.is_finite() {
+            x.clamp(0.0, 1.0)
+        } else {
+            0.5
+        };
+        let y = if y.is_finite() {
+            y.clamp(0.0, 1.0)
+        } else {
+            0.5
+        };
+        Self { x, y }
     }
 
     #[must_use]
@@ -339,6 +346,14 @@ impl GestureEngine {
         if self.pointers.len() < 2 {
             self.two_finger_active = false;
             self.two_finger_start_spread = 0.0;
+        } else if self.two_finger_active && self.pointers.len() == 2 {
+            // The surviving pair may differ from the original two fingers.
+            // Reset the baseline so spread_delta is computed against the
+            // current pair, not a stale start.
+            if let Some((a, b)) = self.two_pointer_points() {
+                self.two_finger_start_spread = a.distance(b);
+                events.push(self.two_finger_event(GestureKind::TwoFingerStart, now_ms));
+            }
         }
         events
     }
