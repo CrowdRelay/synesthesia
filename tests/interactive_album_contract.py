@@ -99,7 +99,7 @@ main = "\n".join(
 for token in (
     "ALBUM_MODE_PATH", "EchoArchive.remember", "album_mode_controller.is_listening()",
     "album_mode_controller.show_archive", "album_mode_controller.enter_room",
-    "transition_director.set_memory_count", "album_mode_controller.is_listening():\n        return",
+    "transition_director.set_memory_count", "album_mode_controller.is_visiting():\n        return",
 ):
     if token not in main:
         failures.append(f"main orchestration missing {token!r}")
@@ -130,7 +130,7 @@ require(
 )
 require(
     "scripts/ui/signal_finale_card.gd",
-    "album_mode_requested", "ALBUM MODE · KORYTARZ",
+    "album_mode_requested", "KORYTARZ · POWTÓRKA POKOJU",
     "FALA · KONFETTI · MASKA · WINO · KORZEŃ",
 )
 require(
