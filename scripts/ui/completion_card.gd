@@ -17,6 +17,7 @@ var _stay_button: Button
 var _next_button: Button
 var _ui_scale: float = 1.0
 var _listening: bool = false
+var _stay_heading: String = "Zostań w echu — gdy poczujesz przejście, rusz dalej"
 
 func _ready() -> void:
     # Only the visible bottom sheet owns pointer input. The full-screen host must
@@ -26,7 +27,9 @@ func _ready() -> void:
     focus_behavior_recursive = Control.FOCUS_BEHAVIOR_ENABLED
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func configure(title: String, message: String, next_label: String, accent: Color, identity: Dictionary = {}, performance: Dictionary = {}, objective: String = "") -> void:
+func configure(title: String, message: String, next_label: String, accent: Color, identity: Dictionary = {}, performance: Dictionary = {}, objective: String = "", stay_label: String = "", stay_heading: String = "") -> void:
+    if not stay_heading.is_empty():
+        _stay_heading = stay_heading
     _sheet = PanelContainer.new()
     _sheet.mouse_filter = Control.MOUSE_FILTER_PASS
     _sheet.add_theme_stylebox_override("panel", UIFactory.product_surface_style(accent, true))
@@ -67,7 +70,7 @@ func configure(title: String, message: String, next_label: String, accent: Color
     _next_button.pressed.connect(func() -> void: continue_requested.emit())
     _actions.add_child(_next_button)
 
-    _stay_button = UIFactory.product_button("Zostań i słuchaj", Color("73869d"), false)
+    _stay_button = UIFactory.product_button(stay_label if not stay_label.is_empty() else "Zostań i słuchaj", Color("73869d"), false)
     _stay_button.name = "ListenButton"
     _stay_button.custom_minimum_size = Vector2(220.0, 40.0)
     _stay_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -173,7 +176,7 @@ func _enter_listen_mode() -> void:
     if _status != null:
         _status.text = "PEŁNA MUZYKA · KOMNATA ODSŁONIĘTA"
     if _heading != null:
-        _heading.text = "Zostań w echu — gdy poczujesz przejście, rusz dalej"
+        _heading.text = "Zostań w echu — gdy poczujesz przejście, rusz dalej" if _stay_heading.is_empty() else _stay_heading
     _refresh_layout()
     stay_requested.emit()
 

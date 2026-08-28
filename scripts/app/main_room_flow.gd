@@ -1,10 +1,11 @@
 extends Node
 const EchoArchive := preload("res://scripts/app/echo_archive.gd"); const RoomCinematicRuntime := preload("res://scripts/app/room_cinematic_runtime.gd"); const RoomObjective := preload("res://scripts/app/room_objective.gd")
-const FINALE_GRACE_SECONDS: float = 25.0; const ViryaWorld := preload("res://scripts/app/virya_world.gd"); const RoomTimingRuntime := preload("res://scripts/app/room_timing_runtime.gd"); const RuntimeFactory := preload("res://scripts/app/room_runtime_factory.gd"); const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd") # ChapterCardScript + CompletionCardScript are lazy factory products
-var app: Node; var cinematic_runtime: Node; var _completion_performance: Dictionary = {}; var timing_runtime: Node
+const FINALE_GRACE_SECONDS: float = 25.0; const ViryaWorld := preload("res://scripts/app/virya_world.gd"); const RoomTimingRuntime := preload("res://scripts/app/room_timing_runtime.gd"); const RuntimeFactory := preload("res://scripts/app/room_runtime_factory.gd"); const WebE2EProbe := preload("res://scripts/app/web_e2e_probe.gd"); const RoomRerunRuntime := preload("res://scripts/app/room_rerun_runtime.gd") # ChapterCardScript + CompletionCardScript are lazy factory products
+var app: Node; var cinematic_runtime: Node; var _completion_performance: Dictionary = {}; var timing_runtime: Node; var rerun_runtime = RoomRerunRuntime.new()
 func bind(owner: Node) -> void:
     app = owner; cinematic_runtime = RoomCinematicRuntime.new(); cinematic_runtime.bind(app); add_child(cinematic_runtime)
     timing_runtime = RoomTimingRuntime.new(); timing_runtime.bind(app); add_child(timing_runtime)
+    rerun_runtime.bind(app); add_child(rerun_runtime)
 func _load_room(index: int, show_intro: bool) -> void:
     if index < 0 or index >= app.release_entries.size():
         app._show_fatal_error("Próba wejścia do nieznanego pokoju.")
@@ -16,7 +17,8 @@ func _load_room(index: int, show_intro: bool) -> void:
     _clear_room_runtime()
     app.current_room_index = index
     app.album_state["current_room_index"] = app.current_room_index
-    app._save_album_state()
+    if app.album_mode_controller == null or not app.album_mode_controller.is_visiting():
+        app._save_album_state()
     var entry_value: Variant = app.release_entries[app.current_room_index]
     if not entry_value is Dictionary:
         app._show_fatal_error("Nieprawidłowy wpis pokoju.")
@@ -73,8 +75,11 @@ func _load_room(index: int, show_intro: bool) -> void:
     timing_runtime.reset_splits()
     if app.gameplay_telemetry != null:
         app.gameplay_telemetry.begin_room(str(app.manifest.get("release_id", "")))
+    var room_title: String = str(app.manifest.get("title", "VIRYA: Synestezja"))
+    if rerun_runtime.is_active():
+        room_title = "POWTÓRKA · %s" % room_title
     app.hud.configure_room(
-        str(app.manifest.get("title", "VIRYA: Synestezja")),
+        room_title,
         str(app.manifest.get("subtitle", "")),
         app.current_room_index,
         app.release_entries.size(),
@@ -128,6 +133,13 @@ func _restore_room_after_layout(show_intro: bool) -> void:
     await get_tree().process_frame
     await get_tree().process_frame
     if app.room == null or not is_instance_valid(app.room):
+        return
+    # A rerun is scored on what is painted now, so nothing of the stored attempt
+    # is restored into the room. The clean-room path runs before the journey's
+    # saved painting is loaded.
+    if rerun_runtime.is_active():
+        rerun_runtime.prepare()
+        app.restoring_progress = false
         return
     var release_id: String = str(app.manifest.get("release_id", ""))
     var saved: Dictionary = app.ProgressStoreScript.load_release(release_id)
@@ -295,7 +307,15 @@ func _complete_current_room() -> void:
             app.hud.update_discovery("DRZWI OTWARTE · ECHA %d/%d · pokój odsłonięty" % [found_echoes, total_echoes])
     if app.haptics != null:
         app.haptics.cinematic_reveal()
+    # A rerun is scored through RoomRerunRuntime and must return before any
+    # journey bookkeeping runs: no completion id, no album clock, no finale
+    # watchdog, no CrowdRelay record. The journey run is left untouched.
     var release_id: String = str(app.manifest.get("release_id", ""))
+    if rerun_runtime.is_active():
+        var rerun_found: int = int(app.room.get_found_count())
+        var rerun_total: int = _collectible_total()
+        rerun_runtime.finish(release_id, elapsed_at_completion, guidance, rerun_found, rerun_total)
+        return
     var completed_ids: Array = app._array_value(app.album_state.get("completed_room_ids", []))
     if not completed_ids.has(release_id):
         completed_ids.append(release_id)
@@ -380,6 +400,10 @@ func _show_completion_panel() -> void:
     )
 func _arm_finale_after_grace() -> void:
     await get_tree().create_timer(FINALE_GRACE_SECONDS).timeout
+    # The finale watchdog must not seize the screen from a live corridor visit
+    # or a rerun. A player replaying a room or listening in Album Mode is
+    # mid-interaction and the finale can wait until they return to the menu.
+    if app.album_mode_controller != null and app.album_mode_controller.is_visiting(): return
     if app.reward_panel == null or not is_instance_valid(app.reward_panel): app.reward_flow.arm_finale_guard()
 func _transition_to_room(next_index: int) -> void:
     if app.transition_running: return

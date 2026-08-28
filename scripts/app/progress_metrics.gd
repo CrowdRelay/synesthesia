@@ -222,14 +222,13 @@ static func record_rerun_attempt(album_state: Dictionary, release_id: String, ro
     var best_rooms_value: Variant = album_state.get("personal_best_room_ms", {})
     var best_rooms: Dictionary = best_rooms_value if best_rooms_value is Dictionary else {}
     var previous_room_best: int = maxi(0, int(best_rooms.get(release_id, 0)))
-    var elapsed: int = maxi(0, room_elapsed_ms)
-    var room_personal_best: bool = previous_room_best <= 0 or elapsed < previous_room_best
+    var room_personal_best: bool = previous_room_best <= 0 or room_elapsed_ms < previous_room_best
     if room_personal_best:
-        best_rooms[release_id] = elapsed
+        best_rooms[release_id] = room_elapsed_ms
     album_state["personal_best_room_ms"] = best_rooms
 
     var performance := {
-        "room_elapsed_ms": elapsed,
+        "room_elapsed_ms": room_elapsed_ms,
         "previous_room_best_ms": previous_room_best,
         "room_personal_best": room_personal_best,
     }

@@ -141,5 +141,6 @@ run_godot_checked validation "SYNESTHESIA_VALIDATION=PASS" 0 --headless --path "
 # after a successful --script smoke run. The log gate allows only that exact
 # post-PASS signature, only on 4.7.1, and only for its three zero-ref objects.
 run_godot_checked lifecycle "SYNESTHESIA_LIFECYCLE_SMOKE=PASS" 1 --headless --path "$ROOT" --script res://tests/lifecycle_smoke.gd
+run_godot_checked room-rerun "SYNESTHESIA_ROOM_RERUN_SMOKE=PASS" 0 --headless --path "$ROOT" --script res://tests/room_rerun_smoke.gd
 
 echo "SYNESTHESIA_GODOT_RUNTIME=PASS"

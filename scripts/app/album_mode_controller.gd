@@ -1,6 +1,7 @@
 extends Node
 
 signal room_requested(index: int)
+signal room_rerun_requested(index: int)
 signal finale_requested
 signal menu_requested
 signal corridor_requested
@@ -19,6 +20,7 @@ var _return_button: Button
 var _capture_button: Button
 var _current_index: int = 0
 var _listening: bool = false
+var _rerunning: bool = false
 
 func configure(ui_root: Control, room_layer: Control, hud: Control, transition, releases: Array) -> void:
     _ui_root = ui_root
@@ -29,6 +31,7 @@ func configure(ui_root: Control, room_layer: Control, hud: Control, transition, 
 
 func show_archive(album_state: Dictionary, current_index: int, finale_background = null) -> void:
     _listening = false
+    _rerunning = false
     hide_return()
     if _room_layer != null:
         _room_layer.visible = false
@@ -46,12 +49,19 @@ func show_archive(album_state: Dictionary, current_index: int, finale_background
     var completed_value: Variant = album_state.get("completed_room_ids", [])
     var completed: Array = completed_value if completed_value is Array else []
     _archive_panel.configure(_releases, completed, archive, _accent_for_index(current_index))
+    var best_rooms_value: Variant = album_state.get("personal_best_room_ms", {})
+    var best_rooms: Dictionary = best_rooms_value if best_rooms_value is Dictionary else {}
+    var mastery_value: Variant = album_state.get("best_room_mastery", {})
+    var mastery: Dictionary = mastery_value if mastery_value is Dictionary else {}
+    _archive_panel.set_records(best_rooms, mastery)
     _archive_panel.room_requested.connect(func(index: int) -> void: room_requested.emit(index))
+    _archive_panel.room_rerun_requested.connect(func(index: int) -> void: room_rerun_requested.emit(index))
     _archive_panel.finale_requested.connect(_emit_finale)
     _archive_panel.close_requested.connect(_emit_menu)
 
-func enter_room(index: int, finale_background, load_room: Callable) -> void:
-    _listening = true
+func enter_room(index: int, finale_background, load_room: Callable, rerun: bool = false) -> void:
+    _listening = not rerun
+    _rerunning = rerun
     _current_index = index
     if _transition != null:
         _transition.set_next_accent(_accent_for_index(index))
@@ -65,7 +75,9 @@ func enter_room(index: int, finale_background, load_room: Callable) -> void:
     await get_tree().process_frame
     await get_tree().process_frame
     await get_tree().process_frame
-    if _hud != null:
+    # Only the listening visit hides the instrument panel. A rerun is real,
+    # timed play and keeps the HUD so the player can read the clock and hints.
+    if _hud != null and _listening:
         _hud.visible = false
     show_return()
     if _transition != null:
@@ -73,6 +85,12 @@ func enter_room(index: int, finale_background, load_room: Callable) -> void:
 
 func is_listening() -> bool:
     return _listening
+
+func is_rerunning() -> bool:
+    return _rerunning
+
+func is_visiting() -> bool:
+    return _listening or _rerunning
 
 func has_archive() -> bool:
     return _archive_panel != null and is_instance_valid(_archive_panel)
@@ -150,6 +168,7 @@ func _download_share_frame() -> void:
 func close_archive() -> void:
     _dispose_archive()
     _listening = false
+    _rerunning = false
 
 func _dispose_archive() -> void:
     if _archive_panel != null and is_instance_valid(_archive_panel):

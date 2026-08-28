@@ -200,12 +200,12 @@ func _show_album_archive() -> void:
     if room != null and is_instance_valid(room):
         _clear_room_runtime()
     album_mode_controller.show_archive(album_state, current_room_index, finale_background)
-func _enter_album_mode_room(index: int) -> void:
+func _enter_album_mode_room(index: int, rerun: bool = false) -> void:
     if transition_running:
         return
     transition_running = true
     _arm_transition_watchdog()
-    await album_mode_controller.enter_room(index, finale_background, Callable(self, "_load_room"))
+    await album_mode_controller.enter_room(index, finale_background, Callable(self, "_load_room"), rerun)
     transition_running = false
 # GDScript has no try/finally: if an awaited callee aborts mid-coroutine, the
 # lines after its await never run and transition_running would stay true
@@ -404,6 +404,11 @@ func _handle_back_request() -> bool:
         _show_experience_intro()
         return true
     if album_mode_controller != null and album_mode_controller.is_listening() and room != null and is_instance_valid(room):
+        _show_album_archive()
+        return true
+    # A rerun or a visit with no result card on screen returns to the corridor.
+    # The completion card is dismissed first by the panel checks below.
+    if album_mode_controller != null and album_mode_controller.is_visiting() and completion_panel == null:
         _show_album_archive()
         return true
     if experience_intro_panel != null:

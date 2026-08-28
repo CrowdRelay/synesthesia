@@ -1,6 +1,7 @@
 extends Control
 
 signal room_requested(index: int)
+signal room_rerun_requested(index: int)
 signal finale_requested
 signal close_requested
 
@@ -13,6 +14,8 @@ const CORRIDOR_WORLD_PATH: String = "res://assets/v2/branding/corridor-world.web
 var _releases: Array = []
 var _completed_ids: Array = []
 var _echo_archive: Dictionary = {}
+var _best_room_ms: Dictionary = {}
+var _best_room_mastery: Dictionary = {}
 var _accent: Color = Color("84b4ac")
 var _panel: PanelContainer
 var _scroll: ScrollContainer
@@ -31,6 +34,10 @@ func configure(releases: Array, completed_ids: Array, echo_archive: Dictionary, 
     _echo_archive = echo_archive.duplicate(true)
     _accent = _clinicalize(accent)
     _build()
+
+func set_records(best_room_ms: Dictionary, best_room_mastery: Dictionary) -> void:
+    _best_room_ms = best_room_ms.duplicate(true)
+    _best_room_mastery = best_room_mastery.duplicate(true)
 
 func _build() -> void:
     UIFactory.add_signal_backdrop(self, CORRIDOR_WORLD_PATH, _accent, 0.58)
@@ -143,6 +150,37 @@ func _add_room_entry(index: int) -> void:
     button.pressed.connect(Callable(self, "_emit_room").bind(index))
     body.add_child(button)
 
+    # A finished room carries its record and mastery so the player can decide
+    # whether a rerun is worth it before committing. The rerun CTA sits beside
+    # the listening visit so both corridor entry points stay one tap away.
+    if unlocked:
+        var record_ms: int = maxi(0, int(_best_room_ms.get(release_id, 0)))
+        if record_ms > 0:
+            var record_label := Label.new()
+            record_label.text = "TWÓJ REKORD · %s" % _format_time(record_ms)
+            record_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+            UIFactory.apply_display_font(record_label)
+            record_label.add_theme_font_size_override("font_size", 9)
+            record_label.add_theme_color_override("font_color", Color("f3c51a"))
+            body.add_child(record_label)
+        var mastery_value: Variant = _best_room_mastery.get(release_id, {})
+        if mastery_value is Dictionary:
+            var mastery: Dictionary = mastery_value
+            var score: int = clampi(int(mastery.get("score", 0)), 0, 100)
+            var grade: String = str(mastery.get("grade", "C"))
+            if score > 0:
+                var mastery_label := Label.new()
+                mastery_label.text = "REZONANS %s %d/100" % [grade, score]
+                mastery_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+                UIFactory.apply_display_font(mastery_label)
+                mastery_label.add_theme_font_size_override("font_size", 9)
+                mastery_label.add_theme_color_override("font_color", Color(room_accent, 0.92))
+                body.add_child(mastery_label)
+        var rerun_button := UIFactory.product_button("POWTÓRKA · POPRAW WYNIK", room_accent, false)
+        rerun_button.tooltip_text = "Zagraj ten pokój od nowa, żeby pobić rekord"
+        rerun_button.pressed.connect(Callable(self, "_emit_rerun").bind(index))
+        body.add_child(rerun_button)
+
     var echo_titles := PackedStringArray()
     var collectibles_value: Variant = manifest.get("collectibles", [])
     var collectibles: Array = collectibles_value if collectibles_value is Array else []
@@ -201,6 +239,20 @@ func _add_room_entry(index: int) -> void:
 
 func _emit_room(index: int) -> void:
     room_requested.emit(index)
+
+func _emit_rerun(index: int) -> void:
+    room_rerun_requested.emit(index)
+
+func _format_time(elapsed_ms: int) -> String:
+    var safe_ms: int = maxi(0, elapsed_ms)
+    var total_seconds: int = int(safe_ms / 1000)
+    var hours: int = int(total_seconds / 3600)
+    var minutes: int = int((total_seconds % 3600) / 60)
+    var seconds: int = total_seconds % 60
+    var millis: int = safe_ms % 1000
+    if hours > 0:
+        return "%d:%02d:%02d.%03d" % [hours, minutes, seconds, millis]
+    return "%02d:%02d.%03d" % [minutes, seconds, millis]
 
 func _ward_room_name(index: int, fallback: String) -> String:
     var names := [
