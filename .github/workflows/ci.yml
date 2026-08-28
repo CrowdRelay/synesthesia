@@ -40,7 +40,7 @@ jobs:
             echo "GODOT_RELEASE_VERSION=${GODOT_RELEASE_VERSION}"
             echo "GODOT_EDITOR_SHA256=${GODOT_EDITOR_SHA256}"
             echo "RUST_NATIVE_TOOLCHAIN=${RUST_NATIVE_TOOLCHAIN}"
-            echo "GODOT_EDITOR_URL=https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_${GODOT_VERSION}_linux.x86_64.zip"
+            echo "GODOT_EDITOR_URL=https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
           } >>"${GITHUB_ENV}"
 
       - name: Verify repository layout
