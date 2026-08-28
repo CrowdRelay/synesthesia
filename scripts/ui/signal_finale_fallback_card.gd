@@ -145,7 +145,7 @@ func apply_signal_context(context: Dictionary) -> void:
 
 func _handle_signal() -> void:
     if bool(_signal_context.get("linked_to_fan", false)):
-        OS.shell_open("https://virya.music/pl/my-signal/?source=synesthesia")
+        OS.shell_open(SignalCtaState.my_signal_url("", "synesthesia"))
     elif _server_completed:
         signal_handoff_requested.emit()
     elif _signal_link_retryable:

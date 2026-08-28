@@ -276,7 +276,7 @@ func _build_signal_form() -> void:
     var my_signal_button := UIFactory.product_button("OTWÓRZ MÓJ SYGNAŁ", ViryaDesign.SIGNAL_DEEP)
     my_signal_button.tooltip_text = "Otwórz panel Virya Signal bezpośrednio"
     my_signal_button.pressed.connect(func() -> void:
-        OS.shell_open("https://virya.music/pl/my-signal/?source=synesthesia-menu")
+        OS.shell_open(SignalCtaState.my_signal_url("", "synesthesia-menu"))
     )
     _signal_form.add_child(my_signal_button)
 
