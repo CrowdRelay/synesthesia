@@ -196,7 +196,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, journey_summary
     _form.add_child(_next_event_button)
     apply_signal_context(_signal_context)
 
-    var album_mode := UIFactory.product_button("ALBUM MODE · KORYTARZ", ViryaDesign.SIGNAL)
+    var album_mode := UIFactory.product_button("KORYTARZ · POWTÓRKA POKOJU", ViryaDesign.SIGNAL)
     album_mode.pressed.connect(func() -> void: album_mode_requested.emit())
     _form.add_child(album_mode)
 

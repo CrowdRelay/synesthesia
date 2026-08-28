@@ -140,18 +140,24 @@ func _reset_room() -> void:
     if app.room == null:
         return
     var release_id: String = str(app.manifest.get("release_id", ""))
-    app.ProgressStoreScript.clear_release(release_id)
-    var completed_ids: Array = app._array_value(app.album_state.get("completed_room_ids", []))
-    completed_ids.erase(release_id)
-    app.album_state["completed_room_ids"] = completed_ids
-    app.transition_director.set_memory_count(completed_ids.size())
+    # A rerun restart resets the attempt without un-finishing the room for the
+    # album. The journey-only branch clears the checkpoint, the completion id
+    # and the room's elapsed time; a visit/rerun must never touch those.
+    if app.album_mode_controller != null and app.album_mode_controller.is_visiting():
+        app.room_elapsed_before_start_ms = 0
+    else:
+        app.ProgressStoreScript.clear_release(release_id)
+        var completed_ids: Array = app._array_value(app.album_state.get("completed_room_ids", []))
+        completed_ids.erase(release_id)
+        app.album_state["completed_room_ids"] = completed_ids
+        app.transition_director.set_memory_count(completed_ids.size())
+        var elapsed_value: Variant = app.album_state.get("room_elapsed_ms", {})
+        var elapsed: Dictionary = elapsed_value if elapsed_value is Dictionary else {}
+        elapsed[release_id] = 0
+        app.album_state["room_elapsed_ms"] = elapsed
+        app.album_state["total_elapsed_ms"] = app.ProgressMetrics.sum_elapsed_ms(elapsed)
+        app.room_elapsed_before_start_ms = 0
     app.completion_announced = false
-    var elapsed_value: Variant = app.album_state.get("room_elapsed_ms", {})
-    var elapsed: Dictionary = elapsed_value if elapsed_value is Dictionary else {}
-    elapsed[release_id] = 0
-    app.album_state["room_elapsed_ms"] = elapsed
-    app.album_state["total_elapsed_ms"] = app.ProgressMetrics.sum_elapsed_ms(elapsed)
-    app.room_elapsed_before_start_ms = 0
     app.room_timer_running = false
     app._remove_modal(app.completion_panel)
     app.completion_panel = null
@@ -231,13 +237,13 @@ func _on_runtime_budget_changed(scale: float, _reason: String) -> void:
         app.room.set_runtime_budget(scale)
 
 func _schedule_save() -> void:
-    if app.album_mode_controller != null and app.album_mode_controller.is_listening():
+    if app.album_mode_controller != null and app.album_mode_controller.is_visiting():
         return
     if not app.restoring_progress and app.save_timer != null:
         app.save_timer.start()
 
 func _save_progress() -> void:
-    if app.album_mode_controller != null and app.album_mode_controller.is_listening():
+    if app.album_mode_controller != null and app.album_mode_controller.is_visiting():
         return
     if app.room == null or app.manifest.is_empty():
         return
@@ -268,7 +274,7 @@ func _populate_settings_state() -> void:
     app.album_state["noise_level"] = app.noise_level
 
 func _save_album_state() -> void:
-    if app.album_mode_controller != null and app.album_mode_controller.is_listening():
+    if app.album_mode_controller != null and app.album_mode_controller.is_visiting():
         return
     _populate_settings_state()
     app.ProgressStoreScript.save_album(app.album_state)

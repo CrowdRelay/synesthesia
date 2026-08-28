@@ -90,7 +90,7 @@ func configure(server_completed: bool, saved_reward: Dictionary, _journey_summar
     _claim.pressed.connect(func() -> void: draw_entry_requested.emit(_email.text.strip_edges()))
     stack.add_child(_claim)
 
-    var album_mode := UIFactory.product_button("ALBUM MODE · KORYTARZ", ViryaDesign.SIGNAL)
+    var album_mode := UIFactory.product_button("KORYTARZ · POWTÓRKA POKOJU", ViryaDesign.SIGNAL)
     album_mode.pressed.connect(func() -> void: album_mode_requested.emit())
     stack.add_child(album_mode)
     var replay := UIFactory.product_button("PRZEJDŹ ALBUM JESZCZE RAZ", ViryaDesign.TEXT_DIM)

@@ -90,6 +90,7 @@ func ensure_ready() -> bool:
         app.add_child(app.album_mode_controller)
         app.album_mode_controller.configure(app.ui_root, app.room_layer, app.hud, app.transition_director, app.release_entries)
         app.album_mode_controller.room_requested.connect(app._enter_album_mode_room)
+        app.album_mode_controller.room_rerun_requested.connect(app._enter_album_mode_room.bind(true))
         app.album_mode_controller.corridor_requested.connect(app._show_album_archive)
         app.album_mode_controller.finale_requested.connect(app._show_reward_panel)
         app.album_mode_controller.menu_requested.connect(app._show_experience_intro)

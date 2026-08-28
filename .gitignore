@@ -27,14 +27,6 @@ synesthesia_rust.gdextension.uid
 /.cache/
 /.ci-cache/
 
-# In-progress room-rerun feature remains local until complete.
-/scripts/app/room_rerun_runtime.gd
-/scripts/app/room_rerun_runtime.gd.uid
-/scripts/app/finale_panel_builder.gd
-/scripts/app/finale_panel_builder.gd.uid
-/tests/room_rerun_contract.py
-/tests/room_rerun_smoke.gd
-/tests/room_rerun_smoke.gd.uid
 
 # Throwaway local backups.
 *.before-play-release
