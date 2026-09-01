@@ -214,6 +214,30 @@ export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$KEYSTORE_PASSWORD"
 mkdir -p "$(dirname "$AAB_PATH")"
 rm -f "$AAB_PATH" "$AAB_PATH.sha256"
 
+# Pre-populate android/build/ from the source template so we can enable R8
+# minification before Godot's export invocation. Godot will skip
+# --install-android-build-template because android/build/ already exists.
+if [[ ! -d android/build ]]; then
+  mkdir -p android/build
+  unzip -q -o "$TEMPLATE_DIR/android_source.zip" -d android/build
+  [[ -f android/build/build.gradle ]] || { echo 'ERROR: Android source template missing build.gradle' >&2; exit 1; }
+  # Enable R8 minification and resource shrinking on the release build type.
+  python3 - <<'PY'
+from pathlib import Path
+p = Path('android/build/build.gradle')
+s = p.read_text()
+needle = "        release {\n            // Signing and zip-aligning are skipped for prebuilt builds, but\n            // performed for Godot gradle builds.\n            zipAlignEnabled shouldZipAlign()"
+replacement = needle + "\n            minifyEnabled true\n            shrinkResources true\n            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'"
+if 'minifyEnabled true' not in s:
+    if needle not in s:
+        raise SystemExit('ERROR: could not locate release buildType in build.gradle to inject R8 settings')
+    s = s.replace(needle, replacement, 1)
+    p.write_text(s)
+PY
+  cp proguard-rules.pro android/build/proguard-rules.pro
+  printf 'SYNESTHESIA_R8=ENABLED minify=true shrinkResources=true\n'
+fi
+
 godot_export_args=(--headless --path "$ROOT")
 if [[ ! -d android/build ]]; then
   # Godot's CLI contract requires template installation to be part of the

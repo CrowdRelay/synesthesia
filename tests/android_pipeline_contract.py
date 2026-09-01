@@ -204,9 +204,52 @@ for token in (
 if 'textures/vram_compression/import_etc2_astc=true' not in project:
     failures.append("Android export requires rendering/textures/vram_compression/import_etc2_astc=true")
 
+# Google Play large-screen recommendation: do not lock orientation to portrait.
+# Android 16+ ignores screenOrientation on large screens anyway; setting sensor
+# avoids the Play Console warning and lets tablets/foldables rotate freely.
+if 'handheld/orientation=6' not in project:
+    failures.append("project.godot must set handheld/orientation=6 (sensor) for large-screen support")
+
+# R8 minification: Google Play recommends enabling R8 to reduce memory and
+# improve performance. The release AAB builder pre-extracts the Gradle source
+# template, patches build.gradle to enable minifyEnabled + shrinkResources, and
+# copies proguard-rules.pro with keep rules for Godot JNI classes.
+proguard_path = ROOT / "proguard-rules.pro"
+if not proguard_path.is_file():
+    failures.append("proguard-rules.pro missing — R8 keep rules required for release AAB")
+else:
+    proguard = proguard_path.read_text()
+    for token in (
+        "-keep class org.godotengine.** { *; }",
+        "-keep class com.godot.** { *; }",
+        "native <methods>;",
+    ):
+        if token not in proguard:
+            failures.append(f"proguard-rules.pro missing keep rule: {token}")
+
+for token in (
+    'minifyEnabled true',
+    'shrinkResources true',
+    "proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'",
+    'cp proguard-rules.pro android/build/proguard-rules.pro',
+    'SYNESTHESIA_R8=ENABLED',
+):
+    if token not in play_release_builder:
+        failures.append(f"Play release builder missing R8 token: {token}")
+
+play_fish_path = ROOT / "scripts/play-build.fish"
+play_fish = play_fish_path.read_text() if play_fish_path.is_file() else ""
+for token in (
+    'minifyEnabled true',
+    'shrinkResources true',
+    'SYNESTHESIA_R8=ENABLED',
+):
+    if token not in play_fish:
+        failures.append(f"play-build.fish missing R8 token: {token}")
+
 if failures:
     for failure in failures:
         print(f"FAIL: {failure}")
     raise SystemExit(f"SYNESTHESIA_ANDROID_PIPELINE=FAIL count={len(failures)}")
 
-print("SYNESTHESIA_ANDROID_PIPELINE=PASS target=arm64 rust=required apk=verified play-aab=16k-verified toolchains=central-config")
+print("SYNESTHESIA_ANDROID_PIPELINE=PASS target=arm64 rust=required apk=verified play-aab=16k-verified r8=enabled orientation=sensor toolchains=central-config")

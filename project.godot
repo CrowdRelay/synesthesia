@@ -23,7 +23,7 @@ size/viewport_width=1080
 size/viewport_height=1920
 dpi/allow_hidpi=true
 stretch/mode="disabled"
-handheld/orientation=1
+handheld/orientation=6
 
 [rendering]
 renderer/rendering_method="gl_compatibility"

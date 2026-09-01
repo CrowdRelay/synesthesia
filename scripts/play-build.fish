@@ -310,9 +310,44 @@ end
 set INSTALL_ARGS
 
 if not test -d android/build
-    echo
-    echo "ANDROID_GRADLE_TEMPLATE=INSTALL"
-    set INSTALL_ARGS --install-android-build-template
+    # Pre-populate android/build/ from the source template so we can enable R8
+    # minification before Godot's export invocation. Godot will skip
+    # --install-android-build-template because android/build/ already exists.
+    set GODOT_DATA_DIR (./scripts/godot-runtime-data-dir.sh)
+    set TEMPLATE_DIR "$GODOT_DATA_DIR/export_templates/$GODOT_EXPECTED"
+
+    if test -f "$TEMPLATE_DIR/android_source.zip"
+        echo
+        echo "ANDROID_GRADLE_TEMPLATE=EXTRACT_AND_PATCH_R8"
+        mkdir -p android/build
+        unzip -q -o "$TEMPLATE_DIR/android_source.zip" -d android/build
+        or exit 1
+        test -f android/build/build.gradle
+        or begin
+            echo "ERROR: source template missing build.gradle" >&2
+            exit 1
+        end
+        # Enable R8 minification and resource shrinking on the release build type.
+        python3 -c 'from pathlib import Path
+p = Path("android/build/build.gradle")
+s = p.read_text()
+needle = "        release {\n            // Signing and zip-aligning are skipped for prebuilt builds, but\n            // performed for Godot gradle builds.\n            zipAlignEnabled shouldZipAlign()"
+replacement = needle + "\n            minifyEnabled true\n            shrinkResources true\n            proguardFiles getDefaultProguardFile(\"proguard-android-optimize.txt\"), \"proguard-rules.pro\""
+if "minifyEnabled true" not in s:
+    if needle not in s:
+        raise SystemExit("ERROR: could not locate release buildType for R8 injection")
+    s = s.replace(needle, replacement, 1)
+    p.write_text(s)
+'
+        or exit 1
+        cp proguard-rules.pro android/build/proguard-rules.pro
+        or exit 1
+        echo "SYNESTHESIA_R8=ENABLED minify=true shrinkResources=true"
+    else
+        echo
+        echo "ANDROID_GRADLE_TEMPLATE=INSTALL"
+        set INSTALL_ARGS --install-android-build-template
+    end
 end
 
 #
