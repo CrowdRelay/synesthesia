@@ -327,6 +327,10 @@ if not test -d android/build
             echo "ERROR: source template missing build.gradle" >&2
             exit 1
         end
+        # Godot checks res://android/.build_version for the template version when
+        # using gradle builds. Write it ourselves since we pre-extracted the template
+        # instead of letting Godot install it via --install-android-build-template.
+        printf '%s\n' "$GODOT_EXPECTED" > android/.build_version
         # Enable R8 minification and resource shrinking on the release build type.
         python3 -c 'from pathlib import Path
 p = Path("android/build/build.gradle")

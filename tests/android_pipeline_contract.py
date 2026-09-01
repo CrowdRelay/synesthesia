@@ -233,6 +233,7 @@ for token in (
     "proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'",
     'cp proguard-rules.pro android/build/proguard-rules.pro',
     'SYNESTHESIA_R8=ENABLED',
+    'android/.build_version',
 ):
     if token not in play_release_builder:
         failures.append(f"Play release builder missing R8 token: {token}")
