@@ -42,6 +42,7 @@ jobs:
           ref: main
           path: crowdrelay
           persist-credentials: false
+          token: ${{ secrets.CROWDRELAY_PAT }}
 
       - name: Verify Synesthesia against current upstream run contract and CSP
         id: contract
