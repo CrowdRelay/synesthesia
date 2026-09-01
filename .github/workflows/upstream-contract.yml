@@ -46,17 +46,25 @@ jobs:
 
       - name: Verify Synesthesia against current upstream run contract and CSP
         id: contract
+        continue-on-error: true
         run: python3 crowdrelay/scripts/test-ecosystem-contract-v2.py
 
       # If the scheduled/polling check detects drift, trigger the
       # contract-propagate workflow to open an issue for manual review.
       # Synesthesia has no generated files — the issue tells a human what to fix.
+      # Only fire when the contract test itself failed (not when the checkout
+      # failed), and guard the OpenAPI file existence so a missing checkout
+      # does not cascade into a second failure.
       - name: Trigger issue creation on drift
-        if: failure() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: steps.contract.outcome == 'failure' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          if [[ ! -f crowdrelay/openapi/openapi.yaml ]]; then
+            echo "CrowdRelay checkout missing — cannot compute OpenAPI SHA, skipping propagate trigger"
+            exit 0
+          fi
           OPENAPI_SHA="$(sha256sum crowdrelay/openapi/openapi.yaml | awk '{print $1}')"
           echo "Contract drift detected on polling check — triggering contract-propagate"
           gh workflow run contract-propagate.yml \

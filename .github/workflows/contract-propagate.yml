@@ -46,6 +46,7 @@ jobs:
           ref: ${{ github.event.client_payload.crowdrelay_sha || 'main' }}
           path: crowdrelay
           persist-credentials: false
+          token: ${{ secrets.CROWDRELAY_PAT }}
 
       - name: Run ecosystem contract test
         id: contract
