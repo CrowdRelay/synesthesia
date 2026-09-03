@@ -1,0 +1,112 @@
+name: Tenant App Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenant_slug:
+        description: Tenant slug (e.g. virya, future-metal)
+        required: true
+      version:
+        description: App version (e.g. 2.0.0)
+        required: true
+      version_code:
+        description: Android versionCode (positive integer)
+        required: true
+      publish:
+        description: Upload AAB to Google Play after build
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: tenant-app-build
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-36
+            build-tools;36.0.0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Pillow
+        run: pip install Pillow
+
+      - name: Download Godot
+        run: |
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64" -O godot
+          chmod +x godot
+          echo "GODOT_BIN=$PWD/godot" >> "$GITHUB_ENV"
+        env:
+          GODOT_VERSION: "4.7"
+
+      - name: Fetch tenant config and build AAB
+        env:
+          CONTROL_PLANE_URL: ${{ vars.CONTROL_PLANE_URL }}
+          CONTROL_PLANE_ADMIN_TOKEN: ${{ secrets.CONTROL_PLANE_ADMIN_TOKEN }}
+          TENANT_SLUG: ${{ inputs.tenant_slug }}
+          VERSION: ${{ inputs.version }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          bash scripts/build-tenant-app.sh \
+            --tenant "$TENANT_SLUG" \
+            --control-plane-url "$CONTROL_PLANE_URL" \
+            --token "$CONTROL_PLANE_ADMIN_TOKEN" \
+            --version "$VERSION" \
+            --version-code "$VERSION_CODE" \
+            --godot-bin "$GODOT_BIN" \
+            $([[ "$PUBLISH" == "true" ]] && echo "--publish")
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.tenant_slug }}-synesthesia-${{ inputs.version }}
+          path: build/tenant-apps/${{ inputs.tenant_slug }}-synesthesia-${{ inputs.version }}.aab
+          retention-days: 14
+
+      - name: Auto-populate Play Store URL in control plane
+        if: inputs.publish == true
+        env:
+          CONTROL_PLANE_URL: ${{ vars.CONTROL_PLANE_URL }}
+          CONTROL_PLANE_ADMIN_TOKEN: ${{ secrets.CONTROL_PLANE_ADMIN_TOKEN }}
+          TENANT_SLUG: ${{ inputs.tenant_slug }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_id="music.${TENANT_SLUG}.synesthesia"
+          play_url="https://play.google.com/store/apps/details?id=${package_id}"
+          curl --fail-with-body --silent --show-error --max-time 15 \
+            -X PATCH \
+            -H 'content-type: application/json' \
+            -H "Authorization: Bearer ${CONTROL_PLANE_ADMIN_TOKEN}" \
+            -d "{\"synesthesiaPlayStoreUrl\":\"${play_url}\"}" \
+            "${CONTROL_PLANE_URL%/}/api/v1/tenants/${TENANT_SLUG}/mobile-apps"
+          echo "PLAY_STORE_URL_UPDATE=PASS tenant=${TENANT_SLUG} url=${play_url}"
