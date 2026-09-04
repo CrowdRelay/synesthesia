@@ -20,7 +20,7 @@ Godot 4.7.1 owns scenes, UI, audio, haptics and the GPU reveal renderer. Determi
 
 Native production builds are Rust-primary. Web production uses the behavior-compatible GDScript recognizer on the critical startup path while the Rust/WASM path remains a CI verification target.
 
-GitHub Actions builds and verifies the Web artifact; deployment promotes the exact verified artifact. Build products remain ignored.
+GitHub Actions builds and verifies the Web artifact; deployment promotes the exact verified artifact. Android builds produce a Play Store AAB with per-tenant keystore signing. Build products remain ignored.
 
 ## CrowdRelay integration
 
