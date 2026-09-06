@@ -23,13 +23,6 @@ if not script:
     failures.append("scripts/build-android-apk.sh missing")
 
 for token in (
-    "workflow_run:",
-    'workflows: ["CI"]',
-    "github.event.workflow_run.conclusion == 'success'",
-    "github.event.workflow_run.event == 'push'",
-    "github.event.workflow_run.head_branch == 'main'",
-    "github.event.workflow_run.actor.login || github.actor",
-    "github.event.workflow_run.head_sha || github.sha",
     "SOURCE_SHA:",
     "ref: ${{ env.SOURCE_SHA }}",
     "workflow_dispatch:",

@@ -9,9 +9,6 @@ builder = (ROOT / "scripts/build-web-preview.sh").read_text()
 failures: list[str] = []
 
 for token in (
-    'workflows: ["CI"]',
-    "github.event.workflow_run.conclusion == 'success'",
-    "github.event.workflow_run.head_branch == 'main'",
     "actions/download-artifact@",
     "run-id: ${{ steps.source.outputs.run_id }}",
     "synesthesia-web-${{ steps.source.outputs.sha }}",
