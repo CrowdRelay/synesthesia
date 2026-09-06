@@ -2,9 +2,6 @@ name: Android APK
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
 
 permissions:
   contents: read
@@ -137,7 +134,7 @@ jobs:
           name: synesthesia-android-godot-logs-${{ env.SOURCE_SHA }}
           path: build/ci-logs/*.log
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 3
 
       - name: Upload APK
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -149,4 +146,4 @@ jobs:
             build/android/synesthesia-debug.apk.badging.txt
             build/android-artifact-manifest.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3

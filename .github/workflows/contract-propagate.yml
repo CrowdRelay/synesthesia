@@ -16,8 +16,6 @@ on:
         description: "CrowdRelay OpenAPI SHA256 (optional — defaults to current main)"
         required: false
         type: string
-  schedule:
-    - cron: "37 */6 * * *"
 
 permissions:
   contents: read

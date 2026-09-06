@@ -13,8 +13,6 @@ on:
       - "native/Cargo.lock"
       - "native/**/Cargo.toml"
       - ".github/workflows/security.yml"
-  schedule:
-    - cron: "31 4 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -42,7 +40,7 @@ jobs:
           name: synesthesia-sbom-${{ github.sha }}
           path: artifacts/synesthesia-sbom.cdx.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
       - name: Cache pinned cargo-audit binary
         id: cargo-audit-cache
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0

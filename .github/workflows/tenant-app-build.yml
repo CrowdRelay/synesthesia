@@ -90,7 +90,7 @@ jobs:
         with:
           name: ${{ inputs.tenant_slug }}-synesthesia-${{ inputs.version }}
           path: build/tenant-apps/${{ inputs.tenant_slug }}-synesthesia-${{ inputs.version }}.aab
-          retention-days: 14
+          retention-days: 3
 
       - name: Auto-populate Play Store URL in control plane
         if: inputs.publish == true

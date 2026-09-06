@@ -9,10 +9,6 @@ on:
         type: choice
         default: internal
         options: [internal, alpha, beta, production]
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
 
 permissions:
   contents: read
@@ -278,7 +274,7 @@ jobs:
             promoted/synesthesia-release.aab.sha256
             android-artifact-manifest.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
 
       - name: Upload exact AAB to Google Play
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
@@ -304,4 +300,4 @@ jobs:
           name: synesthesia-play-godot-logs-${{ env.SOURCE_SHA }}
           path: build/ci-logs/*.log
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 3
