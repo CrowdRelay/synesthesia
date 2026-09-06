@@ -43,13 +43,16 @@ if netlify.exists():
     if "netlify-cli" in deploy_workflows and "--no-build" not in deploy_workflows:
         failures.append("Netlify deploy workflow must pass --no-build")
 
-# A scheduled security workflow is useful only if dependency changes also exercise it.
+# A security workflow that fires on dependency changes is required.
+# Schedule triggers were removed to stay within private-repo Actions minute
+# limits; the workflow remains available via workflow_dispatch and fires
+# automatically on push/PR to dependency files.
 security_workflow = workflow_dir / "security.yml"
 if not security_workflow.exists():
     failures.append(".github/workflows/security.yml: standalone dependency-security workflow is required")
 else:
     security_text = security_workflow.read_text()
-    for trigger in ("push", "pull_request", "schedule", "workflow_dispatch"):
+    for trigger in ("push", "pull_request", "workflow_dispatch"):
         if not re.search(rf"(?m)^  {re.escape(trigger)}:\s*$", security_text):
             failures.append(f".github/workflows/security.yml: missing {trigger} trigger")
     if "native/Cargo.lock" not in security_text:
