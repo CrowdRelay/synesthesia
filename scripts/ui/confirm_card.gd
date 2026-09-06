@@ -35,4 +35,5 @@ func configure(title: String, message: String, confirm_text: String) -> void:
         cancelled.emit()
     )
     content.add_child(cancel_button)
+    UIFactory.enable_touch_scroll(content)
     UiMetrics.apply_tree(panel, ui_scale)

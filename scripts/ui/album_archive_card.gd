@@ -55,6 +55,7 @@ func _build() -> void:
     _scroll.mouse_filter = Control.MOUSE_FILTER_PASS
     _scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     _scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    _scroll.scroll_deadzone = 12
     _scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     _panel.add_child(_scroll)
@@ -96,6 +97,7 @@ func _build() -> void:
 
     _layout_panel()
     _apply_ui_scale()
+    UIFactory.enable_touch_scroll(_content)
     modulate.a = 0.0
     create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT).tween_property(self, "modulate:a", 1.0, 0.24)
 

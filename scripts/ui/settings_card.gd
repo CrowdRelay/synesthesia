@@ -109,6 +109,7 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = 0
     scroll.vertical_scroll_mode = 1
+    scroll.scroll_deadzone = 12
     _panel.add_child(scroll)
     _content = VBoxContainer.new()
     _content.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -232,6 +233,8 @@ func _build(music: float, noise: float, quality_label: String, version: String) 
     var close_button: Button = UIFactory.button("Wróć do malowania")
     close_button.pressed.connect(func() -> void: close_requested.emit())
     _content.add_child(close_button)
+
+    UIFactory.enable_touch_scroll(_content)
 
     modulate.a = 0.0
     var tween: Tween = create_tween()

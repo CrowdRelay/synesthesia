@@ -3,7 +3,7 @@ extends RefCounted
 const UiMetrics := preload("res://scripts/ui/ui_metrics.gd")
 
 const MOBILE_BASE_MARGIN_PX: float = 12.0
-const MOBILE_SCROLL_DEADZONE_PX: int = 4
+const MOBILE_SCROLL_DEADZONE_PX: int = 12
 
 static func _available_size(app: Control) -> Vector2:
     var available: Vector2 = app.size

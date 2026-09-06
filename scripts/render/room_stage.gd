@@ -258,6 +258,11 @@ func set_interaction_enabled(value: bool) -> void:
         _end_stroke()
     if not value and interaction_router != null:
         interaction_router.reset()
+    # Menu ScrollContainers only scroll from touch via emulated mouse events.
+    # Enable mouse-from-touch emulation while interaction is disabled (menus,
+    # overlays, transitions) and disable it during gameplay so the interaction
+    # router doesn't see phantom two-finger gestures from both touch + mouse.
+    Input.set_emulate_mouse_from_touch(not value)
 func set_post_reveal_interaction(value: bool) -> void:
     post_reveal_interaction = value
     if value: set_interaction_enabled(true)

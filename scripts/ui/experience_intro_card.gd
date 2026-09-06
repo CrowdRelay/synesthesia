@@ -75,6 +75,7 @@ func _build() -> void:
     _scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     _scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     _scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    _scroll.scroll_deadzone = 12
     _panel.add_child(_scroll)
 
     _content_root = VBoxContainer.new()
@@ -224,6 +225,7 @@ func _build() -> void:
     _build_signal_form()
     _layout_columns()
     _apply_ui_scale()
+    UIFactory.enable_touch_scroll(_content_root)
     WebE2EProbe.control_action_deferred("menu", "continueRect", _continue_button, get_viewport_rect().size)
 
     modulate.a = 0.0

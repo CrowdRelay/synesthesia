@@ -83,6 +83,10 @@ var startup_scripts: Node
 var runtime_flow: Node
 func _ready() -> void:
     DebugProfile.fit_macos_window_to_screen()
+    # The app starts in menu mode (boot sequence → experience intro), so mouse
+    # emulation must be ON from the first frame for ScrollContainer touch scroll.
+    # room_stage.gd:set_interaction_enabled() toggles it during gameplay.
+    Input.set_emulate_mouse_from_touch(true)
     index_document = ReleaseReader.load_json(RELEASE_INDEX_PATH)
     if index_document.is_empty():
         _show_fatal_error("Nie udało się wczytać ścieżki albumu.")

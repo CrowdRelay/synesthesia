@@ -27,6 +27,7 @@ python3 scripts/run-contracts.py --jobs "${SYNESTHESIA_CONTRACT_JOBS:-4}" \
   tests/runtime_loader_deadline_contract.py \
   tests/player_experience_evolution_contract.py \
   tests/ui_input_contract.py \
+  tests/menu_touch_scroll_contract.py \
   tests/finale_settings_startup_regression_contract.py \
   tests/finale_hint_overlay_regression_contract.py \
   tests/ui_performance_contract.py \

@@ -303,6 +303,7 @@ static func modal_content(panel: PanelContainer, separation: int = 11) -> VBoxCo
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    scroll.scroll_deadzone = 12
     panel.add_child(scroll)
     var content: VBoxContainer = VBoxContainer.new()
     content.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -312,3 +313,15 @@ static func modal_content(panel: PanelContainer, separation: int = 11) -> VBoxCo
     content.add_theme_constant_override("separation", separation)
     scroll.add_child(content)
     return content
+
+# Recursively set MOUSE_FILTER_PASS on buttons and text fields inside a scroll
+# container so emulated mouse events (from touch) propagate to ScrollContainer.
+# Sliders (Range) keep STOP so they don't scroll while being adjusted.
+static func enable_touch_scroll(root: Node) -> void:
+    if root is Control:
+        var control := root as Control
+        control.mouse_force_pass_scroll_events = true
+        if control is BaseButton or control is LineEdit:
+            control.mouse_filter = Control.MOUSE_FILTER_PASS
+    for child in root.get_children():
+        enable_touch_scroll(child)
