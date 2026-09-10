@@ -25,7 +25,7 @@ concurrency:
 jobs:
   crowdrelay:
     name: CrowdRelay compatibility
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, arm64]
     timeout-minutes: 10
     steps:
       - name: Check out Synesthesia under canonical ecosystem layout

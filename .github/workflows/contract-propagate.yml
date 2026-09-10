@@ -28,7 +28,7 @@ concurrency:
 jobs:
   verify:
     name: Verify Synesthesia contract against CrowdRelay
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, arm64]
     timeout-minutes: 10
     steps:
       # Canonical ecosystem layout: both repos as siblings under $GITHUB_WORKSPACE.
