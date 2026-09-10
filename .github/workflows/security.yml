@@ -51,7 +51,7 @@ jobs:
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ~/.cargo/bin/cargo-audit
-          key: ${{ runner.os }}-cargo-audit-0.22.2
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-audit-0.22.2
       - name: Install pinned cargo-audit
         if: steps.cargo-audit-cache.outputs.cache-hit != 'true'
         run: cargo +1.97.1 install cargo-audit --locked --version 0.22.2
