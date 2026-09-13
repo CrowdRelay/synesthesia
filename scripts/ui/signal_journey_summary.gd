@@ -5,6 +5,14 @@ const UIFactory := preload("res://scripts/ui/ui_factory.gd")
 const ViryaDesign := preload("res://scripts/ui/virya_design_tokens.gd")
 const SignalLeaderboardPanel := preload("res://scripts/ui/signal_leaderboard_panel.gd")
 
+static func create(parent: Node, summary: Dictionary, accent: Color) -> SignalJourneySummary:
+    if summary.is_empty():
+        return null
+    var card := SignalJourneySummary.new()
+    card.configure(summary, accent)
+    parent.add_child(card)
+    return card
+
 func configure(summary: Dictionary, accent: Color) -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_theme_stylebox_override("panel", UIFactory.product_inset_style(accent, 0.24))

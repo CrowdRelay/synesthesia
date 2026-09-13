@@ -19,6 +19,13 @@ var _timed_run_complete: bool = false
 var _timed_rooms: int = 0
 var _room_total: int = 0
 
+static func create(parent: Node, summary: Dictionary, scroll: ScrollContainer) -> SignalLeaderboardPanel:
+    var panel := SignalLeaderboardPanel.new()
+    panel.name = "SignalLeaderboardPanel"
+    parent.add_child(panel)
+    panel.configure(summary, scroll)
+    return panel
+
 func configure(summary: Dictionary, _scroll: ScrollContainer) -> void:
     add_theme_constant_override("separation", 8)
     _timed_run_complete = bool(summary.get("timed_run_complete", false))

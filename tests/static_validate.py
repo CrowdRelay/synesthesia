@@ -282,14 +282,14 @@ def main() -> int:
     if shader_only_calls:
         fail("shader-only function used from GDScript: " + ", ".join(shader_only_calls), failures)
 
-    if (ROOT / "VERSION").read_text().strip() != "2.0.0":
-        fail("VERSION must equal 2.0.0", failures)
+    if (ROOT / "VERSION").read_text().strip() != "2.1.0":
+        fail("VERSION must equal 2.1.0", failures)
     project = (ROOT / "project.godot").read_text()
-    for token in ('config/version="2.0.0"', "size/viewport_width=1080", "size/viewport_height=1920", "dpi/allow_hidpi=true", 'stretch/mode="disabled"', 'boot_splash/image="res://assets/branding/boot-splash.png"'):
+    for token in ('config/version="2.1.0"', "size/viewport_width=1080", "size/viewport_height=1920", "dpi/allow_hidpi=true", 'stretch/mode="disabled"', 'boot_splash/image="res://assets/branding/boot-splash.png"'):
         if token not in project:
             fail(f"project.godot missing {token}", failures)
     export_source = (ROOT / "export_presets.cfg").read_text()
-    for token in ('version/name="2.0.0"', 'html/canvas_resize_policy=2'):
+    for token in ('version/name="2.1.0"', 'html/canvas_resize_policy=2'):
         if token not in export_source:
             fail(f"adaptive export contract missing: {token}", failures)
     if not re.search(r'(?m)^version/code=[1-9][0-9]*$', export_source):

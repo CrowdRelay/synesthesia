@@ -257,35 +257,24 @@ func _on_ritual_completed() -> void:
     call_deferred("_apply_ui_scale")
 
 func _build_journey_summary(summary: Dictionary) -> void:
-    if summary.is_empty():
-        return
-    var card := SignalJourneySummary.new()
-    card.configure(summary, _accent)
-    _visual.add_child(card)
+    SignalJourneySummary.create(_visual, summary, _accent)
 
 func _build_leaderboard(summary: Dictionary) -> void:
-    _leaderboard_panel = SignalLeaderboardPanel.new()
-    _leaderboard_panel.name = "SignalLeaderboardPanel"
-    _form.add_child(_leaderboard_panel)
-    _leaderboard_panel.configure(summary, _scroll)
+    _leaderboard_panel = SignalLeaderboardPanel.create(_form, summary, _scroll)
     _leaderboard_panel.publish_requested.connect(func() -> void: leaderboard_publish_requested.emit())
     _leaderboard_panel.refresh_requested.connect(func() -> void: leaderboard_refresh_requested.emit())
 
 func set_leaderboard_items(items: Array) -> void:
-    if _leaderboard_panel != null:
-        _leaderboard_panel.set_items(items)
+    if _leaderboard_panel != null: _leaderboard_panel.set_items(items)
 
 func set_leaderboard_publish_result(context: Dictionary) -> void:
-    if _leaderboard_panel != null:
-        _leaderboard_panel.set_publish_result(context)
+    if _leaderboard_panel != null: _leaderboard_panel.set_publish_result(context)
 
 func set_leaderboard_status(text_value: String) -> void:
-    if _leaderboard_panel != null:
-        _leaderboard_panel.set_status(text_value)
+    if _leaderboard_panel != null: _leaderboard_panel.set_status(text_value)
 
 func set_leaderboard_publish_enabled(value: bool) -> void:
-    if _leaderboard_panel != null:
-        _leaderboard_panel.set_publish_enabled(value)
+    if _leaderboard_panel != null: _leaderboard_panel.set_publish_enabled(value)
 
 ## A fresh server context arrived. This is the only entry point allowed to move
 ## the handoff exchange forward; re-rendering alone goes through _refresh_cta().
@@ -407,30 +396,19 @@ func _open_signal() -> void:
             return
     OS.shell_open(SignalCtaState.my_signal_url(handoff))
 func _open_next_event() -> void:
-    var event_value: Variant = _signal_context.get("next_event", {})
-    var event: Dictionary = event_value if event_value is Dictionary else {}
-    var slug: String = str(event.get("slug", ""))
-    if slug.is_empty():
-        return
-    OS.shell_open("https://virya.music/pl/live/%s/" % slug.uri_encode())
+    SignalFinaleNextEvent.open_url(_signal_context)
 
 func _on_email_focus_entered() -> void:
-    if _scroll != null and _email != null:
-        _scroll.ensure_control_visible(_email)
+    _ensure_email_visible()
 
 func _on_email_gui_input(event: InputEvent) -> void:
-    if _email == null:
-        return
-    if event is InputEventMouseButton and event.pressed:
+    if _email == null: return
+    if (event is InputEventMouseButton or event is InputEventScreenTouch) and event.pressed:
         _email.grab_focus()
-    elif event is InputEventScreenTouch and event.pressed:
-        _email.grab_focus()
-    if _email.has_focus() and _scroll != null:
-        call_deferred("_ensure_email_visible")
+    if _email.has_focus() and _scroll != null: call_deferred("_ensure_email_visible")
 
 func _ensure_email_visible() -> void:
-    if _scroll != null and _email != null:
-        _scroll.ensure_control_visible(_email)
+    if _scroll != null and _email != null: _scroll.ensure_control_visible(_email)
 
 func _ensure_email_visible_after_layout() -> void:
     await get_tree().process_frame

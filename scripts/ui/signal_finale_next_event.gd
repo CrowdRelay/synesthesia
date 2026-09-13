@@ -1,5 +1,13 @@
 extends RefCounted
 
+static func open_url(context: Dictionary) -> void:
+    var event_value: Variant = context.get("next_event", {})
+    var event: Dictionary = event_value if event_value is Dictionary else {}
+    var slug: String = str(event.get("slug", ""))
+    if slug.is_empty():
+        return
+    OS.shell_open("https://virya.music/pl/live/%s/" % slug.uri_encode())
+
 static func apply(label: Label, button: Button, context: Dictionary) -> void:
     if label == null or button == null:
         return
