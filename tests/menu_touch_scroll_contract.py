@@ -35,6 +35,14 @@ if "set_emulate_mouse_from_touch" not in room_stage:
 if "not value" not in room_stage.split("set_emulate_mouse_from_touch")[1].split("\n")[0]:
     failures.append("room_stage.gd: emulate_mouse_from_touch must be 'not value' (on when interaction off)")
 
+# Room teardown must restore menu input: a room freed while interaction is
+# still enabled leaves emulate_mouse_from_touch off, and every ScrollContainer
+# shown afterwards (Album archive, finale card) cannot scroll under a finger.
+room_flow = (ROOT / "scripts/app/main_room_flow.gd").read_text()
+teardown = room_flow.split("func _clear_room_runtime()", 1)[1].split("app.room.free()", 1)[0]
+if "set_interaction_enabled(false)" not in teardown:
+    failures.append("main_room_flow.gd: _clear_room_runtime must call set_interaction_enabled(false) before freeing a live room")
+
 # The old custom helper must be gone — it bypassed Godot's built-in scrolling
 # and never worked on real touch devices.
 if (ROOT / "scripts/ui/touch_scroll.gd").exists():

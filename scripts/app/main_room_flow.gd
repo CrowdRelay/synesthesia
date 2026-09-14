@@ -121,6 +121,9 @@ func _clear_room_runtime() -> void:
     if app.save_timer != null and not app.save_timer.is_stopped():
         app.save_timer.stop()
     if app.room != null and is_instance_valid(app.room):
+        # Freeing a live room without disabling interaction leaves
+        # emulate_mouse_from_touch off and every later menu unscrollable.
+        app.room.set_interaction_enabled(false)
         app.room.free()
     if app.audio_director != null and is_instance_valid(app.audio_director):
         app.audio_director.free()

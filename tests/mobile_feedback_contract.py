@@ -56,6 +56,11 @@ for token in ("touch_origin: Vector2", "touch.position - touch_origin", "drag.po
 for token in ("app.get_global_rect().position", "* (1.0 - app.current_progress) * 1.8"):
     if token not in interaction:
         failures.append(f"room_interaction_flow.gd: missing mobile interaction/readability guard {token}")
+# While a brush stroke is live, pointer parallax must not keep chasing the
+# finger — the artwork sliding under the touch is what made aimed echoes miss
+# their background item. Parallax resumes tracking on stroke end.
+if 'stroke_kind != "begin"' not in interaction or 'stroke_kind == "end"' not in interaction:
+    failures.append("room_interaction_flow.gd: parallax must freeze during an active brush stroke")
 
 for token in ("PORTRAIT_HEADER_HEIGHT: float = 172.0", "PORTRAIT_PANEL_HEIGHT: float = 152.0", "34.0 if portrait else 22.0", "MobileInstructionPanel", "app.bottom_margin.visible = not portrait", "UiMetrics.safe_insets(viewport_size)", "app.toast_panel.offset_bottom = app.mobile_instruction_panel.offset_top"):
     if token not in hud:

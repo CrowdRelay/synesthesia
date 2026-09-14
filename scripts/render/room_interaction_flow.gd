@@ -22,7 +22,12 @@ func _gui_input(event: InputEvent) -> void:
         app.gameplay_input_activity.emit()
     var point_value: Variant = routed.get("point", app.pointer_norm)
     app.pointer_norm = point_value if point_value is Vector2 else app.pointer_norm
-    app.target_parallax = (app.pointer_norm - Vector2(0.5, 0.5)) * 2.0
+    # Pointer-driven parallax chases the finger, which slides the artwork away
+    # from what it was aimed at. While a brush stroke is live the world holds
+    # still under the finger — the revealed patch matches the aimed point.
+    var stroke_kind: String = str(routed.get("stroke", ""))
+    if stroke_kind != "begin" and (not app.drawing or stroke_kind == "end"):
+        app.target_parallax = (app.pointer_norm - Vector2(0.5, 0.5)) * 2.0
     if app.post_reveal_interaction:
         _handle_post_reveal_gestures(routed["gestures"])
         app.accept_event()
